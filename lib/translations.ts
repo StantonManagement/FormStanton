@@ -4,9 +4,9 @@ export const translations = {
   en: {
     intro: "As you know, Stanton Management now manages your building. We want to introduce some changes and new requirements.",
     introItems: [
-      "Pet registration - All dogs and cats must be registered. Pet rent is $20-$50 per month per pet.",
-      "Renters insurance - This is now required. It protects you and your neighbors. Cost is about $10-20 per month.",
-      "Parking permits - We are issuing new parking permits. The old permits will not work after February 28th. Parking costs $50 per car per month."
+      "<strong>Pet registration</strong> - All dogs and cats must be registered. Pet rent is $20-$50 per month per pet.",
+      "<strong>Renters insurance</strong> - This is now required. It protects you and your neighbors. Cost is about $10-20 per month.",
+      "<strong>Parking permits</strong> - We are issuing new parking permits. The old permits will not work after February 28th. Parking costs $50 per car per month."
     ],
     
     yes: "Yes",
@@ -17,7 +17,10 @@ export const translations = {
     selectLanguage: "Select your language",
     fullName: "Full Name",
     phone: "Phone Number",
+    email: "Email Address",
     phoneNew: "This is a new phone number",
+    phoneValidationError: "Please enter a valid 10-digit phone number",
+    optional: "(Optional)",
     building: "Building Address",
     unit: "Unit Number",
     
@@ -40,9 +43,12 @@ export const translations = {
     insuranceProvider: "Insurance Provider Name",
     insurancePolicyNumber: "Policy Number",
     insuranceUpload: "Upload Proof of Insurance",
+    insuranceUploadLater: "I will upload my insurance documents later",
+    insuranceUploadLaterHelper: "You can return to this form using the same phone number and building/unit to upload your documents",
     insuranceHelper: "Your policy must show your address, at least $100,000 liability coverage ($300,000 if you have pets), and your building's LLC as Additional Insured at 421 Park St, Hartford CT 06106.",
     insuranceNotice: "Renters insurance is required. Cost is $10-25 per month. You can get your own from any provider (Lemonade, GEICO, Progressive, etc.) or we can add coverage to your monthly rent.",
     insuranceAddToRent: "I do not have insurance. Please add renters insurance to my monthly rent.",
+    signatureRequired: "Signature required",
     
     vehicleQuestion: "Do you have a vehicle that needs a parking permit?",
     vehicleMake: "Vehicle Make",
@@ -62,9 +68,9 @@ export const translations = {
   es: {
     intro: "Como ya sabe, Stanton Management ahora administra su edificio. Queremos presentarle algunos cambios y nuevos requisitos.",
     introItems: [
-      "Registro de mascotas - Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20-$50 por mes por mascota.",
-      "Seguro de inquilino - Esto ahora es obligatorio. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10-20 por mes.",
-      "Permisos de estacionamiento - Estamos emitiendo nuevos permisos. Los permisos antiguos no funcionarán después del 28 de febrero. El estacionamiento cuesta $50 por carro por mes."
+      "<strong>Registro de mascotas</strong> - Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20-$50 por mes por mascota.",
+      "<strong>Seguro de inquilino</strong> - Esto ahora es obligatorio. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10-20 por mes.",
+      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos. Los permisos antiguos no funcionarán después del 28 de febrero. El estacionamiento cuesta $50 por carro por mes."
     ],
     
     yes: "Sí",
@@ -75,7 +81,10 @@ export const translations = {
     selectLanguage: "Seleccione su idioma",
     fullName: "Nombre Completo",
     phone: "Número de Teléfono",
+    email: "Correo Electrónico",
     phoneNew: "Este es un número de teléfono nuevo",
+    phoneValidationError: "Por favor ingrese un número de teléfono válido de 10 dígitos",
+    optional: "(Opcional)",
     building: "Dirección del Edificio",
     unit: "Número de Apartamento",
     
@@ -98,9 +107,12 @@ export const translations = {
     insuranceProvider: "Nombre de la Compañía de Seguros",
     insurancePolicyNumber: "Número de Póliza",
     insuranceUpload: "Subir Prueba de Seguro",
+    insuranceUploadLater: "Subiré mis documentos de seguro más tarde",
+    insuranceUploadLaterHelper: "Puede volver a este formulario usando el mismo número de teléfono y edificio/unidad para subir sus documentos",
     insuranceHelper: "Su póliza debe mostrar su dirección, al menos $100,000 de cobertura ($300,000 si tiene mascotas), y el LLC de su edificio como Asegurado Adicional en 421 Park St, Hartford CT 06106.",
     insuranceNotice: "El seguro de inquilino es obligatorio. Cuesta $10-25 por mes. Puede obtener el suyo de cualquier proveedor (Lemonade, GEICO, Progressive, etc.) o podemos agregar cobertura a su alquiler mensual.",
     insuranceAddToRent: "No tengo seguro. Por favor agregue el seguro de inquilino a mi alquiler mensual.",
+    signatureRequired: "Firma requerida",
     
     vehicleQuestion: "¿Tiene un vehículo que necesita permiso de estacionamiento?",
     vehicleMake: "Marca del Vehículo",
@@ -120,9 +132,9 @@ export const translations = {
   pt: {
     intro: "Como você já sabe, a Stanton Management agora administra seu prédio. Queremos apresentar algumas mudanças e novos requisitos.",
     introItems: [
-      "Registro de animais - Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20-$50 por mês por animal.",
-      "Seguro de locatário - Isso agora é obrigatório. Protege você e seus vizinhos. O custo é aproximadamente $10-20 por mês.",
-      "Autorizações de estacionamento - Estamos emitindo novas autorizações. As autorizações antigas não funcionarão após 28 de fevereiro. O estacionamento custa $50 por carro por mês."
+      "<strong>Registro de animais</strong> - Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20-$50 por mês por animal.",
+      "<strong>Seguro de locatário</strong> - Isso agora é obrigatório. Protege você e seus vizinhos. O custo é aproximadamente $10-20 por mês.",
+      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações. As autorizações antigas não funcionarão após 28 de fevereiro. O estacionamento custa $50 por carro por mês."
     ],
     
     yes: "Sim",
@@ -133,7 +145,10 @@ export const translations = {
     selectLanguage: "Selecione seu idioma",
     fullName: "Nome Completo",
     phone: "Número de Telefone",
+    email: "Endereço de Email",
     phoneNew: "Este é um número de telefone novo",
+    phoneValidationError: "Por favor insira um número de telefone válido de 10 dígitos",
+    optional: "(Opcional)",
     building: "Endereço do Prédio",
     unit: "Número do Apartamento",
     
@@ -156,9 +171,12 @@ export const translations = {
     insuranceProvider: "Nome da Seguradora",
     insurancePolicyNumber: "Número da Apólice",
     insuranceUpload: "Carregar Comprovante de Seguro",
+    insuranceUploadLater: "Vou carregar meus documentos de seguro mais tarde",
+    insuranceUploadLaterHelper: "Você pode retornar a este formulário usando o mesmo número de telefone e prédio/unidade para carregar seus documentos",
     insuranceHelper: "Sua apólice deve mostrar seu endereço, pelo menos $100,000 de cobertura ($300,000 se tiver animais), e a LLC do seu prédio como Segurado Adicional em 421 Park St, Hartford CT 06106.",
     insuranceNotice: "O seguro de locatário é obrigatório. Custa $10-25 por mês. Você pode obter o seu de qualquer provedor (Lemonade, GEICO, Progressive, etc.) ou podemos adicionar cobertura ao seu aluguel mensal.",
     insuranceAddToRent: "Não tenho seguro. Por favor adicione o seguro de locatário ao meu aluguel mensal.",
+    signatureRequired: "Assinatura obrigatória",
     
     vehicleQuestion: "Você tem um veículo que precisa de autorização de estacionamento?",
     vehicleMake: "Marca do Veículo",

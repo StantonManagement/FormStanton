@@ -7,6 +7,7 @@ create table submissions (
   language text,
   full_name text,
   phone text,
+  email text,
   phone_is_new boolean,
   building_address text,
   unit_number text,
@@ -30,6 +31,7 @@ create table submissions (
   insurance_provider text,
   insurance_policy_number text,
   insurance_file text,
+  insurance_upload_pending boolean default false,
   add_insurance_to_rent boolean,
   
   -- Vehicle section

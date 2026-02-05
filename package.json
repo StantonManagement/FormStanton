@@ -10,16 +10,19 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.3",
+    "bcryptjs": "^3.0.3",
     "docxtemplater": "^3.67.6",
     "docxtemplater-image-module-free": "^1.1.1",
     "framer-motion": "^12.31.0",
+    "iron-session": "^8.0.4",
     "next": "^16.1.6",
     "pdf-lib": "^1.17.1",
     "pizzip": "^3.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-signature-canvas": "^1.0.6",
-    "resend": "^3.2.0"
+    "resend": "^3.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -10,9 +10,9 @@ export const policyContent = {
 
 All dogs and cats must be registered with management. There is a monthly pet rent for each dog or cat in addition to your rent. Small animals kept in cages or tanks (birds, hamsters, fish, etc.) do not require registration and have no fee.
 
-Prohibited animals: Ferrets, snakes longer than 3 feet, and any animal classified as dangerous under local law.
+<strong>Prohibited animals:</strong> Ferrets, snakes longer than 3 feet, and any animal classified as dangerous under local law.
 
-Deadline: February 28th. Unregistered dogs or cats found after this date will result in a $500 fee plus back-owed pet rent.`,
+<strong>Deadline:</strong> February 28th. Unregistered dogs or cats found after this date will result in a $500 fee plus back-owed pet rent.`,
     
     petRentTableHeaders: ["Pet Type", "Weight", "Monthly Rent", "One-Time Fee"],
     
@@ -20,14 +20,14 @@ Deadline: February 28th. Unregistered dogs or cats found after this date will re
     insuranceWhyHeading: "Why Do I Need This?",
     insuranceWhyText: "Renters insurance protects your personal belongings and provides liability coverage if something unexpected happens—like your laptop being stolen, a fire/flood damaging your furniture, a guest getting injured on the property, or your pet biting someone.",
     insuranceCost: "Cost: $10-25 per month",
-    insuranceDeadline: "Deadline: February 17th",
-    insuranceOption1: "Option 1: Get Your Own Insurance",
+    insuranceDeadline: "<strong>Deadline:</strong> February 17th",
+    insuranceOption1: "<strong>Option 1:</strong> Get Your Own Insurance",
     insuranceOption1Text: `Buy from any company (Lemonade, GEICO, your car insurance company, etc.)
 Your policy must show:
 • Your address
 • At least $100,000 liability coverage ($300,000 if you have pets)
 • Your building's LLC as "Additional Insured"`,
-    insuranceOption2: "Option 2: We Do It For You",
+    insuranceOption2: "<strong>Option 2:</strong> We Do It For You",
     insuranceOption2Text: `Don't want to deal with it? We can sign you up through our partnership with Appfolio Renters Insurance.
 • About $10-25 per month
 • Added to your rent
@@ -40,16 +40,16 @@ Your policy must show:
     parkingIntro: `Parking is $50 per vehicle per month, added to your rent.
 Maximum 3 vehicles per household.`,
     parkingStepsHeading: "To Get Your Parking Permit:",
-    parkingStep1: "Step 1 - Submit your vehicle information by February 8th",
+    parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by February 8th",
     parkingStep1Text: "Fill out this form.",
-    parkingStep2: "Step 2 - Sign your parking agreement",
+    parkingStep2: "<strong>Step 2</strong> - Sign your parking agreement",
     parkingStep2Text: "On February 9th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
-    parkingStep3: "Step 3 - Pick up your permit between February 17-20, 10 AM to 6:30 PM",
+    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between February 17-20, 10 AM to 6:30 PM",
     parkingStep3Text: `Bring:
 • ID
 • Proof of renters insurance (or sign up at the office)
 • Completed pet registration (if you have a dog or cat)`,
-    parkingDeadlinesHeading: "DEADLINES:",
+    parkingDeadlinesHeading: "<strong>DEADLINES:</strong>",
     parkingDeadlines: `• Submit vehicle info: February 8th
 • Parking agreements sent: February 9th
 • Permit pickup: February 17-20

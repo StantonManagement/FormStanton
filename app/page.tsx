@@ -12,12 +12,14 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProgressIndicator from '@/components/ProgressIndicator';
 import SectionHeader from '@/components/SectionHeader';
+import InsuranceUpdateModal from '@/components/InsuranceUpdateModal';
 
 export default function TenantOnboardingForm() {
   const [language, setLanguage] = useState<Language>('en');
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    email: '',
     phoneIsNew: false,
     buildingAddress: '',
     unitNumber: '',
@@ -29,9 +31,11 @@ export default function TenantOnboardingForm() {
     petColor: '',
     petSpayed: null as boolean | null,
     petVaccinationsCurrent: null as boolean | null,
+    petSignatureDate: new Date().toISOString().split('T')[0],
     hasInsurance: null as boolean | null,
     insuranceProvider: '',
     insurancePolicyNumber: '',
+    insuranceUploadPending: false,
     addInsuranceToRent: false,
     hasVehicle: null as boolean | null,
     vehicleMake: '',
@@ -39,6 +43,7 @@ export default function TenantOnboardingForm() {
     vehicleYear: '',
     vehicleColor: '',
     vehiclePlate: '',
+    vehicleSignatureDate: new Date().toISOString().split('T')[0],
     finalConfirm: false,
   });
 
@@ -56,7 +61,13 @@ export default function TenantOnboardingForm() {
   const [currentSection, setCurrentSection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [phoneValidationError, setPhoneValidationError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [signatureErrors, setSignatureErrors] = useState({
+    pet: '',
+    vehicle: '',
+  });
+  const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
 
   const t = translations[language];
 
@@ -76,6 +87,26 @@ export default function TenantOnboardingForm() {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError('');
+
+    let hasValidationErrors = false;
+    const newSignatureErrors = { pet: '', vehicle: '' };
+
+    if (formData.hasPets !== null && !signatures.pet) {
+      newSignatureErrors.pet = t.signatureRequired;
+      hasValidationErrors = true;
+    }
+
+    if (formData.hasVehicle === true && !signatures.vehicle) {
+      newSignatureErrors.vehicle = t.signatureRequired;
+      hasValidationErrors = true;
+    }
+
+    if (hasValidationErrors) {
+      setSignatureErrors(newSignatureErrors);
+      setSubmitError(t.signatureRequired);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const formDataToSend = new FormData();
@@ -180,9 +211,20 @@ export default function TenantOnboardingForm() {
                   <p className="font-semibold text-[var(--primary)] mb-2 text-sm">{policyContent[language].introHeading}</p>
                   <ul className="list-disc list-inside space-y-2 text-sm text-[var(--ink)]">
                     {t.introItems.map((item, idx) => (
-                      <li key={idx}>{item}</li>
+                      <li key={idx} dangerouslySetInnerHTML={{ __html: item }} />
                     ))}
                   </ul>
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsInsuranceModalOpen(true)}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                    >
+                      {language === 'en' ? 'Already submitted? Upload insurance documents here' :
+                       language === 'es' ? '¿Ya envió el formulario? Suba documentos de seguro aquí' :
+                       'Já enviou? Carregar documentos de seguro aqui'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -222,8 +264,32 @@ export default function TenantOnboardingForm() {
                             type="tel"
                             required
                             value={formData.phone}
-                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              handleInputChange('phone', value);
+                              if (value.length !== 10 && value.length > 0) {
+                                setPhoneValidationError(t.phoneValidationError);
+                              } else {
+                                setPhoneValidationError('');
+                              }
+                            }}
                             placeholder="(860) 555-0123"
+                            maxLength={10}
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                          />
+                          {phoneValidationError && (
+                            <p className="text-xs text-[var(--error)] mt-1">{phoneValidationError}</p>
+                          )}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.email} <span className="text-[var(--error)]">*</span></span>
+                          <input
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            placeholder="your.email@example.com"
                             className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                           />
                         </label>
@@ -283,7 +349,7 @@ export default function TenantOnboardingForm() {
 
                 <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
                   <h3 className="font-bold text-gray-900 mb-2">{policyContent[language].petPolicyHeading}</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].petPolicyText}</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
                 </div>
 
                 <div className="bg-white border border-gray-300 p-3 sm:p-4 rounded">
@@ -466,10 +532,9 @@ export default function TenantOnboardingForm() {
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petPhoto} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-gray-700">{t.petPhoto} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
                       <input
                         type="file"
-                        required
                         accept=".jpg,.jpeg,.png"
                         onChange={(e) => handleFileChange('petPhoto', e.target.files?.[0] || null)}
                         className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -495,22 +560,64 @@ export default function TenantOnboardingForm() {
                       />
                       <span className="text-sm text-gray-700">{t.petAgree}</span>
                     </label>
-                    <SignatureCanvasComponent 
-                      label={t.signature}
-                      onSave={(dataUrl) => handleSignature('pet', dataUrl)}
-                    />
+                    <div className="space-y-2">
+                      <SignatureCanvasComponent 
+                        label={t.signature}
+                        onSave={(dataUrl) => {
+                          handleSignature('pet', dataUrl);
+                          setSignatureErrors(prev => ({ ...prev, pet: '' }));
+                        }}
+                      />
+                      {signatureErrors.pet && (
+                        <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                      )}
+                    </div>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                      <input
+                        type="date"
+                        required
+                        value={formData.petSignatureDate}
+                        onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                      />
+                    </label>
                   </div>
                 )}
 
                 {formData.hasPets === false && (
-                  <label className="flex items-start space-x-2">
-                    <input
-                      type="checkbox"
-                      required
-                      className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
-                  </label>
+                  <div className="space-y-4">
+                    <label className="flex items-start space-x-2">
+                      <input
+                        type="checkbox"
+                        required
+                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
+                    </label>
+                    <div className="space-y-2">
+                      <SignatureCanvasComponent 
+                        label={t.signature}
+                        onSave={(dataUrl) => {
+                          handleSignature('pet', dataUrl);
+                          setSignatureErrors(prev => ({ ...prev, pet: '' }));
+                        }}
+                      />
+                      {signatureErrors.pet && (
+                        <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                      )}
+                    </div>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                      <input
+                        type="date"
+                        required
+                        value={formData.petSignatureDate}
+                        onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                      />
+                    </label>
+                  </div>
                 )}
 
                 <button
@@ -539,16 +646,16 @@ export default function TenantOnboardingForm() {
                   
                   <div className="flex flex-col sm:flex-row gap-2 text-sm">
                     <span className="font-semibold text-gray-900">{policyContent[language].insuranceCost}</span>
-                    <span className="font-semibold text-red-600">{policyContent[language].insuranceDeadline}</span>
+                    <span className="font-semibold text-red-600" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceDeadline }} />
                   </div>
                   
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1">{policyContent[language].insuranceOption1}</p>
+                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption1 }} />
                     <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].insuranceOption1Text}</p>
                   </div>
                   
                   <div className="bg-white p-3 rounded border border-green-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1">{policyContent[language].insuranceOption2}</p>
+                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption2 }} />
                     <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].insuranceOption2Text}</p>
                   </div>
                 </div>
@@ -606,15 +713,33 @@ export default function TenantOnboardingForm() {
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.insuranceUpload} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {t.insuranceUpload} {!formData.insuranceUploadPending && <span className="text-red-500">*</span>}
+                      </span>
                       <input
                         type="file"
-                        required
+                        required={!formData.insuranceUploadPending}
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleFileChange('insuranceProof', e.target.files?.[0] || null)}
                         className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                       />
                     </label>
+
+                    <label className="flex items-start space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.insuranceUploadPending}
+                        onChange={(e) => handleInputChange('insuranceUploadPending', e.target.checked)}
+                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">{t.insuranceUploadLater}</span>
+                    </label>
+
+                    {formData.insuranceUploadPending && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                        <p className="text-sm text-gray-700">{t.insuranceUploadLaterHelper}</p>
+                      </div>
+                    )}
 
                     <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
                       <p className="text-sm font-semibold text-gray-900 mb-2">{policyContent[language].insuranceLLCTableHeading}</p>
@@ -668,24 +793,24 @@ export default function TenantOnboardingForm() {
                     
                     <div className="space-y-2 text-sm">
                       <div>
-                        <p className="font-semibold text-gray-900">{policyContent[language].parkingStep1}</p>
+                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep1 }} />
                         <p className="text-gray-700">{policyContent[language].parkingStep1Text}</p>
                       </div>
                       
                       <div>
-                        <p className="font-semibold text-gray-900">{policyContent[language].parkingStep2}</p>
+                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep2 }} />
                         <p className="text-gray-700">{policyContent[language].parkingStep2Text}</p>
                       </div>
                       
                       <div>
-                        <p className="font-semibold text-gray-900">{policyContent[language].parkingStep3}</p>
+                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep3 }} />
                         <p className="text-gray-700 whitespace-pre-line">{policyContent[language].parkingStep3Text}</p>
                       </div>
                     </div>
                   </div>
                   
                   <div className="bg-white p-3 rounded border border-purple-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1">{policyContent[language].parkingDeadlinesHeading}</p>
+                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingDeadlinesHeading }} />
                     <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].parkingDeadlines}</p>
                   </div>
                   
@@ -813,10 +938,28 @@ export default function TenantOnboardingForm() {
                       />
                       <span className="text-sm text-gray-700">{t.vehicleAgree}</span>
                     </label>
-                    <SignatureCanvasComponent 
-                      label={t.signature}
-                      onSave={(dataUrl) => handleSignature('vehicle', dataUrl)}
-                    />
+                    <div className="space-y-2">
+                      <SignatureCanvasComponent 
+                        label={t.signature}
+                        onSave={(dataUrl) => {
+                          handleSignature('vehicle', dataUrl);
+                          setSignatureErrors(prev => ({ ...prev, vehicle: '' }));
+                        }}
+                      />
+                      {signatureErrors.vehicle && (
+                        <p className="text-sm text-red-600">{signatureErrors.vehicle}</p>
+                      )}
+                    </div>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                      <input
+                        type="date"
+                        required
+                        value={formData.vehicleSignatureDate}
+                        onChange={(e) => handleInputChange('vehicleSignatureDate', e.target.value)}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                      />
+                    </label>
                   </div>
                 )}
 
@@ -877,6 +1020,12 @@ export default function TenantOnboardingForm() {
           </div>
         </div>
       </main>
+      
+      <InsuranceUpdateModal 
+        isOpen={isInsuranceModalOpen}
+        onClose={() => setIsInsuranceModalOpen(false)}
+        language={language}
+      />
       
       <Footer />
     </>
