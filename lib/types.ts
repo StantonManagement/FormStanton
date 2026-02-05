@@ -1,0 +1,65 @@
+export interface FormData {
+  fullName: string;
+  phone: string;
+  phoneIsNew: boolean;
+  buildingAddress: string;
+  unitNumber: string;
+  hasPets: boolean | null;
+  petType: string;
+  petName: string;
+  petBreed: string;
+  petWeight: string;
+  petColor: string;
+  petSpayed: boolean | null;
+  petVaccinationsCurrent: boolean | null;
+  hasInsurance: boolean | null;
+  insuranceProvider: string;
+  insurancePolicyNumber: string;
+  addInsuranceToRent: boolean;
+  hasVehicle: boolean | null;
+  vehicleMake: string;
+  vehicleModel: string;
+  vehicleYear: string;
+  vehicleColor: string;
+  vehiclePlate: string;
+  finalConfirm: boolean;
+}
+
+export interface Submission {
+  id: string;
+  created_at: string;
+  language: string;
+  full_name: string;
+  phone: string;
+  phone_is_new: boolean;
+  building_address: string;
+  unit_number: string;
+  has_pets: boolean;
+  pet_type: string | null;
+  pet_name: string | null;
+  pet_breed: string | null;
+  pet_weight: number | null;
+  pet_color: string | null;
+  pet_spayed: boolean | null;
+  pet_vaccinations_current: boolean | null;
+  pet_vaccination_file: string | null;
+  pet_photo_file: string | null;
+  pet_signature: string | null;
+  pet_signature_date: string | null;
+  has_insurance: boolean;
+  insurance_provider: string | null;
+  insurance_policy_number: string | null;
+  insurance_file: string | null;
+  add_insurance_to_rent: boolean;
+  has_vehicle: boolean;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  vehicle_color: string | null;
+  vehicle_plate: string | null;
+  vehicle_signature: string | null;
+  vehicle_signature_date: string | null;
+  combined_pdf: string | null;
+  ip_address: string;
+  user_agent: string;
+}

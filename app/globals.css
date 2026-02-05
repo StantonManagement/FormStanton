@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary - Deep navy (trust, authority) */
+  --primary: #1a2744;
+  --primary-light: #2d3f5f;
+  
+  /* Accent - Muted gold (institutional, quality) */
+  --accent: #8b7355;
+  --accent-light: #c4a77d;
+  
+  /* Neutrals */
+  --paper: #fdfcfa;
+  --ink: #1a1a1a;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --divider: #e5e7eb;
+  
+  /* Feedback */
+  --success: #166534;
+  --error: #991b1b;
+  --warning: #92400e;
+  
+  /* Backgrounds */
+  --bg-section: #f8f7f5;
+  --bg-input: #ffffff;
+  
+  /* Typography */
+  --font-serif: 'Libre Baskerville', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+  
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+}

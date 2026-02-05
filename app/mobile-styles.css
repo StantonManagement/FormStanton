@@ -1,0 +1,56 @@
+/* Mobile-first form enhancements */
+
+/* Ensure all inputs have proper touch targets (minimum 44px height) */
+input[type="text"],
+input[type="tel"],
+input[type="number"],
+input[type="email"],
+select,
+textarea {
+  min-height: 44px;
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+/* Radio buttons and checkboxes - larger touch targets */
+input[type="radio"],
+input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+/* File upload buttons */
+input[type="file"] {
+  padding: 12px;
+  font-size: 16px;
+}
+
+/* Buttons - comfortable touch targets */
+button {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* Better spacing for mobile */
+@media (max-width: 640px) {
+  /* Reduce vertical spacing on mobile */
+  .space-y-8 > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  /* Stack radio buttons vertically on very small screens */
+  @media (max-width: 380px) {
+    .flex.space-x-4 {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  }
+}
+
+/* Signature canvas container */
+.signature-canvas-container {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
