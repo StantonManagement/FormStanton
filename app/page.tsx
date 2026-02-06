@@ -68,7 +68,7 @@ export default function LandingPage() {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <img
-                src="/stanton-logo.png"
+                src="/Stanton-logo.PNG"
                 alt="Stanton Management"
                 className="max-w-[280px] w-full h-auto"
                 onError={(e) => {
