@@ -6,13 +6,15 @@ import SignatureCanvas from 'react-signature-canvas';
 interface SignatureCanvasComponentProps {
   onSave: (dataUrl: string) => void;
   label: string;
+  value?: string;
 }
 
-export default function SignatureCanvasComponent({ onSave, label }: SignatureCanvasComponentProps) {
+export default function SignatureCanvasComponent({ onSave, label, value }: SignatureCanvasComponentProps) {
   const sigCanvas = useRef<SignatureCanvas>(null);
 
   const clear = () => {
     sigCanvas.current?.clear();
+    onSave('');
   };
 
   const save = () => {
@@ -21,6 +23,13 @@ export default function SignatureCanvasComponent({ onSave, label }: SignatureCan
       onSave(dataUrl);
     }
   };
+
+  // Restore signature when component mounts or value changes
+  useEffect(() => {
+    if (value && sigCanvas.current) {
+      sigCanvas.current.fromDataURL(value);
+    }
+  }, [value]);
 
   useEffect(() => {
     const canvas = sigCanvas.current;
@@ -31,7 +40,7 @@ export default function SignatureCanvasComponent({ onSave, label }: SignatureCan
       const canvasElement = canvas.getCanvas();
       canvasElement.addEventListener('mouseup', handleEnd);
       canvasElement.addEventListener('touchend', handleEnd);
-      
+
       return () => {
         canvasElement.removeEventListener('mouseup', handleEnd);
         canvasElement.removeEventListener('touchend', handleEnd);

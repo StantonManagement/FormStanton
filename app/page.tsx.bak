@@ -91,15 +91,6 @@ export default function TenantOnboardingForm() {
     let hasValidationErrors = false;
     const newSignatureErrors = { pet: '', vehicle: '' };
 
-    // Validate phone number is exactly 10 digits
-    if (formData.phone.length !== 10) {
-      setPhoneValidationError(t.phoneValidationError);
-      setSubmitError(language === 'en' ? 'Phone number must be exactly 10 digits' : language === 'es' ? 'El número de teléfono debe tener exactamente 10 dígitos' : 'O número de telefone deve ter exatamente 10 dígitos');
-      setIsSubmitting(false);
-      setCurrentSection(1); // Go back to first tab
-      return;
-    }
-
     if (formData.hasPets !== null && !signatures.pet) {
       newSignatureErrors.pet = t.signatureRequired;
       hasValidationErrors = true;
@@ -297,27 +288,28 @@ export default function TenantOnboardingForm() {
                           {phoneValidationError && (
                             <p className="text-xs text-[var(--error)] mt-1">{phoneValidationError}</p>
                           )}
-                          <label className="flex items-center space-x-2 mt-2">
-                            <input
-                              type="checkbox"
-                              checked={formData.phoneIsNew}
-                              onChange={(e) => handleInputChange('phoneIsNew', e.target.checked)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
-                            />
-                            <span className="text-sm text-[var(--muted)]">{t.phoneNew}</span>
-                          </label>
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-[var(--ink)]">{t.email}</span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.email} <span className="text-[var(--error)]">*</span></span>
                           <input
                             type="email"
+                            required
                             value={formData.email}
                             onChange={(e) => handleInputChange('email', e.target.value)}
                             placeholder="your.email@example.com"
                             className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                           />
-                          <p className="text-xs text-[var(--muted)] mt-1">{language === 'en' ? 'Optional - but recommended for important updates' : language === 'es' ? 'Opcional - pero recomendado para actualizaciones importantes' : 'Opcional - mas recomendado para atualizações importantes'}</p>
+                        </label>
+
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.phoneIsNew}
+                            onChange={(e) => handleInputChange('phoneIsNew', e.target.checked)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-5 h-5"
+                          />
+                          <span className="text-sm text-gray-700">{t.phoneNew}</span>
                         </label>
 
                         <label className="block">
@@ -577,9 +569,8 @@ export default function TenantOnboardingForm() {
                       <span className="text-sm text-gray-700">{t.petAgree}</span>
                     </label>
                     <div className="space-y-2">
-                      <SignatureCanvasComponent
+                      <SignatureCanvasComponent 
                         label={t.signature}
-                        value={signatures.pet}
                         onSave={(dataUrl) => {
                           handleSignature('pet', dataUrl);
                           setSignatureErrors(prev => ({ ...prev, pet: '' }));
@@ -613,9 +604,8 @@ export default function TenantOnboardingForm() {
                       <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
                     </label>
                     <div className="space-y-2">
-                      <SignatureCanvasComponent
+                      <SignatureCanvasComponent 
                         label={t.signature}
-                        value={signatures.pet}
                         onSave={(dataUrl) => {
                           handleSignature('pet', dataUrl);
                           setSignatureErrors(prev => ({ ...prev, pet: '' }));
@@ -957,9 +947,8 @@ export default function TenantOnboardingForm() {
                       <span className="text-sm text-gray-700">{t.vehicleAgree}</span>
                     </label>
                     <div className="space-y-2">
-                      <SignatureCanvasComponent
+                      <SignatureCanvasComponent 
                         label={t.signature}
-                        value={signatures.vehicle}
                         onSave={(dataUrl) => {
                           handleSignature('vehicle', dataUrl);
                           setSignatureErrors(prev => ({ ...prev, vehicle: '' }));
