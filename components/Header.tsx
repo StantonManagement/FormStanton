@@ -10,16 +10,15 @@ interface HeaderProps {
 export default function Header({ language, onLanguageChange }: HeaderProps) {
   return (
     <header className="border-b border-[var(--divider)] bg-white sticky top-0 z-50 shadow-sm">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-between">
         {/* Logo and Company Info */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[var(--primary)] rounded-sm flex items-center justify-center">
-              <span className="text-white font-serif font-bold text-lg">SM</span>
+            <div className="w-8 h-8 bg-[var(--primary)] rounded-sm flex items-center justify-center">
+              <span className="text-white font-serif font-bold text-sm">SM</span>
             </div>
             <div className="hidden sm:block border-l border-[var(--divider)] pl-3">
               <p className="text-sm font-medium text-[var(--primary)]">Stanton Management LLC</p>
-              <p className="text-xs text-[var(--muted)]">Tenant Services Portal</p>
             </div>
           </div>
         </div>
