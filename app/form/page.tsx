@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { translations, Language } from '@/lib/translations';
@@ -15,7 +15,7 @@ import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import InsuranceUpdateModal from '@/components/InsuranceUpdateModal';
 
-export default function TenantOnboardingForm() {
+function FormContent() {
   const searchParams = useSearchParams();
   const langParam = searchParams.get('lang');
   const initialLang = (langParam === 'es' || langParam === 'pt') ? langParam : 'en';
@@ -1051,5 +1051,17 @@ export default function TenantOnboardingForm() {
       
       <Footer />
     </>
+  );
+}
+
+export default function TenantOnboardingForm() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+        <p className="text-[var(--muted)]">Loading...</p>
+      </div>
+    }>
+      <FormContent />
+    </Suspense>
   );
 }
