@@ -20,6 +20,17 @@ function FormContent() {
   const langParam = searchParams.get('lang');
   const initialLang = (langParam === 'es' || langParam === 'pt') ? langParam : 'en';
   const [language, setLanguage] = useState<Language>(initialLang);
+  const MAX_PETS = 5;
+  const emptyPet = {
+    petType: '',
+    petName: '',
+    petBreed: '',
+    petWeight: '',
+    petColor: '',
+    petSpayed: null as boolean | null,
+    petVaccinationsCurrent: null as boolean | null,
+  };
+
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -28,13 +39,7 @@ function FormContent() {
     buildingAddress: '',
     unitNumber: '',
     hasPets: null as boolean | null,
-    petType: '',
-    petName: '',
-    petBreed: '',
-    petWeight: '',
-    petColor: '',
-    petSpayed: null as boolean | null,
-    petVaccinationsCurrent: null as boolean | null,
+    pets: [{ ...emptyPet }],
     petSignatureDate: new Date().toISOString().split('T')[0],
     hasInsurance: null as boolean | null,
     insuranceProvider: '',
@@ -51,9 +56,9 @@ function FormContent() {
     finalConfirm: false,
   });
 
+  const [petFiles, setPetFiles] = useState<{ vaccination: File | null; photo: File | null }[]>([{ vaccination: null, photo: null }]);
+
   const [files, setFiles] = useState({
-    petVaccination: null as File | null,
-    petPhoto: null as File | null,
     insuranceProof: null as File | null,
   });
 
@@ -83,6 +88,39 @@ function FormContent() {
     setFiles(prev => ({ ...prev, [field]: file }));
   };
 
+  const handlePetChange = (index: number, field: string, value: any) => {
+    setFormData(prev => {
+      const newPets = [...prev.pets];
+      newPets[index] = { ...newPets[index], [field]: value };
+      return { ...prev, pets: newPets };
+    });
+  };
+
+  const handlePetFileChange = (index: number, field: 'vaccination' | 'photo', file: File | null) => {
+    setPetFiles(prev => {
+      const newFiles = [...prev];
+      newFiles[index] = { ...newFiles[index], [field]: file };
+      return newFiles;
+    });
+  };
+
+  const addPet = () => {
+    if (formData.pets.length < MAX_PETS) {
+      setFormData(prev => ({ ...prev, pets: [...prev.pets, { ...emptyPet }] }));
+      setPetFiles(prev => [...prev, { vaccination: null, photo: null }]);
+    }
+  };
+
+  const removePet = (index: number) => {
+    if (formData.pets.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        pets: prev.pets.filter((_, i) => i !== index),
+      }));
+      setPetFiles(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
   const handleSignature = (type: 'pet' | 'vehicle', dataUrl: string) => {
     setSignatures(prev => ({ ...prev, [type]: dataUrl }));
   };
@@ -102,6 +140,28 @@ function FormContent() {
       setIsSubmitting(false);
       setCurrentSection(1); // Go back to first tab
       return;
+    }
+
+    // Validate pet entries are complete
+    if (formData.hasPets === true) {
+      for (const pet of formData.pets) {
+        if (!pet.petType || !pet.petName || !pet.petBreed || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
+          setSubmitError(t.incompletePetEntry);
+          setIsSubmitting(false);
+          setCurrentSection(2);
+          return;
+        }
+      }
+    }
+
+    // Validate vehicle fields are complete
+    if (formData.hasVehicle === true) {
+      if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
+        setSubmitError(t.incompleteVehicleEntry);
+        setIsSubmitting(false);
+        setCurrentSection(4);
+        return;
+      }
     }
 
     if (formData.hasPets !== null && !signatures.pet) {
@@ -128,8 +188,11 @@ function FormContent() {
       formDataToSend.append('formData', JSON.stringify(formData));
       formDataToSend.append('signatures', JSON.stringify(signatures));
       
-      if (files.petVaccination) formDataToSend.append('petVaccination', files.petVaccination);
-      if (files.petPhoto) formDataToSend.append('petPhoto', files.petPhoto);
+      // Append per-pet files with indexed keys
+      petFiles.forEach((pf, i) => {
+        if (pf.vaccination) formDataToSend.append(`petVaccination_${i}`, pf.vaccination);
+        if (pf.photo) formDataToSend.append(`petPhoto_${i}`, pf.photo);
+      });
       if (files.insuranceProof) formDataToSend.append('insuranceProof', files.insuranceProof);
 
       const response = await fetch('/api/submit', {
@@ -363,293 +426,316 @@ function FormContent() {
 
                   {currentSection === 2 && (
                     <div className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-                  {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
-                </h2>
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                        {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
+                      </h2>
 
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
-                  <h3 className="font-bold text-gray-900 mb-2">{policyContent[language].petPolicyHeading}</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
-                </div>
-
-                <div className="bg-white border border-gray-300 p-3 sm:p-4 rounded">
-                  <InfoTable 
-                    headers={policyContent[language].petRentTableHeaders}
-                    rows={petRentTable}
-                    className="mb-0"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">{t.petQuestion} <span className="text-red-500">*</span></p>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="hasPets"
-                        required
-                        checked={formData.hasPets === true}
-                        onChange={() => handleInputChange('hasPets', true)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{t.yes}</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="hasPets"
-                        required
-                        checked={formData.hasPets === false}
-                        onChange={() => handleInputChange('hasPets', false)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{t.no}</span>
-                    </label>
-                  </div>
-                </div>
-
-                {formData.hasPets === true && (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-gray-700">{t.petType} <span className="text-red-500">*</span></p>
-                      <div className="flex space-x-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petType"
-                            required
-                            value="dog"
-                            checked={formData.petType === 'dog'}
-                            onChange={(e) => handleInputChange('petType', e.target.value)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.dog}</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petType"
-                            required
-                            value="cat"
-                            checked={formData.petType === 'cat'}
-                            onChange={(e) => handleInputChange('petType', e.target.value)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.cat}</span>
-                        </label>
+                      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
+                        <h3 className="font-bold text-gray-900 mb-2">{policyContent[language].petPolicyHeading}</h3>
+                        <p className="text-sm text-gray-700 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
                       </div>
-                    </div>
 
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petName} <span className="text-red-500">*</span></span>
-                      <input
-                        type="text"
-                        required
-                        value={formData.petName}
-                        onChange={(e) => handleInputChange('petName', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petBreed} <span className="text-red-500">*</span></span>
-                      <input
-                        type="text"
-                        required
-                        value={formData.petBreed}
-                        onChange={(e) => handleInputChange('petBreed', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petWeight} <span className="text-red-500">*</span></span>
-                      <input
-                        type="number"
-                        required
-                        value={formData.petWeight}
-                        onChange={(e) => handleInputChange('petWeight', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petColor} <span className="text-red-500">*</span></span>
-                      <input
-                        type="text"
-                        required
-                        value={formData.petColor}
-                        onChange={(e) => handleInputChange('petColor', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-gray-700">{t.petSpayed} <span className="text-red-500">*</span></p>
-                      <div className="flex space-x-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petSpayed"
-                            required
-                            checked={formData.petSpayed === true}
-                            onChange={() => handleInputChange('petSpayed', true)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.yes}</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petSpayed"
-                            required
-                            checked={formData.petSpayed === false}
-                            onChange={() => handleInputChange('petSpayed', false)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.no}</span>
-                        </label>
+                      <div className="bg-white border border-gray-300 p-3 sm:p-4 rounded">
+                        <InfoTable 
+                          headers={policyContent[language].petRentTableHeaders}
+                          rows={petRentTable}
+                          className="mb-0"
+                        />
                       </div>
-                    </div>
 
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-gray-700">{t.petVaccines} <span className="text-red-500">*</span></p>
-                      <div className="flex space-x-4">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petVaccines"
-                            required
-                            checked={formData.petVaccinationsCurrent === true}
-                            onChange={() => handleInputChange('petVaccinationsCurrent', true)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.yes}</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="petVaccines"
-                            required
-                            checked={formData.petVaccinationsCurrent === false}
-                            onChange={() => handleInputChange('petVaccinationsCurrent', false)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{t.no}</span>
-                        </label>
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-gray-700">{t.petQuestion} <span className="text-red-500">*</span></p>
+                        <div className="flex space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name="hasPets"
+                              required
+                              checked={formData.hasPets === true}
+                              onChange={() => handleInputChange('hasPets', true)}
+                              className="text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">{t.yes}</span>
+                          </label>
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              name="hasPets"
+                              required
+                              checked={formData.hasPets === false}
+                              onChange={() => handleInputChange('hasPets', false)}
+                              className="text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">{t.no}</span>
+                          </label>
+                        </div>
                       </div>
-                    </div>
 
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petVaccineUpload} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => handleFileChange('petVaccination', e.target.files?.[0] || null)}
-                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                    </label>
+                      {formData.hasPets === true && (
+                        <div className="space-y-4">
+                          {formData.pets.map((pet, idx) => (
+                            <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-900">{t.petNumber}{idx + 1}</h4>
+                                {formData.pets.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removePet(idx)}
+                                    className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                                  >
+                                    {t.removePet}
+                                  </button>
+                                )}
+                              </div>
 
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.petPhoto} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png"
-                        onChange={(e) => handleFileChange('petPhoto', e.target.files?.[0] || null)}
-                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                    </label>
-                  </div>
-                )}
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-gray-700">{t.petType} <span className="text-red-500">*</span></p>
+                                  <div className="flex space-x-4">
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petType_${idx}`}
+                                        value="dog"
+                                        checked={pet.petType === 'dog'}
+                                        onChange={(e) => handlePetChange(idx, 'petType', e.target.value)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.dog}</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petType_${idx}`}
+                                        value="cat"
+                                        checked={pet.petType === 'cat'}
+                                        onChange={(e) => handlePetChange(idx, 'petType', e.target.value)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.cat}</span>
+                                    </label>
+                                  </div>
+                                </div>
 
-                {language === 'en' && (
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">Pet Addendum</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">{PET_ADDENDUM}</p>
-                  </div>
-                )}
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.petName} <span className="text-red-500">*</span></span>
+                                  <input
+                                    type="text"
+                                    value={pet.petName}
+                                    onChange={(e) => handlePetChange(idx, 'petName', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  />
+                                </label>
 
-                {formData.hasPets === true && (
-                  <div className="space-y-4">
-                    <label className="flex items-start space-x-2">
-                      <input
-                        type="checkbox"
-                        required
-                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{t.petAgree}</span>
-                    </label>
-                    <div className="space-y-2">
-                      <SignatureCanvasComponent
-                        label={t.signature}
-                        value={signatures.pet}
-                        onSave={(dataUrl) => {
-                          handleSignature('pet', dataUrl);
-                          setSignatureErrors(prev => ({ ...prev, pet: '' }));
-                        }}
-                      />
-                      {signatureErrors.pet && (
-                        <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.petBreed} <span className="text-red-500">*</span></span>
+                                  <input
+                                    type="text"
+                                    value={pet.petBreed}
+                                    onChange={(e) => handlePetChange(idx, 'petBreed', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  />
+                                </label>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <label className="block">
+                                    <span className="text-sm font-medium text-gray-700">{t.petWeight} <span className="text-red-500">*</span></span>
+                                    <input
+                                      type="number"
+                                      value={pet.petWeight}
+                                      onChange={(e) => handlePetChange(idx, 'petWeight', e.target.value)}
+                                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    />
+                                  </label>
+
+                                  <label className="block">
+                                    <span className="text-sm font-medium text-gray-700">{t.petColor} <span className="text-red-500">*</span></span>
+                                    <input
+                                      type="text"
+                                      value={pet.petColor}
+                                      onChange={(e) => handlePetChange(idx, 'petColor', e.target.value)}
+                                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    />
+                                  </label>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-gray-700">{t.petSpayed} <span className="text-red-500">*</span></p>
+                                  <div className="flex space-x-4">
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petSpayed_${idx}`}
+                                        checked={pet.petSpayed === true}
+                                        onChange={() => handlePetChange(idx, 'petSpayed', true)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.yes}</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petSpayed_${idx}`}
+                                        checked={pet.petSpayed === false}
+                                        onChange={() => handlePetChange(idx, 'petSpayed', false)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.no}</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-gray-700">{t.petVaccines} <span className="text-red-500">*</span></p>
+                                  <div className="flex space-x-4">
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petVaccines_${idx}`}
+                                        checked={pet.petVaccinationsCurrent === true}
+                                        onChange={() => handlePetChange(idx, 'petVaccinationsCurrent', true)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.yes}</span>
+                                    </label>
+                                    <label className="flex items-center space-x-2">
+                                      <input
+                                        type="radio"
+                                        name={`petVaccines_${idx}`}
+                                        checked={pet.petVaccinationsCurrent === false}
+                                        onChange={() => handlePetChange(idx, 'petVaccinationsCurrent', false)}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700">{t.no}</span>
+                                    </label>
+                                  </div>
+                                </div>
+
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.petVaccineUpload} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={(e) => handlePetFileChange(idx, 'vaccination', e.target.files?.[0] || null)}
+                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                  />
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.petPhoto} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png"
+                                    onChange={(e) => handlePetFileChange(idx, 'photo', e.target.files?.[0] || null)}
+                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+
+                          {formData.pets.length < MAX_PETS ? (
+                            <button
+                              type="button"
+                              onClick={addPet}
+                              className="w-full py-2.5 px-4 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm font-medium"
+                            >
+                              + {t.addAnotherPet}
+                            </button>
+                          ) : (
+                            <p className="text-xs text-center text-gray-500">{t.maxPetsReached}</p>
+                          )}
+                        </div>
                       )}
-                    </div>
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
-                      <input
-                        type="date"
-                        required
-                        value={formData.petSignatureDate}
-                        onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-                  </div>
-                )}
 
-                {formData.hasPets === false && (
-                  <div className="space-y-4">
-                    <label className="flex items-start space-x-2">
-                      <input
-                        type="checkbox"
-                        required
-                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
-                    </label>
-                    <div className="space-y-2">
-                      <SignatureCanvasComponent
-                        label={t.signature}
-                        value={signatures.pet}
-                        onSave={(dataUrl) => {
-                          handleSignature('pet', dataUrl);
-                          setSignatureErrors(prev => ({ ...prev, pet: '' }));
-                        }}
-                      />
-                      {signatureErrors.pet && (
-                        <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                      {language === 'en' && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h3 className="font-semibold text-gray-900 mb-2">Pet Addendum</h3>
+                          <p className="text-sm text-gray-700 whitespace-pre-line">{PET_ADDENDUM}</p>
+                        </div>
                       )}
-                    </div>
-                    <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
-                      <input
-                        type="date"
-                        required
-                        value={formData.petSignatureDate}
-                        onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-                      />
-                    </label>
-                  </div>
-                )}
 
-                <button
-                  type="button"
-                  onClick={() => setCurrentSection(3)}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
-                >
-                  {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
-                </button>
-              </div>
-            )}
+                      {formData.hasPets === true && (
+                        <div className="space-y-4">
+                          <label className="flex items-start space-x-2">
+                            <input
+                              type="checkbox"
+                              required
+                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">{t.petAgree}</span>
+                          </label>
+                          <div className="space-y-2">
+                            <SignatureCanvasComponent
+                              label={t.signature}
+                              value={signatures.pet}
+                              onSave={(dataUrl) => {
+                                handleSignature('pet', dataUrl);
+                                setSignatureErrors(prev => ({ ...prev, pet: '' }));
+                              }}
+                            />
+                            {signatureErrors.pet && (
+                              <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                            )}
+                          </div>
+                          <label className="block">
+                            <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                            <input
+                              type="date"
+                              required
+                              value={formData.petSignatureDate}
+                              onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
+                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {formData.hasPets === false && (
+                        <div className="space-y-4">
+                          <label className="flex items-start space-x-2">
+                            <input
+                              type="checkbox"
+                              required
+                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
+                          </label>
+                          <div className="space-y-2">
+                            <SignatureCanvasComponent
+                              label={t.signature}
+                              value={signatures.pet}
+                              onSave={(dataUrl) => {
+                                handleSignature('pet', dataUrl);
+                                setSignatureErrors(prev => ({ ...prev, pet: '' }));
+                              }}
+                            />
+                            {signatureErrors.pet && (
+                              <p className="text-sm text-red-600">{signatureErrors.pet}</p>
+                            )}
+                          </div>
+                          <label className="block">
+                            <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                            <input
+                              type="date"
+                              required
+                              value={formData.petSignatureDate}
+                              onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
+                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentSection(3)}
+                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                      >
+                        {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
+                      </button>
+                    </div>
+                  )}
 
             {currentSection === 3 && (
               <div className="space-y-4">

@@ -15,7 +15,7 @@ const landingContent = {
     items: [
       { title: 'Pet Registration', desc: 'All dogs and cats must be registered. Pet rent is $20–$50 per month per pet.' },
       { title: 'Renters Insurance', desc: 'This is now required. It protects you and your neighbors. Cost is about $10–20 per month.' },
-      { title: 'Parking Permits', desc: 'We are issuing new parking permits. The old permits will not work after February 28th. Parking costs $50 per car per month.' },
+      { title: 'Parking Permits', desc: 'We are issuing new parking permits. The old permits will not work after March 12th, 2026. Parking costs $50 per car per month.' },
     ],
     insuranceLink: 'Already submitted? Upload insurance documents here',
     selectPrompt: 'Please select your language to continue:',
@@ -28,7 +28,7 @@ const landingContent = {
     items: [
       { title: 'Registro de Mascotas', desc: 'Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20–$50 por mes por mascota.' },
       { title: 'Seguro de Inquilino', desc: 'Esto ahora es obligatorio. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10–20 por mes.' },
-      { title: 'Permisos de Estacionamiento', desc: 'Estamos emitiendo nuevos permisos. Los permisos antiguos no funcionarán después del 28 de febrero. El estacionamiento cuesta $50 por carro por mes.' },
+      { title: 'Permisos de Estacionamiento', desc: 'Estamos emitiendo nuevos permisos. Los permisos antiguos no funcionarán después del 12 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes.' },
     ],
     insuranceLink: '¿Ya envió el formulario? Suba documentos de seguro aquí',
     selectPrompt: 'Por favor seleccione su idioma para continuar:',
@@ -41,7 +41,7 @@ const landingContent = {
     items: [
       { title: 'Registro de Animais', desc: 'Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20–$50 por mês por animal.' },
       { title: 'Seguro de Locatário', desc: 'Isso agora é obrigatório. Protege você e seus vizinhos. O custo é aproximadamente $10–20 por mês.' },
-      { title: 'Autorizações de Estacionamento', desc: 'Estamos emitindo novas autorizações. As autorizações antigas não funcionarão após 28 de fevereiro. O estacionamento custa $50 por carro por mês.' },
+      { title: 'Autorizações de Estacionamento', desc: 'Estamos emitindo novas autorizações. As autorizações antigas não funcionarão após 12 de março de 2026. O estacionamento custa $50 por carro por mês.' },
     ],
     insuranceLink: 'Já enviou? Carregar documentos de seguro aqui',
     selectPrompt: 'Por favor selecione seu idioma para continuar:',

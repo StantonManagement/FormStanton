@@ -4,6 +4,18 @@ import { useState, useEffect } from 'react';
 import SubmissionDetailModal from '@/components/SubmissionDetailModal';
 import { exportToExcel } from '@/lib/excelExport';
 
+interface SubmissionPet {
+  pet_type: string;
+  pet_name: string;
+  pet_breed: string;
+  pet_weight: number | string;
+  pet_color: string;
+  pet_spayed: boolean;
+  pet_vaccinations_current: boolean;
+  pet_vaccination_file?: string | null;
+  pet_photo_file?: string | null;
+}
+
 interface Submission {
   id: string;
   created_at: string;
@@ -15,15 +27,7 @@ interface Submission {
   building_address: string;
   unit_number: string;
   has_pets: boolean;
-  pet_type?: string;
-  pet_name?: string;
-  pet_breed?: string;
-  pet_weight?: number;
-  pet_color?: string;
-  pet_spayed?: boolean;
-  pet_vaccinations_current?: boolean;
-  pet_vaccination_file?: string;
-  pet_photo_file?: string;
+  pets?: SubmissionPet[] | null;
   pet_signature?: string;
   pet_signature_date?: string;
   has_insurance: boolean;

@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react';
 
+interface SubmissionPet {
+  pet_type: string;
+  pet_name: string;
+  pet_breed: string;
+  pet_weight: number | string;
+  pet_color: string;
+  pet_spayed: boolean;
+  pet_vaccinations_current: boolean;
+  pet_vaccination_file?: string | null;
+  pet_photo_file?: string | null;
+}
+
 interface Submission {
   id: string;
   created_at: string;
@@ -13,15 +25,7 @@ interface Submission {
   building_address: string;
   unit_number: string;
   has_pets: boolean;
-  pet_type?: string;
-  pet_name?: string;
-  pet_breed?: string;
-  pet_weight?: number;
-  pet_color?: string;
-  pet_spayed?: boolean;
-  pet_vaccinations_current?: boolean;
-  pet_vaccination_file?: string;
-  pet_photo_file?: string;
+  pets?: SubmissionPet[] | null;
   pet_signature?: string;
   pet_signature_date?: string;
   has_insurance: boolean;
@@ -57,8 +61,6 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
     const loadFileUrls = async () => {
       const urls: Record<string, string> = {};
       const files = [
-        { key: 'pet_vaccination_file', path: submission.pet_vaccination_file },
-        { key: 'pet_photo_file', path: submission.pet_photo_file },
         { key: 'pet_signature', path: submission.pet_signature },
         { key: 'insurance_file', path: submission.insurance_file },
         { key: 'vehicle_signature', path: submission.vehicle_signature },
@@ -70,6 +72,18 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
         if (file.path) {
           urls[file.key] = `/api/admin/file?path=${encodeURIComponent(file.path)}`;
         }
+      }
+
+      // Per-pet file URLs
+      if (submission.pets) {
+        submission.pets.forEach((pet, i) => {
+          if (pet.pet_vaccination_file) {
+            urls[`pet_${i}_vaccination`] = `/api/admin/file?path=${encodeURIComponent(pet.pet_vaccination_file)}`;
+          }
+          if (pet.pet_photo_file) {
+            urls[`pet_${i}_photo`] = `/api/admin/file?path=${encodeURIComponent(pet.pet_photo_file)}`;
+          }
+        });
       }
 
       setFileUrls(urls);
@@ -136,52 +150,59 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
 
           {submission.has_pets && (
             <section className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Pet Information</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Pet Type</p>
-                  <p className="font-medium">{submission.pet_type}</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Pet Information ({submission.pets?.length || 0} pet{(submission.pets?.length || 0) !== 1 ? 's' : ''})</h3>
+              {submission.pets && submission.pets.map((pet, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Pet #{idx + 1}</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Pet Type</p>
+                      <p className="font-medium capitalize">{pet.pet_type}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Pet Name</p>
+                      <p className="font-medium">{pet.pet_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Breed</p>
+                      <p className="font-medium">{pet.pet_breed}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Weight</p>
+                      <p className="font-medium">{pet.pet_weight} lbs</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Color</p>
+                      <p className="font-medium">{pet.pet_color}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Spayed/Neutered</p>
+                      <p className="font-medium">{pet.pet_spayed ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Vaccinations Current</p>
+                      <p className="font-medium">{pet.pet_vaccinations_current ? 'Yes' : 'No'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    {fileUrls[`pet_${idx}_vaccination`] && (
+                      <a href={fileUrls[`pet_${idx}_vaccination`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
+                        View Vaccination Records
+                      </a>
+                    )}
+                    {fileUrls[`pet_${idx}_photo`] && (
+                      <a href={fileUrls[`pet_${idx}_photo`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
+                        View Pet Photo
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Pet Name</p>
-                  <p className="font-medium">{submission.pet_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Breed</p>
-                  <p className="font-medium">{submission.pet_breed}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Weight</p>
-                  <p className="font-medium">{submission.pet_weight} lbs</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Color</p>
-                  <p className="font-medium">{submission.pet_color}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Spayed/Neutered</p>
-                  <p className="font-medium">{submission.pet_spayed ? 'Yes' : 'No'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Vaccinations Current</p>
-                  <p className="font-medium">{submission.pet_vaccinations_current ? 'Yes' : 'No'}</p>
-                </div>
+              ))}
+              <div className="mt-2 space-y-2">
                 <div>
                   <p className="text-sm text-gray-600">Signature Date</p>
                   <p className="font-medium">{submission.pet_signature_date}</p>
                 </div>
-              </div>
-              <div className="mt-4 space-y-2">
-                {fileUrls.pet_vaccination_file && (
-                  <a href={fileUrls.pet_vaccination_file} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">
-                    📄 View Vaccination Records
-                  </a>
-                )}
-                {fileUrls.pet_photo_file && (
-                  <a href={fileUrls.pet_photo_file} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">
-                    📷 View Pet Photo
-                  </a>
-                )}
                 {fileUrls.pet_signature && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Pet Addendum Signature</p>
@@ -190,7 +211,7 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
                 )}
                 {fileUrls.pet_addendum_file && (
                   <a href={fileUrls.pet_addendum_file} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">
-                    📝 Download Pet Addendum
+                    Download Pet Addendum (PDF)
                   </a>
                 )}
               </div>

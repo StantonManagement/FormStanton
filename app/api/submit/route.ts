@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Resend } from 'resend';
 import { 
-  generateDocument, 
-  preparePetTemplateData, 
-  prepareTemplateData, 
-  prepareVehicleTemplateData 
+  generatePetAddendumPdf,
+  generateNoPetsAddendumPdf,
+  generateVehicleAddendumPdf,
 } from '@/lib/documentGenerator';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -17,8 +16,6 @@ export async function POST(request: NextRequest) {
     const signaturesJson = JSON.parse(formData.get('signatures') as string);
     const language = formData.get('language') as string;
 
-    const petVaccinationFile = formData.get('petVaccination') as File | null;
-    const petPhotoFile = formData.get('petPhoto') as File | null;
     const insuranceProofFile = formData.get('insuranceProof') as File | null;
 
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
@@ -26,34 +23,52 @@ export async function POST(request: NextRequest) {
 
     const submissionId = crypto.randomUUID();
 
-    let petVaccinationPath = null;
-    let petPhotoPath = null;
     let insuranceProofPath = null;
     let petSignaturePath = null;
     let vehicleSignaturePath = null;
 
-    if (petVaccinationFile) {
-      const fileName = `${submissionId}_vaccination.${petVaccinationFile.name.split('.').pop()}`;
-      const buffer = await petVaccinationFile.arrayBuffer();
-      const { data, error } = await supabaseAdmin.storage
-        .from('submissions')
-        .upload(`vaccinations/${fileName}`, buffer, {
-          contentType: petVaccinationFile.type,
-        });
-      if (error) throw error;
-      petVaccinationPath = data.path;
-    }
+    // Upload per-pet files and build pets array for DB
+    const petsArray: any[] = [];
+    if (formDataJson.hasPets === true && formDataJson.pets) {
+      for (let i = 0; i < formDataJson.pets.length; i++) {
+        const pet = formDataJson.pets[i];
+        let vaccinationPath = null;
+        let photoPath = null;
 
-    if (petPhotoFile) {
-      const fileName = `${submissionId}_pet_photo.${petPhotoFile.name.split('.').pop()}`;
-      const buffer = await petPhotoFile.arrayBuffer();
-      const { data, error } = await supabaseAdmin.storage
-        .from('submissions')
-        .upload(`pet_photos/${fileName}`, buffer, {
-          contentType: petPhotoFile.type,
+        const vacFile = formData.get(`petVaccination_${i}`) as File | null;
+        if (vacFile) {
+          const fileName = `${submissionId}_pet_${i}_vaccination.${vacFile.name.split('.').pop()}`;
+          const buffer = await vacFile.arrayBuffer();
+          const { data, error } = await supabaseAdmin.storage
+            .from('submissions')
+            .upload(`vaccinations/${fileName}`, buffer, { contentType: vacFile.type });
+          if (error) throw error;
+          vaccinationPath = data.path;
+        }
+
+        const photoFile = formData.get(`petPhoto_${i}`) as File | null;
+        if (photoFile) {
+          const fileName = `${submissionId}_pet_${i}_photo.${photoFile.name.split('.').pop()}`;
+          const buffer = await photoFile.arrayBuffer();
+          const { data, error } = await supabaseAdmin.storage
+            .from('submissions')
+            .upload(`pet_photos/${fileName}`, buffer, { contentType: photoFile.type });
+          if (error) throw error;
+          photoPath = data.path;
+        }
+
+        petsArray.push({
+          pet_type: pet.petType || null,
+          pet_name: pet.petName || null,
+          pet_breed: pet.petBreed || null,
+          pet_weight: pet.petWeight ? parseInt(pet.petWeight) : null,
+          pet_color: pet.petColor || null,
+          pet_spayed: pet.petSpayed,
+          pet_vaccinations_current: pet.petVaccinationsCurrent,
+          pet_vaccination_file: vaccinationPath,
+          pet_photo_file: photoPath,
         });
-      if (error) throw error;
-      petPhotoPath = data.path;
+      }
     }
 
     if (insuranceProofFile) {
@@ -106,15 +121,7 @@ export async function POST(request: NextRequest) {
         building_address: formDataJson.buildingAddress,
         unit_number: formDataJson.unitNumber,
         has_pets: formDataJson.hasPets,
-        pet_type: formDataJson.petType || null,
-        pet_name: formDataJson.petName || null,
-        pet_breed: formDataJson.petBreed || null,
-        pet_weight: formDataJson.petWeight ? parseInt(formDataJson.petWeight) : null,
-        pet_color: formDataJson.petColor || null,
-        pet_spayed: formDataJson.petSpayed,
-        pet_vaccinations_current: formDataJson.petVaccinationsCurrent,
-        pet_vaccination_file: petVaccinationPath,
-        pet_photo_file: petPhotoPath,
+        pets: petsArray.length > 0 ? petsArray : null,
         pet_signature: petSignaturePath,
         pet_signature_date: formDataJson.petSignatureDate || null,
         has_insurance: formDataJson.hasInsurance,
@@ -142,57 +149,42 @@ export async function POST(request: NextRequest) {
     let vehicleAddendumPath = null;
 
     try {
-      // Generate pet addendum (either with pets or no pets)
+      // Generate pet addendum PDF (either with pets or no pets)
       if (formDataJson.hasPets === true && signaturesJson.pet) {
-        const petData = preparePetTemplateData(
-          formDataJson,
-          signaturesJson.pet,
-          new Date().toISOString().split('T')[0]
-        );
-        const petDoc = await generateDocument('pet_addendum_template', petData);
+        const petPdf = await generatePetAddendumPdf(formDataJson, petsArray, signaturesJson.pet);
         
-        const petFileName = `${submissionId}_pet_addendum.docx`;
+        const petFileName = `${submissionId}_pet_addendum.pdf`;
         const { data: petUpload, error: petUploadError } = await supabaseAdmin.storage
           .from('submissions')
-          .upload(`documents/${petFileName}`, petDoc, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          .upload(`documents/${petFileName}`, petPdf, {
+            contentType: 'application/pdf',
           });
         
         if (petUploadError) throw petUploadError;
         petAddendumPath = petUpload.path;
       } else if (formDataJson.hasPets === false && signaturesJson.pet) {
-        const noPetData = prepareTemplateData(
-          formDataJson,
-          signaturesJson.pet,
-          new Date().toISOString().split('T')[0]
-        );
-        const noPetDoc = await generateDocument('no_pets_template', noPetData);
+        const noPetPdf = await generateNoPetsAddendumPdf(formDataJson, signaturesJson.pet);
         
-        const noPetFileName = `${submissionId}_no_pets_addendum.docx`;
+        const noPetFileName = `${submissionId}_no_pets_addendum.pdf`;
         const { data: noPetUpload, error: noPetUploadError } = await supabaseAdmin.storage
           .from('submissions')
-          .upload(`documents/${noPetFileName}`, noPetDoc, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          .upload(`documents/${noPetFileName}`, noPetPdf, {
+            contentType: 'application/pdf',
           });
         
         if (noPetUploadError) throw noPetUploadError;
         petAddendumPath = noPetUpload.path;
       }
 
-      // Generate vehicle addendum
+      // Generate vehicle addendum PDF
       if (formDataJson.hasVehicle === true && signaturesJson.vehicle) {
-        const vehicleData = prepareVehicleTemplateData(
-          formDataJson,
-          signaturesJson.vehicle,
-          new Date().toISOString().split('T')[0]
-        );
-        const vehicleDoc = await generateDocument('vehicle_addendum_template', vehicleData);
+        const vehiclePdf = await generateVehicleAddendumPdf(formDataJson, signaturesJson.vehicle);
         
-        const vehicleFileName = `${submissionId}_vehicle_addendum.docx`;
+        const vehicleFileName = `${submissionId}_vehicle_addendum.pdf`;
         const { data: vehicleUpload, error: vehicleUploadError } = await supabaseAdmin.storage
           .from('submissions')
-          .upload(`documents/${vehicleFileName}`, vehicleDoc, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          .upload(`documents/${vehicleFileName}`, vehiclePdf, {
+            contentType: 'application/pdf',
           });
         
         if (vehicleUploadError) throw vehicleUploadError;
@@ -218,7 +210,7 @@ export async function POST(request: NextRequest) {
     try {
       await resend.emails.send({
         from: 'Stanton Management <onboarding@stantonmanagement.com>',
-        to: formDataJson.fullName.includes('@') ? formDataJson.fullName : 'admin@stantonmanagement.com',
+        to: formDataJson.email ? formDataJson.email : 'admin@stantonmanagement.com',
         subject: 'Tenant Onboarding Form Submission Confirmation',
         html: `
           <h2>Thank you for completing your tenant onboarding form</h2>

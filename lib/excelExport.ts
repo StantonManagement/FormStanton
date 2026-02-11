@@ -1,5 +1,17 @@
 import * as XLSX from 'xlsx';
 
+interface SubmissionPet {
+  pet_type: string;
+  pet_name: string;
+  pet_breed: string;
+  pet_weight: number | string;
+  pet_color: string;
+  pet_spayed: boolean;
+  pet_vaccinations_current: boolean;
+  pet_vaccination_file?: string | null;
+  pet_photo_file?: string | null;
+}
+
 interface Submission {
   id: string;
   created_at: string;
@@ -11,15 +23,7 @@ interface Submission {
   building_address: string;
   unit_number: string;
   has_pets: boolean;
-  pet_type?: string;
-  pet_name?: string;
-  pet_breed?: string;
-  pet_weight?: number;
-  pet_color?: string;
-  pet_spayed?: boolean;
-  pet_vaccinations_current?: boolean;
-  pet_vaccination_file?: string;
-  pet_photo_file?: string;
+  pets?: SubmissionPet[] | null;
   pet_signature?: string;
   pet_signature_date?: string;
   has_insurance: boolean;
@@ -43,50 +47,67 @@ interface Submission {
   user_agent?: string;
 }
 
+function formatPetsForExcel(pets: SubmissionPet[] | null | undefined): {
+  types: string; names: string; breeds: string; weights: string; colors: string; spayed: string; vaccinations: string;
+} {
+  if (!pets || pets.length === 0) return { types: '', names: '', breeds: '', weights: '', colors: '', spayed: '', vaccinations: '' };
+  return {
+    types: pets.map((p, i) => `${i + 1}. ${p.pet_type || ''}`).join(', '),
+    names: pets.map((p, i) => `${i + 1}. ${p.pet_name || ''}`).join(', '),
+    breeds: pets.map((p, i) => `${i + 1}. ${p.pet_breed || ''}`).join(', '),
+    weights: pets.map((p, i) => `${i + 1}. ${p.pet_weight || ''}`).join(', '),
+    colors: pets.map((p, i) => `${i + 1}. ${p.pet_color || ''}`).join(', '),
+    spayed: pets.map((p, i) => `${i + 1}. ${p.pet_spayed ? 'Yes' : 'No'}`).join(', '),
+    vaccinations: pets.map((p, i) => `${i + 1}. ${p.pet_vaccinations_current ? 'Yes' : 'No'}`).join(', '),
+  };
+}
+
 export function exportToExcel(submissions: Submission[]) {
-  const data = submissions.map(sub => ({
-    'Submission Date': new Date(sub.created_at).toLocaleString(),
-    'Language': sub.language?.toUpperCase() || '',
-    'Full Name': sub.full_name || '',
-    'Phone': sub.phone || '',
-    'Email': sub.email || '',
-    'New Phone': sub.phone_is_new ? 'Yes' : 'No',
-    'Building Address': sub.building_address || '',
-    'Unit Number': sub.unit_number || '',
-    
-    'Has Pets': sub.has_pets ? 'Yes' : 'No',
-    'Pet Type': sub.pet_type || '',
-    'Pet Name': sub.pet_name || '',
-    'Pet Breed': sub.pet_breed || '',
-    'Pet Weight (lbs)': sub.pet_weight || '',
-    'Pet Color': sub.pet_color || '',
-    'Pet Spayed/Neutered': sub.pet_spayed ? 'Yes' : 'No',
-    'Pet Vaccinations Current': sub.pet_vaccinations_current ? 'Yes' : 'No',
-    'Pet Vaccination File': sub.pet_vaccination_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.pet_vaccination_file)}` : '',
-    'Pet Photo File': sub.pet_photo_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.pet_photo_file)}` : '',
-    'Pet Signature Date': sub.pet_signature_date || '',
-    
-    'Has Insurance': sub.has_insurance ? 'Yes' : 'No',
-    'Insurance Provider': sub.insurance_provider || '',
-    'Insurance Policy Number': sub.insurance_policy_number || '',
-    'Insurance Status': sub.insurance_file ? 'Uploaded' : sub.insurance_upload_pending ? 'Pending' : 'N/A',
-    'Insurance File': sub.insurance_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.insurance_file)}` : '',
-    'Add Insurance to Rent': sub.add_insurance_to_rent ? 'Yes' : 'No',
-    
-    'Has Vehicle': sub.has_vehicle ? 'Yes' : 'No',
-    'Vehicle Make': sub.vehicle_make || '',
-    'Vehicle Model': sub.vehicle_model || '',
-    'Vehicle Year': sub.vehicle_year || '',
-    'Vehicle Color': sub.vehicle_color || '',
-    'Vehicle Plate': sub.vehicle_plate || '',
-    'Vehicle Signature Date': sub.vehicle_signature_date || '',
-    
-    'Pet Addendum': sub.pet_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.pet_addendum_file)}` : '',
-    'Vehicle Addendum': sub.vehicle_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.vehicle_addendum_file)}` : '',
-    
-    'Submission ID': sub.id || '',
-    'IP Address': sub.ip_address || '',
-  }));
+  const data = submissions.map(sub => {
+    const petInfo = formatPetsForExcel(sub.pets);
+    return {
+      'Submission Date': new Date(sub.created_at).toLocaleString(),
+      'Language': sub.language?.toUpperCase() || '',
+      'Full Name': sub.full_name || '',
+      'Phone': sub.phone || '',
+      'Email': sub.email || '',
+      'New Phone': sub.phone_is_new ? 'Yes' : 'No',
+      'Building Address': sub.building_address || '',
+      'Unit Number': sub.unit_number || '',
+      
+      'Has Pets': sub.has_pets ? 'Yes' : 'No',
+      '# Pets': sub.pets?.length || 0,
+      'Pet Types': petInfo.types,
+      'Pet Names': petInfo.names,
+      'Pet Breeds': petInfo.breeds,
+      'Pet Weights (lbs)': petInfo.weights,
+      'Pet Colors': petInfo.colors,
+      'Pet Spayed/Neutered': petInfo.spayed,
+      'Pet Vaccinations Current': petInfo.vaccinations,
+      'Pet Signature Date': sub.pet_signature_date || '',
+      
+      'Has Insurance': sub.has_insurance ? 'Yes' : 'No',
+      'Insurance Provider': sub.insurance_provider || '',
+      'Insurance Policy Number': sub.insurance_policy_number || '',
+      'Insurance Status': sub.insurance_file ? 'Uploaded' : sub.insurance_upload_pending ? 'Pending' : 'N/A',
+      'Insurance File': sub.insurance_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.insurance_file)}` : '',
+      'Add Insurance to Rent': sub.add_insurance_to_rent ? 'Yes' : 'No',
+      
+      'Has Vehicle': sub.has_vehicle ? 'Yes' : 'No',
+      'Vehicle Make': sub.vehicle_make || '',
+      'Vehicle Model': sub.vehicle_model || '',
+      'Vehicle Year': sub.vehicle_year || '',
+      'Vehicle Color': sub.vehicle_color || '',
+      'Vehicle Plate': sub.vehicle_plate || '',
+      'Vehicle Signature Date': sub.vehicle_signature_date || '',
+      
+      'Pet Addendum': sub.pet_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.pet_addendum_file)}` : '',
+      'Vehicle Addendum': sub.vehicle_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.vehicle_addendum_file)}` : '',
+      
+      'Submission ID': sub.id || '',
+      'IP Address': sub.ip_address || '',
+    };
+  });
 
   const worksheet = XLSX.utils.json_to_sheet(data);
   
@@ -100,15 +121,14 @@ export function exportToExcel(submissions: Submission[]) {
     { wch: 30 }, // Building Address
     { wch: 10 }, // Unit Number
     { wch: 10 }, // Has Pets
-    { wch: 10 }, // Pet Type
-    { wch: 15 }, // Pet Name
-    { wch: 15 }, // Pet Breed
-    { wch: 15 }, // Pet Weight
-    { wch: 15 }, // Pet Color
-    { wch: 20 }, // Pet Spayed
+    { wch: 8 },  // # Pets
+    { wch: 25 }, // Pet Types
+    { wch: 25 }, // Pet Names
+    { wch: 25 }, // Pet Breeds
+    { wch: 20 }, // Pet Weights
+    { wch: 20 }, // Pet Colors
+    { wch: 25 }, // Pet Spayed
     { wch: 25 }, // Pet Vaccinations
-    { wch: 50 }, // Pet Vaccination File
-    { wch: 50 }, // Pet Photo File
     { wch: 15 }, // Pet Signature Date
     { wch: 15 }, // Has Insurance
     { wch: 20 }, // Insurance Provider

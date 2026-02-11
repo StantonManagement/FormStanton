@@ -14,15 +14,7 @@ create table submissions (
 
   -- Pet section
   has_pets boolean,
-  pet_type text,
-  pet_name text,
-  pet_breed text,
-  pet_weight integer,
-  pet_color text,
-  pet_spayed boolean,
-  pet_vaccinations_current boolean,
-  pet_vaccination_file text,
-  pet_photo_file text,
+  pets jsonb,
   pet_signature text,
   pet_signature_date date,
 

@@ -12,7 +12,7 @@ All dogs and cats must be registered with management. There is a monthly pet ren
 
 <strong>Prohibited animals:</strong> Ferrets, snakes longer than 3 feet, and any animal classified as dangerous under local law.
 
-<strong>Deadline:</strong> February 28th. Unregistered dogs or cats found after this date will result in a $500 fee plus back-owed pet rent.`,
+<strong>Deadline:</strong> March 12th, 2026. Unregistered dogs or cats found after this date will result in a $500 fee plus back-owed pet rent.`,
     
     petRentTableHeaders: ["Pet Type", "Weight", "Monthly Rent", "One-Time Fee"],
     
@@ -20,7 +20,7 @@ All dogs and cats must be registered with management. There is a monthly pet ren
     insuranceWhyHeading: "Why Do I Need This?",
     insuranceWhyText: "Renters insurance protects your personal belongings and provides liability coverage if something unexpected happens—like your laptop being stolen, a fire/flood damaging your furniture, a guest getting injured on the property, or your pet biting someone.",
     insuranceCost: "Cost: $10-25 per month",
-    insuranceDeadline: "<strong>Deadline:</strong> February 17th",
+    insuranceDeadline: "<strong>Deadline:</strong> February 27th",
     insuranceOption1: "<strong>Option 1:</strong> Get Your Own Insurance",
     insuranceOption1Text: `Buy from any company (Lemonade, GEICO, your car insurance company, etc.)
 Your policy must show:
@@ -40,21 +40,21 @@ Your policy must show:
     parkingIntro: `Parking is $50 per vehicle per month, added to your rent.
 Maximum 3 vehicles per household.`,
     parkingStepsHeading: "To Get Your Parking Permit:",
-    parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by February 8th",
+    parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by February 18th",
     parkingStep1Text: "Fill out this form.",
     parkingStep2: "<strong>Step 2</strong> - Sign your parking agreement",
-    parkingStep2Text: "On February 9th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
-    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between February 17-20, 10 AM to 6:30 PM",
+    parkingStep2Text: "On February 20th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
+    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between March 2-6, 10 AM to 6:30 PM",
     parkingStep3Text: `Bring:
 • ID
 • Proof of renters insurance (or sign up at the office)
 • Completed pet registration (if you have a dog or cat)`,
     parkingDeadlinesHeading: "<strong>DEADLINES:</strong>",
-    parkingDeadlines: `• Submit vehicle info: February 8th
-• Parking agreements sent: February 9th
-• Permit pickup: February 17-20
-• Permits required: End of February`,
-    parkingWarning: "Vehicles without a valid permit after February 28th will be towed.",
+    parkingDeadlines: `• Submit vehicle info: February 18th
+• Parking agreements sent: February 20th
+• Permit pickup: March 2-6
+• Permits required: March 12th, 2026`,
+    parkingWarning: "Vehicles without a valid permit after March 12th, 2026 will be towed.",
     parkingDisplay: "The permit must be displayed on the upper driver's side of the windshield.",
     parkingFeeTableHeaders: ["Vehicle Type", "Monthly Fee"],
   },
@@ -70,7 +70,7 @@ Todos los perros y gatos deben registrarse con la administración. Hay un alquil
 
 Animales prohibidos: Hurones, serpientes de más de 3 pies, y cualquier animal clasificado como peligroso por la ley local.
 
-Fecha límite: 28 de febrero. Perros o gatos no registrados encontrados después de esta fecha resultarán en una multa de $500 más el alquiler atrasado.`,
+Fecha límite: 12 de marzo de 2026. Perros o gatos no registrados encontrados después de esta fecha resultarán en una multa de $500 más el alquiler atrasado.`,
     
     petRentTableHeaders: ["Tipo de Mascota", "Peso", "Alquiler Mensual", "Cargo Único"],
     
@@ -78,7 +78,7 @@ Fecha límite: 28 de febrero. Perros o gatos no registrados encontrados después
     insuranceWhyHeading: "¿Por Qué Lo Necesito?",
     insuranceWhyText: "El seguro de inquilino protege sus pertenencias personales y proporciona cobertura de responsabilidad si algo inesperado sucede—como el robo de su computadora, un incendio/inundación dañando sus muebles, un invitado lesionándose en la propiedad, o su mascota mordiendo a alguien.",
     insuranceCost: "Costo: $10-25 por mes",
-    insuranceDeadline: "Fecha límite: 17 de febrero",
+    insuranceDeadline: "Fecha límite: 27 de febrero",
     insuranceOption1: "Opción 1: Obtenga Su Propio Seguro",
     insuranceOption1Text: `Compre de cualquier compañía (Lemonade, GEICO, su compañía de seguro de auto, etc.)
 Su póliza debe mostrar:
@@ -98,21 +98,21 @@ Su póliza debe mostrar:
     parkingIntro: `El estacionamiento cuesta $50 por vehículo por mes, agregado a su alquiler.
 Máximo 3 vehículos por hogar.`,
     parkingStepsHeading: "Para Obtener Su Permiso:",
-    parkingStep1: "Paso 1 - Envíe la información de su vehículo antes del 8 de febrero",
+    parkingStep1: "Paso 1 - Envíe la información de su vehículo antes del 18 de febrero",
     parkingStep1Text: "Complete este formulario.",
     parkingStep2: "Paso 2 - Firme su acuerdo de estacionamiento",
-    parkingStep2Text: "El 9 de febrero, le enviaremos un enlace por correo/texto para firmar electrónicamente. O firme en persona cuando recoja su permiso.",
-    parkingStep3: "Paso 3 - Recoja su permiso entre el 17-20 de febrero, 10 AM a 6:30 PM",
+    parkingStep2Text: "El 20 de febrero, le enviaremos un enlace por correo/texto para firmar electrónicamente. O firme en persona cuando recoja su permiso.",
+    parkingStep3: "Paso 3 - Recoja su permiso entre el 2-6 de marzo, 10 AM a 6:30 PM",
     parkingStep3Text: `Traiga:
 • Identificación
 • Prueba de seguro de inquilino (o inscríbase en la oficina)
 • Registro de mascotas completado (si tiene perro o gato)`,
     parkingDeadlinesHeading: "FECHAS LÍMITE:",
-    parkingDeadlines: `• Enviar info del vehículo: 8 de febrero
-• Acuerdos enviados: 9 de febrero
-• Recoger permiso: 17-20 de febrero
-• Permisos requeridos: Fin de febrero`,
-    parkingWarning: "Vehículos sin permiso válido después del 28 de febrero serán remolcados.",
+    parkingDeadlines: `• Enviar info del vehículo: 18 de febrero
+• Acuerdos enviados: 20 de febrero
+• Recoger permiso: 2-6 de marzo
+• Permisos requeridos: 12 de marzo de 2026`,
+    parkingWarning: "Vehículos sin permiso válido después del 12 de marzo de 2026 serán remolcados.",
     parkingDisplay: "El permiso debe colocarse en la parte superior del lado del conductor del parabrisas.",
     parkingFeeTableHeaders: ["Tipo de Vehículo", "Tarifa Mensual"],
   },
@@ -128,7 +128,7 @@ Todos os cães e gatos devem ser registrados com a administração. Há um alugu
 
 Animais proibidos: Furões, cobras com mais de 3 pés, e qualquer animal classificado como perigoso pela lei local.
 
-Prazo: 28 de fevereiro. Cães ou gatos não registrados encontrados após esta data resultarão em multa de $500 mais aluguel atrasado.`,
+Prazo: 12 de março de 2026. Cães ou gatos não registrados encontrados após esta data resultarão em multa de $500 mais aluguel atrasado.`,
     
     petRentTableHeaders: ["Tipo de Animal", "Peso", "Aluguel Mensal", "Taxa Única"],
     
@@ -136,7 +136,7 @@ Prazo: 28 de fevereiro. Cães ou gatos não registrados encontrados após esta d
     insuranceWhyHeading: "Por Que Preciso Disso?",
     insuranceWhyText: "O seguro de locatário protege seus pertences pessoais e fornece cobertura de responsabilidade se algo inesperado acontecer—como roubo do seu computador, incêndio/inundação danificando seus móveis, um convidado se machucando na propriedade, ou seu animal mordendo alguém.",
     insuranceCost: "Custo: $10-25 por mês",
-    insuranceDeadline: "Prazo: 17 de fevereiro",
+    insuranceDeadline: "Prazo: 27 de fevereiro",
     insuranceOption1: "Opção 1: Obtenha Seu Próprio Seguro",
     insuranceOption1Text: `Compre de qualquer empresa (Lemonade, GEICO, sua seguradora de carro, etc.)
 Sua apólice deve mostrar:
@@ -156,21 +156,21 @@ Sua apólice deve mostrar:
     parkingIntro: `O estacionamento custa $50 por veículo por mês, adicionado ao seu aluguel.
 Máximo 3 veículos por residência.`,
     parkingStepsHeading: "Para Obter Sua Autorização:",
-    parkingStep1: "Passo 1 - Envie as informações do veículo até 8 de fevereiro",
+    parkingStep1: "Passo 1 - Envie as informações do veículo até 18 de fevereiro",
     parkingStep1Text: "Preencha este formulário.",
     parkingStep2: "Passo 2 - Assine seu contrato de estacionamento",
-    parkingStep2Text: "Em 9 de fevereiro, enviaremos um link por email/texto para assinar eletronicamente. Ou assine pessoalmente ao retirar sua autorização.",
-    parkingStep3: "Passo 3 - Retire sua autorização entre 17-20 de fevereiro, 10h às 18h30",
+    parkingStep2Text: "Em 20 de fevereiro, enviaremos um link por email/texto para assinar eletronicamente. Ou assine pessoalmente ao retirar sua autorização.",
+    parkingStep3: "Passo 3 - Retire sua autorização entre 2-6 de março, 10h às 18h30",
     parkingStep3Text: `Traga:
 • Identificação
 • Comprovante de seguro de locatário (ou inscreva-se no escritório)
 • Registro de animais completo (se tiver cão ou gato)`,
     parkingDeadlinesHeading: "PRAZOS:",
-    parkingDeadlines: `• Enviar info do veículo: 8 de fevereiro
-• Contratos enviados: 9 de fevereiro
-• Retirar autorização: 17-20 de fevereiro
-• Autorizações obrigatórias: Fim de fevereiro`,
-    parkingWarning: "Veículos sem autorização válida após 28 de fevereiro serão rebocados.",
+    parkingDeadlines: `• Enviar info do veículo: 18 de fevereiro
+• Contratos enviados: 20 de fevereiro
+• Retirar autorização: 2-6 de março
+• Autorizações obrigatórias: 12 de março de 2026`,
+    parkingWarning: "Veículos sem autorização válida após 12 de março de 2026 serão rebocados.",
     parkingDisplay: "A autorização deve ser colocada na parte superior do lado do motorista do para-brisa.",
     parkingFeeTableHeaders: ["Tipo de Veículo", "Taxa Mensal"],
   },
