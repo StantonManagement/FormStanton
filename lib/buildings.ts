@@ -6,10 +6,21 @@ export const buildings = [
   "10 Wolcott St",
   "144-146 Affleck St",
   "178 Affleck St",
+  "179 Affleck St",
   "182 Affleck St",
   "190 Affleck St",
-  "179 Affleck St",
-  "195 Affleck St"
+  "195 Affleck St",
+  "88-90 Ward St",
+  "865 Broad St",
+  "142 Seymour St",
+  "158 Seymour St",
+  "164 Seymour St",
+  "167 Seymour St",
+  "169 Seymour St",
+  "170 Seymour St",
+  "180 Seymour St",
+  "213-217 Buckingham St",
+  "23-31 Squire St"
 ];
 
 export const buildingToLLC: Record<string, string> = {
@@ -18,10 +29,41 @@ export const buildingToLLC: Record<string, string> = {
   "67-73 Park St": "SREP Park 2 LLC",
   "83-91 Park St": "SREP Park 3 LLC",
   "10 Wolcott St": "SREP Park 5 LLC",
+  "179 Affleck St": "SREP Park 6 LLC",
   "144-146 Affleck St": "SREP Park 7 LLC",
   "178 Affleck St": "SREP Park 7 LLC",
   "182 Affleck St": "SREP Park 7 LLC",
   "190 Affleck St": "SREP Park 7 LLC",
-  "179 Affleck St": "SREP Park 6 LLC",
-  "195 Affleck St": "SREP Park 8 LLC"
+  "195 Affleck St": "SREP Park 8 LLC",
+  "88-90 Ward St": "SREP Park 9 LLC",
+  "865 Broad St": "SREP Park 9 LLC",
+  "142 Seymour St": "SREP Park 10 LLC",
+  "158 Seymour St": "SREP Park 10 LLC",
+  "164 Seymour St": "SREP Park 10 LLC",
+  "167 Seymour St": "SREP Park 10 LLC",
+  "169 Seymour St": "SREP Park 10 LLC",
+  "170 Seymour St": "SREP Park 10 LLC",
+  "180 Seymour St": "SREP Park 10 LLC",
+  "213-217 Buckingham St": "SREP Park 11 LLC",
+  "23-31 Squire St": "SREP Park 12 LLC"
 };
+
+export const buildingsWithParking = new Set([
+  "31-33 Park St",
+  "57 Park St",
+  "67-73 Park St",
+  "83-91 Park St",
+  "10 Wolcott St",
+  "144-146 Affleck St",
+  "178 Affleck St",
+  "179 Affleck St",
+  "182 Affleck St",
+  "195 Affleck St",
+  "88-90 Ward St",
+  "158 Seymour St",
+  "164 Seymour St",
+  "167 Seymour St",
+  "169 Seymour St",
+  "170 Seymour St",
+  "23-31 Squire St"
+]);

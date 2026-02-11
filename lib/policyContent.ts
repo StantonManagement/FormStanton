@@ -224,9 +224,13 @@ export const llcTable = [
   ["67-73 Park St", "SREP Park 2 LLC c/o Stanton Management LLC"],
   ["83-91 Park St", "SREP Park 3 LLC c/o Stanton Management LLC"],
   ["10 Wolcott St", "SREP Park 5 LLC c/o Stanton Management LLC"],
-  ["144-146, 178, 182, 190 Affleck St", "SREP Park 7 LLC c/o Stanton Management LLC"],
   ["179 Affleck St", "SREP Park 6 LLC c/o Stanton Management LLC"],
+  ["144-146, 178, 182, 190 Affleck St", "SREP Park 7 LLC c/o Stanton Management LLC"],
   ["195 Affleck St", "SREP Park 8 LLC c/o Stanton Management LLC"],
+  ["88-90 Ward St, 865 Broad St", "SREP Park 9 LLC c/o Stanton Management LLC"],
+  ["142, 158, 164, 167, 169, 170, 180 Seymour St", "SREP Park 10 LLC c/o Stanton Management LLC"],
+  ["213-217 Buckingham St", "SREP Park 11 LLC c/o Stanton Management LLC"],
+  ["23-31 Squire St", "SREP Park 12 LLC c/o Stanton Management LLC"],
 ];
 
 // Parking fee table data (same for all languages)

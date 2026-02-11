@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { translations, Language } from '@/lib/translations';
-import { buildings, buildingToLLC } from '@/lib/buildings';
+import { buildings, buildingToLLC, buildingsWithParking } from '@/lib/buildings';
 import { PET_ADDENDUM, VEHICLE_ADDENDUM } from '@/lib/addendums';
 import { policyContent, petRentTable, llcTable, parkingFeeTable } from '@/lib/policyContent';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
@@ -81,6 +81,7 @@ function FormContent() {
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
 
   const t = translations[language];
+  const hasParking = buildingsWithParking.has(formData.buildingAddress);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -191,6 +192,7 @@ function FormContent() {
     }
 
     if (section === 4) {
+      if (!hasParking) return true;
       if (formData.hasVehicle === null) {
         setSectionError(t.requiredFieldsMissing);
         return false;
@@ -249,8 +251,8 @@ function FormContent() {
       }
     }
 
-    // Validate vehicle fields are complete
-    if (formData.hasVehicle === true) {
+    // Validate vehicle fields are complete (only for buildings with parking)
+    if (hasParking && formData.hasVehicle === true) {
       if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
         setSubmitError(t.incompleteVehicleEntry);
         setIsSubmitting(false);
@@ -264,7 +266,7 @@ function FormContent() {
       hasValidationErrors = true;
     }
 
-    if (formData.hasVehicle === true && !signatures.vehicle) {
+    if (hasParking && formData.hasVehicle === true && !signatures.vehicle) {
       newSignatureErrors.vehicle = t.signatureRequired;
       hasValidationErrors = true;
     }
@@ -1014,6 +1016,12 @@ function FormContent() {
                   {language === 'en' ? 'Vehicle Information' : language === 'es' ? 'Información de Vehículo' : 'Informações de Veículo'}
                 </h2>
 
+                {!hasParking ? (
+                  <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
+                    <p className="text-sm text-gray-700">{t.noParkingMessage}</p>
+                  </div>
+                ) : (
+                  <>
                 <div className="bg-purple-50 border-l-4 border-purple-500 p-3 sm:p-4 rounded space-y-3">
                   <h3 className="font-bold text-gray-900">{policyContent[language].parkingPolicyHeading}</h3>
                   <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].parkingIntro}</p>
@@ -1203,6 +1211,8 @@ function FormContent() {
                   <div className="bg-gray-50 p-3 rounded border border-gray-200">
                     <p className="text-sm text-gray-700">{t.vehicleNone}</p>
                   </div>
+                )}
+                  </>
                 )}
 
                 {sectionError && currentSection === 4 && (

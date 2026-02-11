@@ -67,6 +67,7 @@ export const translations = {
     vehicleNotice: "Parking costs $50 per vehicle per month. New permits will be available for pickup March 2-6. Old permits expire March 12th, 2026.",
     vehicleAgree: "I agree to the Vehicle and Parking Addendum terms",
     vehicleNone: "If you get a vehicle in the future, contact the office to register for a parking permit.",
+    noParkingMessage: "Your building does not have off-street parking managed by Stanton Management. You may skip this section.",
     
     finalConfirm: "By submitting this form, I confirm all information is accurate.",
     signature: "Signature",
@@ -139,6 +140,7 @@ export const translations = {
     vehicleNotice: "El estacionamiento cuesta $50 por vehículo por mes. Los nuevos permisos estarán disponibles del 2 al 6 de marzo. Los permisos antiguos expiran el 12 de marzo de 2026.",
     vehicleAgree: "Acepto los términos del Anexo de Vehículo y Estacionamiento",
     vehicleNone: "Si obtiene un vehículo en el futuro, contacte la oficina para registrarse para un permiso de estacionamiento.",
+    noParkingMessage: "Su edificio no tiene estacionamiento fuera de la calle administrado por Stanton Management. Puede omitir esta sección.",
     
     finalConfirm: "Al enviar este formulario, confirmo que toda la información es correcta.",
     signature: "Firma",
@@ -211,6 +213,7 @@ export const translations = {
     vehicleNotice: "O estacionamento custa $50 por veículo por mês. As novas autorizações estarão disponíveis de 2 a 6 de março. As autorizações antigas expiram em 12 de março de 2026.",
     vehicleAgree: "Concordo com os termos do Anexo de Veículo e Estacionamento",
     vehicleNone: "Se você adquirir um veículo no futuro, entre em contato com o escritório para se registrar para uma autorização de estacionamento.",
+    noParkingMessage: "Seu prédio não possui estacionamento fora da rua administrado pela Stanton Management. Você pode pular esta seção.",
     
     finalConfirm: "Ao enviar este formulário, confirmo que todas as informações são corretas.",
     signature: "Assinatura",
