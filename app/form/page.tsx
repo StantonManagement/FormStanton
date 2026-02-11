@@ -71,6 +71,8 @@ function FormContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [phoneValidationError, setPhoneValidationError] = useState('');
+  const [emailValidationError, setEmailValidationError] = useState('');
+  const [sectionError, setSectionError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [signatureErrors, setSignatureErrors] = useState({
     pet: '',
@@ -125,6 +127,90 @@ function FormContent() {
     setSignatures(prev => ({ ...prev, [type]: dataUrl }));
   };
 
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const validateSection = (section: number): boolean => {
+    setSectionError('');
+    setPhoneValidationError('');
+    setEmailValidationError('');
+
+    if (section === 1) {
+      if (!formData.fullName.trim() || !formData.buildingAddress || !formData.unitNumber.trim()) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.phone.length !== 10) {
+        setPhoneValidationError(t.phoneValidationError);
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.email.trim() && !isValidEmail(formData.email.trim())) {
+        setEmailValidationError(t.emailValidationError);
+        setSectionError(t.emailValidationError);
+        return false;
+      }
+      return true;
+    }
+
+    if (section === 2) {
+      if (formData.hasPets === null) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.hasPets === true) {
+        for (const pet of formData.pets) {
+          if (!pet.petType || !pet.petName || !pet.petBreed || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
+            setSectionError(t.incompletePetEntry);
+            return false;
+          }
+        }
+        if (!signatures.pet) {
+          setSectionError(t.signatureRequired);
+          return false;
+        }
+      }
+      if (formData.hasPets === false && !signatures.pet) {
+        setSectionError(t.signatureRequired);
+        return false;
+      }
+      return true;
+    }
+
+    if (section === 3) {
+      if (formData.hasInsurance === null) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.hasInsurance === true) {
+        if (!formData.insuranceProvider.trim() || !formData.insurancePolicyNumber.trim()) {
+          setSectionError(t.requiredFieldsMissing);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    if (section === 4) {
+      if (formData.hasVehicle === null) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.hasVehicle === true) {
+        if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
+          setSectionError(t.incompleteVehicleEntry);
+          return false;
+        }
+        if (!signatures.vehicle) {
+          setSectionError(t.signatureRequired);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -138,7 +224,16 @@ function FormContent() {
       setPhoneValidationError(t.phoneValidationError);
       setSubmitError(language === 'en' ? 'Phone number must be exactly 10 digits' : language === 'es' ? 'El número de teléfono debe tener exactamente 10 dígitos' : 'O número de telefone deve ter exatamente 10 dígitos');
       setIsSubmitting(false);
-      setCurrentSection(1); // Go back to first tab
+      setCurrentSection(1);
+      return;
+    }
+
+    // Validate email format if provided
+    if (formData.email.trim() && !isValidEmail(formData.email.trim())) {
+      setEmailValidationError(t.emailValidationError);
+      setSubmitError(t.emailValidationError);
+      setIsSubmitting(false);
+      setCurrentSection(1);
       return;
     }
 
@@ -380,10 +475,20 @@ function FormContent() {
                           <input
                             type="email"
                             value={formData.email}
-                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            onChange={(e) => {
+                              handleInputChange('email', e.target.value);
+                              if (e.target.value.trim() && !isValidEmail(e.target.value.trim())) {
+                                setEmailValidationError(t.emailValidationError);
+                              } else {
+                                setEmailValidationError('');
+                              }
+                            }}
                             placeholder="your.email@example.com"
                             className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                           />
+                          {emailValidationError && (
+                            <p className="text-xs text-[var(--error)] mt-1">{emailValidationError}</p>
+                          )}
                           <p className="text-xs text-[var(--muted)] mt-1">{language === 'en' ? 'Optional - but recommended for important updates' : language === 'es' ? 'Opcional - pero recomendado para actualizaciones importantes' : 'Opcional - mas recomendado para atualizações importantes'}</p>
                         </label>
 
@@ -413,9 +518,15 @@ function FormContent() {
                           />
                         </label>
 
+                        {sectionError && currentSection === 1 && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-700">{sectionError}</p>
+                          </div>
+                        )}
+
                         <button
                           type="button"
-                          onClick={() => setCurrentSection(2)}
+                          onClick={() => { if (validateSection(1)) setCurrentSection(2); }}
                           className="w-full bg-blue-600 text-white py-3 sm:py-2 px-4 rounded-md hover:bg-blue-700 transition text-base font-medium"
                         >
                           {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
@@ -727,9 +838,15 @@ function FormContent() {
                         </div>
                       )}
 
+                      {sectionError && currentSection === 2 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="text-sm text-red-700">{sectionError}</p>
+                        </div>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => setCurrentSection(3)}
+                        onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
                         className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                       >
                         {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
@@ -875,9 +992,15 @@ function FormContent() {
                   </div>
                 )}
 
+                {sectionError && currentSection === 3 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-700">{sectionError}</p>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setCurrentSection(4)}
+                  onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
@@ -1082,9 +1205,15 @@ function FormContent() {
                   </div>
                 )}
 
+                {sectionError && currentSection === 4 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-700">{sectionError}</p>
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setCurrentSection(5)}
+                  onClick={() => { if (validateSection(4)) setCurrentSection(5); }}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
