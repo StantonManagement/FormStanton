@@ -59,6 +59,15 @@ Maximum 3 vehicles per household.`,
     parkingWarning: "Vehicles without a valid permit after March 12th, 2026 will be towed.",
     parkingDisplay: "The permit must be displayed on the upper driver's side of the windshield.",
     parkingFeeTableHeaders: ["Vehicle Type", "Monthly Fee"],
+
+    towingHeading: "TOWING POLICY — PLEASE READ CAREFULLY",
+    towingText: `Stanton Management does not own or operate the towing company. We have authorized an independent towing company to patrol our parking areas and enforce permit requirements. They are known to act quickly.
+
+After <strong>March 12th, 2026</strong>, any vehicle without a valid permit properly displayed may be towed at the owner's expense — <strong>without prior notice</strong>.
+
+<strong>If your vehicle is towed</strong>, you must contact the towing company directly to retrieve it and resolve any fees. Stanton Management cannot intervene, reverse a tow, or issue refunds on the towing company's behalf.
+
+The best way to protect yourself is to get your permit on time and make sure it is always visible on the upper driver's side of your windshield.`,
   },
   
   es: {
@@ -119,6 +128,15 @@ Máximo 3 vehículos por hogar.`,
     parkingWarning: "Vehículos sin permiso válido después del 12 de marzo de 2026 serán remolcados.",
     parkingDisplay: "El permiso debe colocarse en la parte superior del lado del conductor del parabrisas.",
     parkingFeeTableHeaders: ["Tipo de Vehículo", "Tarifa Mensual"],
+
+    towingHeading: "POLÍTICA DE GRÚA — LEA CON ATENCIÓN",
+    towingText: `Stanton Management no es propietario ni opera la empresa de grúas. Hemos autorizado a una empresa de grúas independiente a patrullar nuestras áreas de estacionamiento y hacer cumplir los requisitos de permisos. Son conocidos por actuar rápidamente.
+
+Después del <strong>12 de marzo de 2026</strong>, cualquier vehículo sin un permiso válido correctamente exhibido podrá ser remolcado a costo del propietario — <strong>sin aviso previo</strong>.
+
+<strong>Si su vehículo es remolcado</strong>, debe comunicarse directamente con la empresa de grúas para recuperarlo y resolver cualquier cargo. Stanton Management no puede intervenir, revertir un remolque ni emitir reembolsos en nombre de la empresa de grúas.
+
+La mejor manera de protegerse es obtener su permiso a tiempo y asegurarse de que siempre esté visible en la parte superior del lado del conductor del parabrisas.`,
   },
   
   pt: {
@@ -179,6 +197,15 @@ Máximo 3 veículos por residência.`,
     parkingWarning: "Veículos sem autorização válida após 12 de março de 2026 serão rebocados.",
     parkingDisplay: "A autorização deve ser colocada na parte superior do lado do motorista do para-brisa.",
     parkingFeeTableHeaders: ["Tipo de Veículo", "Taxa Mensal"],
+
+    towingHeading: "POLÍTICA DE REBOQUE — LEIA COM ATENÇÃO",
+    towingText: `A Stanton Management não é proprietária nem opera a empresa de reboque. Autorizamos uma empresa de reboque independente a patrulhar nossas áreas de estacionamento e fiscalizar os requisitos de autorização. Eles são conhecidos por agir rapidamente.
+
+Após <strong>12 de março de 2026</strong>, qualquer veículo sem uma autorização válida devidamente exibida poderá ser rebocado por conta do proprietário — <strong>sem aviso prévio</strong>.
+
+<strong>Se o seu veículo for rebocado</strong>, você deve entrar em contato diretamente com a empresa de reboque para recuperá-lo e resolver quaisquer taxas. A Stanton Management não pode intervir, reverter um reboque ou emitir reembolsos em nome da empresa de reboque.
+
+A melhor maneira de se proteger é obter sua autorização a tempo e garantir que esteja sempre visível na parte superior do lado do motorista do para-brisa.`,
   },
 };
 

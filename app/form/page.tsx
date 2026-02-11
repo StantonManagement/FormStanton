@@ -935,6 +935,11 @@ function FormContent() {
                   />
                 </div>
 
+                <div className="bg-red-50 border-l-4 border-red-600 p-3 sm:p-4 rounded space-y-2">
+                  <h3 className="font-bold text-red-800 text-sm sm:text-base">⚠️ {policyContent[language].towingHeading}</h3>
+                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].towingText }} />
+                </div>
+
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-gray-700">{t.vehicleQuestion} <span className="text-red-500">*</span></p>
                   <div className="flex space-x-4">
