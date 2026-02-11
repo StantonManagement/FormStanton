@@ -12,7 +12,9 @@ All dogs and cats must be registered with management. There is a monthly pet ren
 
 <strong>Prohibited animals:</strong> Ferrets, snakes longer than 3 feet, and any animal classified as dangerous under local law.
 
-<strong>Deadline:</strong> March 12th, 2026. Unregistered dogs or cats found after this date will result in a $500 fee plus back-owed pet rent.`,
+<strong>Deadline:</strong> March 12th, 2026.
+
+<strong>⚠️ WARNING:</strong> Unregistered dogs or cats found after this date will be charged a <strong>$500 fine</strong> plus <strong>all back-owed pet rent starting from March 1st, 2026</strong>.`,
     
     petRentTableHeaders: ["Pet Type", "Weight", "Monthly Rent", "One-Time Fee"],
     
@@ -70,7 +72,9 @@ Todos los perros y gatos deben registrarse con la administración. Hay un alquil
 
 Animales prohibidos: Hurones, serpientes de más de 3 pies, y cualquier animal clasificado como peligroso por la ley local.
 
-Fecha límite: 12 de marzo de 2026. Perros o gatos no registrados encontrados después de esta fecha resultarán en una multa de $500 más el alquiler atrasado.`,
+Fecha límite: 12 de marzo de 2026.
+
+<strong>⚠️ ADVERTENCIA:</strong> Perros o gatos no registrados encontrados después de esta fecha serán cobrados con una <strong>multa de $500</strong> más <strong>todo el alquiler de mascota atrasado desde el 1 de marzo de 2026</strong>.`,
     
     petRentTableHeaders: ["Tipo de Mascota", "Peso", "Alquiler Mensual", "Cargo Único"],
     
@@ -128,7 +132,9 @@ Todos os cães e gatos devem ser registrados com a administração. Há um alugu
 
 Animais proibidos: Furões, cobras com mais de 3 pés, e qualquer animal classificado como perigoso pela lei local.
 
-Prazo: 12 de março de 2026. Cães ou gatos não registrados encontrados após esta data resultarão em multa de $500 mais aluguel atrasado.`,
+Prazo: 12 de março de 2026.
+
+<strong>⚠️ AVISO:</strong> Cães ou gatos não registrados encontrados após esta data serão cobrados com uma <strong>multa de $500</strong> mais <strong>todo o aluguel de animal atrasado a partir de 1 de março de 2026</strong>.`,
     
     petRentTableHeaders: ["Tipo de Animal", "Peso", "Aluguel Mensal", "Taxa Única"],
     
