@@ -496,17 +496,24 @@ function FormContent() {
 
                         <label className="block">
                           <span className="text-sm font-medium text-gray-700">{t.building} <span className="text-red-500">*</span></span>
-                          <select
-                            required
-                            value={formData.buildingAddress}
-                            onChange={(e) => handleInputChange('buildingAddress', e.target.value)}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 text-base border"
-                          >
-                            <option value="">Select...</option>
-                            {buildings.map(building => (
-                              <option key={building} value={building}>{building}</option>
-                            ))}
-                          </select>
+                          <div className="relative mt-1">
+                            <select
+                              required
+                              value={formData.buildingAddress}
+                              onChange={(e) => handleInputChange('buildingAddress', e.target.value)}
+                              className="block w-full appearance-none rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 pr-10 text-base focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            >
+                              <option value="">{language === 'en' ? '-- Select your building --' : language === 'es' ? '-- Seleccione su edificio --' : '-- Selecione seu prédio --'}</option>
+                              {buildings.map(building => (
+                                <option key={building} value={building}>{building}</option>
+                              ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                              <svg className="h-5 w-5 text-[var(--muted)]" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
                         </label>
 
                         <label className="block">
