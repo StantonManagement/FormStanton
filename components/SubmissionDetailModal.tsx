@@ -148,75 +148,86 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
             </div>
           </section>
 
-          {submission.has_pets && (
-            <section className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Pet Information ({submission.pets?.length || 0} pet{(submission.pets?.length || 0) !== 1 ? 's' : ''})</h3>
-              {submission.pets && submission.pets.map((pet, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-                  <h4 className="text-sm font-semibold text-gray-800 mb-2">Pet #{idx + 1}</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Pet Type</p>
-                      <p className="font-medium capitalize">{pet.pet_type}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Pet Name</p>
-                      <p className="font-medium">{pet.pet_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Breed</p>
-                      <p className="font-medium">{pet.pet_breed}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Weight</p>
-                      <p className="font-medium">{pet.pet_weight} lbs</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Color</p>
-                      <p className="font-medium">{pet.pet_color}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Spayed/Neutered</p>
-                      <p className="font-medium">{pet.pet_spayed ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Vaccinations Current</p>
-                      <p className="font-medium">{pet.pet_vaccinations_current ? 'Yes' : 'No'}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-1">
-                    {fileUrls[`pet_${idx}_vaccination`] && (
-                      <a href={fileUrls[`pet_${idx}_vaccination`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
-                        View Vaccination Records
-                      </a>
-                    )}
-                    {fileUrls[`pet_${idx}_photo`] && (
-                      <a href={fileUrls[`pet_${idx}_photo`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
-                        View Pet Photo
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <div className="mt-2 space-y-2">
-                <div>
-                  <p className="text-sm text-gray-600">Signature Date</p>
-                  <p className="font-medium">{submission.pet_signature_date}</p>
-                </div>
-                {fileUrls.pet_signature && (
+          <section className="border-t pt-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Pet Information
+              <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
+                submission.has_pets ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {submission.has_pets ? `${submission.pets?.length || 0} pet${(submission.pets?.length || 0) !== 1 ? 's' : ''}` : 'No Pets'}
+              </span>
+            </h3>
+
+            {submission.has_pets && submission.pets && submission.pets.map((pet, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-800 mb-2">Pet #{idx + 1}</h4>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Pet Addendum Signature</p>
-                    <img src={fileUrls.pet_signature} alt="Pet signature" className="border border-gray-300 rounded max-w-md" />
+                    <p className="text-sm text-gray-600">Pet Type</p>
+                    <p className="font-medium capitalize">{pet.pet_type}</p>
                   </div>
-                )}
-                {fileUrls.pet_addendum_file && (
-                  <a href={fileUrls.pet_addendum_file} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">
-                    Download Pet Addendum (PDF)
-                  </a>
-                )}
+                  <div>
+                    <p className="text-sm text-gray-600">Pet Name</p>
+                    <p className="font-medium">{pet.pet_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Breed</p>
+                    <p className="font-medium">{pet.pet_breed}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Weight</p>
+                    <p className="font-medium">{pet.pet_weight} lbs</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Color</p>
+                    <p className="font-medium">{pet.pet_color}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Spayed/Neutered</p>
+                    <p className="font-medium">{pet.pet_spayed ? 'Yes' : 'No'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Vaccinations Current</p>
+                    <p className="font-medium">{pet.pet_vaccinations_current ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-1">
+                  {fileUrls[`pet_${idx}_vaccination`] && (
+                    <a href={fileUrls[`pet_${idx}_vaccination`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
+                      View Vaccination Records
+                    </a>
+                  )}
+                  {fileUrls[`pet_${idx}_photo`] && (
+                    <a href={fileUrls[`pet_${idx}_photo`]} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline text-sm">
+                      View Pet Photo
+                    </a>
+                  )}
+                </div>
               </div>
-            </section>
-          )}
+            ))}
+
+            {!submission.has_pets && (
+              <p className="text-sm text-gray-700 mb-3">Tenant confirmed they do not have any pets.</p>
+            )}
+
+            <div className="mt-2 space-y-2">
+              <div>
+                <p className="text-sm text-gray-600">Signature Date</p>
+                <p className="font-medium">{submission.pet_signature_date || 'N/A'}</p>
+              </div>
+              {fileUrls.pet_signature && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">{submission.has_pets ? 'Pet Addendum Signature' : 'No-Pet Confirmation Signature'}</p>
+                  <img src={fileUrls.pet_signature} alt="Pet signature" className="border border-gray-300 rounded max-w-md" />
+                </div>
+              )}
+              {fileUrls.pet_addendum_file && (
+                <a href={fileUrls.pet_addendum_file} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">
+                  Download Pet Addendum (PDF)
+                </a>
+              )}
+            </div>
+          </section>
 
           {submission.has_insurance && (
             <section className="border-t pt-6">
