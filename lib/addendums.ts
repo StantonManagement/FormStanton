@@ -41,6 +41,8 @@ You also acknowledge that if we allow you to park on the property, you must regi
 
 PARKING FEES: $50 per vehicle per month
 
+PERMIT LIMIT: Each tenant is limited to one (1) parking permit. Additional permits may be available on a first-come, first-served basis after all tenants in the building have had the opportunity to obtain their first permit. Not all buildings allow a second permit. Contact the office for availability.
+
 TERMS AND CONDITIONS
 
 All authorized vehicles shall be parked in a designated parking spot, and you will not block or impede us or any other tenants' access to the parking lot or driveways. We may, in our discretion, designate parking areas specific to mopeds, motorcycles and motorized scooters.

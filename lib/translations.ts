@@ -6,7 +6,7 @@ export const translations = {
     introItems: [
       "<strong>Pet registration</strong> - All dogs and cats must be registered. Pet rent is $20-$50 per month per pet.",
       "<strong>Renters insurance</strong> - This is now required. It protects you and your neighbors. Cost is about $10-20 per month.",
-      "<strong>Parking permits</strong> - We are issuing new parking permits. The old permits will not work after March 12th, 2026. Parking costs $50 per car per month."
+      "<strong>Parking permits</strong> - We are issuing new parking permits. Each tenant is limited to 1 permit initially. The old permits will not work after March 12th, 2026. Parking costs $50 per car per month."
     ],
     
     yes: "Yes",
@@ -64,7 +64,7 @@ export const translations = {
     vehicleYear: "Vehicle Year",
     vehicleColor: "Vehicle Color",
     vehiclePlate: "License Plate Number",
-    vehicleNotice: "Parking costs $50 per vehicle per month. New permits will be available for pickup March 2-6. Old permits expire March 12th, 2026.",
+    vehicleNotice: "Parking costs $50 per vehicle per month. Each tenant is limited to 1 parking permit. If you need a 2nd permit, contact the office — availability is first-come, first-served and not all buildings allow a 2nd permit. New permits will be available for pickup March 2-6. Old permits expire March 12th, 2026.",
     vehicleAgree: "I agree to the Vehicle and Parking Addendum terms",
     vehicleNone: "If you get a vehicle in the future, contact the office to register for a parking permit.",
     noParkingMessage: "Your building does not have off-street parking managed by Stanton Management. You may skip this section.",
@@ -79,7 +79,7 @@ export const translations = {
     introItems: [
       "<strong>Registro de mascotas</strong> - Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20-$50 por mes por mascota.",
       "<strong>Seguro de inquilino</strong> - Esto ahora es obligatorio. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10-20 por mes.",
-      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos. Los permisos antiguos no funcionarán después del 12 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes."
+      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos. Cada inquilino tiene derecho a 1 permiso inicialmente. Los permisos antiguos no funcionarán después del 12 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes."
     ],
     
     yes: "Sí",
@@ -137,7 +137,7 @@ export const translations = {
     vehicleYear: "Año del Vehículo",
     vehicleColor: "Color del Vehículo",
     vehiclePlate: "Número de Placa",
-    vehicleNotice: "El estacionamiento cuesta $50 por vehículo por mes. Los nuevos permisos estarán disponibles del 2 al 6 de marzo. Los permisos antiguos expiran el 12 de marzo de 2026.",
+    vehicleNotice: "El estacionamiento cuesta $50 por vehículo por mes. Cada inquilino tiene derecho a 1 permiso de estacionamiento. Si necesita un 2do permiso, contacte la oficina — la disponibilidad es por orden de llegada y no todos los edificios permiten un 2do permiso. Los nuevos permisos estarán disponibles del 2 al 6 de marzo. Los permisos antiguos expiran el 12 de marzo de 2026.",
     vehicleAgree: "Acepto los términos del Anexo de Vehículo y Estacionamiento",
     vehicleNone: "Si obtiene un vehículo en el futuro, contacte la oficina para registrarse para un permiso de estacionamiento.",
     noParkingMessage: "Su edificio no tiene estacionamiento fuera de la calle administrado por Stanton Management. Puede omitir esta sección.",
@@ -152,7 +152,7 @@ export const translations = {
     introItems: [
       "<strong>Registro de animais</strong> - Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20-$50 por mês por animal.",
       "<strong>Seguro de locatário</strong> - Isso agora é obrigatório. Protege você e seus vizinhos. O custo é aproximadamente $10-20 por mês.",
-      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações. As autorizações antigas não funcionarão após 12 de março de 2026. O estacionamento custa $50 por carro por mês."
+      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações. Cada inquilino tem direito a 1 autorização inicialmente. As autorizações antigas não funcionarão após 12 de março de 2026. O estacionamento custa $50 por carro por mês."
     ],
     
     yes: "Sim",
@@ -210,7 +210,7 @@ export const translations = {
     vehicleYear: "Ano do Veículo",
     vehicleColor: "Cor do Veículo",
     vehiclePlate: "Número da Placa",
-    vehicleNotice: "O estacionamento custa $50 por veículo por mês. As novas autorizações estarão disponíveis de 2 a 6 de março. As autorizações antigas expiram em 12 de março de 2026.",
+    vehicleNotice: "O estacionamento custa $50 por veículo por mês. Cada inquilino tem direito a 1 autorização de estacionamento. Se precisar de uma 2ª autorização, entre em contato com o escritório — a disponibilidade é por ordem de chegada e nem todos os prédios permitem uma 2ª autorização. As novas autorizações estarão disponíveis de 2 a 6 de março. As autorizações antigas expiram em 12 de março de 2026.",
     vehicleAgree: "Concordo com os termos do Anexo de Veículo e Estacionamento",
     vehicleNone: "Se você adquirir um veículo no futuro, entre em contato com o escritório para se registrar para uma autorização de estacionamento.",
     noParkingMessage: "Seu prédio não possui estacionamento fora da rua administrado pela Stanton Management. Você pode pular esta seção.",

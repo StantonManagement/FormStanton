@@ -1071,6 +1071,14 @@ function FormContent() {
                   <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].towingText }} />
                 </div>
 
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
+                  <p className="text-sm font-semibold text-amber-800">
+                    {language === 'en' ? '⚠️ Each tenant is limited to 1 parking permit. If you need a 2nd permit, contact the office — availability is first-come, first-served and not all buildings allow a 2nd permit.' :
+                     language === 'es' ? '⚠️ Cada inquilino tiene derecho a 1 permiso de estacionamiento. Si necesita un 2do permiso, contacte la oficina — la disponibilidad es por orden de llegada y no todos los edificios permiten un 2do permiso.' :
+                     '⚠️ Cada inquilino tem direito a 1 autorização de estacionamento. Se precisar de uma 2ª autorização, entre em contato com o escritório — a disponibilidade é por ordem de chegada e nem todos os prédios permitem uma 2ª autorização.'}
+                  </p>
+                </div>
+
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-gray-700">{t.vehicleQuestion} <span className="text-red-500">*</span></p>
                   <div className="flex space-x-4">

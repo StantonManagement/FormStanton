@@ -1,4 +1,5 @@
 export const buildings = [
+  "90 Park Street",
   "31-33 Park St",
   "57 Park St",
   "67-73 Park St",
@@ -20,10 +21,29 @@ export const buildings = [
   "170 Seymour St",
   "180 Seymour St",
   "213-217 Buckingham St",
-  "23-31 Squire St"
+  "23-31 Squire St",
+  "97-103 Maple Ave",
+  "222-224 Maple Ave",
+  "236 Maple Ave",
+  "228 Maple Ave",
+  "93-95 Maple Ave",
+  "43-45 Franklin Ave",
+  "47 Franklin Ave",
+  "15-17 Whitmore Street",
+  "36 Whitmore Street",
+  "38-40 Whitmore Street",
+  "110 Martin St",
+  "120 Martin St",
+  "152-154 Wooster St",
+  "160 Wooster St",
+  "165 Westland St",
+  "1721-1739 Main St",
+  "69-73 Chestnut St",
+  "91 Edwards St"
 ];
 
 export const buildingToLLC: Record<string, string> = {
+  "90 Park Street": "Stanton Rep 90 Park Street Hartford LLC",
   "31-33 Park St": "SREP Park 1 LLC",
   "57 Park St": "SREP Park 4 LLC",
   "67-73 Park St": "SREP Park 2 LLC",
@@ -45,15 +65,33 @@ export const buildingToLLC: Record<string, string> = {
   "170 Seymour St": "SREP Park 10 LLC",
   "180 Seymour St": "SREP Park 10 LLC",
   "213-217 Buckingham St": "SREP Park 11 LLC",
-  "23-31 Squire St": "SREP Park 12 LLC"
+  "23-31 Squire St": "SREP Park 12 LLC",
+  "97-103 Maple Ave": "SREP Southend 1 LLC",
+  "222-224 Maple Ave": "SREP Southend 2 LLC",
+  "43-45 Franklin Ave": "SREP Southend 2 LLC",
+  "47 Franklin Ave": "SREP Southend 3 LLC",
+  "15-17 Whitmore Street": "SREP Southend 3 LLC",
+  "36 Whitmore Street": "SREP Southend 3 LLC",
+  "38-40 Whitmore Street": "SREP Southend 3 LLC",
+  "236 Maple Ave": "SREP Southend LLC",
+  "228 Maple Ave": "SREP Hartford 1 LLC",
+  "93-95 Maple Ave": "SREP Hartford 1 LLC",
+  "110 Martin St": "SREP Northend LLC",
+  "120 Martin St": "SREP Northend LLC",
+  "152-154 Wooster St": "SREP Northend LLC",
+  "160 Wooster St": "SREP Northend LLC",
+  "165 Westland St": "SREP Northend LLC",
+  "1721-1739 Main St": "SREP Northend LLC",
+  "69-73 Chestnut St": "SREP Northend LLC",
+  "91 Edwards St": "SREP Northend LLC"
 };
 
 export const buildingsWithParking = new Set([
+  "90 Park Street",
   "31-33 Park St",
   "57 Park St",
   "67-73 Park St",
   "83-91 Park St",
-  "10 Wolcott St",
   "144-146 Affleck St",
   "178 Affleck St",
   "179 Affleck St",
@@ -65,5 +103,13 @@ export const buildingsWithParking = new Set([
   "167 Seymour St",
   "169 Seymour St",
   "170 Seymour St",
-  "23-31 Squire St"
+  "23-31 Squire St",
+  "47 Franklin Ave",
+  "15-17 Whitmore Street",
+  "38-40 Whitmore Street",
+  "120 Martin St",
+  "160 Wooster St",
+  "1721-1739 Main St",
+  "69-73 Chestnut St",
+  "91 Edwards St"
 ]);

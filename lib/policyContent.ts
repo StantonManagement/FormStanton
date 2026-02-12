@@ -219,6 +219,7 @@ export const petRentTable = [
 
 // LLC table data (English only - proper nouns)
 export const llcTable = [
+  ["90 Park Street", "Stanton Rep 90 Park Street Hartford LLC c/o Stanton Management LLC"],
   ["31-33 Park St", "SREP Park 1 LLC c/o Stanton Management LLC"],
   ["57 Park St", "SREP Park 4 LLC c/o Stanton Management LLC"],
   ["67-73 Park St", "SREP Park 2 LLC c/o Stanton Management LLC"],
@@ -231,6 +232,12 @@ export const llcTable = [
   ["142, 158, 164, 167, 169, 170, 180 Seymour St", "SREP Park 10 LLC c/o Stanton Management LLC"],
   ["213-217 Buckingham St", "SREP Park 11 LLC c/o Stanton Management LLC"],
   ["23-31 Squire St", "SREP Park 12 LLC c/o Stanton Management LLC"],
+  ["97-103 Maple Ave", "SREP Southend 1 LLC c/o Stanton Management LLC"],
+  ["222-224 Maple Ave, 43-45 Franklin Ave", "SREP Southend 2 LLC c/o Stanton Management LLC"],
+  ["47 Franklin Ave, 15-17/36/38-40 Whitmore St", "SREP Southend 3 LLC c/o Stanton Management LLC"],
+  ["236 Maple Ave", "SREP Southend LLC c/o Stanton Management LLC"],
+  ["228 Maple Ave, 93-95 Maple Ave", "SREP Hartford 1 LLC c/o Stanton Management LLC"],
+  ["110/120 Martin, 152-154/160 Wooster, 165 Westland, 1721-1739 Main, 69-73 Chestnut, 91 Edwards", "SREP Northend LLC c/o Stanton Management LLC"],
 ];
 
 // Parking fee table data (same for all languages)
