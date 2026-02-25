@@ -74,9 +74,6 @@ function FormContent() {
   const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
   const [showForm, setShowForm] = useState(hasLangParam);
 
-  if (!showForm) {
-    return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
-  }
   const MAX_PETS = 5;
   const emptyPet = {
     petType: '',
@@ -138,6 +135,10 @@ function FormContent() {
     vehicle: '',
   });
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
+
+  if (!showForm) {
+    return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
+  }
 
   const t = translations[language];
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
