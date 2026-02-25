@@ -214,6 +214,32 @@ function FormContent() {
     }
 
     if (section === 2) {
+      if (!hasParking) return true;
+      if (formData.hasVehicle === null) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.hasVehicle === true) {
+        if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
+          setSectionError(t.incompleteVehicleEntry);
+          return false;
+        }
+        // Validate additional vehicles
+        for (const av of formData.additionalVehicles) {
+          if (!av.vehicleMake || !av.vehicleModel || !av.vehicleYear || !av.vehicleColor || !av.vehiclePlate) {
+            setSectionError(t.incompleteVehicleEntry);
+            return false;
+          }
+        }
+        if (!signatures.vehicle) {
+          setSectionError(t.signatureRequired);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    if (section === 3) {
       if (formData.hasPets === null) {
         setSectionError(t.requiredFieldsMissing);
         return false;
@@ -237,7 +263,7 @@ function FormContent() {
       return true;
     }
 
-    if (section === 3) {
+    if (section === 4) {
       if (formData.hasInsurance === null) {
         setSectionError(t.requiredFieldsMissing);
         return false;
@@ -245,32 +271,6 @@ function FormContent() {
       if (formData.hasInsurance === true) {
         if (!formData.insuranceProvider.trim() || !formData.insurancePolicyNumber.trim()) {
           setSectionError(t.requiredFieldsMissing);
-          return false;
-        }
-      }
-      return true;
-    }
-
-    if (section === 4) {
-      if (!hasParking) return true;
-      if (formData.hasVehicle === null) {
-        setSectionError(t.requiredFieldsMissing);
-        return false;
-      }
-      if (formData.hasVehicle === true) {
-        if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
-          setSectionError(t.incompleteVehicleEntry);
-          return false;
-        }
-        // Validate additional vehicles
-        for (const av of formData.additionalVehicles) {
-          if (!av.vehicleMake || !av.vehicleModel || !av.vehicleYear || !av.vehicleColor || !av.vehiclePlate) {
-            setSectionError(t.incompleteVehicleEntry);
-            return false;
-          }
-        }
-        if (!signatures.vehicle) {
-          setSectionError(t.signatureRequired);
           return false;
         }
       }
@@ -312,7 +312,7 @@ function FormContent() {
         if (!pet.petType || !pet.petName || !pet.petBreed || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
           setSubmitError(t.incompletePetEntry);
           setIsSubmitting(false);
-          setCurrentSection(2);
+          setCurrentSection(3);
           return;
         }
       }
@@ -323,7 +323,7 @@ function FormContent() {
       if (!formData.vehicleMake || !formData.vehicleModel || !formData.vehicleYear || !formData.vehicleColor || !formData.vehiclePlate) {
         setSubmitError(t.incompleteVehicleEntry);
         setIsSubmitting(false);
-        setCurrentSection(4);
+        setCurrentSection(2);
         return;
       }
       // Validate additional vehicles
@@ -331,7 +331,7 @@ function FormContent() {
         if (!av.vehicleMake || !av.vehicleModel || !av.vehicleYear || !av.vehicleColor || !av.vehiclePlate) {
           setSubmitError(t.incompleteVehicleEntry);
           setIsSubmitting(false);
-          setCurrentSection(4);
+          setCurrentSection(2);
           return;
         }
       }
@@ -439,9 +439,9 @@ function FormContent() {
 
   const tabs = [
     { id: 1, label: language === 'en' ? 'Resident Info' : language === 'es' ? 'Información' : 'Informações' },
-    { id: 2, label: language === 'en' ? 'Pets' : language === 'es' ? 'Mascotas' : 'Animais' },
-    { id: 3, label: language === 'en' ? 'Insurance' : language === 'es' ? 'Seguro' : 'Seguro' },
-    { id: 4, label: language === 'en' ? 'Vehicle' : language === 'es' ? 'Vehículo' : 'Veículo' },
+    { id: 2, label: language === 'en' ? 'Vehicle' : language === 'es' ? 'Vehículo' : 'Veículo' },
+    { id: 3, label: language === 'en' ? 'Pets' : language === 'es' ? 'Mascotas' : 'Animais' },
+    { id: 4, label: language === 'en' ? 'Insurance' : language === 'es' ? 'Seguro' : 'Seguro' },
     { id: 5, label: language === 'en' ? 'Review' : language === 'es' ? 'Revisar' : 'Revisar' },
   ];
 
@@ -631,7 +631,7 @@ function FormContent() {
                     </div>
                   )}
 
-                  {currentSection === 2 && (
+                  {currentSection === 3 && (
                     <div className="space-y-4">
                       <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                         {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
@@ -934,7 +934,7 @@ function FormContent() {
                         </div>
                       )}
 
-                      {sectionError && currentSection === 2 && (
+                      {sectionError && currentSection === 3 && (
                         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                           <p className="text-sm text-red-700">{sectionError}</p>
                         </div>
@@ -942,7 +942,7 @@ function FormContent() {
 
                       <button
                         type="button"
-                        onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
+                        onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
                         className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                       >
                         {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
@@ -950,7 +950,7 @@ function FormContent() {
                     </div>
                   )}
 
-            {currentSection === 3 && (
+            {currentSection === 4 && (
               <div className="space-y-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                   {language === 'en' ? 'Insurance Information' : language === 'es' ? 'Información de Seguro' : 'Informações de Seguro'}
@@ -1088,7 +1088,7 @@ function FormContent() {
                   </div>
                 )}
 
-                {sectionError && currentSection === 3 && (
+                {sectionError && currentSection === 4 && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-sm text-red-700">{sectionError}</p>
                   </div>
@@ -1096,7 +1096,7 @@ function FormContent() {
 
                 <button
                   type="button"
-                  onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
+                  onClick={() => { if (validateSection(4)) setCurrentSection(5); }}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
@@ -1104,11 +1104,18 @@ function FormContent() {
               </div>
             )}
 
-            {currentSection === 4 && (
+            {currentSection === 2 && (
               <div className="space-y-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                   {language === 'en' ? 'Vehicle Information' : language === 'es' ? 'Información de Vehículo' : 'Informações de Veículo'}
                 </h2>
+
+                {hasParking && (
+                  <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded space-y-2">
+                    <p className="text-sm font-bold text-red-800">⚠️ {t.vehicleDueToday}</p>
+                    <p className="text-sm text-red-700">{t.permitRequiresOtherDocs}</p>
+                  </div>
+                )}
 
                 {!hasParking ? (
                   <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
@@ -1163,14 +1170,6 @@ function FormContent() {
                 <div className="bg-red-50 border-l-4 border-red-600 p-3 sm:p-4 rounded space-y-2">
                   <h3 className="font-bold text-red-800 text-sm sm:text-base">⚠️ {policyContent[language].towingHeading}</h3>
                   <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].towingText }} />
-                </div>
-
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
-                  <p className="text-sm font-semibold text-amber-800">
-                    {language === 'en' ? '⚠️ Each tenant is entitled to 1 parking space. To be fair to everyone, additional spaces will only become available after all tenants in your building have had the opportunity to claim their first space. After that, extra spaces are first-come, first-served — contact the office to request one.' :
-                     language === 'es' ? '⚠️ Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con todos, los espacios adicionales solo estarán disponibles después de que todos los inquilinos de su edificio hayan tenido la oportunidad de reclamar su primer espacio. Después de eso, los espacios adicionales se ofrecen por orden de llegada — contacte la oficina para solicitar uno.' :
-                     '⚠️ Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos, vagas adicionais só estarão disponíveis após todos os inquilinos do seu prédio terem tido a oportunidade de reivindicar sua primeira vaga. Depois disso, as vagas extras são por ordem de chegada — entre em contato com o escritório para solicitar uma.'}
-                  </p>
                 </div>
 
                 <div className="space-y-3">
@@ -1475,7 +1474,7 @@ function FormContent() {
                   </>
                 )}
 
-                {sectionError && currentSection === 4 && (
+                {sectionError && currentSection === 2 && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-sm text-red-700">{sectionError}</p>
                   </div>
@@ -1483,7 +1482,7 @@ function FormContent() {
 
                 <button
                   type="button"
-                  onClick={() => { if (validateSection(4)) setCurrentSection(5); }}
+                  onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
