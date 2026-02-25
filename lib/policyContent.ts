@@ -46,7 +46,7 @@ Each tenant is entitled to 1 parking space. To be fair to everyone, additional s
     parkingStep1Text: "Fill out this form.",
     parkingStep2: "<strong>Step 2</strong> - Sign your parking agreement",
     parkingStep2Text: "On February 20th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
-    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between March 2-6, 10 AM to 6:30 PM",
+    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between March 9-13, 10 AM to 6:30 PM",
     parkingStep3Text: `Bring:
 • ID
 • Proof of renters insurance (or sign up at the office)
@@ -54,16 +54,16 @@ Each tenant is entitled to 1 parking space. To be fair to everyone, additional s
     parkingDeadlinesHeading: "<strong>DEADLINES:</strong>",
     parkingDeadlines: `• Submit vehicle info: February 18th
 • Parking agreements sent: February 20th
-• Permit pickup: March 2-6
-• Permits required: March 12th, 2026`,
-    parkingWarning: "Vehicles without a valid permit after March 12th, 2026 will be towed.",
+• Permit pickup: March 9-13
+• Permits required: March 19th, 2026`,
+    parkingWarning: "Vehicles without a valid permit after March 19th, 2026 will be towed.",
     parkingDisplay: "The permit must be displayed on the upper driver's side of the windshield.",
     parkingFeeTableHeaders: ["Vehicle Type", "Monthly Fee"],
 
     towingHeading: "TOWING POLICY — PLEASE READ CAREFULLY",
     towingText: `Stanton Management does not own or operate the towing company. We have authorized an independent towing company to patrol our parking areas and enforce permit requirements. They are known to act quickly.
 
-After <strong>March 12th, 2026</strong>, any vehicle without a valid permit properly displayed may be towed at the owner's expense — <strong>without prior notice</strong>.
+After <strong>March 19th, 2026</strong>, any vehicle without a valid permit properly displayed may be towed at the owner's expense — <strong>without prior notice</strong>.
 
 <strong>If your vehicle is towed</strong>, you must contact the towing company directly to retrieve it and resolve any fees. Stanton Management cannot intervene, reverse a tow, or issue refunds on the towing company's behalf.
 
@@ -115,7 +115,7 @@ Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con
     parkingStep1Text: "Complete este formulario.",
     parkingStep2: "Paso 2 - Firme su acuerdo de estacionamiento",
     parkingStep2Text: "El 20 de febrero, le enviaremos un enlace por correo/texto para firmar electrónicamente. O firme en persona cuando recoja su permiso.",
-    parkingStep3: "Paso 3 - Recoja su permiso entre el 2-6 de marzo, 10 AM a 6:30 PM",
+    parkingStep3: "Paso 3 - Recoja su permiso entre el 9-13 de marzo, 10 AM a 6:30 PM",
     parkingStep3Text: `Traiga:
 • Identificación
 • Prueba de seguro de inquilino (o inscríbase en la oficina)
@@ -123,16 +123,16 @@ Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con
     parkingDeadlinesHeading: "FECHAS LÍMITE:",
     parkingDeadlines: `• Enviar info del vehículo: 18 de febrero
 • Acuerdos enviados: 20 de febrero
-• Recoger permiso: 2-6 de marzo
-• Permisos requeridos: 12 de marzo de 2026`,
-    parkingWarning: "Vehículos sin permiso válido después del 12 de marzo de 2026 serán remolcados.",
+• Recoger permiso: 9-13 de marzo
+• Permisos requeridos: 19 de marzo de 2026`,
+    parkingWarning: "Vehículos sin permiso válido después del 19 de marzo de 2026 serán remolcados.",
     parkingDisplay: "El permiso debe colocarse en la parte superior del lado del conductor del parabrisas.",
     parkingFeeTableHeaders: ["Tipo de Vehículo", "Tarifa Mensual"],
 
     towingHeading: "POLÍTICA DE GRÚA — LEA CON ATENCIÓN",
     towingText: `Stanton Management no es propietario ni opera la empresa de grúas. Hemos autorizado a una empresa de grúas independiente a patrullar nuestras áreas de estacionamiento y hacer cumplir los requisitos de permisos. Son conocidos por actuar rápidamente.
 
-Después del <strong>12 de marzo de 2026</strong>, cualquier vehículo sin un permiso válido correctamente exhibido podrá ser remolcado a costo del propietario — <strong>sin aviso previo</strong>.
+Después del <strong>19 de marzo de 2026</strong>, cualquier vehículo sin un permiso válido correctamente exhibido podrá ser remolcado a costo del propietario — <strong>sin aviso previo</strong>.
 
 <strong>Si su vehículo es remolcado</strong>, debe comunicarse directamente con la empresa de grúas para recuperarlo y resolver cualquier cargo. Stanton Management no puede intervenir, revertir un remolque ni emitir reembolsos en nombre de la empresa de grúas.
 
@@ -184,7 +184,7 @@ Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos,
     parkingStep1Text: "Preencha este formulário.",
     parkingStep2: "Passo 2 - Assine seu contrato de estacionamento",
     parkingStep2Text: "Em 20 de fevereiro, enviaremos um link por email/texto para assinar eletronicamente. Ou assine pessoalmente ao retirar sua autorização.",
-    parkingStep3: "Passo 3 - Retire sua autorização entre 2-6 de março, 10h às 18h30",
+    parkingStep3: "Passo 3 - Retire sua autorização entre 9-13 de março, 10h às 18h30",
     parkingStep3Text: `Traga:
 • Identificação
 • Comprovante de seguro de locatário (ou inscreva-se no escritório)
@@ -192,16 +192,16 @@ Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos,
     parkingDeadlinesHeading: "PRAZOS:",
     parkingDeadlines: `• Enviar info do veículo: 18 de fevereiro
 • Contratos enviados: 20 de fevereiro
-• Retirar autorização: 2-6 de março
-• Autorizações obrigatórias: 12 de março de 2026`,
-    parkingWarning: "Veículos sem autorização válida após 12 de março de 2026 serão rebocados.",
+• Retirar autorização: 9-13 de março
+• Autorizações obrigatórias: 19 de março de 2026`,
+    parkingWarning: "Veículos sem autorização válida após 19 de março de 2026 serão rebocados.",
     parkingDisplay: "A autorização deve ser colocada na parte superior do lado do motorista do para-brisa.",
     parkingFeeTableHeaders: ["Tipo de Veículo", "Taxa Mensal"],
 
     towingHeading: "POLÍTICA DE REBOQUE — LEIA COM ATENÇÃO",
     towingText: `A Stanton Management não é proprietária nem opera a empresa de reboque. Autorizamos uma empresa de reboque independente a patrulhar nossas áreas de estacionamento e fiscalizar os requisitos de autorização. Eles são conhecidos por agir rapidamente.
 
-Após <strong>12 de março de 2026</strong>, qualquer veículo sem uma autorização válida devidamente exibida poderá ser rebocado por conta do proprietário — <strong>sem aviso prévio</strong>.
+Após <strong>19 de março de 2026</strong>, qualquer veículo sem uma autorização válida devidamente exibida poderá ser rebocado por conta do proprietário — <strong>sem aviso prévio</strong>.
 
 <strong>Se o seu veículo for rebocado</strong>, você deve entrar em contato diretamente com a empresa de reboque para recuperá-lo e resolver quaisquer taxas. A Stanton Management não pode intervir, reverter um reboque ou emitir reembolsos em nome da empresa de reboque.
 
