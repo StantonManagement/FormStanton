@@ -1,0 +1,923 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Language } from '@/lib/translations';
+import { buildings, buildingUnits } from '@/lib/buildings';
+import { reimbursementTranslations, expenseCategories } from '@/lib/reimbursementTranslations';
+import { emptyExpenseEntry } from '@/lib/types';
+import SignatureCanvasComponent from '@/components/SignatureCanvas';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import TabNavigation from '@/components/TabNavigation';
+import SectionHeader from '@/components/SectionHeader';
+import BuildingAutocomplete from '@/components/BuildingAutocomplete';
+
+function ReimbursementLanguageLanding({ onSelect }: { onSelect: (lang: Language) => void }) {
+  return (
+    <>
+      <main className="min-h-screen bg-[var(--paper)]">
+        <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <img
+                src="/Stanton-logo.PNG"
+                alt="Stanton Management"
+                className="max-w-[280px] w-full h-auto"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+            <h1 className="font-serif text-2xl sm:text-3xl text-[var(--primary)] mb-1">Tenant Reimbursement Request</h1>
+            <p className="text-[var(--muted)] text-sm tracking-wide uppercase">Stanton Management LLC</p>
+          </div>
+
+          <div className="bg-white shadow-sm border border-[var(--border)] rounded-sm overflow-hidden mb-8 p-6 sm:p-8">
+            <p className="text-sm text-[var(--ink)] leading-relaxed mb-6">
+              Please complete the information below to request reimbursement for expenses. Submit completed forms through the office mailbox or upload via AppFolio.
+            </p>
+            <p className="text-center text-xs text-[var(--muted)] uppercase tracking-wider mb-4">
+              Please select your language to continue:
+            </p>
+            <div className="space-y-3">
+              <button onClick={() => onSelect('en')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continue in English
+              </button>
+              <button onClick={() => onSelect('es')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continuar en Español
+              </button>
+              <button onClick={() => onSelect('pt')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continuar em Português
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-xs text-[var(--muted)]">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Your information is transmitted securely</span>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+function ReimbursementFormContent() {
+  const searchParams = useSearchParams();
+  const langParam = searchParams.get('lang');
+  const hasLangParam = langParam === 'en' || langParam === 'es' || langParam === 'pt';
+  const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
+  const [showForm, setShowForm] = useState(hasLangParam);
+
+  if (!showForm) {
+    return <ReimbursementLanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
+  }
+  const MAX_EXPENSES = 10;
+  const MAX_FILES = 5;
+
+  const [formData, setFormData] = useState({
+    tenantName: '',
+    buildingAddress: '',
+    unitNumber: '',
+    phone: '',
+    email: '',
+    dateSubmitted: new Date().toISOString().split('T')[0],
+    expenses: [{ ...emptyExpenseEntry }],
+    paymentPreference: '',
+    urgency: 'normal',
+    finalConfirm: false,
+  });
+
+  const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
+  const [signature, setSignature] = useState('');
+
+  const [currentSection, setCurrentSection] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [phoneValidationError, setPhoneValidationError] = useState('');
+  const [emailValidationError, setEmailValidationError] = useState('');
+  const [sectionError, setSectionError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [signatureError, setSignatureError] = useState('');
+
+  const t = reimbursementTranslations[language];
+
+  const totalAmount = formData.expenses.reduce((sum, exp) => {
+    const amt = parseFloat(exp.amount);
+    return sum + (isNaN(amt) ? 0 : amt);
+  }, 0);
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleExpenseChange = (index: number, field: string, value: any) => {
+    setFormData(prev => {
+      const newExpenses = [...prev.expenses];
+      newExpenses[index] = { ...newExpenses[index], [field]: value };
+      return { ...prev, expenses: newExpenses };
+    });
+  };
+
+  const addExpense = () => {
+    if (formData.expenses.length < MAX_EXPENSES) {
+      setFormData(prev => ({ ...prev, expenses: [...prev.expenses, { ...emptyExpenseEntry }] }));
+    }
+  };
+
+  const removeExpense = (index: number) => {
+    if (formData.expenses.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        expenses: prev.expenses.filter((_, i) => i !== index),
+      }));
+    }
+  };
+
+  const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newFiles = Array.from(files);
+    setReceiptFiles(prev => {
+      const combined = [...prev, ...newFiles];
+      return combined.slice(0, MAX_FILES);
+    });
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setReceiptFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const validateSection = (section: number): boolean => {
+    setSectionError('');
+    setPhoneValidationError('');
+    setEmailValidationError('');
+
+    if (section === 1) {
+      if (!formData.tenantName.trim() || !formData.buildingAddress || !formData.unitNumber.trim() || !formData.email.trim()) {
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (formData.phone.length !== 10) {
+        setPhoneValidationError(t.phoneValidationError);
+        setSectionError(t.requiredFieldsMissing);
+        return false;
+      }
+      if (!isValidEmail(formData.email.trim())) {
+        setEmailValidationError(t.emailValidationError);
+        setSectionError(t.emailValidationError);
+        return false;
+      }
+      return true;
+    }
+
+    if (section === 2) {
+      for (const exp of formData.expenses) {
+        if (!exp.date || !exp.category || !exp.description.trim() || !exp.amount) {
+          setSectionError(t.incompleteExpenseEntry);
+          return false;
+        }
+        if (isNaN(parseFloat(exp.amount)) || parseFloat(exp.amount) <= 0) {
+          setSectionError(t.incompleteExpenseEntry);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    if (section === 3) {
+      return true;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+    setSignatureError('');
+
+    if (formData.phone.length !== 10) {
+      setPhoneValidationError(t.phoneValidationError);
+      setSubmitError(t.requiredFieldsMissing);
+      setIsSubmitting(false);
+      setCurrentSection(1);
+      return;
+    }
+
+    if (!isValidEmail(formData.email.trim())) {
+      setEmailValidationError(t.emailValidationError);
+      setSubmitError(t.emailValidationError);
+      setIsSubmitting(false);
+      setCurrentSection(1);
+      return;
+    }
+
+    for (const exp of formData.expenses) {
+      if (!exp.date || !exp.category || !exp.description.trim() || !exp.amount) {
+        setSubmitError(t.incompleteExpenseEntry);
+        setIsSubmitting(false);
+        setCurrentSection(2);
+        return;
+      }
+    }
+
+    if (!signature) {
+      setSignatureError(t.signatureRequired);
+      setSubmitError(t.signatureRequired);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('language', language);
+      formDataToSend.append('formData', JSON.stringify(formData));
+      formDataToSend.append('signature', signature);
+
+      receiptFiles.forEach((file, i) => {
+        formDataToSend.append(`receipt_${i}`, file);
+      });
+
+      const response = await fetch('/api/reimbursement', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Submission failed');
+      }
+
+      setSubmitSuccess(true);
+    } catch (error: any) {
+      setSubmitError(error.message || 'An error occurred during submission');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitSuccess) {
+    return (
+      <>
+        <Header language={language} onLanguageChange={setLanguage} />
+        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="bg-white border border-[var(--border)] rounded-sm shadow-sm p-8 max-w-md w-full text-center"
+          >
+            <div className="mb-6">
+              <motion.svg
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="mx-auto h-16 w-16 text-[var(--success)]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </motion.svg>
+            </div>
+            <h2 className="font-serif text-2xl text-[var(--primary)] mb-3">
+              {t.successTitle}
+            </h2>
+            <p className="text-[var(--muted)] leading-relaxed">
+              {t.successMessage}
+            </p>
+            <div className="mt-6 pt-6 border-t border-[var(--divider)]">
+              <div className="flex items-center justify-center gap-2 text-xs text-[var(--muted)]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Your information is transmitted securely</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  const totalSections = 4;
+
+  const tabs = [
+    { id: 1, label: t.tabTenantInfo },
+    { id: 2, label: t.tabExpenses },
+    { id: 3, label: t.tabAttachments },
+    { id: 4, label: t.tabReview },
+  ];
+
+  return (
+    <>
+      <Header language={language} onLanguageChange={setLanguage} />
+
+      <main className="min-h-screen bg-[var(--paper)]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="bg-white shadow-sm border border-[var(--border)] rounded-sm overflow-hidden">
+
+            <TabNavigation
+              tabs={tabs}
+              activeTab={currentSection}
+              onTabClick={setCurrentSection}
+            />
+
+            <form onSubmit={handleSubmit} className="p-6 sm:p-8">
+
+              {/* Intro */}
+              <div className="mb-8">
+                <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
+                  <h1 className="font-serif text-xl text-[var(--primary)] mb-2">{t.formTitle}</h1>
+                  <p className="text-sm text-[var(--ink)] leading-relaxed">{t.formIntro}</p>
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSection}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                >
+                  {/* Section 1: Tenant Info */}
+                  {currentSection === 1 && (
+                    <div className="space-y-6">
+                      <SectionHeader
+                        title={t.tenantInfoTitle}
+                        sectionNumber={1}
+                        totalSections={totalSections}
+                      />
+
+                      <div className="space-y-4">
+                        <label className="block">
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.tenantName} <span className="text-[var(--error)]">*</span></span>
+                          <input
+                            type="text"
+                            required
+                            value={formData.tenantName}
+                            onChange={(e) => handleInputChange('tenantName', e.target.value)}
+                            placeholder={t.tenantNamePlaceholder}
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                          />
+                          <p className="text-xs text-[var(--muted)] mt-1">{t.tenantNameHelper}</p>
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.phone} <span className="text-[var(--error)]">*</span></span>
+                          <input
+                            type="tel"
+                            required
+                            value={formData.phone}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              handleInputChange('phone', value);
+                              if (value.length !== 10 && value.length > 0) {
+                                setPhoneValidationError(t.phoneValidationError);
+                              } else {
+                                setPhoneValidationError('');
+                              }
+                            }}
+                            placeholder={t.phonePlaceholder}
+                            maxLength={10}
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                          />
+                          {phoneValidationError && (
+                            <p className="text-xs text-[var(--error)] mt-1">{phoneValidationError}</p>
+                          )}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.email} <span className="text-[var(--error)]">*</span></span>
+                          <input
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => {
+                              handleInputChange('email', e.target.value);
+                              if (e.target.value.trim() && !isValidEmail(e.target.value.trim())) {
+                                setEmailValidationError(t.emailValidationError);
+                              } else {
+                                setEmailValidationError('');
+                              }
+                            }}
+                            placeholder={t.emailPlaceholder}
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                          />
+                          {emailValidationError && (
+                            <p className="text-xs text-[var(--error)] mt-1">{emailValidationError}</p>
+                          )}
+                          <p className="text-xs text-[var(--muted)] mt-1">{t.emailHelper}</p>
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700">{t.building} <span className="text-red-500">*</span></span>
+                          <BuildingAutocomplete
+                            value={formData.buildingAddress}
+                            onChange={(val) => { handleInputChange('buildingAddress', val); handleInputChange('unitNumber', ''); }}
+                            buildings={buildings}
+                            placeholder={t.selectBuilding}
+                            required
+                          />
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700">{t.unit} <span className="text-red-500">*</span></span>
+                          {formData.buildingAddress && buildingUnits[formData.buildingAddress] ? (
+                            <div className="relative mt-1">
+                              <select
+                                required
+                                value={formData.unitNumber}
+                                onChange={(e) => handleInputChange('unitNumber', e.target.value)}
+                                className="block w-full appearance-none rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 pr-10 text-base focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                              >
+                                <option value="">{t.selectUnit}</option>
+                                {buildingUnits[formData.buildingAddress].map(unit => (
+                                  <option key={unit} value={unit}>{unit}</option>
+                                ))}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg className="h-5 w-5 text-[var(--muted)]" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              required
+                              value={formData.unitNumber}
+                              onChange={(e) => handleInputChange('unitNumber', e.target.value)}
+                              placeholder={t.enterUnit}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          )}
+                        </label>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.dateSubmitted}</span>
+                          <input
+                            type="date"
+                            value={formData.dateSubmitted}
+                            onChange={(e) => handleInputChange('dateSubmitted', e.target.value)}
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                          />
+                        </label>
+
+                        {sectionError && currentSection === 1 && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-700">{sectionError}</p>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => { if (validateSection(1)) setCurrentSection(2); }}
+                          className="w-full bg-blue-600 text-white py-3 sm:py-2 px-4 rounded-md hover:bg-blue-700 transition text-base font-medium"
+                        >
+                          {t.continue}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section 2: Expense Details */}
+                  {currentSection === 2 && (
+                    <div className="space-y-6">
+                      <SectionHeader
+                        title={t.expenseTitle}
+                        sectionNumber={2}
+                        totalSections={totalSections}
+                      />
+
+                      <div className="space-y-4">
+                        {formData.expenses.map((expense, idx) => (
+                          <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="text-sm font-semibold text-gray-900">{t.expenseNumber}{idx + 1}</h4>
+                              {formData.expenses.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeExpense(idx)}
+                                  className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                                >
+                                  {t.removeExpense}
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.expenseDate} <span className="text-red-500">*</span></span>
+                                  <input
+                                    type="date"
+                                    required
+                                    value={expense.date}
+                                    onChange={(e) => handleExpenseChange(idx, 'date', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  />
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.expenseCategory} <span className="text-red-500">*</span></span>
+                                  <select
+                                    required
+                                    value={expense.category}
+                                    onChange={(e) => handleExpenseChange(idx, 'category', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  >
+                                    <option value="">{t.selectCategory}</option>
+                                    {expenseCategories.map(cat => (
+                                      <option key={cat.value} value={cat.value}>{t[cat.labelKey]}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+
+                              <label className="block">
+                                <span className="text-sm font-medium text-gray-700">{t.expenseDescription} <span className="text-red-500">*</span></span>
+                                <input
+                                  type="text"
+                                  required
+                                  value={expense.description}
+                                  onChange={(e) => handleExpenseChange(idx, 'description', e.target.value)}
+                                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                />
+                              </label>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.expenseAmount} <span className="text-red-500">*</span></span>
+                                  <input
+                                    type="number"
+                                    required
+                                    min="0.01"
+                                    step="0.01"
+                                    value={expense.amount}
+                                    onChange={(e) => handleExpenseChange(idx, 'amount', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  />
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-medium text-gray-700">{t.expenseNotes} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <input
+                                    type="text"
+                                    value={expense.notes}
+                                    onChange={(e) => handleExpenseChange(idx, 'notes', e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {formData.expenses.length < MAX_EXPENSES ? (
+                          <button
+                            type="button"
+                            onClick={addExpense}
+                            className="w-full py-2.5 px-4 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm font-medium"
+                          >
+                            + {t.addExpense}
+                          </button>
+                        ) : (
+                          <p className="text-xs text-center text-gray-500">{t.maxExpensesReached}</p>
+                        )}
+
+                        {/* Total */}
+                        <div className="bg-[var(--primary)] text-white p-4 rounded-lg flex justify-between items-center">
+                          <span className="font-semibold">{t.totalAmount}:</span>
+                          <span className="text-xl font-bold">${totalAmount.toFixed(2)}</span>
+                        </div>
+
+                        {/* Payment Preference */}
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-gray-700">{t.paymentPreference}</span>
+                          <div className="flex flex-wrap gap-3">
+                            {[
+                              { value: 'check', label: t.paymentCheck },
+                              { value: 'credit', label: t.paymentCredit },
+                              { value: 'deposit', label: t.paymentDeposit },
+                            ].map(option => (
+                              <label key={option.value} className="flex items-center space-x-2">
+                                <input
+                                  type="radio"
+                                  name="paymentPreference"
+                                  value={option.value}
+                                  checked={formData.paymentPreference === option.value}
+                                  onChange={(e) => handleInputChange('paymentPreference', e.target.value)}
+                                  className="text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-700">{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Urgency */}
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-gray-700">{t.urgency}</span>
+                          <div className="flex gap-3">
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name="urgency"
+                                value="normal"
+                                checked={formData.urgency === 'normal'}
+                                onChange={(e) => handleInputChange('urgency', e.target.value)}
+                                className="text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700">{t.urgencyNormal}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name="urgency"
+                                value="urgent"
+                                checked={formData.urgency === 'urgent'}
+                                onChange={(e) => handleInputChange('urgency', e.target.value)}
+                                className="text-blue-600 focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700 flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+                                {t.urgencyUrgent}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {sectionError && currentSection === 2 && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-700">{sectionError}</p>
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                        >
+                          {t.continue}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section 3: Attachments */}
+                  {currentSection === 3 && (
+                    <div className="space-y-6">
+                      <SectionHeader
+                        title={t.attachmentsTitle}
+                        sectionNumber={3}
+                        totalSections={totalSections}
+                      />
+
+                      <div className="space-y-4">
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                          <p className="text-sm text-gray-700">{t.attachmentsIntro}</p>
+                        </div>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700">{t.uploadReceipts}</span>
+                          <p className="text-xs text-[var(--muted)] mb-2">{t.uploadHelper}</p>
+                          {receiptFiles.length < MAX_FILES && (
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              multiple
+                              onChange={handleFileAdd}
+                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                          )}
+                        </label>
+
+                        {receiptFiles.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium text-gray-700">{receiptFiles.length} {t.filesSelected}</p>
+                            {receiptFiles.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                  </svg>
+                                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                                  <span className="text-xs text-gray-400 flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeFile(idx)}
+                                  className="text-red-500 hover:text-red-700 text-xs font-medium ml-2 flex-shrink-0"
+                                >
+                                  {t.removeExpense}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {receiptFiles.length >= MAX_FILES && (
+                          <p className="text-xs text-center text-gray-500">{t.maxFilesReached}</p>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
+                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                        >
+                          {t.continue}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section 4: Review & Sign */}
+                  {currentSection === 4 && (
+                    <div className="space-y-6">
+                      <SectionHeader
+                        title={t.reviewTitle}
+                        sectionNumber={4}
+                        totalSections={totalSections}
+                      />
+
+                      <div className="space-y-4">
+                        <p className="text-sm text-gray-600">{t.reviewSummary}</p>
+
+                        {/* Tenant Info Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewTenantInfo}</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div><span className="text-gray-500">{t.tenantName}:</span></div>
+                            <div className="font-medium">{formData.tenantName}</div>
+                            <div><span className="text-gray-500">{t.building}:</span></div>
+                            <div className="font-medium">{formData.buildingAddress}</div>
+                            <div><span className="text-gray-500">{t.unit}:</span></div>
+                            <div className="font-medium">{formData.unitNumber}</div>
+                            <div><span className="text-gray-500">{t.phone}:</span></div>
+                            <div className="font-medium">{formData.phone}</div>
+                            <div><span className="text-gray-500">{t.email}:</span></div>
+                            <div className="font-medium">{formData.email}</div>
+                          </div>
+                        </div>
+
+                        {/* Expenses Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewExpenses}</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b border-gray-300">
+                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseDate}</th>
+                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseCategory}</th>
+                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseDescription}</th>
+                                  <th className="text-right py-1 text-gray-500">{t.expenseAmount}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {formData.expenses.map((exp, idx) => (
+                                  <tr key={idx} className="border-b border-gray-200">
+                                    <td className="py-1 pr-2">{exp.date}</td>
+                                    <td className="py-1 pr-2">{exp.category ? t[expenseCategories.find(c => c.value === exp.category)?.labelKey || ''] || exp.category : ''}</td>
+                                    <td className="py-1 pr-2">{exp.description}</td>
+                                    <td className="py-1 text-right font-medium">${parseFloat(exp.amount || '0').toFixed(2)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr className="font-bold">
+                                  <td colSpan={3} className="py-2 text-right">{t.totalAmount}:</td>
+                                  <td className="py-2 text-right">${totalAmount.toFixed(2)}</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Payment & Urgency */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div><span className="text-gray-500">{t.reviewPayment}:</span></div>
+                            <div className="font-medium">
+                              {formData.paymentPreference === 'check' ? t.paymentCheck :
+                               formData.paymentPreference === 'credit' ? t.paymentCredit :
+                               formData.paymentPreference === 'deposit' ? t.paymentDeposit : '—'}
+                            </div>
+                            <div><span className="text-gray-500">{t.reviewUrgency}:</span></div>
+                            <div className="font-medium">
+                              {formData.urgency === 'urgent' ? (
+                                <span className="text-red-600 flex items-center gap-1">
+                                  <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
+                                  {t.urgencyUrgent}
+                                </span>
+                              ) : t.urgencyNormal}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Attachments Summary */}
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewAttachments}</h4>
+                          {receiptFiles.length > 0 ? (
+                            <ul className="text-sm text-gray-700 space-y-1">
+                              {receiptFiles.map((file, idx) => (
+                                <li key={idx} className="flex items-center gap-1">
+                                  <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  {file.name}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-gray-500">{t.noAttachments}</p>
+                          )}
+                        </div>
+
+                        {/* Signature */}
+                        <div className="space-y-2">
+                          <SignatureCanvasComponent
+                            label={t.signature}
+                            value={signature}
+                            onSave={(dataUrl) => {
+                              setSignature(dataUrl);
+                              setSignatureError('');
+                            }}
+                          />
+                          {signatureError && (
+                            <p className="text-sm text-red-600">{signatureError}</p>
+                          )}
+                        </div>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-gray-700">{t.signatureDate} <span className="text-red-500">*</span></span>
+                          <input
+                            type="date"
+                            required
+                            value={formData.dateSubmitted}
+                            readOnly
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-gray-100"
+                          />
+                        </label>
+
+                        {/* Final Confirm */}
+                        <label className="flex items-start space-x-2">
+                          <input
+                            type="checkbox"
+                            required
+                            checked={formData.finalConfirm}
+                            onChange={(e) => handleInputChange('finalConfirm', e.target.checked)}
+                            className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{t.finalConfirm}</span>
+                        </label>
+
+                        {submitError && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <p className="text-sm text-red-700">{submitError}</p>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+                        >
+                          {isSubmitting ? t.submitting : t.submit}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </form>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </>
+  );
+}
+
+export default function ReimbursementForm() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+        <p className="text-[var(--muted)]">Loading...</p>
+      </div>
+    }>
+      <ReimbursementFormContent />
+    </Suspense>
+  );
+}

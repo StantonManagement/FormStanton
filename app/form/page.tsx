@@ -14,12 +14,69 @@ import Footer from '@/components/Footer';
 import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import InsuranceUpdateModal from '@/components/InsuranceUpdateModal';
+import BuildingAutocomplete from '@/components/BuildingAutocomplete';
+
+function LanguageLanding({ onSelect }: { onSelect: (lang: Language) => void }) {
+  return (
+    <>
+      <main className="min-h-screen bg-[var(--paper)]">
+        <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <img
+                src="/Stanton-logo.PNG"
+                alt="Stanton Management"
+                className="max-w-[280px] w-full h-auto"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+            <h1 className="font-serif text-2xl sm:text-3xl text-[var(--primary)] mb-1">Tenant Onboarding Form</h1>
+            <p className="text-[var(--muted)] text-sm tracking-wide uppercase">Stanton Management LLC</p>
+          </div>
+
+          <div className="bg-white shadow-sm border border-[var(--border)] rounded-sm overflow-hidden mb-8 p-6 sm:p-8">
+            <p className="text-sm text-[var(--ink)] leading-relaxed mb-6">
+              As you may know, Stanton Management is now managing your building. We want to introduce you to a few new changes and requirements that may have not been required by the prior owner/manager.
+            </p>
+            <p className="text-center text-xs text-[var(--muted)] uppercase tracking-wider mb-4">
+              Please select your language to continue:
+            </p>
+            <div className="space-y-3">
+              <button onClick={() => onSelect('en')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continue in English
+              </button>
+              <button onClick={() => onSelect('es')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continuar en Español
+              </button>
+              <button onClick={() => onSelect('pt')} className="w-full bg-[var(--primary)] text-white py-3.5 px-6 rounded-sm hover:bg-[var(--primary-light)] transition-colors font-medium text-base">
+                Continuar em Português
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-xs text-[var(--muted)]">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>Your information is transmitted securely</span>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
 
 function FormContent() {
   const searchParams = useSearchParams();
   const langParam = searchParams.get('lang');
-  const initialLang = (langParam === 'es' || langParam === 'pt') ? langParam : 'en';
-  const [language, setLanguage] = useState<Language>(initialLang);
+  const hasLangParam = langParam === 'en' || langParam === 'es' || langParam === 'pt';
+  const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
+  const [showForm, setShowForm] = useState(hasLangParam);
+
+  if (!showForm) {
+    return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
+  }
   const MAX_PETS = 5;
   const emptyPet = {
     petType: '',
@@ -496,24 +553,13 @@ function FormContent() {
 
                         <label className="block">
                           <span className="text-sm font-medium text-gray-700">{t.building} <span className="text-red-500">*</span></span>
-                          <div className="relative mt-1">
-                            <select
-                              required
-                              value={formData.buildingAddress}
-                              onChange={(e) => { handleInputChange('buildingAddress', e.target.value); handleInputChange('unitNumber', ''); }}
-                              className="block w-full appearance-none rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 pr-10 text-base focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                            >
-                              <option value="">{language === 'en' ? '-- Select your building --' : language === 'es' ? '-- Seleccione su edificio --' : '-- Selecione seu prédio --'}</option>
-                              {buildings.map(building => (
-                                <option key={building} value={building}>{building}</option>
-                              ))}
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                              <svg className="h-5 w-5 text-[var(--muted)]" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
+                          <BuildingAutocomplete
+                            value={formData.buildingAddress}
+                            onChange={(val) => { handleInputChange('buildingAddress', val); handleInputChange('unitNumber', ''); }}
+                            buildings={buildings}
+                            placeholder={language === 'en' ? '-- Search your building --' : language === 'es' ? '-- Busque su edificio --' : '-- Pesquise seu prédio --'}
+                            required
+                          />
                         </label>
 
                         <label className="block">
@@ -1102,9 +1148,9 @@ function FormContent() {
 
                 <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
                   <p className="text-sm font-semibold text-amber-800">
-                    {language === 'en' ? '⚠️ Each tenant is limited to 1 parking permit. If you need a 2nd permit, contact the office — availability is first-come, first-served and not all buildings allow a 2nd permit.' :
-                     language === 'es' ? '⚠️ Cada inquilino tiene derecho a 1 permiso de estacionamiento. Si necesita un 2do permiso, contacte la oficina — la disponibilidad es por orden de llegada y no todos los edificios permiten un 2do permiso.' :
-                     '⚠️ Cada inquilino tem direito a 1 autorização de estacionamento. Se precisar de uma 2ª autorização, entre em contato com o escritório — a disponibilidade é por ordem de chegada e nem todos os prédios permitem uma 2ª autorização.'}
+                    {language === 'en' ? '⚠️ Each tenant is entitled to 1 parking space. To be fair to everyone, additional spaces will only become available after all tenants in your building have had the opportunity to claim their first space. After that, extra spaces are first-come, first-served — contact the office to request one.' :
+                     language === 'es' ? '⚠️ Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con todos, los espacios adicionales solo estarán disponibles después de que todos los inquilinos de su edificio hayan tenido la oportunidad de reclamar su primer espacio. Después de eso, los espacios adicionales se ofrecen por orden de llegada — contacte la oficina para solicitar uno.' :
+                     '⚠️ Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos, vagas adicionais só estarão disponíveis após todos os inquilinos do seu prédio terem tido a oportunidade de reivindicar sua primeira vaga. Depois disso, as vagas extras são por ordem de chegada — entre em contato com o escritório para solicitar uma.'}
                   </p>
                 </div>
 

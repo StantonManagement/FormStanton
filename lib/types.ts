@@ -89,3 +89,67 @@ export interface Submission {
   ip_address: string;
   user_agent: string;
 }
+
+// Reimbursement Form Types
+
+export interface ExpenseEntry {
+  date: string;
+  category: string;
+  description: string;
+  amount: string;
+  notes: string;
+}
+
+export const emptyExpenseEntry: ExpenseEntry = {
+  date: '',
+  category: '',
+  description: '',
+  amount: '',
+  notes: '',
+};
+
+export interface ReimbursementFormData {
+  tenantName: string;
+  buildingAddress: string;
+  unitNumber: string;
+  phone: string;
+  email: string;
+  dateSubmitted: string;
+  expenses: ExpenseEntry[];
+  totalAmount: number;
+  paymentPreference: string;
+  urgency: string;
+  finalConfirm: boolean;
+}
+
+export interface ReimbursementSubmission {
+  id: string;
+  created_at: string;
+  language: string;
+  tenant_name: string;
+  building_address: string;
+  unit_number: string;
+  phone: string;
+  email: string;
+  date_submitted: string;
+  expenses: {
+    date: string;
+    category: string;
+    description: string;
+    amount: number;
+    notes: string;
+  }[];
+  total_amount: number;
+  payment_preference: string;
+  urgency: string;
+  receipt_files: string[] | null;
+  tenant_signature: string | null;
+  signature_date: string | null;
+  status: 'pending' | 'approved' | 'denied';
+  office_notes: string | null;
+  office_amount: number | null;
+  processed_by: string | null;
+  processed_date: string | null;
+  ip_address: string;
+  user_agent: string;
+}

@@ -40,7 +40,7 @@ Your policy must show:
     
     parkingPolicyHeading: "PARKING PERMITS & FEES",
     parkingIntro: `Parking is $50 per vehicle per month, added to your rent.
-Maximum 3 vehicles per household.`,
+Each tenant is entitled to 1 parking space. To be fair to everyone, additional spaces will only become available after all tenants in your building have had the opportunity to claim their first space. After that, extra spaces are first-come, first-served.`,
     parkingStepsHeading: "To Get Your Parking Permit:",
     parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by February 18th",
     parkingStep1Text: "Fill out this form.",
@@ -109,7 +109,7 @@ Su póliza debe mostrar:
     
     parkingPolicyHeading: "PERMISOS Y TARIFAS DE ESTACIONAMIENTO",
     parkingIntro: `El estacionamiento cuesta $50 por vehículo por mes, agregado a su alquiler.
-Máximo 3 vehículos por hogar.`,
+Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con todos, los espacios adicionales solo estarán disponibles después de que todos los inquilinos de su edificio hayan tenido la oportunidad de reclamar su primer espacio. Después de eso, los espacios adicionales se ofrecen por orden de llegada.`,
     parkingStepsHeading: "Para Obtener Su Permiso:",
     parkingStep1: "Paso 1 - Envíe la información de su vehículo antes del 18 de febrero",
     parkingStep1Text: "Complete este formulario.",
@@ -178,7 +178,7 @@ Sua apólice deve mostrar:
     
     parkingPolicyHeading: "AUTORIZAÇÕES E TAXAS DE ESTACIONAMENTO",
     parkingIntro: `O estacionamento custa $50 por veículo por mês, adicionado ao seu aluguel.
-Máximo 3 veículos por residência.`,
+Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos, vagas adicionais só estarão disponíveis após todos os inquilinos do seu prédio terem tido a oportunidade de reivindicar sua primeira vaga. Depois disso, as vagas extras são por ordem de chegada.`,
     parkingStepsHeading: "Para Obter Sua Autorização:",
     parkingStep1: "Passo 1 - Envie as informações do veículo até 18 de fevereiro",
     parkingStep1Text: "Preencha este formulário.",
