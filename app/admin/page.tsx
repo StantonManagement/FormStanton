@@ -45,6 +45,7 @@ interface Submission {
   vehicle_plate?: string;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
+  additional_vehicles?: { vehicle_make: string; vehicle_model: string; vehicle_year: number | string; vehicle_color: string; vehicle_plate: string; requested_at: string }[] | null;
   pet_addendum_file?: string;
   vehicle_addendum_file?: string;
   combined_pdf?: string;

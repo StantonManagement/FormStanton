@@ -42,6 +42,7 @@ interface Submission {
   vehicle_plate?: string;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
+  additional_vehicles?: { vehicle_make: string; vehicle_model: string; vehicle_year: number | string; vehicle_color: string; vehicle_plate: string; requested_at: string }[] | null;
   pet_addendum_file?: string;
   vehicle_addendum_file?: string;
   combined_pdf?: string;
@@ -304,6 +305,43 @@ export default function SubmissionDetailModal({ submission, onClose }: Submissio
                   </a>
                 )}
               </div>
+
+              {submission.additional_vehicles && submission.additional_vehicles.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-md font-semibold text-orange-700 mb-3">Additional Vehicles (Waitlisted)</h4>
+                  {submission.additional_vehicles.map((av, index) => (
+                    <div key={index} className="bg-orange-50 border border-orange-200 rounded p-3 mb-3">
+                      <p className="text-sm font-semibold text-orange-800 mb-2">Additional Vehicle #{index + 1}</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-sm text-gray-600">Make</p>
+                          <p className="font-medium">{av.vehicle_make}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Model</p>
+                          <p className="font-medium">{av.vehicle_model}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Year</p>
+                          <p className="font-medium">{av.vehicle_year}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Color</p>
+                          <p className="font-medium">{av.vehicle_color}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">License Plate</p>
+                          <p className="font-medium">{av.vehicle_plate}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Requested At</p>
+                          <p className="font-medium">{new Date(av.requested_at).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 

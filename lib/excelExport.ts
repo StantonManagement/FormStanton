@@ -40,6 +40,7 @@ interface Submission {
   vehicle_plate?: string;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
+  additional_vehicles?: { vehicle_make: string; vehicle_model: string; vehicle_year: number | string; vehicle_color: string; vehicle_plate: string; requested_at: string }[] | null;
   pet_addendum_file?: string;
   vehicle_addendum_file?: string;
   combined_pdf?: string;
@@ -100,6 +101,13 @@ export function exportToExcel(submissions: Submission[]) {
       'Vehicle Color': sub.vehicle_color || '',
       'Vehicle Plate': sub.vehicle_plate || '',
       'Vehicle Signature Date': sub.vehicle_signature_date || '',
+      '# Additional Vehicles': sub.additional_vehicles?.length || 0,
+      'Additional Vehicles': sub.additional_vehicles && sub.additional_vehicles.length > 0
+        ? sub.additional_vehicles.map((av, i) => `${i + 1}. ${av.vehicle_year} ${av.vehicle_make} ${av.vehicle_model} (${av.vehicle_color}) - ${av.vehicle_plate}`).join('; ')
+        : '',
+      'Additional Vehicle Requested At': sub.additional_vehicles && sub.additional_vehicles.length > 0
+        ? sub.additional_vehicles.map((av, i) => `${i + 1}. ${new Date(av.requested_at).toLocaleString()}`).join('; ')
+        : '',
       
       'Pet Addendum': sub.pet_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.pet_addendum_file)}` : '',
       'Vehicle Addendum': sub.vehicle_addendum_file ? `${window.location.origin}/api/admin/file?path=${encodeURIComponent(sub.vehicle_addendum_file)}` : '',
@@ -143,6 +151,9 @@ export function exportToExcel(submissions: Submission[]) {
     { wch: 15 }, // Vehicle Color
     { wch: 15 }, // Vehicle Plate
     { wch: 15 }, // Vehicle Signature Date
+    { wch: 8 },  // # Additional Vehicles
+    { wch: 60 }, // Additional Vehicles
+    { wch: 40 }, // Additional Vehicle Requested At
     { wch: 50 }, // Pet Addendum
     { wch: 50 }, // Vehicle Addendum
     { wch: 40 }, // Submission ID

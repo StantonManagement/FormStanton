@@ -138,6 +138,16 @@ export async function POST(request: NextRequest) {
         vehicle_plate: formDataJson.vehiclePlate || null,
         vehicle_signature: vehicleSignaturePath,
         vehicle_signature_date: formDataJson.vehicleSignatureDate || null,
+        additional_vehicles: formDataJson.additionalVehicles && formDataJson.additionalVehicles.length > 0
+          ? formDataJson.additionalVehicles.map((av: any) => ({
+              vehicle_make: av.vehicleMake || null,
+              vehicle_model: av.vehicleModel || null,
+              vehicle_year: av.vehicleYear ? parseInt(av.vehicleYear) : null,
+              vehicle_color: av.vehicleColor || null,
+              vehicle_plate: av.vehiclePlate || null,
+              requested_at: new Date().toISOString(),
+            }))
+          : null,
         ip_address: ip,
         user_agent: userAgent,
       });

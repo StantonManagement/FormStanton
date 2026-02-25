@@ -109,6 +109,8 @@ function FormContent() {
     vehicleYear: '',
     vehicleColor: '',
     vehiclePlate: '',
+    wantsAdditionalVehicle: null as boolean | null,
+    additionalVehicles: [] as { vehicleMake: string; vehicleModel: string; vehicleYear: string; vehicleColor: string; vehiclePlate: string }[],
     vehicleSignatureDate: new Date().toISOString().split('T')[0],
     finalConfirm: false,
   });
@@ -259,6 +261,13 @@ function FormContent() {
           setSectionError(t.incompleteVehicleEntry);
           return false;
         }
+        // Validate additional vehicles
+        for (const av of formData.additionalVehicles) {
+          if (!av.vehicleMake || !av.vehicleModel || !av.vehicleYear || !av.vehicleColor || !av.vehiclePlate) {
+            setSectionError(t.incompleteVehicleEntry);
+            return false;
+          }
+        }
         if (!signatures.vehicle) {
           setSectionError(t.signatureRequired);
           return false;
@@ -315,6 +324,15 @@ function FormContent() {
         setIsSubmitting(false);
         setCurrentSection(4);
         return;
+      }
+      // Validate additional vehicles
+      for (const av of formData.additionalVehicles) {
+        if (!av.vehicleMake || !av.vehicleModel || !av.vehicleYear || !av.vehicleColor || !av.vehiclePlate) {
+          setSubmitError(t.incompleteVehicleEntry);
+          setIsSubmitting(false);
+          setCurrentSection(4);
+          return;
+        }
       }
     }
 
@@ -1244,6 +1262,164 @@ function FormContent() {
                     <div className="bg-blue-50 p-3 rounded border border-blue-200">
                       <p className="text-sm text-gray-700">{t.vehicleNotice}</p>
                     </div>
+                  </div>
+                )}
+
+                {formData.hasVehicle === true && (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded">
+                      <p className="text-sm font-medium text-gray-700">{t.additionalVehicleQuestion}</p>
+                      <div className="flex space-x-4 mt-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            name="wantsAdditionalVehicle"
+                            checked={formData.wantsAdditionalVehicle === true}
+                            onChange={() => {
+                              handleInputChange('wantsAdditionalVehicle', true);
+                              if (formData.additionalVehicles.length === 0) {
+                                handleInputChange('additionalVehicles', [{ vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' }]);
+                              }
+                            }}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{t.yes}</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            name="wantsAdditionalVehicle"
+                            checked={formData.wantsAdditionalVehicle === false}
+                            onChange={() => {
+                              handleInputChange('wantsAdditionalVehicle', false);
+                              handleInputChange('additionalVehicles', []);
+                            }}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{t.no}</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {formData.wantsAdditionalVehicle === true && (
+                      <div className="space-y-4">
+                        <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
+                          <p className="text-sm text-amber-800">{t.additionalVehicleNotice}</p>
+                        </div>
+
+                        {formData.additionalVehicles.map((av, index) => (
+                          <div key={index} className="space-y-3 bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <div className="flex justify-between items-center">
+                              <h4 className="font-semibold text-gray-900 text-sm">{t.additionalVehicle} #{index + 1}</h4>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = formData.additionalVehicles.filter((_, i) => i !== index);
+                                  handleInputChange('additionalVehicles', updated);
+                                  if (updated.length === 0) {
+                                    handleInputChange('wantsAdditionalVehicle', false);
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                              >
+                                {t.removeVehicle}
+                              </button>
+                            </div>
+                            <label className="block">
+                              <span className="text-sm font-medium text-gray-700">{t.vehicleMake} <span className="text-red-500">*</span></span>
+                              <input
+                                type="text"
+                                required
+                                value={av.vehicleMake}
+                                onChange={(e) => {
+                                  const updated = [...formData.additionalVehicles];
+                                  updated[index] = { ...updated[index], vehicleMake: e.target.value };
+                                  handleInputChange('additionalVehicles', updated);
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-gray-700">{t.vehicleModel} <span className="text-red-500">*</span></span>
+                              <input
+                                type="text"
+                                required
+                                value={av.vehicleModel}
+                                onChange={(e) => {
+                                  const updated = [...formData.additionalVehicles];
+                                  updated[index] = { ...updated[index], vehicleModel: e.target.value };
+                                  handleInputChange('additionalVehicles', updated);
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-gray-700">{t.vehicleYear} <span className="text-red-500">*</span></span>
+                              <input
+                                type="number"
+                                required
+                                min="1900"
+                                max="2030"
+                                value={av.vehicleYear}
+                                onChange={(e) => {
+                                  const updated = [...formData.additionalVehicles];
+                                  updated[index] = { ...updated[index], vehicleYear: e.target.value };
+                                  handleInputChange('additionalVehicles', updated);
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-gray-700">{t.vehicleColor} <span className="text-red-500">*</span></span>
+                              <input
+                                type="text"
+                                required
+                                value={av.vehicleColor}
+                                onChange={(e) => {
+                                  const updated = [...formData.additionalVehicles];
+                                  updated[index] = { ...updated[index], vehicleColor: e.target.value };
+                                  handleInputChange('additionalVehicles', updated);
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="text-sm font-medium text-gray-700">{t.vehiclePlate} <span className="text-red-500">*</span></span>
+                              <input
+                                type="text"
+                                required
+                                value={av.vehiclePlate}
+                                onChange={(e) => {
+                                  const updated = [...formData.additionalVehicles];
+                                  updated[index] = { ...updated[index], vehiclePlate: e.target.value };
+                                  handleInputChange('additionalVehicles', updated);
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              />
+                            </label>
+                          </div>
+                        ))}
+
+                        {formData.additionalVehicles.length < 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleInputChange('additionalVehicles', [
+                                ...formData.additionalVehicles,
+                                { vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' },
+                              ]);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
+                          >
+                            <span>+ {t.addAnotherVehicle}</span>
+                          </button>
+                        )}
+
+                        {formData.additionalVehicles.length >= 2 && (
+                          <p className="text-sm text-gray-500 italic">{t.maxVehiclesReached}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 

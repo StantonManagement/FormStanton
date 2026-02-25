@@ -35,6 +35,7 @@ create table submissions (
   vehicle_plate text,
   vehicle_signature text,
   vehicle_signature_date date,
+  additional_vehicles jsonb,
   
   -- Generated documents
   pet_addendum_file text,

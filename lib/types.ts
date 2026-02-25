@@ -22,6 +22,22 @@ export const emptyPetEntry: PetEntry = {
   petPhotoFile: null,
 };
 
+export interface VehicleEntry {
+  vehicleMake: string;
+  vehicleModel: string;
+  vehicleYear: string;
+  vehicleColor: string;
+  vehiclePlate: string;
+}
+
+export const emptyVehicleEntry: VehicleEntry = {
+  vehicleMake: '',
+  vehicleModel: '',
+  vehicleYear: '',
+  vehicleColor: '',
+  vehiclePlate: '',
+};
+
 export interface FormData {
   fullName: string;
   phone: string;
@@ -40,7 +56,18 @@ export interface FormData {
   vehicleYear: string;
   vehicleColor: string;
   vehiclePlate: string;
+  wantsAdditionalVehicle: boolean | null;
+  additionalVehicles: VehicleEntry[];
   finalConfirm: boolean;
+}
+
+export interface SubmissionVehicle {
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number | string;
+  vehicle_color: string;
+  vehicle_plate: string;
+  requested_at: string;
 }
 
 export interface SubmissionPet {
@@ -83,6 +110,7 @@ export interface Submission {
   vehicle_plate: string | null;
   vehicle_signature: string | null;
   vehicle_signature_date: string | null;
+  additional_vehicles: SubmissionVehicle[] | null;
   pet_addendum_file: string | null;
   vehicle_addendum_file: string | null;
   combined_pdf: string | null;

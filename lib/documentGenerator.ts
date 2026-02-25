@@ -251,6 +251,33 @@ export async function generateVehicleAddendumPdf(
   }
   y -= 20;
 
+  // Additional vehicles
+  const additionalVehicles = formData.additionalVehicles || formData.additional_vehicles || [];
+  if (additionalVehicles.length > 0) {
+    for (let i = 0; i < additionalVehicles.length; i++) {
+      const av = additionalVehicles[i];
+      if (y < 160) { page = pdfDoc.addPage([612, 792]); y = 742; }
+      page.drawText(`ADDITIONAL VEHICLE #${i + 1} (waitlisted):`, { x: margin, y, size: 12, font: fontBold, color: rgb(0.6, 0.3, 0.0) });
+      y -= 20;
+
+      const avFields = [
+        { label: 'Make:', value: av.vehicleMake || av.vehicle_make || '' },
+        { label: 'Model:', value: av.vehicleModel || av.vehicle_model || '' },
+        { label: 'Year:', value: String(av.vehicleYear || av.vehicle_year || '') },
+        { label: 'Color:', value: av.vehicleColor || av.vehicle_color || '' },
+        { label: 'License Plate:', value: av.vehiclePlate || av.vehicle_plate || '' },
+      ];
+
+      for (const f of avFields) {
+        if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+        page.drawText(`${f.label}`, { x: margin + 10, y, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+        page.drawText(f.value, { x: margin + 140, y, size: 11, font: fontBold, color: rgb(0.4, 0.2, 0.0) });
+        y -= 18;
+      }
+      y -= 15;
+    }
+  }
+
   if (signatureBase64) {
     if (y < 100) { page = pdfDoc.addPage([612, 792]); y = 742; }
     page.drawText('Signature:', { x: margin, y, size: 10, font: fontBold });
