@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { translations, Language } from '@/lib/translations';
-import { buildings, buildingToLLC, buildingsWithParking, buildingUnits } from '@/lib/buildings';
+import { buildings, buildingToLLC, buildingsWithParking, buildingUnits, newAcquisitionBuildings } from '@/lib/buildings';
 import { PET_ADDENDUM, VEHICLE_ADDENDUM } from '@/lib/addendums';
 import { policyContent, petRentTable, llcTable, parkingFeeTable } from '@/lib/policyContent';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
@@ -142,6 +142,7 @@ function FormContent() {
 
   const t = translations[language];
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
+  const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -461,29 +462,35 @@ function FormContent() {
 
             <form onSubmit={handleSubmit} className="p-6 sm:p-8">
               
-              {/* Intro Section */}
-              <div className="mb-8">
-                <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
-                  <p className="text-sm text-[var(--ink)] mb-3 leading-relaxed">{policyContent[language].introText}</p>
-                  <p className="font-semibold text-[var(--primary)] mb-2 text-sm">{policyContent[language].introHeading}</p>
-                  <ul className="list-disc list-inside space-y-2 text-sm text-[var(--ink)]">
-                    {t.introItems.map((item, idx) => (
-                      <li key={idx} dangerouslySetInnerHTML={{ __html: item }} />
-                    ))}
-                  </ul>
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => setIsInsuranceModalOpen(true)}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
-                    >
-                      {language === 'en' ? 'Already submitted? Upload insurance documents here' :
-                       language === 'es' ? '¿Ya envió el formulario? Suba documentos de seguro aquí' :
-                       'Já enviou? Carregar documentos de seguro aqui'}
-                    </button>
+              {/* Intro Section - Shows after building selection */}
+              {formData.buildingAddress && (
+                <div className="mb-8">
+                  <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
+                    <p className="text-sm text-[var(--ink)] mb-3 leading-relaxed">
+                      {isNewAcquisition ? policyContent[language].introText : policyContent[language].existingTenantIntroText}
+                    </p>
+                    <p className="font-semibold text-[var(--primary)] mb-2 text-sm">
+                      {isNewAcquisition ? policyContent[language].introHeading : policyContent[language].existingTenantIntroHeading}
+                    </p>
+                    <ul className="list-disc list-inside space-y-2 text-sm text-[var(--ink)]">
+                      {(isNewAcquisition ? t.introItems : t.existingTenantIntroItems).map((item, idx) => (
+                        <li key={idx} dangerouslySetInnerHTML={{ __html: item }} />
+                      ))}
+                    </ul>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setIsInsuranceModalOpen(true)}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                      >
+                        {language === 'en' ? 'Already submitted? Upload insurance documents here' :
+                         language === 'es' ? '¿Ya envió el formulario? Suba documentos de seguro aquí' :
+                         'Já enviou? Carregar documentos de seguro aqui'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <AnimatePresence mode="wait">
                 <motion.div
@@ -1165,6 +1172,10 @@ function FormContent() {
                     rows={parkingFeeTable}
                     className="mb-0"
                   />
+                </div>
+
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 sm:p-4 rounded">
+                  <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{policyContent[language].parkingNotice}</p>
                 </div>
 
                 <div className="bg-red-50 border-l-4 border-red-600 p-3 sm:p-4 rounded space-y-2">

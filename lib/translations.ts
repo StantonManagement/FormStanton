@@ -6,7 +6,13 @@ export const translations = {
     introItems: [
       "<strong>Pet registration</strong> - All dogs and cats must be registered. Pet rent is $20-$50 per month per pet.",
       "<strong>Renters insurance</strong> - This is now required. It protects you and your neighbors. Cost is about $10-20 per month.",
-      "<strong>Parking permits</strong> - We are issuing new parking permits. Each tenant is entitled to 1 parking space. Additional spaces will only be available after everyone in your building has had the chance to get their first space — then first-come, first-served. Old permits expire March 19th, 2026. Parking costs $50 per car per month."
+      "<strong>Parking permits</strong> - We are issuing new parking permits. Each tenant is entitled to 1 parking space. Additional spaces will only be available after everyone in your building has had the chance to get their first space — then first-come, first-served. Old permits expire March 26, 2026. Parking costs $50 per car per month."
+    ],
+    
+    existingTenantIntroItems: [
+      "<strong>Pet registration</strong> - All dogs and cats must be registered. Pet rent is $20-$50 per month per pet. Birds, fish, hamsters or any other pets in a tank or cage do not need to be registered.",
+      "<strong>Renters insurance</strong> - Now required portfolio-wide. It protects you and your neighbors. Cost is about $10-20 per month.",
+      "<strong>Parking permits</strong> - We are issuing new 2026 parking permits. The old permits will not work after March 26, 2026. Parking costs $50 per car per month."
     ],
     
     yes: "Yes",
@@ -64,7 +70,7 @@ export const translations = {
     vehicleYear: "Vehicle Year",
     vehicleColor: "Vehicle Color",
     vehiclePlate: "License Plate Number",
-    vehicleNotice: "Parking costs $50 per vehicle per month. New permits will be available for pickup March 9-13. Old permits expire March 19th, 2026.",
+    vehicleNotice: "Parking costs $50 per vehicle per month. New permits will be available for pickup March 16-20. Old permits expire March 26, 2026.",
     vehicleAgree: "I agree to the Vehicle and Parking Addendum terms",
     additionalVehicleQuestion: "Would you like to request a parking space for an additional vehicle?",
     additionalVehicleNotice: "Additional parking spaces are only available after all tenants in your building have had the opportunity to claim their first space. These are first-come, first-served. By submitting now, you are reserving your place in line.",
@@ -75,7 +81,7 @@ export const translations = {
     maxVehiclesReached: "Maximum of 3 vehicles allowed",
     vehicleNone: "If you get a vehicle in the future, contact the office to register for a parking permit.",
     noParkingMessage: "Your building does not have off-street parking managed by Stanton Management. You may skip this section.",
-    vehicleDueToday: "Vehicle information is due February 25th, 2026.",
+    vehicleDueToday: "Vehicle information is due March 3rd, 2026.",
     permitRequiresOtherDocs: "You will not be able to pick up your parking permit until your pet registration and renters insurance are completed. Please complete those sections after submitting your vehicle information.",
     
     finalConfirm: "By submitting this form, I confirm all information is accurate.",
@@ -88,7 +94,13 @@ export const translations = {
     introItems: [
       "<strong>Registro de mascotas</strong> - Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20-$50 por mes por mascota.",
       "<strong>Seguro de inquilino</strong> - Esto ahora es obligatorio. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10-20 por mes.",
-      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos. Cada inquilino tiene derecho a 1 espacio de estacionamiento. Los espacios adicionales solo estarán disponibles después de que todos en su edificio hayan tenido la oportunidad de obtener su primer espacio — luego por orden de llegada. Los permisos antiguos expiran el 19 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes."
+      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos. Cada inquilino tiene derecho a 1 espacio de estacionamiento. Los espacios adicionales solo estarán disponibles después de que todos en su edificio hayan tenido la oportunidad de obtener su primer espacio — luego por orden de llegada. Los permisos antiguos expiran el 26 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes."
+    ],
+    
+    existingTenantIntroItems: [
+      "<strong>Registro de mascotas</strong> - Todos los perros y gatos deben ser registrados. El alquiler de mascotas es de $20-$50 por mes por mascota. Pájaros, peces, hámsters o cualquier otra mascota en un tanque o jaula no necesitan ser registrados.",
+      "<strong>Seguro de inquilino</strong> - Ahora es obligatorio en toda la cartera. Lo protege a usted y a sus vecinos. El costo es aproximadamente $10-20 por mes.",
+      "<strong>Permisos de estacionamiento</strong> - Estamos emitiendo nuevos permisos de 2026. Los permisos antiguos no funcionarán después del 26 de marzo de 2026. El estacionamiento cuesta $50 por carro por mes."
     ],
     
     yes: "Sí",
@@ -146,7 +158,7 @@ export const translations = {
     vehicleYear: "Año del Vehículo",
     vehicleColor: "Color del Vehículo",
     vehiclePlate: "Número de Placa",
-    vehicleNotice: "El estacionamiento cuesta $50 por vehículo por mes. Los nuevos permisos estarán disponibles del 9 al 13 de marzo. Los permisos antiguos expiran el 19 de marzo de 2026.",
+    vehicleNotice: "El estacionamiento cuesta $50 por vehículo por mes. Los nuevos permisos estarán disponibles del 16 al 20 de marzo. Los permisos antiguos expiran el 26 de marzo de 2026.",
     vehicleAgree: "Acepto los términos del Anexo de Vehículo y Estacionamiento",
     additionalVehicleQuestion: "¿Le gustaría solicitar un espacio de estacionamiento para un vehículo adicional?",
     additionalVehicleNotice: "Los espacios de estacionamiento adicionales solo están disponibles después de que todos los inquilinos de su edificio hayan tenido la oportunidad de reclamar su primer espacio. Estos se ofrecen por orden de llegada. Al enviar ahora, está reservando su lugar en la fila.",
@@ -157,7 +169,7 @@ export const translations = {
     maxVehiclesReached: "Máximo de 3 vehículos permitidos",
     vehicleNone: "Si obtiene un vehículo en el futuro, contacte la oficina para registrarse para un permiso de estacionamiento.",
     noParkingMessage: "Su edificio no tiene estacionamiento fuera de la calle administrado por Stanton Management. Puede omitir esta sección.",
-    vehicleDueToday: "La información del vehículo vence el 25 de febrero de 2026.",
+    vehicleDueToday: "La información del vehículo vence el 3 de marzo de 2026.",
     permitRequiresOtherDocs: "No podrá recoger su permiso de estacionamiento hasta que se completen el registro de mascotas y el seguro de inquilino. Por favor complete esas secciones después de enviar su información de vehículo.",
     
     finalConfirm: "Al enviar este formulario, confirmo que toda la información es correcta.",
@@ -170,7 +182,13 @@ export const translations = {
     introItems: [
       "<strong>Registro de animais</strong> - Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20-$50 por mês por animal.",
       "<strong>Seguro de locatário</strong> - Isso agora é obrigatório. Protege você e seus vizinhos. O custo é aproximadamente $10-20 por mês.",
-      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações. Cada inquilino tem direito a 1 vaga de estacionamento. Vagas adicionais só estarão disponíveis após todos no seu prédio terem tido a oportunidade de obter sua primeira vaga — depois, por ordem de chegada. As autorizações antigas expiram em 19 de março de 2026. O estacionamento custa $50 por carro por mês."
+      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações. Cada inquilino tem direito a 1 vaga de estacionamento. Vagas adicionais só estarão disponíveis após todos no seu prédio terem tido a oportunidade de obter sua primeira vaga — depois, por ordem de chegada. As autorizações antigas expiram em 26 de março de 2026. O estacionamento custa $50 por carro por mês."
+    ],
+    
+    existingTenantIntroItems: [
+      "<strong>Registro de animais</strong> - Todos os cães e gatos devem ser registrados. O aluguel de animais é de $20-$50 por mês por animal. Pássaros, peixes, hamsters ou quaisquer outros animais em um tanque ou gaiola não precisam ser registrados.",
+      "<strong>Seguro de locatário</strong> - Agora é obrigatório em todo o portfólio. Protege você e seus vizinhos. O custo é aproximadamente $10-20 por mês.",
+      "<strong>Autorizações de estacionamento</strong> - Estamos emitindo novas autorizações de 2026. As autorizações antigas não funcionarão após 26 de março de 2026. O estacionamento custa $50 por carro por mês."
     ],
     
     yes: "Sim",
@@ -228,7 +246,7 @@ export const translations = {
     vehicleYear: "Ano do Veículo",
     vehicleColor: "Cor do Veículo",
     vehiclePlate: "Número da Placa",
-    vehicleNotice: "O estacionamento custa $50 por veículo por mês. As novas autorizações estarão disponíveis de 9 a 13 de março. As autorizações antigas expiram em 19 de março de 2026.",
+    vehicleNotice: "O estacionamento custa $50 por veículo por mês. As novas autorizações estarão disponíveis de 16 a 20 de março. As autorizações antigas expiram em 26 de março de 2026.",
     vehicleAgree: "Concordo com os termos do Anexo de Veículo e Estacionamento",
     additionalVehicleQuestion: "Gostaria de solicitar uma vaga de estacionamento para um veículo adicional?",
     additionalVehicleNotice: "Vagas de estacionamento adicionais só estão disponíveis após todos os inquilinos do seu prédio terem tido a oportunidade de reivindicar sua primeira vaga. Estas são por ordem de chegada. Ao enviar agora, você está reservando seu lugar na fila.",
@@ -239,7 +257,7 @@ export const translations = {
     maxVehiclesReached: "Máximo de 3 veículos permitidos",
     vehicleNone: "Se você adquirir um veículo no futuro, entre em contato com o escritório para se registrar para uma autorização de estacionamento.",
     noParkingMessage: "Seu prédio não possui estacionamento fora da rua administrado pela Stanton Management. Você pode pular esta seção.",
-    vehicleDueToday: "As informações do veículo vencem em 25 de fevereiro de 2026.",
+    vehicleDueToday: "As informações do veículo vencem em 3 de março de 2026.",
     permitRequiresOtherDocs: "Você não poderá retirar sua autorização de estacionamento até que o registro de animais e o seguro de locatário sejam concluídos. Por favor, complete essas seções após enviar as informações do veículo.",
     
     finalConfirm: "Ao enviar este formulário, confirmo que todas as informações são corretas.",

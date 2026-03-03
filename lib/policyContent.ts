@@ -1,9 +1,20 @@
 export type Language = 'en' | 'es' | 'pt';
 
+// Parking fee configuration - update fees here
+export const PARKING_FEES = {
+  moped: 20,
+  standard: 50,
+  oversized: 60,
+  boats: 60
+};
+
 export const policyContent = {
   en: {
     introHeading: "WHAT IS CHANGING:",
     introText: "As you may know, Stanton Management is now managing your building. We want to introduce you to a few new changes and requirements that may have not been required by the prior owner/manager.",
+    
+    existingTenantIntroHeading: "WHAT IS CHANGING:",
+    existingTenantIntroText: "Stanton Management is rolling out updated requirements across all of our properties. The following are now required for all tenants:",
     
     petPolicyHeading: "PET POLICY",
     petPolicyText: `All tenants must fill this form out to confirm if they do or do not have animals.
@@ -12,7 +23,7 @@ All dogs and cats must be registered with management. There is a monthly pet ren
 
 <strong>Prohibited animals:</strong> Ferrets, snakes longer than 3 feet, and any animal classified as dangerous under local law.
 
-<strong>Deadline:</strong> March 12th, 2026.
+<strong>Deadline:</strong> March 16th, 2026.
 
 <strong>⚠️ WARNING:</strong> Unregistered dogs or cats found after this date will be charged a <strong>$500 fine</strong> plus <strong>all back-owed pet rent starting from March 1st, 2026</strong>.`,
     
@@ -22,7 +33,7 @@ All dogs and cats must be registered with management. There is a monthly pet ren
     insuranceWhyHeading: "Why Do I Need This?",
     insuranceWhyText: "Renters insurance protects your personal belongings and provides liability coverage if something unexpected happens—like your laptop being stolen, a fire/flood damaging your furniture, a guest getting injured on the property, or your pet biting someone.",
     insuranceCost: "Cost: $10-25 per month",
-    insuranceDeadline: "<strong>Deadline:</strong> February 27th",
+    insuranceDeadline: "<strong>Deadline:</strong> March 16th",
     insuranceOption1: "<strong>Option 1:</strong> Get Your Own Insurance",
     insuranceOption1Text: `Buy from any company (Lemonade, GEICO, your car insurance company, etc.)
 Your policy must show:
@@ -42,28 +53,30 @@ Your policy must show:
     parkingIntro: `Parking is $50 per vehicle per month, added to your rent.
 Each tenant is entitled to 1 parking space. To be fair to everyone, additional spaces will only become available after all tenants in your building have had the opportunity to claim their first space. After that, extra spaces are first-come, first-served.`,
     parkingStepsHeading: "To Get Your Parking Permit:",
-    parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by February 18th",
+    parkingStep1: "<strong>Step 1</strong> - Submit your vehicle information by March 3rd",
     parkingStep1Text: "Fill out this form.",
     parkingStep2: "<strong>Step 2</strong> - Sign your parking agreement",
-    parkingStep2Text: "On February 20th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
-    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between March 9-13, 10 AM to 6:30 PM",
+    parkingStep2Text: "On March 4th, we will email/text you a link to sign electronically. Or sign in person when you pick up your permit.",
+    parkingStep3: "<strong>Step 3</strong> - Pick up your permit between March 16-20, 10 AM to 6:30 PM",
     parkingStep3Text: `Bring:
 • ID
 • Proof of renters insurance (or sign up at the office)
 • Completed pet registration (if you have a dog or cat)`,
     parkingDeadlinesHeading: "<strong>DEADLINES:</strong>",
-    parkingDeadlines: `• Submit vehicle info: February 18th
-• Parking agreements sent: February 20th
-• Permit pickup: March 9-13
-• Permits required: March 19th, 2026`,
-    parkingWarning: "Vehicles without a valid permit after March 19th, 2026 will be towed.",
+    parkingDeadlines: `• Submit vehicle info: March 3rd
+• Parking agreements sent: March 4th
+• Permit pickup: March 16-20
+• Permits required: March 26, 2026`,
+    parkingWarning: "Vehicles without a valid permit after March 26, 2026 will be towed.",
     parkingDisplay: "The permit must be displayed on the upper driver's side of the windshield.",
     parkingFeeTableHeaders: ["Vehicle Type", "Monthly Fee"],
+    
+    parkingNotice: "One parking space per tenant. Extra spaces, if available, are assigned after all tenants have received one.\n\nPermits are printed in advance — late submissions cannot be accommodated.\n\nIf you do not submit your vehicle information by March 3, you will not receive a permit during the March 16–20 pickup. Without a valid 2026 permit, your vehicle will be towed starting March 26. The next opportunity to receive a permit is April 8.\n\nStarting March 26, 2026: old permits are invalid and vehicles without a valid 2026 permit will be towed immediately.",
 
     towingHeading: "TOWING POLICY — PLEASE READ CAREFULLY",
     towingText: `Stanton Management does not own or operate the towing company. We have authorized an independent towing company to patrol our parking areas and enforce permit requirements. They are known to act quickly.
 
-After <strong>March 19th, 2026</strong>, any vehicle without a valid permit properly displayed may be towed at the owner's expense — <strong>without prior notice</strong>.
+After <strong>March 26, 2026</strong>, any vehicle without a valid permit properly displayed may be towed at the owner's expense — <strong>without prior notice</strong>.
 
 <strong>If your vehicle is towed</strong>, you must contact the towing company directly to retrieve it and resolve any fees. Stanton Management cannot intervene, reverse a tow, or issue refunds on the towing company's behalf.
 
@@ -74,6 +87,9 @@ The best way to protect yourself is to get your permit on time and make sure it 
     introHeading: "QUÉ ESTÁ CAMBIANDO:",
     introText: "Como ya sabe, Stanton Management ahora administra su edificio. Queremos presentarle algunos cambios y nuevos requisitos que quizás no fueron requeridos por el propietario/administrador anterior.",
     
+    existingTenantIntroHeading: "QUÉ ESTÁ CAMBIANDO:",
+    existingTenantIntroText: "Stanton Management está implementando requisitos actualizados en todas nuestras propiedades. Lo siguiente ahora es obligatorio para todos los inquilinos:",
+    
     petPolicyHeading: "POLÍTICA DE MASCOTAS",
     petPolicyText: `Todos los inquilinos deben completar este formulario para confirmar si tienen o no animales.
 
@@ -81,7 +97,7 @@ Todos los perros y gatos deben registrarse con la administración. Hay un alquil
 
 Animales prohibidos: Hurones, serpientes de más de 3 pies, y cualquier animal clasificado como peligroso por la ley local.
 
-Fecha límite: 12 de marzo de 2026.
+Fecha límite: 16 de marzo de 2026.
 
 <strong>⚠️ ADVERTENCIA:</strong> Perros o gatos no registrados encontrados después de esta fecha serán cobrados con una <strong>multa de $500</strong> más <strong>todo el alquiler de mascota atrasado desde el 1 de marzo de 2026</strong>.`,
     
@@ -91,7 +107,7 @@ Fecha límite: 12 de marzo de 2026.
     insuranceWhyHeading: "¿Por Qué Lo Necesito?",
     insuranceWhyText: "El seguro de inquilino protege sus pertenencias personales y proporciona cobertura de responsabilidad si algo inesperado sucede—como el robo de su computadora, un incendio/inundación dañando sus muebles, un invitado lesionándose en la propiedad, o su mascota mordiendo a alguien.",
     insuranceCost: "Costo: $10-25 por mes",
-    insuranceDeadline: "Fecha límite: 27 de febrero",
+    insuranceDeadline: "Fecha límite: 16 de marzo",
     insuranceOption1: "Opción 1: Obtenga Su Propio Seguro",
     insuranceOption1Text: `Compre de cualquier compañía (Lemonade, GEICO, su compañía de seguro de auto, etc.)
 Su póliza debe mostrar:
@@ -111,28 +127,30 @@ Su póliza debe mostrar:
     parkingIntro: `El estacionamiento cuesta $50 por vehículo por mes, agregado a su alquiler.
 Cada inquilino tiene derecho a 1 espacio de estacionamiento. Para ser justos con todos, los espacios adicionales solo estarán disponibles después de que todos los inquilinos de su edificio hayan tenido la oportunidad de reclamar su primer espacio. Después de eso, los espacios adicionales se ofrecen por orden de llegada.`,
     parkingStepsHeading: "Para Obtener Su Permiso:",
-    parkingStep1: "Paso 1 - Envíe la información de su vehículo antes del 18 de febrero",
+    parkingStep1: "Paso 1 - Envíe la información de su vehículo antes del 3 de marzo",
     parkingStep1Text: "Complete este formulario.",
     parkingStep2: "Paso 2 - Firme su acuerdo de estacionamiento",
-    parkingStep2Text: "El 20 de febrero, le enviaremos un enlace por correo/texto para firmar electrónicamente. O firme en persona cuando recoja su permiso.",
-    parkingStep3: "Paso 3 - Recoja su permiso entre el 9-13 de marzo, 10 AM a 6:30 PM",
+    parkingStep2Text: "El 4 de marzo, le enviaremos un enlace por correo/texto para firmar electrónicamente. O firme en persona cuando recoja su permiso.",
+    parkingStep3: "Paso 3 - Recoja su permiso entre el 16-20 de marzo, 10 AM a 6:30 PM",
     parkingStep3Text: `Traiga:
 • Identificación
 • Prueba de seguro de inquilino (o inscríbase en la oficina)
 • Registro de mascotas completado (si tiene perro o gato)`,
     parkingDeadlinesHeading: "FECHAS LÍMITE:",
-    parkingDeadlines: `• Enviar info del vehículo: 18 de febrero
-• Acuerdos enviados: 20 de febrero
-• Recoger permiso: 9-13 de marzo
-• Permisos requeridos: 19 de marzo de 2026`,
-    parkingWarning: "Vehículos sin permiso válido después del 19 de marzo de 2026 serán remolcados.",
+    parkingDeadlines: `• Enviar info del vehículo: 3 de marzo
+• Acuerdos enviados: 4 de marzo
+• Recoger permiso: 16-20 de marzo
+• Permisos requeridos: 26 de marzo de 2026`,
+    parkingWarning: "Vehículos sin permiso válido después del 26 de marzo de 2026 serán remolcados.",
     parkingDisplay: "El permiso debe colocarse en la parte superior del lado del conductor del parabrisas.",
     parkingFeeTableHeaders: ["Tipo de Vehículo", "Tarifa Mensual"],
+    
+    parkingNotice: "Un espacio de estacionamiento por inquilino. Los espacios adicionales, si están disponibles, se asignan después de que todos los inquilinos hayan recibido uno.\n\nLos permisos se imprimen con anticipación — las presentaciones tardías no pueden ser acomodadas.\n\nSi no envía la información de su vehículo antes del 3 de marzo, no recibirá un permiso durante la recogida del 16 al 20 de marzo. Sin un permiso válido de 2026, su vehículo será remolcado a partir del 26 de marzo. La próxima oportunidad para recibir un permiso es el 8 de abril.\n\nA partir del 26 de marzo de 2026: los permisos antiguos no son válidos y los vehículos sin un permiso válido de 2026 serán remolcados inmediatamente.",
 
     towingHeading: "POLÍTICA DE GRÚA — LEA CON ATENCIÓN",
     towingText: `Stanton Management no es propietario ni opera la empresa de grúas. Hemos autorizado a una empresa de grúas independiente a patrullar nuestras áreas de estacionamiento y hacer cumplir los requisitos de permisos. Son conocidos por actuar rápidamente.
 
-Después del <strong>19 de marzo de 2026</strong>, cualquier vehículo sin un permiso válido correctamente exhibido podrá ser remolcado a costo del propietario — <strong>sin aviso previo</strong>.
+Después del <strong>26 de marzo de 2026</strong>, cualquier vehículo sin un permiso válido correctamente exhibido podrá ser remolcado a costo del propietario — <strong>sin aviso previo</strong>.
 
 <strong>Si su vehículo es remolcado</strong>, debe comunicarse directamente con la empresa de grúas para recuperarlo y resolver cualquier cargo. Stanton Management no puede intervenir, revertir un remolque ni emitir reembolsos en nombre de la empresa de grúas.
 
@@ -143,6 +161,9 @@ La mejor manera de protegerse es obtener su permiso a tiempo y asegurarse de que
     introHeading: "O QUE ESTÁ MUDANDO:",
     introText: "Como você já sabe, a Stanton Management agora administra seu prédio. Queremos apresentar algumas mudanças e novos requisitos que talvez não fossem exigidos pelo proprietário/administrador anterior.",
     
+    existingTenantIntroHeading: "O QUE ESTÁ MUDANDO:",
+    existingTenantIntroText: "A Stanton Management está implementando requisitos atualizados em todas as nossas propriedades. O seguinte agora é obrigatório para todos os inquilinos:",
+    
     petPolicyHeading: "POLÍTICA DE ANIMAIS",
     petPolicyText: `Todos os inquilinos devem preencher este formulário para confirmar se têm ou não animais.
 
@@ -150,7 +171,7 @@ Todos os cães e gatos devem ser registrados com a administração. Há um alugu
 
 Animais proibidos: Furões, cobras com mais de 3 pés, e qualquer animal classificado como perigoso pela lei local.
 
-Prazo: 12 de março de 2026.
+Prazo: 16 de março de 2026.
 
 <strong>⚠️ AVISO:</strong> Cães ou gatos não registrados encontrados após esta data serão cobrados com uma <strong>multa de $500</strong> mais <strong>todo o aluguel de animal atrasado a partir de 1 de março de 2026</strong>.`,
     
@@ -160,7 +181,7 @@ Prazo: 12 de março de 2026.
     insuranceWhyHeading: "Por Que Preciso Disso?",
     insuranceWhyText: "O seguro de locatário protege seus pertences pessoais e fornece cobertura de responsabilidade se algo inesperado acontecer—como roubo do seu computador, incêndio/inundação danificando seus móveis, um convidado se machucando na propriedade, ou seu animal mordendo alguém.",
     insuranceCost: "Custo: $10-25 por mês",
-    insuranceDeadline: "Prazo: 27 de fevereiro",
+    insuranceDeadline: "Prazo: 16 de março",
     insuranceOption1: "Opção 1: Obtenha Seu Próprio Seguro",
     insuranceOption1Text: `Compre de qualquer empresa (Lemonade, GEICO, sua seguradora de carro, etc.)
 Sua apólice deve mostrar:
@@ -180,28 +201,30 @@ Sua apólice deve mostrar:
     parkingIntro: `O estacionamento custa $50 por veículo por mês, adicionado ao seu aluguel.
 Cada inquilino tem direito a 1 vaga de estacionamento. Para ser justo com todos, vagas adicionais só estarão disponíveis após todos os inquilinos do seu prédio terem tido a oportunidade de reivindicar sua primeira vaga. Depois disso, as vagas extras são por ordem de chegada.`,
     parkingStepsHeading: "Para Obter Sua Autorização:",
-    parkingStep1: "Passo 1 - Envie as informações do veículo até 18 de fevereiro",
+    parkingStep1: "Passo 1 - Envie as informações do veículo até 3 de março",
     parkingStep1Text: "Preencha este formulário.",
     parkingStep2: "Passo 2 - Assine seu contrato de estacionamento",
-    parkingStep2Text: "Em 20 de fevereiro, enviaremos um link por email/texto para assinar eletronicamente. Ou assine pessoalmente ao retirar sua autorização.",
-    parkingStep3: "Passo 3 - Retire sua autorização entre 9-13 de março, 10h às 18h30",
+    parkingStep2Text: "Em 4 de março, enviaremos um link por email/texto para assinar eletronicamente. Ou assine pessoalmente ao retirar sua autorização.",
+    parkingStep3: "Passo 3 - Retire sua autorização entre 16-20 de março, 10h às 18h30",
     parkingStep3Text: `Traga:
 • Identificação
 • Comprovante de seguro de locatário (ou inscreva-se no escritório)
 • Registro de animais completo (se tiver cão ou gato)`,
     parkingDeadlinesHeading: "PRAZOS:",
-    parkingDeadlines: `• Enviar info do veículo: 18 de fevereiro
-• Contratos enviados: 20 de fevereiro
-• Retirar autorização: 9-13 de março
-• Autorizações obrigatórias: 19 de março de 2026`,
-    parkingWarning: "Veículos sem autorização válida após 19 de março de 2026 serão rebocados.",
+    parkingDeadlines: `• Enviar info do veículo: 3 de março
+• Contratos enviados: 4 de março
+• Retirar autorização: 16-20 de março
+• Autorizações obrigatórias: 26 de março de 2026`,
+    parkingWarning: "Veículos sem autorização válida após 26 de março de 2026 serão rebocados.",
     parkingDisplay: "A autorização deve ser colocada na parte superior do lado do motorista do para-brisa.",
     parkingFeeTableHeaders: ["Tipo de Veículo", "Taxa Mensal"],
+    
+    parkingNotice: "Uma vaga de estacionamento por inquilino. Vagas extras, se disponíveis, são atribuídas após todos os inquilinos terem recebido uma.\n\nAs autorizações são impressas com antecedência — envios tardios não podem ser acomodados.\n\nSe você não enviar as informações do seu veículo até 3 de março, você não receberá uma autorização durante a retirada de 16 a 20 de março. Sem uma autorização válida de 2026, seu veículo será rebocado a partir de 26 de março. A próxima oportunidade para receber uma autorização é 8 de abril.\n\nA partir de 26 de março de 2026: autorizações antigas são inválidas e veículos sem uma autorização válida de 2026 serão rebocados imediatamente.",
 
     towingHeading: "POLÍTICA DE REBOQUE — LEIA COM ATENÇÃO",
     towingText: `A Stanton Management não é proprietária nem opera a empresa de reboque. Autorizamos uma empresa de reboque independente a patrulhar nossas áreas de estacionamento e fiscalizar os requisitos de autorização. Eles são conhecidos por agir rapidamente.
 
-Após <strong>19 de março de 2026</strong>, qualquer veículo sem uma autorização válida devidamente exibida poderá ser rebocado por conta do proprietário — <strong>sem aviso prévio</strong>.
+Após <strong>26 de março de 2026</strong>, qualquer veículo sem uma autorização válida devidamente exibida poderá ser rebocado por conta do proprietário — <strong>sem aviso prévio</strong>.
 
 <strong>Se o seu veículo for rebocado</strong>, você deve entrar em contato diretamente com a empresa de reboque para recuperá-lo e resolver quaisquer taxas. A Stanton Management não pode intervir, reverter um reboque ou emitir reembolsos em nome da empresa de reboque.
 
@@ -242,8 +265,8 @@ export const llcTable = [
 
 // Parking fee table data (same for all languages)
 export const parkingFeeTable = [
-  ["Moped, motorcycle, ATV, scooter", "$20"],
-  ["Sedan, SUV, Pickup (under 20 ft)", "$50"],
-  ["Oversized vehicles (over 20 ft)", "$60"],
-  ["Boats, trailers, equipment", "$60+ (approval required)"],
+  ["Moped, motorcycle, ATV, scooter", `$${PARKING_FEES.moped}`],
+  ["Sedan, SUV, Pickup (under 20 ft)", `$${PARKING_FEES.standard}`],
+  ["Oversized vehicles (over 20 ft)", `$${PARKING_FEES.oversized}`],
+  ["Boats, trailers, equipment", `$${PARKING_FEES.boats}+ (approval required)`],
 ];
