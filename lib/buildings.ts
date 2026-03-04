@@ -150,6 +150,7 @@ export const buildingsWithParking = new Set([
   "47 Franklin Ave",
   "15-17 Whitmore Street",
   "38-40 Whitmore Street",
+  "110 Martin St",
   "120 Martin St",
   "152-154 Wooster St",
   "160 Wooster St",
