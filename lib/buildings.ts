@@ -131,6 +131,7 @@ export const buildingUnits: Record<string, string[]> = {
 export const buildingsWithParking = new Set([
   "90 Park Street",
   "31-33 Park St",
+  "36 Whitmore Street",
   "57 Park St",
   "67-73 Park St",
   "83-91 Park St",
