@@ -325,13 +325,20 @@ export default function CompliancePage() {
       });
 
       if (response.ok) {
+        // Update local submissions state
         setSubmissions(prev => prev.map(sub => {
           if (sub.id === submissionId) {
             return { ...sub, [`${itemType}_verified`]: verified };
           }
           return sub;
         }));
-        await fetchData();
+        // Update allSubmissions to keep portfolio stats in sync
+        setAllSubmissions(prev => prev.map(sub => {
+          if (sub.id === submissionId) {
+            return { ...sub, [`${itemType}_verified`]: verified };
+          }
+          return sub;
+        }));
       }
     } catch (error) {
       console.error('Failed to update verification:', error);
@@ -351,10 +358,14 @@ export default function CompliancePage() {
       });
 
       if (response.ok) {
+        // Update local submissions state
         setSubmissions(prev => prev.map(sub => 
           sub.id === submissionId ? { ...sub, ready_for_review: true } : sub
         ));
-        await fetchData();
+        // Update allSubmissions to keep portfolio stats in sync
+        setAllSubmissions(prev => prev.map(sub => 
+          sub.id === submissionId ? { ...sub, ready_for_review: true } : sub
+        ));
       }
     } catch (error) {
       console.error('Failed to mark ready for review:', error);
@@ -376,14 +387,21 @@ export default function CompliancePage() {
       });
 
       if (response.ok) {
+        const updatedData = { reviewed_for_permit: true, reviewed_by: reviewAdmin, reviewed_at: new Date().toISOString() };
+        // Update local submissions state
         setSubmissions(prev => prev.map(sub => 
           sub.id === reviewingSubmission.id 
-            ? { ...sub, reviewed_for_permit: true, reviewed_by: reviewAdmin, reviewed_at: new Date().toISOString() }
+            ? { ...sub, ...updatedData }
+            : sub
+        ));
+        // Update allSubmissions to keep portfolio stats in sync
+        setAllSubmissions(prev => prev.map(sub => 
+          sub.id === reviewingSubmission.id 
+            ? { ...sub, ...updatedData }
             : sub
         ));
         setReviewingSubmission(null);
         setReviewAdmin('');
-        await fetchData();
       }
     } catch (error) {
       console.error('Failed to approve for permit:', error);
