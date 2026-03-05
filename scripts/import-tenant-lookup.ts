@@ -10,9 +10,10 @@ config({ path: '.env.local', override: true });
 
 const cleanEnv = (value: string | undefined) => value?.replace(/^["']|["']$/g, '');
 
+// Production DB - for fetching current tenant data
 const prodSupabase = createClient(
-  cleanEnv(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL) || '',
-  cleanEnv(process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY) || ''
+  'https://wkwmxxlfheywwbgdbzxe.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indrd214eGxmaGV5d3diZ2RienhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwOTcxOTIsImV4cCI6MjA3OTQ1NzE5Mn0.G4UyeP2BVuGG35oGDXMJcgbSCVVtBhSO6WddG-b6bm4'
 );
 
 const testSupabase = createClient(
@@ -34,8 +35,8 @@ async function importTenantLookup() {
     if (error) throw error;
     console.log(`✅ Fetched ${tenants.length} current tenants\n`);
 
-    // Transform and insert into test DB
-    console.log('💾 Inserting into test DB...');
+    // Transform data
+    console.log('� Transforming tenant data...');
     const lookupData = tenants.map(t => ({
       name: t.name,
       first_name: t.first_name,
@@ -49,7 +50,23 @@ async function importTenantLookup() {
       is_current: t.is_current
     }));
 
+    console.log(`✅ Transformed ${lookupData.length} tenant records\n`);
+
+    // Clear existing tenant_lookup data
+    console.log('🗑️  Clearing existing tenant_lookup data...');
+    const { error: deleteError } = await testSupabase
+      .from('tenant_lookup')
+      .delete()
+      .neq('id', 0); // Delete all records
+
+    if (deleteError) {
+      console.warn('⚠️  Warning clearing old data:', deleteError.message);
+    } else {
+      console.log('✅ Cleared existing data\n');
+    }
+
     // Insert in batches of 100
+    console.log('💾 Inserting new tenant data...');
     const batchSize = 100;
     for (let i = 0; i < lookupData.length; i += batchSize) {
       const batch = lookupData.slice(i, i + batchSize);

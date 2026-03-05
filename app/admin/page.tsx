@@ -342,7 +342,7 @@ export default function AdminHub() {
 
   const SortHeader = ({ label, sortKey, config, onSort }: { label: string; sortKey: string; config: { key: string; direction: 'asc' | 'desc' }; onSort: (key: string) => void }) => (
     <th
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
+      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700 select-none"
       onClick={() => onSort(sortKey)}
     >
       <span className="flex items-center gap-1">
@@ -475,7 +475,7 @@ export default function AdminHub() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className={`${activeView === 'onboarding' ? 'w-full' : 'max-w-7xl mx-auto'} px-4 py-6`}>
 
         {/* ===== SEND FORM LINKS (DEFAULT) ===== */}
         {activeView === 'send-form' && (
@@ -618,27 +618,27 @@ export default function AdminHub() {
                       <SortHeader label="Email" sortKey="email" config={sortConfig} onSort={handleSort} />
                       <SortHeader label="Building" sortKey="building_address" config={sortConfig} onSort={handleSort} />
                       <SortHeader label="Unit" sortKey="unit_number" config={sortConfig} onSort={handleSort} />
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pets</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insurance</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16"></th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pets</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Insurance</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {sortedSubmissions.map((submission) => (
                       <tr key={submission.id} onClick={() => setSelectedSubmission(submission)} className="hover:bg-gray-50 cursor-pointer transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(submission.created_at)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{submission.full_name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{submission.phone}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{submission.email}</td>
-                        <td className="px-6 py-4 text-sm text-gray-600">{submission.building_address}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{submission.unit_number}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{formatDate(submission.created_at)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{submission.full_name}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{submission.phone}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{submission.email}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{submission.building_address}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{submission.unit_number}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${submission.has_pets ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                             {submission.has_pets ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             submission.insurance_file ? 'bg-green-100 text-green-800'
                               : submission.insurance_upload_pending ? 'bg-yellow-100 text-yellow-800'
@@ -648,12 +648,12 @@ export default function AdminHub() {
                             {getInsuranceStatus(submission)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${submission.has_vehicle ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                             {submission.has_vehicle ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ type: 'submission', id: submission.id, name: submission.full_name }); }}
                             className="text-gray-400 hover:text-red-600 transition-colors p-1"
