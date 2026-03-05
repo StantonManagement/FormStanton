@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import BuildingAutocomplete from './BuildingAutocomplete';
+import TenantAutocomplete from './TenantAutocomplete';
 
 interface PhoneVehicleEntryFormProps {
   onSuccess?: () => void;
@@ -25,9 +26,6 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [buildings, setBuildings] = useState<string[]>([]);
 
   useEffect(() => {
@@ -52,38 +50,15 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
     setSubmitSuccess('');
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await fetch(`/api/lookup?q=${encodeURIComponent(searchQuery)}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setSearchResults(data.results || []);
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   const handleSelectTenant = (tenant: any) => {
     setFormData(prev => ({
       ...prev,
-      fullName: tenant.full_name || tenant.name || '',
+      fullName: tenant.full_name || '',
       phone: tenant.phone || '',
       email: tenant.email || '',
       buildingAddress: tenant.building_address || '',
       unitNumber: tenant.unit_number || '',
     }));
-    setSearchResults([]);
-    setSearchQuery('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,47 +128,6 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
           <p className="text-sm text-gray-600">Enter vehicle information for tenants who call in</p>
         </div>
 
-        {/* Tenant Search */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">Quick Tenant Lookup (Optional)</h3>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Search by name, phone, building, or unit..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              type="button"
-              onClick={handleSearch}
-              disabled={isSearching}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-
-          {searchResults.length > 0 && (
-            <div className="mt-3 max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
-              {searchResults.map((result, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSelectTenant(result)}
-                  className="w-full text-left px-4 py-2 hover:bg-blue-100 transition-colors border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="font-medium text-gray-900">{result.full_name || result.name}</div>
-                  <div className="text-sm text-gray-600">
-                    {result.building_address} - Unit {result.unit_number} • {result.phone}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
         <form onSubmit={handleSubmit}>
           {/* Tenant Information */}
           <div className="mb-6">
@@ -203,13 +137,12 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Full Name <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
+                <TenantAutocomplete
                   value={formData.fullName}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="John Doe"
+                  onChange={(value) => handleInputChange('fullName', value)}
+                  onSelectTenant={handleSelectTenant}
+                  placeholder="Start typing tenant name..."
+                  required
                 />
               </div>
 
