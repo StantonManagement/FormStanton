@@ -7,6 +7,7 @@ import { translations, Language } from '@/lib/translations';
 import { buildings, buildingToLLC, buildingsWithParking, buildingUnits, newAcquisitionBuildings } from '@/lib/buildings';
 import { PET_ADDENDUM, VEHICLE_ADDENDUM } from '@/lib/addendums';
 import { policyContent, petRentTable, llcTable, parkingFeeTable } from '@/lib/policyContent';
+import { allowsMultipleVehicles } from '@/lib/buildingAssetIds';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
 import InfoTable from '@/components/InfoTable';
 import Header from '@/components/Header';
@@ -143,6 +144,7 @@ function FormContent() {
   const t = translations[language];
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
   const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
+  const canHaveMultipleVehicles = allowsMultipleVehicles(formData.buildingAddress);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -1276,7 +1278,13 @@ function FormContent() {
                   </div>
                 )}
 
-                {formData.hasVehicle === true && (
+                {formData.hasVehicle === true && !canHaveMultipleVehicles && (
+                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
+                    <p className="text-sm font-medium text-amber-900">{t.limitedParkingMessage}</p>
+                  </div>
+                )}
+
+                {formData.hasVehicle === true && canHaveMultipleVehicles && (
                   <div className="space-y-4">
                     <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded">
                       <p className="text-sm font-medium text-gray-700">{t.additionalVehicleQuestion}</p>

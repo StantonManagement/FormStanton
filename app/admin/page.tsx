@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import SubmissionDetailModal from '@/components/SubmissionDetailModal';
+import ScanUploadInterface from '@/components/ScanUploadInterface';
+import ScanReviewInterface from '@/components/ScanReviewInterface';
+import ComplianceDashboard from '@/components/ComplianceDashboard';
 import { exportToExcel } from '@/lib/excelExport';
 import { ReimbursementSubmission } from '@/lib/types';
 
@@ -75,7 +78,7 @@ export default function AdminHub() {
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [buildings, setBuildings] = useState<string[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [activeView, setActiveView] = useState<'send-form' | 'onboarding' | 'reimbursements'>('send-form');
+  const [activeView, setActiveView] = useState<'send-form' | 'onboarding' | 'reimbursements' | 'scan-import' | 'compliance'>('send-form');
   const [reimbursements, setReimbursements] = useState<ReimbursementSubmission[]>([]);
   const [filteredReimbursements, setFilteredReimbursements] = useState<ReimbursementSubmission[]>([]);
   const [selectedReimbursement, setSelectedReimbursement] = useState<ReimbursementSubmission | null>(null);
@@ -87,6 +90,8 @@ export default function AdminHub() {
   const [reimbursementSortConfig, setReimbursementSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'submission' | 'reimbursement'; id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [scanBatches, setScanBatches] = useState<any[]>([]);
+  const [reviewingBatchId, setReviewingBatchId] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     building: 'all',
@@ -121,6 +126,7 @@ export default function AdminHub() {
       fetchSubmissions();
       fetchBuildings();
       fetchReimbursements();
+      fetchScanBatches();
     }
   }, [isAuthenticated]);
 
@@ -208,6 +214,16 @@ export default function AdminHub() {
       if (data.success) setReimbursements(data.data);
     } catch (error) {
       console.error('Failed to fetch reimbursements:', error);
+    }
+  };
+
+  const fetchScanBatches = async () => {
+    try {
+      const response = await fetch('/api/admin/scan-upload');
+      const data = await response.json();
+      if (data.success) setScanBatches(data.data);
+    } catch (error) {
+      console.error('Failed to fetch scan batches:', error);
     }
   };
 
@@ -423,6 +439,7 @@ export default function AdminHub() {
               { id: 'send-form' as const, label: 'Send Form Links', count: undefined },
               { id: 'onboarding' as const, label: 'Onboarding Submissions', count: submissions.length },
               { id: 'reimbursements' as const, label: 'Reimbursement Requests', count: reimbursements.length },
+              { id: 'scan-import' as const, label: 'Scan Import', count: scanBatches.length },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -443,6 +460,17 @@ export default function AdminHub() {
                 )}
               </button>
             ))}
+            
+            {/* Compliance Dashboard Link */}
+            <a
+              href="/admin/compliance"
+              className="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors flex items-center gap-2"
+            >
+              📊 Compliance Dashboard
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           </nav>
         </div>
       </div>
@@ -771,7 +799,32 @@ export default function AdminHub() {
             </div>
           </>
         )}
+
+        {/* ===== SCAN IMPORT VIEW ===== */}
+        {activeView === 'scan-import' && (
+          <ScanUploadInterface
+            onBatchCreated={(batchId) => {
+              console.log('Batch created:', batchId);
+            }}
+            batches={scanBatches}
+            onRefresh={fetchScanBatches}
+            onReviewBatch={(batchId) => setReviewingBatchId(batchId)}
+          />
+        )}
       </div>
+
+      {/* Scan Review Modal */}
+      {reviewingBatchId && (
+        <ScanReviewInterface
+          batchId={reviewingBatchId}
+          onClose={() => setReviewingBatchId(null)}
+          onImportComplete={() => {
+            setReviewingBatchId(null);
+            fetchScanBatches();
+            fetchSubmissions();
+          }}
+        />
+      )}
 
       {/* Onboarding Detail Modal */}
       {selectedSubmission && (

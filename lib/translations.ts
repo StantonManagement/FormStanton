@@ -81,6 +81,7 @@ export const translations = {
     maxVehiclesReached: "Maximum of 3 vehicles allowed",
     vehicleNone: "If you get a vehicle in the future, contact the office to register for a parking permit.",
     noParkingMessage: "Your building does not have off-street parking managed by Stanton Management. You may skip this section.",
+    limitedParkingMessage: "Due to limited parking at this building, only one vehicle per unit is permitted. Additional vehicles cannot be accommodated.",
     vehicleDueToday: "Vehicle information is due March 3rd, 2026.",
     permitRequiresOtherDocs: "You will not be able to pick up your parking permit until your pet registration and renters insurance are completed. Please complete those sections after submitting your vehicle information.",
     
@@ -169,8 +170,9 @@ export const translations = {
     maxVehiclesReached: "Máximo de 3 vehículos permitidos",
     vehicleNone: "Si obtiene un vehículo en el futuro, contacte la oficina para registrarse para un permiso de estacionamiento.",
     noParkingMessage: "Su edificio no tiene estacionamiento fuera de la calle administrado por Stanton Management. Puede omitir esta sección.",
+    limitedParkingMessage: "Debido al estacionamiento limitado en este edificio, solo se permite un vehículo por unidad. No se pueden acomodar vehículos adicionales.",
     vehicleDueToday: "La información del vehículo vence el 3 de marzo de 2026.",
-    permitRequiresOtherDocs: "No podrá recoger su permiso de estacionamiento hasta que se completen el registro de mascotas y el seguro de inquilino. Por favor complete esas secciones después de enviar su información de vehículo.",
+    permitRequiresOtherDocs: "No podrá recoger su permiso de estacionamiento hasta que se completen su registro de mascotas y seguro de inquilino. Complete esas secciones después de enviar la información de su vehículo.",
     
     finalConfirm: "Al enviar este formulario, confirmo que toda la información es correcta.",
     signature: "Firma",
@@ -257,8 +259,9 @@ export const translations = {
     maxVehiclesReached: "Máximo de 3 veículos permitidos",
     vehicleNone: "Se você adquirir um veículo no futuro, entre em contato com o escritório para se registrar para uma autorização de estacionamento.",
     noParkingMessage: "Seu prédio não possui estacionamento fora da rua administrado pela Stanton Management. Você pode pular esta seção.",
+    limitedParkingMessage: "Devido ao estacionamento limitado neste prédio, apenas um veículo por unidade é permitido. Veículos adicionais não podem ser acomodados.",
     vehicleDueToday: "As informações do veículo vencem em 3 de março de 2026.",
-    permitRequiresOtherDocs: "Você não poderá retirar sua autorização de estacionamento até que o registro de animais e o seguro de locatário sejam concluídos. Por favor, complete essas seções após enviar as informações do veículo.",
+    permitRequiresOtherDocs: "Você não poderá retirar sua autorização de estacionamento até que seu registro de animais e seguro de inquilino sejam concluídos. Complete essas seções após enviar as informações do seu veículo.",
     
     finalConfirm: "Ao enviar este formulário, confirmo que todas as informações são corretas.",
     signature: "Assinatura",
