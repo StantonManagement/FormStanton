@@ -15,6 +15,9 @@ interface TenantSubmission {
   vehicle_color?: string;
   vehicle_plate?: string;
   vehicle_verified: boolean;
+  vehicle_submitted_by_phone?: boolean;
+  vehicle_phone_submission_date?: string;
+  vehicle_phone_submission_by?: string;
   permit_issued: boolean;
   permit_issued_at?: string;
   permit_issued_by?: string;
@@ -171,7 +174,14 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
           {submission.has_vehicle && (
             <div className="bg-white rounded-lg p-3 border border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">🚗 Vehicle Information</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-gray-900">🚗 Vehicle Information</h4>
+                  {submission.vehicle_submitted_by_phone && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                      📞 Phone Entry
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={(e) => {
@@ -219,6 +229,26 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                 <div><span className="text-gray-500">Color:</span> <span className="ml-1">{submission.vehicle_color}</span></div>
                 <div className="col-span-2"><span className="text-gray-500">Plate:</span> <span className="ml-1 font-mono">{submission.vehicle_plate}</span></div>
               </div>
+              
+              {/* Phone Submission Info */}
+              {submission.vehicle_submitted_by_phone && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-sm text-blue-700">
+                    <span className="font-medium">📞 Submitted by phone</span>
+                    {submission.vehicle_phone_submission_by && (
+                      <span className="text-gray-600"> • Entered by {submission.vehicle_phone_submission_by}</span>
+                    )}
+                    {submission.vehicle_phone_submission_date && (
+                      <span className="text-gray-500 text-xs ml-2">
+                        {new Date(submission.vehicle_phone_submission_date).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    No signature required for phone submissions
+                  </div>
+                </div>
+              )}
               
               {/* Permit Status */}
               {submission.permit_issued && (

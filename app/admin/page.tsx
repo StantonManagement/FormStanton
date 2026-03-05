@@ -5,6 +5,7 @@ import SubmissionDetailModal from '@/components/SubmissionDetailModal';
 import ScanUploadInterface from '@/components/ScanUploadInterface';
 import ScanReviewInterface from '@/components/ScanReviewInterface';
 import ComplianceDashboard from '@/components/ComplianceDashboard';
+import PhoneVehicleEntryForm from '@/components/PhoneVehicleEntryForm';
 import { exportToExcel } from '@/lib/excelExport';
 import { ReimbursementSubmission } from '@/lib/types';
 
@@ -78,7 +79,7 @@ export default function AdminHub() {
   const [filteredSubmissions, setFilteredSubmissions] = useState<Submission[]>([]);
   const [buildings, setBuildings] = useState<string[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [activeView, setActiveView] = useState<'send-form' | 'onboarding' | 'reimbursements' | 'scan-import' | 'compliance'>('send-form');
+  const [activeView, setActiveView] = useState<'send-form' | 'onboarding' | 'reimbursements' | 'scan-import' | 'phone-entry' | 'compliance'>('send-form');
   const [reimbursements, setReimbursements] = useState<ReimbursementSubmission[]>([]);
   const [filteredReimbursements, setFilteredReimbursements] = useState<ReimbursementSubmission[]>([]);
   const [selectedReimbursement, setSelectedReimbursement] = useState<ReimbursementSubmission | null>(null);
@@ -437,6 +438,7 @@ export default function AdminHub() {
           <nav className="flex space-x-1">
             {[
               { id: 'send-form' as const, label: 'Send Form Links', count: undefined },
+              { id: 'phone-entry' as const, label: '📞 Phone Vehicle Entry', count: undefined },
               { id: 'onboarding' as const, label: 'Onboarding Submissions', count: submissions.length },
               { id: 'reimbursements' as const, label: 'Reimbursement Requests', count: reimbursements.length },
               { id: 'scan-import' as const, label: 'Scan Import', count: scanBatches.length },
@@ -537,6 +539,11 @@ export default function AdminHub() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ===== PHONE VEHICLE ENTRY VIEW ===== */}
+        {activeView === 'phone-entry' && (
+          <PhoneVehicleEntryForm onSuccess={fetchSubmissions} />
         )}
 
         {/* ===== ONBOARDING VIEW ===== */}
