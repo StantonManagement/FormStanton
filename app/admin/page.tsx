@@ -463,6 +463,17 @@ export default function AdminHub() {
               </button>
             ))}
             
+            {/* Forms Library Link */}
+            <a
+              href="/admin/forms-library"
+              className="px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors flex items-center gap-2"
+            >
+              📋 Forms Library
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+            
             {/* Compliance Dashboard Link */}
             <a
               href="/admin/compliance"
@@ -811,7 +822,7 @@ export default function AdminHub() {
         {activeView === 'scan-import' && (
           <ScanUploadInterface
             onBatchCreated={(batchId) => {
-              console.log('Batch created:', batchId);
+              // Batch created successfully
             }}
             batches={scanBatches}
             onRefresh={fetchScanBatches}

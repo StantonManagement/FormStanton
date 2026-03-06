@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
+    
+    // Get IP address for rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 
+                request.headers.get('x-real-ip') || 
+                'unknown';
+    
+    // Check rate limit
+    const rateLimitResult = checkRateLimit(`auth:${ip}`);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: `Too many failed attempts. Account locked until ${rateLimitResult.lockedUntil?.toLocaleTimeString()}`,
+          lockedUntil: rateLimitResult.lockedUntil
+        },
+        { status: 429 }
+      );
+    }
     
     const adminPassword = process.env.ADMIN_PASSWORD;
     
@@ -15,6 +35,9 @@ export async function POST(request: NextRequest) {
     }
     
     if (password === adminPassword) {
+      // Reset rate limit on successful login
+      resetRateLimit(`auth:${ip}`);
+      
       const session = await getSession();
       session.isAdmin = true;
       await session.save();
@@ -23,7 +46,11 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { success: false, message: 'Invalid password' },
+      { 
+        success: false, 
+        message: 'Invalid password',
+        remainingAttempts: rateLimitResult.remainingAttempts
+      },
       { status: 401 }
     );
   } catch (error: any) {

@@ -16,13 +16,14 @@ A multilingual (English, Spanish, Portuguese) tenant onboarding form built with 
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Database**: Supabase (PostgreSQL)
 - **Storage**: Supabase Storage
 - **Email**: Resend
 - **Styling**: Tailwind CSS
 - **Signatures**: react-signature-canvas
 - **Document Generation**: docxtemplater + pizzip
+- **AI Extraction**: Anthropic Claude (for scan processing)
 - **Deployment**: Vercel
 
 ## Setup Instructions
@@ -46,18 +47,36 @@ npm install
 
 ### 3. Configure Environment Variables
 
-Create a `.env.local` file in the root directory:
+Create a `.env.local` file in the root directory with all required variables:
 
 ```env
+# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Email Service
 RESEND_API_KEY=your_resend_api_key
+
+# Admin Authentication
+ADMIN_PASSWORD=your_secure_admin_password
+SESSION_SECRET=your_session_secret_at_least_32_characters_long
+
+# AI Services (for scan extraction feature)
+ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 **Getting your keys:**
-- Supabase: Project Settings → API
-- Resend: Sign up at [resend.com](https://resend.com) and create an API key
+- **Supabase**: Project Settings → API
+  - `NEXT_PUBLIC_SUPABASE_URL`: Your project URL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Public anon key (safe for client-side)
+  - `SUPABASE_SERVICE_ROLE_KEY`: Service role key (server-side only, bypasses RLS)
+- **Resend**: Sign up at [resend.com](https://resend.com) and create an API key for email sending
+- **Admin Password**: Choose a strong password for admin dashboard access
+- **Session Secret**: Generate a random 32+ character string for session encryption
+- **Anthropic**: Sign up at [anthropic.com](https://anthropic.com) for Claude API access (used for scan extraction feature)
+
+**Note**: Copy `.env.local.example` as a template and fill in your values.
 
 ### 4. Run Development Server
 

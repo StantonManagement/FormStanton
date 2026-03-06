@@ -6,6 +6,8 @@ import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
 import { buildingUnits } from '@/lib/buildings';
 import { normalizeAddress, filterByBuilding, unitsMatch } from '@/lib/addressNormalizer';
 import ParkingManagementPanel from '@/components/ParkingManagementPanel';
+import DuplicateSubmissionAccordion from '@/components/DuplicateSubmissionAccordion';
+import { groupDuplicateSubmissions, SubmissionGroup } from '@/lib/duplicateDetection';
 
 interface TenantSubmission {
   id: string;
@@ -48,6 +50,9 @@ interface TenantSubmission {
   reviewed_by?: string;
   reviewed_at?: string;
   created_at: string;
+  merged_into?: string;
+  is_primary?: boolean;
+  duplicate_group_id?: string;
 }
 
 interface TenantData {
@@ -106,13 +111,12 @@ export default function CompliancePage() {
     hasInsurance: boolean;
     needsReview: boolean;
   }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false });
+  const [showDuplicatesGrouped, setShowDuplicatesGrouped] = useState(true);
+  const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
+  const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
+  const [similarityThreshold, setSimilarityThreshold] = useState(85);
 
   useEffect(() => {
-    console.log('=== COMPONENT MOUNTED ===');
-    console.log('Environment check:', {
-      url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    });
     fetchData();
   }, []);
 
@@ -150,12 +154,16 @@ export default function CompliancePage() {
   }, [selectedBuilding, filters]);
 
   useEffect(() => {
-    console.log('=== allSubmissions STATE CHANGED ===');
-    console.log('Count:', allSubmissions.length);
-    if (allSubmissions.length > 0) {
-      console.log('Sample:', allSubmissions[0]);
-      console.log('Has vehicles:', allSubmissions.filter(s => s.has_vehicle).length);
+    if (submissions.length > 0 && showDuplicatesGrouped) {
+      const groups = groupDuplicateSubmissions(submissions, similarityThreshold);
+      setDuplicateGroups(groups);
+    } else {
+      setDuplicateGroups([]);
     }
+  }, [submissions, showDuplicatesGrouped, similarityThreshold]);
+
+  useEffect(() => {
+    // Submissions state updated
   }, [allSubmissions]);
 
   // Debounced search to reduce API calls
@@ -181,28 +189,17 @@ export default function CompliancePage() {
   }, [quickLookupQuery, allSubmissions]);
 
   const fetchData = async () => {
-    console.log('=== FETCH DATA START ===');
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    
     try {
       // Fetch submissions via API route (respects authentication)
       const submissionsResponse = await fetch('/api/admin/submissions');
       const submissionsResult = await submissionsResponse.json();
 
-      console.log('Submissions API response:', { 
-        success: submissionsResult.success,
-        dataCount: submissionsResult.data?.length
-      });
-
       if (!submissionsResult.success) {
-        console.error('=== SUBMISSIONS API ERROR ===', submissionsResult.message);
+        console.error('Submissions API error:', submissionsResult.message);
         throw new Error(submissionsResult.message);
       }
 
       const submissions = submissionsResult.data || [];
-      console.log('Setting allSubmissions:', submissions.length);
-      console.log('Sample submission:', submissions[0]);
-      console.log('Submissions with vehicles:', submissions.filter((s: any) => s.has_vehicle).length);
       setAllSubmissions(submissions);
 
       // Fetch tenant data from tenant_lookup table
@@ -210,8 +207,6 @@ export default function CompliancePage() {
       const tenantDataResult = await tenantResponse.json();
       const tenantDataList: BuildingTenantData[] = tenantDataResult.success ? tenantDataResult.data : [];
       setTenantData(tenantDataList);
-
-      console.log('Tenant data fetched:', tenantDataList.length, 'buildings');
 
       // Calculate building stats with tenant data
       const stats: Record<string, BuildingStats> = {};
@@ -297,6 +292,9 @@ export default function CompliancePage() {
 
   const loadBuildingSubmissions = () => {
     let buildingSubs = filterByBuilding(allSubmissions, selectedBuilding);
+    
+    // Filter out merged submissions
+    buildingSubs = buildingSubs.filter(sub => !sub.merged_into);
     
     // Apply filters
     if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview) {
@@ -444,6 +442,70 @@ export default function CompliancePage() {
 
   const viewSignature = (path: string, type: string, date?: string) => {
     setViewingSignature({ path, type, date });
+  };
+
+  const handleMergeSubmissions = async (primaryId: string, duplicateIds: string[]) => {
+    try {
+      const response = await fetch('/api/admin/compliance/merge-submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryId, duplicateIds, mergeStrategy: 'keep_newest' }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Successfully merged ${duplicateIds.length} submission(s)`);
+        await fetchData();
+      } else {
+        throw new Error(data.message || 'Failed to merge submissions');
+      }
+    } catch (error) {
+      console.error('Failed to merge submissions:', error);
+      throw error;
+    }
+  };
+
+  const handleMarkPrimary = async (submissionId: string, groupId: string) => {
+    try {
+      const response = await fetch('/api/admin/compliance/merge-submissions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId, groupId, action: 'mark_primary' }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        throw new Error(data.message || 'Failed to mark as primary');
+      }
+    } catch (error) {
+      console.error('Failed to mark as primary:', error);
+      throw error;
+    }
+  };
+
+  const handleDismissDuplicate = async (groupId: string, duplicateId: string) => {
+    try {
+      const response = await fetch('/api/admin/compliance/merge-submissions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: duplicateId, groupId, action: 'dismiss' }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        throw new Error(data.message || 'Failed to dismiss duplicate');
+      }
+    } catch (error) {
+      console.error('Failed to dismiss duplicate:', error);
+      throw error;
+    }
   };
 
   const getSignatureUrl = (path: string) => {
@@ -692,6 +754,36 @@ export default function CompliancePage() {
               </div>
             </div>
 
+            {/* Duplicate Detection Controls */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">🔄 Duplicate Detection</h3>
+              <div className="space-y-2 mb-3">
+                <label className="flex items-center text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showDuplicatesGrouped}
+                    onChange={(e) => setShowDuplicatesGrouped(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Group Duplicates
+                </label>
+                <label className="flex items-center text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyDuplicates}
+                    onChange={(e) => setShowOnlyDuplicates(e.target.checked)}
+                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Show Only Duplicates
+                </label>
+                {duplicateGroups.length > 0 && (
+                  <div className="text-xs text-orange-600 font-medium mt-2">
+                    {duplicateGroups.length} duplicate group{duplicateGroups.length !== 1 ? 's' : ''} found
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Portfolio Filter */}
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3">📊 Portfolio</h3>
@@ -897,8 +989,36 @@ export default function CompliancePage() {
                   <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
                     No submissions for this building yet.
                   </div>
-                ) : (
-                  submissions.map(submission => (
+                ) : (() => {
+                  // Determine which submissions to show
+                  const groupedSubmissionIds = new Set(
+                    duplicateGroups.flatMap(g => [g.primarySubmission.id, ...g.duplicates.map(d => d.id)])
+                  );
+                  
+                  const uniqueSubmissions = showOnlyDuplicates 
+                    ? [] 
+                    : submissions.filter(s => !groupedSubmissionIds.has(s.id));
+                  
+                  const displayGroups = showOnlyDuplicates || !showDuplicatesGrouped 
+                    ? duplicateGroups 
+                    : duplicateGroups;
+
+                  return (
+                    <>
+                      {/* Duplicate Groups */}
+                      {showDuplicatesGrouped && displayGroups.map(group => (
+                        <DuplicateSubmissionAccordion
+                          key={group.id}
+                          group={group}
+                          onMerge={handleMergeSubmissions}
+                          onMarkPrimary={handleMarkPrimary}
+                          onDismiss={handleDismissDuplicate}
+                          onViewSignature={viewSignature}
+                        />
+                      ))}
+
+                      {/* Unique Submissions (not in duplicate groups) */}
+                      {!showOnlyDuplicates && uniqueSubmissions.map(submission => (
                     <div key={submission.id} className="bg-white rounded-lg shadow-md p-4">
                       {/* Tenant Header */}
                       <div className="flex items-start justify-between mb-3">
@@ -1115,8 +1235,10 @@ export default function CompliancePage() {
                         </div>
                       )}
                     </div>
-                  ))
-                )}
+                  ))}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}

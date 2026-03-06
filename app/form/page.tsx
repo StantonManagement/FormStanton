@@ -376,9 +376,32 @@ function FormContent() {
         body: formDataToSend,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Submission failed');
+        throw new Error(result.message || 'Submission failed');
+      }
+
+      // Check for warnings
+      if (result.warnings) {
+        let warningMessage = '';
+        if (result.warnings.emailFailed) {
+          warningMessage += language === 'en' 
+            ? 'Note: Confirmation email could not be sent. Please contact the office to confirm your submission. ' 
+            : language === 'es'
+            ? 'Nota: No se pudo enviar el correo de confirmación. Comuníquese con la oficina para confirmar su envío. '
+            : 'Nota: Não foi possível enviar o e-mail de confirmação. Entre em contato com o escritório para confirmar seu envio. ';
+        }
+        if (result.warnings.documentsFailed) {
+          warningMessage += language === 'en'
+            ? 'Note: Document generation encountered an issue. The office will generate your documents manually. '
+            : language === 'es'
+            ? 'Nota: La generación de documentos encontró un problema. La oficina generará sus documentos manualmente. '
+            : 'Nota: A geração de documentos encontrou um problema. O escritório gerará seus documentos manualmente. ';
+        }
+        if (warningMessage) {
+          setSubmitError(warningMessage);
+        }
       }
 
       setSubmitSuccess(true);

@@ -217,6 +217,7 @@ export async function POST(request: NextRequest) {
       console.error('Document generation failed:', docError);
     }
 
+    let emailSent = true;
     try {
       await resend.emails.send({
         from: 'Stanton Management <onboarding@stantonmanagement.com>',
@@ -239,11 +240,16 @@ export async function POST(request: NextRequest) {
       });
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
+      emailSent = false;
     }
 
     return NextResponse.json({ 
       success: true, 
-      submissionId 
+      submissionId,
+      warnings: {
+        emailFailed: !emailSent,
+        documentsFailed: !petAddendumPath && !vehicleAddendumPath && (formDataJson.hasPets || formDataJson.hasVehicle)
+      }
     });
 
   } catch (error: any) {

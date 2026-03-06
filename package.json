@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "validate-env": "ts-node scripts/validate-env.ts",
+    "predev": "npm run validate-env"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -26,6 +28,7 @@
     "react-signature-canvas": "^1.0.6",
     "resend": "^3.2.0",
     "sharp": "^0.34.5",
+    "string-similarity": "^4.0.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
