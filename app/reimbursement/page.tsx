@@ -78,6 +78,12 @@ function ReimbursementFormContent() {
   const MAX_EXPENSES = 10;
   const MAX_FILES = 5;
 
+  const getCategoryLabel = (categoryValue: string, translations: Record<string, string>): string => {
+    const category = expenseCategories.find(c => c.value === categoryValue);
+    if (!category || !category.labelKey) return categoryValue;
+    return translations[category.labelKey] || categoryValue;
+  };
+
   const [formData, setFormData] = useState({
     tenantName: '',
     buildingAddress: '',
@@ -788,7 +794,7 @@ function ReimbursementFormContent() {
                                 {formData.expenses.map((exp, idx) => (
                                   <tr key={idx} className="border-b border-[var(--divider)]">
                                     <td className="py-1 pr-2">{exp.date}</td>
-                                    <td className="py-1 pr-2">{exp.category ? t[expenseCategories.find(c => c.value === exp.category)?.labelKey || ''] || exp.category : ''}</td>
+                                    <td className="py-1 pr-2">{exp.category ? getCategoryLabel(exp.category, t) : ''}</td>
                                     <td className="py-1 pr-2">{exp.description}</td>
                                     <td className="py-1 text-right font-medium">${parseFloat(exp.amount || '0').toFixed(2)}</td>
                                   </tr>
