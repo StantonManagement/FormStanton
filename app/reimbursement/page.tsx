@@ -72,17 +72,8 @@ function ReimbursementFormContent() {
   const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
   const [showForm, setShowForm] = useState(hasLangParam);
 
-  if (!showForm) {
-    return <ReimbursementLanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
-  }
   const MAX_EXPENSES = 10;
   const MAX_FILES = 5;
-
-  const getCategoryLabel = (categoryValue: string, translations: Record<string, string>): string => {
-    const category = expenseCategories.find(c => c.value === categoryValue);
-    if (!category || !category.labelKey) return categoryValue;
-    return translations[category.labelKey] || categoryValue;
-  };
 
   const [formData, setFormData] = useState({
     tenantName: '',
@@ -108,6 +99,16 @@ function ReimbursementFormContent() {
   const [sectionError, setSectionError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [signatureError, setSignatureError] = useState('');
+
+  const getCategoryLabel = (categoryValue: string, translations: Record<string, string>): string => {
+    const category = expenseCategories.find(c => c.value === categoryValue);
+    if (!category || !category.labelKey) return categoryValue;
+    return translations[category.labelKey] || categoryValue;
+  };
+
+  if (!showForm) {
+    return <ReimbursementLanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
+  }
 
   const t = reimbursementTranslations[language];
 
