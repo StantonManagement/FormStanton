@@ -664,12 +664,14 @@ function FormContent() {
                   )}
 
                   {currentSection === 3 && (
-                    <div className="space-y-4">
-                      <h2 className="text-lg sm:text-xl font-semibold text-[var(--ink)]">
-                        {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
-                      </h2>
+                    <div className="space-y-6">
+                      <SectionHeader
+                        title={language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
+                        sectionNumber={3}
+                        totalSections={totalSections}
+                      />
 
-                      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
+                      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-sm">
                         <h3 className="font-bold text-[var(--ink)] mb-2">{policyContent[language].petPolicyHeading}</h3>
                         <p className="text-sm text-[var(--ink)] whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
                       </div>
@@ -975,7 +977,7 @@ function FormContent() {
                       <button
                         type="button"
                         onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
-                        className="w-full bg-[var(--primary)] text-white py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition"
+                        className="w-full bg-[var(--primary)] text-white py-3 sm:py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition text-base font-medium"
                       >
                         {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
                       </button>
@@ -983,37 +985,39 @@ function FormContent() {
                   )}
 
             {currentSection === 4 && (
-              <div className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-                  {language === 'en' ? 'Insurance Information' : language === 'es' ? 'Información de Seguro' : 'Informações de Seguro'}
-                </h2>
+              <div className="space-y-6">
+                <SectionHeader
+                  title={language === 'en' ? 'Insurance Information' : language === 'es' ? 'Información de Seguro' : 'Informações de Seguro'}
+                  sectionNumber={4}
+                  totalSections={totalSections}
+                />
 
-                <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded space-y-3">
-                  <h3 className="font-bold text-gray-900">{policyContent[language].insurancePolicyHeading}</h3>
+                <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded-sm space-y-3">
+                  <h3 className="font-bold text-[var(--ink)]">{policyContent[language].insurancePolicyHeading}</h3>
                   
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm">{policyContent[language].insuranceWhyHeading}</p>
-                    <p className="text-sm text-gray-700">{policyContent[language].insuranceWhyText}</p>
+                    <p className="font-semibold text-[var(--ink)] text-sm">{policyContent[language].insuranceWhyHeading}</p>
+                    <p className="text-sm text-[var(--ink)]">{policyContent[language].insuranceWhyText}</p>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row gap-2 text-sm">
-                    <span className="font-semibold text-gray-900">{policyContent[language].insuranceCost}</span>
+                    <span className="font-semibold text-[var(--ink)]">{policyContent[language].insuranceCost}</span>
                     <span className="font-semibold text-red-600" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceDeadline }} />
                   </div>
                   
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption1 }} />
-                    <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].insuranceOption1Text}</p>
+                  <div className="bg-white p-3 rounded-sm border border-green-200">
+                    <p className="font-semibold text-[var(--ink)] text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption1 }} />
+                    <p className="text-sm text-[var(--ink)] whitespace-pre-line">{policyContent[language].insuranceOption1Text}</p>
                   </div>
                   
-                  <div className="bg-white p-3 rounded border border-green-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption2 }} />
-                    <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].insuranceOption2Text}</p>
+                  <div className="bg-white p-3 rounded-sm border border-green-200">
+                    <p className="font-semibold text-[var(--ink)] text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].insuranceOption2 }} />
+                    <p className="text-sm text-[var(--ink)] whitespace-pre-line">{policyContent[language].insuranceOption2Text}</p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">{t.insuranceQuestion} <span className="text-red-500">*</span></p>
+                  <p className="text-sm font-medium text-[var(--ink)]">{t.insuranceQuestion} <span className="text-[var(--error)]">*</span></p>
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2">
                       <input
@@ -1022,9 +1026,9 @@ function FormContent() {
                         required
                         checked={formData.hasInsurance === true}
                         onChange={() => handleInputChange('hasInsurance', true)}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.yes}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                     </label>
                     <label className="flex items-center space-x-2">
                       <input
@@ -1033,47 +1037,47 @@ function FormContent() {
                         required
                         checked={formData.hasInsurance === false}
                         onChange={() => handleInputChange('hasInsurance', false)}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.no}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.no}</span>
                     </label>
                   </div>
                 </div>
 
                 {formData.hasInsurance === true && (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.insuranceProvider} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.insuranceProvider} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.insuranceProvider}
                         onChange={(e) => handleInputChange('insuranceProvider', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.insurancePolicyNumber} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.insurancePolicyNumber} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.insurancePolicyNumber}
                         onChange={(e) => handleInputChange('insurancePolicyNumber', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">
-                        {t.insuranceUpload} {!formData.insuranceUploadPending && <span className="text-red-500">*</span>}
+                      <span className="text-sm font-medium text-[var(--ink)]">
+                        {t.insuranceUpload} {!formData.insuranceUploadPending && <span className="text-[var(--error)]">*</span>}
                       </span>
                       <input
                         type="file"
                         required={!formData.insuranceUploadPending}
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={(e) => handleFileChange('insuranceProof', e.target.files?.[0] || null)}
-                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                        className="mt-1 block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
                       />
                     </label>
 
@@ -1082,40 +1086,40 @@ function FormContent() {
                         type="checkbox"
                         checked={formData.insuranceUploadPending}
                         onChange={(e) => handleInputChange('insuranceUploadPending', e.target.checked)}
-                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.insuranceUploadLater}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.insuranceUploadLater}</span>
                     </label>
 
                     {formData.insuranceUploadPending && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-                        <p className="text-sm text-gray-700">{t.insuranceUploadLaterHelper}</p>
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-sm">
+                        <p className="text-sm text-[var(--ink)]">{t.insuranceUploadLaterHelper}</p>
                       </div>
                     )}
 
-                    <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
-                      <p className="text-sm font-semibold text-gray-900 mb-2">{policyContent[language].insuranceLLCTableHeading}</p>
+                    <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-sm">
+                      <p className="text-sm font-semibold text-[var(--ink)] mb-2">{policyContent[language].insuranceLLCTableHeading}</p>
                       <InfoTable 
                         headers={policyContent[language].insuranceLLCTableHeaders}
                         rows={llcTable}
                         className="mb-2"
                       />
-                      <p className="text-sm text-gray-700 mt-2">{policyContent[language].insuranceLLCAddress}</p>
+                      <p className="text-sm text-[var(--ink)] mt-2">{policyContent[language].insuranceLLCAddress}</p>
                     </div>
                   </div>
                 )}
 
                 {formData.hasInsurance === false && (
-                  <div className="space-y-4 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <p className="text-sm text-gray-700">{t.insuranceNotice}</p>
+                  <div className="space-y-4 bg-yellow-50 p-4 rounded-sm border border-yellow-200">
+                    <p className="text-sm text-[var(--ink)]">{t.insuranceNotice}</p>
                     <label className="flex items-start space-x-2">
                       <input
                         type="checkbox"
                         checked={formData.addInsuranceToRent}
                         onChange={(e) => handleInputChange('addInsuranceToRent', e.target.checked)}
-                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.insuranceAddToRent}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.insuranceAddToRent}</span>
                     </label>
                   </div>
                 )}
@@ -1129,7 +1133,7 @@ function FormContent() {
                 <button
                   type="button"
                   onClick={() => { if (validateSection(4)) setCurrentSection(5); }}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                  className="w-full bg-[var(--primary)] text-white py-3 sm:py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition text-base font-medium"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
                 </button>
@@ -1137,61 +1141,63 @@ function FormContent() {
             )}
 
             {currentSection === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-                  {language === 'en' ? 'Vehicle Information' : language === 'es' ? 'Información de Vehículo' : 'Informações de Veículo'}
-                </h2>
+              <div className="space-y-6">
+                <SectionHeader
+                  title={language === 'en' ? 'Vehicle Information' : language === 'es' ? 'Información de Vehículo' : 'Informações de Veículo'}
+                  sectionNumber={2}
+                  totalSections={totalSections}
+                />
 
                 {hasParking && (
-                  <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded space-y-2">
+                  <div className="bg-red-50 border-l-4 border-red-600 p-4 rounded-sm space-y-2">
                     <p className="text-sm font-bold text-red-800">⚠️ {t.vehicleDueToday}</p>
                     <p className="text-sm text-red-700">{t.permitRequiresOtherDocs}</p>
                   </div>
                 )}
 
                 {!hasParking ? (
-                  <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
-                    <p className="text-sm text-gray-700">{t.noParkingMessage}</p>
+                  <div className="bg-[var(--bg-section)] border-l-4 border-[var(--muted)] p-4 rounded-sm">
+                    <p className="text-sm text-[var(--ink)]">{t.noParkingMessage}</p>
                   </div>
                 ) : (
                   <>
-                <div className="bg-purple-50 border-l-4 border-purple-500 p-3 sm:p-4 rounded space-y-3">
-                  <h3 className="font-bold text-gray-900">{policyContent[language].parkingPolicyHeading}</h3>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].parkingIntro}</p>
+                <div className="bg-purple-50 border-l-4 border-purple-500 p-3 sm:p-4 rounded-sm space-y-3">
+                  <h3 className="font-bold text-[var(--ink)]">{policyContent[language].parkingPolicyHeading}</h3>
+                  <p className="text-sm text-[var(--ink)] whitespace-pre-line">{policyContent[language].parkingIntro}</p>
                   
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm mb-2">{policyContent[language].parkingStepsHeading}</p>
+                    <p className="font-semibold text-[var(--ink)] text-sm mb-2">{policyContent[language].parkingStepsHeading}</p>
                     
                     <div className="space-y-2 text-sm">
                       <div>
-                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep1 }} />
-                        <p className="text-gray-700">{policyContent[language].parkingStep1Text}</p>
+                        <p className="font-semibold text-[var(--ink)]" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep1 }} />
+                        <p className="text-[var(--ink)]">{policyContent[language].parkingStep1Text}</p>
                       </div>
                       
                       <div>
-                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep2 }} />
-                        <p className="text-gray-700">{policyContent[language].parkingStep2Text}</p>
+                        <p className="font-semibold text-[var(--ink)]" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep2 }} />
+                        <p className="text-[var(--ink)]">{policyContent[language].parkingStep2Text}</p>
                       </div>
                       
                       <div>
-                        <p className="font-semibold text-gray-900" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep3 }} />
-                        <p className="text-gray-700 whitespace-pre-line">{policyContent[language].parkingStep3Text}</p>
+                        <p className="font-semibold text-[var(--ink)]" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingStep3 }} />
+                        <p className="text-[var(--ink)] whitespace-pre-line">{policyContent[language].parkingStep3Text}</p>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <p className="font-semibold text-gray-900 text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingDeadlinesHeading }} />
-                    <p className="text-sm text-gray-700 whitespace-pre-line">{policyContent[language].parkingDeadlines}</p>
+                  <div className="bg-white p-3 rounded-sm border border-purple-200">
+                    <p className="font-semibold text-[var(--ink)] text-sm mb-1" dangerouslySetInnerHTML={{ __html: policyContent[language].parkingDeadlinesHeading }} />
+                    <p className="text-sm text-[var(--ink)] whitespace-pre-line">{policyContent[language].parkingDeadlines}</p>
                   </div>
                   
-                  <div className="bg-red-50 p-3 rounded border border-red-300">
+                  <div className="bg-red-50 p-3 rounded-sm border border-red-300">
                     <p className="text-sm font-semibold text-red-800">{policyContent[language].parkingWarning}</p>
-                    <p className="text-sm text-gray-700 mt-1">{policyContent[language].parkingDisplay}</p>
+                    <p className="text-sm text-[var(--ink)] mt-1">{policyContent[language].parkingDisplay}</p>
                   </div>
                 </div>
 
-                <div className="bg-white border border-gray-300 p-3 sm:p-4 rounded">
+                <div className="bg-white border border-[var(--border)] p-3 sm:p-4 rounded-sm">
                   <InfoTable 
                     headers={policyContent[language].parkingFeeTableHeaders}
                     rows={parkingFeeTable}
@@ -1199,17 +1205,17 @@ function FormContent() {
                   />
                 </div>
 
-                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 sm:p-4 rounded">
-                  <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{policyContent[language].parkingNotice}</p>
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 sm:p-4 rounded-sm">
+                  <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-line">{policyContent[language].parkingNotice}</p>
                 </div>
 
-                <div className="bg-red-50 border-l-4 border-red-600 p-3 sm:p-4 rounded space-y-2">
+                <div className="bg-red-50 border-l-4 border-red-600 p-3 sm:p-4 rounded-sm space-y-2">
                   <h3 className="font-bold text-red-800 text-sm sm:text-base">⚠️ {policyContent[language].towingHeading}</h3>
-                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].towingText }} />
+                  <div className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].towingText }} />
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-700">{t.vehicleQuestion} <span className="text-red-500">*</span></p>
+                  <p className="text-sm font-medium text-[var(--ink)]">{t.vehicleQuestion} <span className="text-[var(--error)]">*</span></p>
                   <div className="flex space-x-4">
                     <label className="flex items-center space-x-2">
                       <input
@@ -1218,9 +1224,9 @@ function FormContent() {
                         required
                         checked={formData.hasVehicle === true}
                         onChange={() => handleInputChange('hasVehicle', true)}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.yes}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                     </label>
                     <label className="flex items-center space-x-2">
                       <input
@@ -1229,39 +1235,39 @@ function FormContent() {
                         required
                         checked={formData.hasVehicle === false}
                         onChange={() => handleInputChange('hasVehicle', false)}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.no}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.no}</span>
                     </label>
                   </div>
                 </div>
 
                 {formData.hasVehicle === true && (
-                  <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                  <div className="space-y-4 bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.vehicleMake} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleMake} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.vehicleMake}
                         onChange={(e) => handleInputChange('vehicleMake', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.vehicleModel} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleModel} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.vehicleModel}
                         onChange={(e) => handleInputChange('vehicleModel', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.vehicleYear} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleYear} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="number"
                         required
@@ -1269,48 +1275,48 @@ function FormContent() {
                         max="2030"
                         value={formData.vehicleYear}
                         onChange={(e) => handleInputChange('vehicleYear', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.vehicleColor} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleColor} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.vehicleColor}
                         onChange={(e) => handleInputChange('vehicleColor', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.vehiclePlate} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.vehiclePlate} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="text"
                         required
                         value={formData.vehiclePlate}
                         onChange={(e) => handleInputChange('vehiclePlate', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
 
-                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                      <p className="text-sm text-gray-700">{t.vehicleNotice}</p>
+                    <div className="bg-blue-50 p-3 rounded-sm border border-blue-200">
+                      <p className="text-sm text-[var(--ink)]">{t.vehicleNotice}</p>
                     </div>
                   </div>
                 )}
 
                 {formData.hasVehicle === true && !canHaveMultipleVehicles && (
-                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
+                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-sm">
                     <p className="text-sm font-medium text-amber-900">{t.limitedParkingMessage}</p>
                   </div>
                 )}
 
                 {formData.hasVehicle === true && canHaveMultipleVehicles && (
                   <div className="space-y-4">
-                    <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded">
-                      <p className="text-sm font-medium text-gray-700">{t.additionalVehicleQuestion}</p>
+                    <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded-sm">
+                      <p className="text-sm font-medium text-[var(--ink)]">{t.additionalVehicleQuestion}</p>
                       <div className="flex space-x-4 mt-2">
                         <label className="flex items-center space-x-2">
                           <input
@@ -1323,9 +1329,9 @@ function FormContent() {
                                 handleInputChange('additionalVehicles', [{ vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' }]);
                               }
                             }}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-[var(--primary)] focus:ring-[var(--primary)]"
                           />
-                          <span className="text-sm text-gray-700">{t.yes}</span>
+                          <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                         </label>
                         <label className="flex items-center space-x-2">
                           <input
@@ -1336,23 +1342,23 @@ function FormContent() {
                               handleInputChange('wantsAdditionalVehicle', false);
                               handleInputChange('additionalVehicles', []);
                             }}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-[var(--primary)] focus:ring-[var(--primary)]"
                           />
-                          <span className="text-sm text-gray-700">{t.no}</span>
+                          <span className="text-sm text-[var(--ink)]">{t.no}</span>
                         </label>
                       </div>
                     </div>
 
                     {formData.wantsAdditionalVehicle === true && (
                       <div className="space-y-4">
-                        <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded">
+                        <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-sm">
                           <p className="text-sm text-amber-800">{t.additionalVehicleNotice}</p>
                         </div>
 
                         {formData.additionalVehicles.map((av, index) => (
-                          <div key={index} className="space-y-3 bg-orange-50 p-4 rounded-lg border border-orange-200">
+                          <div key={index} className="space-y-3 bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
                             <div className="flex justify-between items-center">
-                              <h4 className="font-semibold text-gray-900 text-sm">{t.additionalVehicle} #{index + 1}</h4>
+                              <h4 className="font-semibold text-[var(--ink)] text-sm">{t.additionalVehicle} #{index + 1}</h4>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1362,13 +1368,13 @@ function FormContent() {
                                     handleInputChange('wantsAdditionalVehicle', false);
                                   }
                                 }}
-                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
                               >
                                 {t.removeVehicle}
                               </button>
                             </div>
                             <label className="block">
-                              <span className="text-sm font-medium text-gray-700">{t.vehicleMake} <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleMake} <span className="text-[var(--error)]">*</span></span>
                               <input
                                 type="text"
                                 required
@@ -1378,11 +1384,11 @@ function FormContent() {
                                   updated[index] = { ...updated[index], vehicleMake: e.target.value };
                                   handleInputChange('additionalVehicles', updated);
                                 }}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               />
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-gray-700">{t.vehicleModel} <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleModel} <span className="text-[var(--error)]">*</span></span>
                               <input
                                 type="text"
                                 required
@@ -1392,11 +1398,11 @@ function FormContent() {
                                   updated[index] = { ...updated[index], vehicleModel: e.target.value };
                                   handleInputChange('additionalVehicles', updated);
                                 }}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               />
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-gray-700">{t.vehicleYear} <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleYear} <span className="text-[var(--error)]">*</span></span>
                               <input
                                 type="number"
                                 required
@@ -1408,11 +1414,11 @@ function FormContent() {
                                   updated[index] = { ...updated[index], vehicleYear: e.target.value };
                                   handleInputChange('additionalVehicles', updated);
                                 }}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               />
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-gray-700">{t.vehicleColor} <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleColor} <span className="text-[var(--error)]">*</span></span>
                               <input
                                 type="text"
                                 required
@@ -1422,11 +1428,11 @@ function FormContent() {
                                   updated[index] = { ...updated[index], vehicleColor: e.target.value };
                                   handleInputChange('additionalVehicles', updated);
                                 }}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               />
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-gray-700">{t.vehiclePlate} <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehiclePlate} <span className="text-[var(--error)]">*</span></span>
                               <input
                                 type="text"
                                 required
@@ -1436,7 +1442,7 @@ function FormContent() {
                                   updated[index] = { ...updated[index], vehiclePlate: e.target.value };
                                   handleInputChange('additionalVehicles', updated);
                                 }}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               />
                             </label>
                           </div>
@@ -1451,14 +1457,14 @@ function FormContent() {
                                 { vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' },
                               ]);
                             }}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center space-x-1"
+                            className="w-full py-2.5 px-4 border-2 border-dashed border-[var(--primary)]/30 rounded-sm text-[var(--primary)] hover:bg-[var(--primary)]/5 hover:border-[var(--primary)]/50 transition-colors text-sm font-medium"
                           >
-                            <span>+ {t.addAnotherVehicle}</span>
+                            + {t.addAnotherVehicle}
                           </button>
                         )}
 
                         {formData.additionalVehicles.length >= 2 && (
-                          <p className="text-sm text-gray-500 italic">{t.maxVehiclesReached}</p>
+                          <p className="text-xs text-center text-[var(--muted)]">{t.maxVehiclesReached}</p>
                         )}
                       </div>
                     )}
@@ -1466,9 +1472,9 @@ function FormContent() {
                 )}
 
                 {language === 'en' && formData.hasVehicle === true && (
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="font-semibold text-gray-900 mb-2">Vehicle and Parking Addendum</h3>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">{VEHICLE_ADDENDUM}</p>
+                  <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                    <h3 className="font-semibold text-[var(--ink)] mb-2">Vehicle and Parking Addendum</h3>
+                    <p className="text-sm text-[var(--ink)] whitespace-pre-line">{VEHICLE_ADDENDUM}</p>
                   </div>
                 )}
 
@@ -1478,9 +1484,9 @@ function FormContent() {
                       <input
                         type="checkbox"
                         required
-                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
-                      <span className="text-sm text-gray-700">{t.vehicleAgree}</span>
+                      <span className="text-sm text-[var(--ink)]">{t.vehicleAgree}</span>
                     </label>
                     <div className="space-y-2">
                       <SignatureCanvasComponent
@@ -1496,21 +1502,21 @@ function FormContent() {
                       )}
                     </div>
                     <label className="block">
-                      <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.date} <span className="text-[var(--error)]">*</span></span>
                       <input
                         type="date"
                         required
                         value={formData.vehicleSignatureDate}
                         onChange={(e) => handleInputChange('vehicleSignatureDate', e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>
                   </div>
                 )}
 
                 {formData.hasVehicle === false && (
-                  <div className="bg-gray-50 p-3 rounded border border-gray-200">
-                    <p className="text-sm text-gray-700">{t.vehicleNone}</p>
+                  <div className="bg-[var(--bg-section)] p-3 rounded-sm border border-[var(--border)]">
+                    <p className="text-sm text-[var(--ink)]">{t.vehicleNone}</p>
                   </div>
                 )}
                   </>
@@ -1525,7 +1531,7 @@ function FormContent() {
                 <button
                   type="button"
                   onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                  className="w-full bg-[var(--primary)] text-white py-3 sm:py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition text-base font-medium"
                 >
                   {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
                 </button>
@@ -1533,38 +1539,147 @@ function FormContent() {
             )}
 
             {currentSection === 5 && (
-              <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {language === 'en' ? 'Final Confirmation' : language === 'es' ? 'Confirmación Final' : 'Confirmação Final'}
-                </h2>
+              <div className="space-y-6">
+                <SectionHeader
+                  title={language === 'en' ? 'Review & Submit' : language === 'es' ? 'Revisar y Enviar' : 'Revisar e Enviar'}
+                  sectionNumber={5}
+                  totalSections={5}
+                />
 
-                <label className="flex items-start space-x-2">
-                  <input
-                    type="checkbox"
-                    required
-                    checked={formData.finalConfirm}
-                    onChange={(e) => handleInputChange('finalConfirm', e.target.checked)}
-                    className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{t.finalConfirm}</span>
-                </label>
+                <div className="space-y-4">
+                  <p className="text-sm text-[var(--muted)]">
+                    {language === 'en' ? 'Please review your information before submitting.' : language === 'es' ? 'Por favor revise su información antes de enviar.' : 'Por favor, revise suas informações antes de enviar.'}
+                  </p>
 
-                {submitError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-sm text-red-700">{submitError}</p>
+                  {/* Resident Info Summary */}
+                  <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                    <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">
+                      {language === 'en' ? 'Resident Information' : language === 'es' ? 'Información del Residente' : 'Informações do Residente'}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div><span className="text-[var(--muted)]">{t.fullName}:</span></div>
+                      <div className="font-medium">{formData.fullName}</div>
+                      <div><span className="text-[var(--muted)]">{t.building}:</span></div>
+                      <div className="font-medium">{formData.buildingAddress}</div>
+                      <div><span className="text-[var(--muted)]">{t.unit}:</span></div>
+                      <div className="font-medium">{formData.unitNumber}</div>
+                      <div><span className="text-[var(--muted)]">{t.phone}:</span></div>
+                      <div className="font-medium">{formData.phone}</div>
+                      {formData.email && (
+                        <>
+                          <div><span className="text-[var(--muted)]">{t.email}:</span></div>
+                          <div className="font-medium">{formData.email}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
-                >
-                  {isSubmitting 
-                    ? (language === 'en' ? 'Submitting...' : language === 'es' ? 'Enviando...' : 'Enviando...')
-                    : t.submit
-                  }
-                </button>
+                  {/* Vehicle Summary */}
+                  {hasParking && formData.hasVehicle !== null && (
+                    <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                      <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">
+                        {language === 'en' ? 'Vehicle Information' : language === 'es' ? 'Información de Vehículo' : 'Informações de Veículo'}
+                      </h4>
+                      {formData.hasVehicle ? (
+                        <div className="space-y-2 text-sm">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div><span className="text-[var(--muted)]">{t.vehicleMake}:</span></div>
+                            <div className="font-medium">{formData.vehicleMake}</div>
+                            <div><span className="text-[var(--muted)]">{t.vehicleModel}:</span></div>
+                            <div className="font-medium">{formData.vehicleModel}</div>
+                            <div><span className="text-[var(--muted)]">{t.vehicleYear}:</span></div>
+                            <div className="font-medium">{formData.vehicleYear}</div>
+                            <div><span className="text-[var(--muted)]">{t.vehicleColor}:</span></div>
+                            <div className="font-medium">{formData.vehicleColor}</div>
+                            <div><span className="text-[var(--muted)]">{t.vehiclePlate}:</span></div>
+                            <div className="font-medium">{formData.vehiclePlate}</div>
+                          </div>
+                          {formData.additionalVehicles.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-[var(--divider)]">
+                              <p className="text-[var(--muted)] mb-1">{t.additionalVehicle}s:</p>
+                              {formData.additionalVehicles.map((av, idx) => (
+                                <p key={idx} className="font-medium">{av.vehicleYear} {av.vehicleMake} {av.vehicleModel} - {av.vehiclePlate}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[var(--muted)]">{t.vehicleNone}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pet Summary */}
+                  {formData.hasPets !== null && (
+                    <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                      <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">
+                        {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
+                      </h4>
+                      {formData.hasPets ? (
+                        <div className="space-y-2 text-sm">
+                          {formData.pets.map((pet, idx) => (
+                            <div key={idx} className="pb-2 border-b border-[var(--divider)] last:border-0">
+                              <p className="font-medium">{pet.petName} - {pet.petType === 'dog' ? t.dog : t.cat}</p>
+                              <p className="text-[var(--muted)]">{pet.petBreed}, {pet.petWeight} lbs, {pet.petColor}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[var(--muted)]">{language === 'en' ? 'No pets' : language === 'es' ? 'Sin mascotas' : 'Sem animais'}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Insurance Summary */}
+                  {formData.hasInsurance !== null && (
+                    <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                      <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">
+                        {language === 'en' ? 'Insurance Information' : language === 'es' ? 'Información de Seguro' : 'Informações de Seguro'}
+                      </h4>
+                      {formData.hasInsurance ? (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-[var(--muted)]">{t.insuranceProvider}:</span></div>
+                          <div className="font-medium">{formData.insuranceProvider}</div>
+                          <div><span className="text-[var(--muted)]">{t.insurancePolicyNumber}:</span></div>
+                          <div className="font-medium">{formData.insurancePolicyNumber}</div>
+                          <div><span className="text-[var(--muted)]">{language === 'en' ? 'Document:' : language === 'es' ? 'Documento:' : 'Documento:'}:</span></div>
+                          <div className="font-medium">{formData.insuranceUploadPending ? (language === 'en' ? 'Will upload later' : language === 'es' ? 'Subirá más tarde' : 'Enviará mais tarde') : (language === 'en' ? 'Uploaded' : language === 'es' ? 'Subido' : 'Enviado')}</div>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[var(--muted)]">{formData.addInsuranceToRent ? t.insuranceAddToRent : (language === 'en' ? 'No insurance provided' : language === 'es' ? 'No se proporcionó seguro' : 'Nenhum seguro fornecido')}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Final Confirmation */}
+                  <label className="flex items-start space-x-2">
+                    <input
+                      type="checkbox"
+                      required
+                      checked={formData.finalConfirm}
+                      onChange={(e) => handleInputChange('finalConfirm', e.target.checked)}
+                      className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
+                    />
+                    <span className="text-sm text-[var(--ink)]">{t.finalConfirm}</span>
+                  </label>
+
+                  {submitError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-sm text-red-700">{submitError}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[var(--success)] text-white py-3 px-4 rounded-sm hover:bg-green-700 transition disabled:bg-[var(--muted)] disabled:cursor-not-allowed font-semibold"
+                  >
+                    {isSubmitting 
+                      ? (language === 'en' ? 'Submitting...' : language === 'es' ? 'Enviando...' : 'Enviando...')
+                      : t.submit
+                    }
+                  </button>
+                </div>
               </div>
             )}
                 </motion.div>

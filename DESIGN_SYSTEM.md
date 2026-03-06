@@ -351,6 +351,180 @@ focus:ring-offset-2
 
 ---
 
+---
+
+## Standardized Form Components
+
+### Overview
+
+All forms should use the standardized components in `@/components/form/` to ensure consistency. These components enforce the institutional design pattern automatically.
+
+### Form Field Components
+
+**FormField** - Wrapper with label, helper text, and error display
+```jsx
+<FormField label="Email" required helperText="We'll contact you here" error={errors.email}>
+  <FormInput type="email" value={email} onChange={handleChange} />
+</FormField>
+```
+
+**FormInput** - Pre-styled text input
+```jsx
+<FormInput
+  type="text"
+  value={value}
+  onChange={handleChange}
+  placeholder="Enter text..."
+  error={!!errors.field}
+  required
+/>
+```
+
+**FormSelect** - Pre-styled dropdown with custom arrow
+```jsx
+<FormSelect value={value} onChange={handleChange}>
+  <option value="">-- Select --</option>
+  <option value="1">Option 1</option>
+</FormSelect>
+```
+
+**FormTextarea** - Pre-styled multi-line input
+```jsx
+<FormTextarea
+  value={value}
+  onChange={handleChange}
+  rows={4}
+  placeholder="Enter details..."
+/>
+```
+
+**FormRadioGroup** - Radio button group
+```jsx
+<FormRadioGroup
+  name="priority"
+  options={[
+    { value: 'low', label: 'Low' },
+    { value: 'high', label: 'High', description: 'Urgent items' },
+  ]}
+  value={value}
+  onChange={setValue}
+  direction="horizontal"
+/>
+```
+
+**FormCheckbox** - Single checkbox with label
+```jsx
+<FormCheckbox
+  label="I agree to terms"
+  checked={agreed}
+  onChange={(e) => setAgreed(e.target.checked)}
+/>
+```
+
+**FormButton** - Styled button with variants
+```jsx
+<FormButton
+  type="submit"
+  variant="primary" // primary, secondary, success, danger, ghost
+  size="md" // sm, md, lg
+  fullWidth
+  loading={isSubmitting}
+>
+  Submit
+</FormButton>
+```
+
+### Layout Components
+
+**FormLayout** - Main container with consistent max-width
+```jsx
+<FormLayout>
+  {/* Form content */}
+</FormLayout>
+```
+
+**FormSection** - Groups related fields
+```jsx
+<FormSection background>
+  {/* Related fields */}
+</FormSection>
+```
+
+**LanguageLanding** - Language selection screen
+```jsx
+<LanguageLanding
+  title="My Form"
+  description="Complete this form..."
+  onSelect={(lang) => setLanguage(lang)}
+/>
+```
+
+**SuccessScreen** - Animated success confirmation
+```jsx
+<SuccessScreen
+  title="Thank You!"
+  message="Your form was submitted."
+  language={language}
+  onLanguageChange={setLanguage}
+/>
+```
+
+### Utilities & Hooks
+
+**Form Utilities** (`@/lib/formUtils.ts`)
+- `validateEmail(email)` - Email validation
+- `validatePhone(phone)` - Phone validation (10 digits)
+- `formatPhone(phone)` - Format to (XXX) XXX-XXXX
+- `sanitizePhone(phone)` - Remove non-digits
+- `validateRequired(value)` - Required field check
+- `formatCurrency(value)` - Format as USD
+
+**Form Hooks** (`@/lib/formHooks.ts`)
+- `useFormSection(totalSections)` - Multi-section navigation
+- `useFormSubmit(handler)` - Submission state management
+- `useFieldValidation()` - Field-level error handling
+- `useFormData(initialData)` - Form data state
+- `useFileUpload(maxFiles)` - File upload management
+
+### Quick Start Example
+
+```jsx
+import { FormField, FormInput, FormButton, FormLayout } from '@/components/form';
+import { useFormData, useFormSubmit } from '@/lib/formHooks';
+
+export default function MyForm() {
+  const { formData, updateField } = useFormData({ name: '', email: '' });
+  const { submit, isSubmitting } = useFormSubmit(async (data) => {
+    await fetch('/api/submit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  });
+
+  return (
+    <FormLayout>
+      <form onSubmit={(e) => { e.preventDefault(); submit(formData); }}>
+        <FormField label="Name" required>
+          <FormInput
+            value={formData.name}
+            onChange={(e) => updateField('name', e.target.value)}
+            required
+          />
+        </FormField>
+        
+        <FormButton type="submit" fullWidth loading={isSubmitting}>
+          Submit
+        </FormButton>
+      </form>
+    </FormLayout>
+  );
+}
+```
+
+For complete documentation, see **FORM_STANDARDS.md**.
+
+---
+
 ## Implementation Checklist
 
 ### Completed
@@ -362,19 +536,16 @@ focus:ring-offset-2
 - [x] Progress indicator component
 - [x] Section header component
 - [x] Table component updated
+- [x] Standardized form components created
+- [x] Form utilities and hooks implemented
+- [x] Form documentation completed
+- [x] Example form template created
 
 ### In Progress
-- [ ] Main form component redesign
-- [ ] Information blocks styling
-- [ ] Form field styling
-- [ ] Button styling
-- [ ] Signature component styling
+- [ ] Migration of existing forms to use new components
 
 ### Pending
-- [ ] Framer Motion animations
 - [ ] Admin logo upload page
-- [ ] Mobile optimizations
-- [ ] Print stylesheet
 - [ ] Accessibility audit
 
 ---
@@ -382,12 +553,14 @@ focus:ring-offset-2
 ## Usage Guidelines
 
 ### Do's
+✓ Use standardized form components from `@/components/form/`
 ✓ Use serif fonts for headers only
 ✓ Maintain consistent spacing
 ✓ Use muted, professional colors
 ✓ Keep animations subtle
 ✓ Ensure high contrast for readability
 ✓ Test on mobile devices
+✓ Follow FORM_STANDARDS.md for form building
 
 ### Don'ts
 ✗ No rounded corners on form fields
@@ -396,6 +569,7 @@ focus:ring-offset-2
 ✗ No startup-style branding
 ✗ No excessive whitespace
 ✗ No decorative elements
+✗ No custom form inputs without using standardized components
 
 ---
 
@@ -405,5 +579,7 @@ For questions about the design system:
 - **Colors**: See color palette section
 - **Typography**: Check typography section
 - **Components**: Reference component examples
+- **Form Building**: See FORM_STANDARDS.md
 - **Layout**: Review layout section
 - **Animations**: See animations section
+- **Example**: Check `@/examples/example-form.tsx`

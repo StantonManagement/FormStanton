@@ -61,7 +61,7 @@ const formLinks = [
   {
     name: 'Tenant Onboarding Form',
     description: 'Pet registration, insurance, vehicle/parking info',
-    path: '/form',
+    path: 'https://form-stanton.vercel.app/admin',
   },
   {
     name: 'Reimbursement Request',
