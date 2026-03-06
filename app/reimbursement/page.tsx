@@ -421,7 +421,7 @@ function ReimbursementFormContent() {
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.building} <span className="text-red-500">*</span></span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.building} <span className="text-[var(--error)]">*</span></span>
                           <BuildingAutocomplete
                             value={formData.buildingAddress}
                             onChange={(val) => { handleInputChange('buildingAddress', val); handleInputChange('unitNumber', ''); }}
@@ -432,7 +432,7 @@ function ReimbursementFormContent() {
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.unit} <span className="text-red-500">*</span></span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.unit} <span className="text-[var(--error)]">*</span></span>
                           {formData.buildingAddress && buildingUnits[formData.buildingAddress] ? (
                             <div className="relative mt-1">
                               <select
@@ -483,7 +483,7 @@ function ReimbursementFormContent() {
                         <button
                           type="button"
                           onClick={() => { if (validateSection(1)) setCurrentSection(2); }}
-                          className="w-full bg-blue-600 text-white py-3 sm:py-2 px-4 rounded-md hover:bg-blue-700 transition text-base font-medium"
+                          className="w-full bg-[var(--primary)] text-white py-3 sm:py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition text-base font-medium"
                         >
                           {t.continue}
                         </button>
@@ -502,9 +502,9 @@ function ReimbursementFormContent() {
 
                       <div className="space-y-4">
                         {formData.expenses.map((expense, idx) => (
-                          <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                          <div key={idx} className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)] relative">
                             <div className="flex items-center justify-between mb-3">
-                              <h4 className="text-sm font-semibold text-gray-900">{t.expenseNumber}{idx + 1}</h4>
+                              <h4 className="text-sm font-semibold text-[var(--ink)]">{t.expenseNumber}{idx + 1}</h4>
                               {formData.expenses.length > 1 && (
                                 <button
                                   type="button"
@@ -519,23 +519,23 @@ function ReimbursementFormContent() {
                             <div className="space-y-3">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.expenseDate} <span className="text-red-500">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.expenseDate} <span className="text-[var(--error)]">*</span></span>
                                   <input
                                     type="date"
                                     required
                                     value={expense.date}
                                     onChange={(e) => handleExpenseChange(idx, 'date', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   />
                                 </label>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.expenseCategory} <span className="text-red-500">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.expenseCategory} <span className="text-[var(--error)]">*</span></span>
                                   <select
                                     required
                                     value={expense.category}
                                     onChange={(e) => handleExpenseChange(idx, 'category', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   >
                                     <option value="">{t.selectCategory}</option>
                                     {expenseCategories.map(cat => (
@@ -546,19 +546,19 @@ function ReimbursementFormContent() {
                               </div>
 
                               <label className="block">
-                                <span className="text-sm font-medium text-gray-700">{t.expenseDescription} <span className="text-red-500">*</span></span>
+                                <span className="text-sm font-medium text-[var(--ink)]">{t.expenseDescription} <span className="text-[var(--error)]">*</span></span>
                                 <input
                                   type="text"
                                   required
                                   value={expense.description}
                                   onChange={(e) => handleExpenseChange(idx, 'description', e.target.value)}
-                                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                  className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                 />
                               </label>
 
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.expenseAmount} <span className="text-red-500">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.expenseAmount} <span className="text-[var(--error)]">*</span></span>
                                   <input
                                     type="number"
                                     required
@@ -566,17 +566,17 @@ function ReimbursementFormContent() {
                                     step="0.01"
                                     value={expense.amount}
                                     onChange={(e) => handleExpenseChange(idx, 'amount', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   />
                                 </label>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.expenseNotes} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.expenseNotes} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
                                   <input
                                     type="text"
                                     value={expense.notes}
                                     onChange={(e) => handleExpenseChange(idx, 'notes', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   />
                                 </label>
                               </div>
@@ -588,23 +588,23 @@ function ReimbursementFormContent() {
                           <button
                             type="button"
                             onClick={addExpense}
-                            className="w-full py-2.5 px-4 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm font-medium"
+                            className="w-full py-2.5 px-4 border-2 border-dashed border-[var(--primary)]/30 rounded-sm text-[var(--primary)] hover:bg-[var(--primary)]/5 hover:border-[var(--primary)]/50 transition-colors text-sm font-medium"
                           >
                             + {t.addExpense}
                           </button>
                         ) : (
-                          <p className="text-xs text-center text-gray-500">{t.maxExpensesReached}</p>
+                          <p className="text-xs text-center text-[var(--muted)]">{t.maxExpensesReached}</p>
                         )}
 
                         {/* Total */}
-                        <div className="bg-[var(--primary)] text-white p-4 rounded-lg flex justify-between items-center">
+                        <div className="bg-[var(--primary)] text-white p-4 rounded-sm flex justify-between items-center">
                           <span className="font-semibold">{t.totalAmount}:</span>
                           <span className="text-xl font-bold">${totalAmount.toFixed(2)}</span>
                         </div>
 
                         {/* Payment Preference */}
                         <div className="space-y-2">
-                          <span className="text-sm font-medium text-gray-700">{t.paymentPreference}</span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.paymentPreference}</span>
                           <div className="flex flex-wrap gap-3">
                             {[
                               { value: 'check', label: t.paymentCheck },
@@ -618,9 +618,9 @@ function ReimbursementFormContent() {
                                   value={option.value}
                                   checked={formData.paymentPreference === option.value}
                                   onChange={(e) => handleInputChange('paymentPreference', e.target.value)}
-                                  className="text-blue-600 focus:ring-blue-500"
+                                  className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                 />
-                                <span className="text-sm text-gray-700">{option.label}</span>
+                                <span className="text-sm text-[var(--ink)]">{option.label}</span>
                               </label>
                             ))}
                           </div>
@@ -628,7 +628,7 @@ function ReimbursementFormContent() {
 
                         {/* Urgency */}
                         <div className="space-y-2">
-                          <span className="text-sm font-medium text-gray-700">{t.urgency}</span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.urgency}</span>
                           <div className="flex gap-3">
                             <label className="flex items-center space-x-2">
                               <input
@@ -637,9 +637,9 @@ function ReimbursementFormContent() {
                                 value="normal"
                                 checked={formData.urgency === 'normal'}
                                 onChange={(e) => handleInputChange('urgency', e.target.value)}
-                                className="text-blue-600 focus:ring-blue-500"
+                                className="text-[var(--primary)] focus:ring-[var(--primary)]"
                               />
-                              <span className="text-sm text-gray-700">{t.urgencyNormal}</span>
+                              <span className="text-sm text-[var(--ink)]">{t.urgencyNormal}</span>
                             </label>
                             <label className="flex items-center space-x-2">
                               <input
@@ -648,9 +648,9 @@ function ReimbursementFormContent() {
                                 value="urgent"
                                 checked={formData.urgency === 'urgent'}
                                 onChange={(e) => handleInputChange('urgency', e.target.value)}
-                                className="text-blue-600 focus:ring-blue-500"
+                                className="text-[var(--primary)] focus:ring-[var(--primary)]"
                               />
-                              <span className="text-sm text-gray-700 flex items-center gap-1">
+                              <span className="text-sm text-[var(--ink)] flex items-center gap-1">
                                 <span className="inline-block w-2 h-2 bg-red-500 rounded-full"></span>
                                 {t.urgencyUrgent}
                               </span>
@@ -667,7 +667,7 @@ function ReimbursementFormContent() {
                         <button
                           type="button"
                           onClick={() => { if (validateSection(2)) setCurrentSection(3); }}
-                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                          className="w-full bg-[var(--primary)] text-white py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition"
                         >
                           {t.continue}
                         </button>
@@ -685,12 +685,12 @@ function ReimbursementFormContent() {
                       />
 
                       <div className="space-y-4">
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                          <p className="text-sm text-gray-700">{t.attachmentsIntro}</p>
+                        <div className="bg-[var(--bg-section)] border-l-4 border-[var(--accent)] p-4 rounded-sm">
+                          <p className="text-sm text-[var(--ink)]">{t.attachmentsIntro}</p>
                         </div>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.uploadReceipts}</span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.uploadReceipts}</span>
                           <p className="text-xs text-[var(--muted)] mb-2">{t.uploadHelper}</p>
                           {receiptFiles.length < MAX_FILES && (
                             <input
@@ -698,27 +698,27 @@ function ReimbursementFormContent() {
                               accept=".pdf,.jpg,.jpeg,.png"
                               multiple
                               onChange={handleFileAdd}
-                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                              className="block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
                             />
                           )}
                         </label>
 
                         {receiptFiles.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-sm font-medium text-gray-700">{receiptFiles.length} {t.filesSelected}</p>
+                            <p className="text-sm font-medium text-[var(--ink)]">{receiptFiles.length} {t.filesSelected}</p>
                             {receiptFiles.map((file, idx) => (
-                              <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+                              <div key={idx} className="flex items-center justify-between bg-[var(--bg-section)] p-2 rounded-sm border border-[var(--border)]">
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-4 h-4 text-[var(--muted)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                                   </svg>
-                                  <span className="text-sm text-gray-700 truncate">{file.name}</span>
-                                  <span className="text-xs text-gray-400 flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                                  <span className="text-sm text-[var(--ink)] truncate">{file.name}</span>
+                                  <span className="text-xs text-[var(--muted)] flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => removeFile(idx)}
-                                  className="text-red-500 hover:text-red-700 text-xs font-medium ml-2 flex-shrink-0"
+                                  className="text-[var(--error)] hover:text-red-700 text-xs font-medium ml-2 flex-shrink-0"
                                 >
                                   {t.removeExpense}
                                 </button>
@@ -728,13 +728,13 @@ function ReimbursementFormContent() {
                         )}
 
                         {receiptFiles.length >= MAX_FILES && (
-                          <p className="text-xs text-center text-gray-500">{t.maxFilesReached}</p>
+                          <p className="text-xs text-center text-[var(--muted)]">{t.maxFilesReached}</p>
                         )}
 
                         <button
                           type="button"
                           onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
-                          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                          className="w-full bg-[var(--primary)] text-white py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition"
                         >
                           {t.continue}
                         </button>
@@ -752,41 +752,41 @@ function ReimbursementFormContent() {
                       />
 
                       <div className="space-y-4">
-                        <p className="text-sm text-gray-600">{t.reviewSummary}</p>
+                        <p className="text-sm text-[var(--muted)]">{t.reviewSummary}</p>
 
                         {/* Tenant Info Summary */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewTenantInfo}</h4>
+                        <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                          <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">{t.reviewTenantInfo}</h4>
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div><span className="text-gray-500">{t.tenantName}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.tenantName}:</span></div>
                             <div className="font-medium">{formData.tenantName}</div>
-                            <div><span className="text-gray-500">{t.building}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.building}:</span></div>
                             <div className="font-medium">{formData.buildingAddress}</div>
-                            <div><span className="text-gray-500">{t.unit}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.unit}:</span></div>
                             <div className="font-medium">{formData.unitNumber}</div>
-                            <div><span className="text-gray-500">{t.phone}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.phone}:</span></div>
                             <div className="font-medium">{formData.phone}</div>
-                            <div><span className="text-gray-500">{t.email}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.email}:</span></div>
                             <div className="font-medium">{formData.email}</div>
                           </div>
                         </div>
 
                         {/* Expenses Summary */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewExpenses}</h4>
+                        <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                          <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">{t.reviewExpenses}</h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
-                                <tr className="border-b border-gray-300">
-                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseDate}</th>
-                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseCategory}</th>
-                                  <th className="text-left py-1 pr-2 text-gray-500">{t.expenseDescription}</th>
-                                  <th className="text-right py-1 text-gray-500">{t.expenseAmount}</th>
+                                <tr className="border-b border-[var(--border)]">
+                                  <th className="text-left py-1 pr-2 text-[var(--muted)]">{t.expenseDate}</th>
+                                  <th className="text-left py-1 pr-2 text-[var(--muted)]">{t.expenseCategory}</th>
+                                  <th className="text-left py-1 pr-2 text-[var(--muted)]">{t.expenseDescription}</th>
+                                  <th className="text-right py-1 text-[var(--muted)]">{t.expenseAmount}</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {formData.expenses.map((exp, idx) => (
-                                  <tr key={idx} className="border-b border-gray-200">
+                                  <tr key={idx} className="border-b border-[var(--divider)]">
                                     <td className="py-1 pr-2">{exp.date}</td>
                                     <td className="py-1 pr-2">{exp.category ? t[expenseCategories.find(c => c.value === exp.category)?.labelKey || ''] || exp.category : ''}</td>
                                     <td className="py-1 pr-2">{exp.description}</td>
@@ -805,15 +805,15 @@ function ReimbursementFormContent() {
                         </div>
 
                         {/* Payment & Urgency */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div><span className="text-gray-500">{t.reviewPayment}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.reviewPayment}:</span></div>
                             <div className="font-medium">
                               {formData.paymentPreference === 'check' ? t.paymentCheck :
                                formData.paymentPreference === 'credit' ? t.paymentCredit :
                                formData.paymentPreference === 'deposit' ? t.paymentDeposit : '—'}
                             </div>
-                            <div><span className="text-gray-500">{t.reviewUrgency}:</span></div>
+                            <div><span className="text-[var(--muted)]">{t.reviewUrgency}:</span></div>
                             <div className="font-medium">
                               {formData.urgency === 'urgent' ? (
                                 <span className="text-red-600 flex items-center gap-1">
@@ -826,10 +826,10 @@ function ReimbursementFormContent() {
                         </div>
 
                         {/* Attachments Summary */}
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-2">{t.reviewAttachments}</h4>
+                        <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                          <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">{t.reviewAttachments}</h4>
                           {receiptFiles.length > 0 ? (
-                            <ul className="text-sm text-gray-700 space-y-1">
+                            <ul className="text-sm text-[var(--ink)] space-y-1">
                               {receiptFiles.map((file, idx) => (
                                 <li key={idx} className="flex items-center gap-1">
                                   <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -840,7 +840,7 @@ function ReimbursementFormContent() {
                               ))}
                             </ul>
                           ) : (
-                            <p className="text-sm text-gray-500">{t.noAttachments}</p>
+                            <p className="text-sm text-[var(--muted)]">{t.noAttachments}</p>
                           )}
                         </div>
 
@@ -860,13 +860,13 @@ function ReimbursementFormContent() {
                         </div>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.signatureDate} <span className="text-red-500">*</span></span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.signatureDate} <span className="text-[var(--error)]">*</span></span>
                           <input
                             type="date"
                             required
                             value={formData.dateSubmitted}
                             readOnly
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-gray-100"
+                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-section)] text-[var(--ink)]"
                           />
                         </label>
 
@@ -877,9 +877,9 @@ function ReimbursementFormContent() {
                             required
                             checked={formData.finalConfirm}
                             onChange={(e) => handleInputChange('finalConfirm', e.target.checked)}
-                            className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                           />
-                          <span className="text-sm text-gray-700">{t.finalConfirm}</span>
+                          <span className="text-sm text-[var(--ink)]">{t.finalConfirm}</span>
                         </label>
 
                         {submitError && (
@@ -891,7 +891,7 @@ function ReimbursementFormContent() {
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+                          className="w-full bg-[var(--success)] text-white py-3 px-4 rounded-sm hover:bg-green-700 transition disabled:bg-[var(--muted)] disabled:cursor-not-allowed font-semibold"
                         >
                           {isSubmitting ? t.submitting : t.submit}
                         </button>

@@ -506,7 +506,7 @@ function FormContent() {
                       <button
                         type="button"
                         onClick={() => setIsInsuranceModalOpen(true)}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                        className="text-sm text-[var(--primary)] hover:text-[var(--primary-light)] font-medium underline"
                       >
                         {language === 'en' ? 'Already submitted? Upload insurance documents here' :
                          language === 'es' ? '¿Ya envió el formulario? Suba documentos de seguro aquí' :
@@ -574,7 +574,7 @@ function FormContent() {
                               type="checkbox"
                               checked={formData.phoneIsNew}
                               onChange={(e) => handleInputChange('phoneIsNew', e.target.checked)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                              className="rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)] w-4 h-4"
                             />
                             <span className="text-sm text-[var(--muted)]">{t.phoneNew}</span>
                           </label>
@@ -603,7 +603,7 @@ function FormContent() {
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.building} <span className="text-red-500">*</span></span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.building} <span className="text-[var(--error)]">*</span></span>
                           <BuildingAutocomplete
                             value={formData.buildingAddress}
                             onChange={(val) => { handleInputChange('buildingAddress', val); handleInputChange('unitNumber', ''); }}
@@ -614,7 +614,7 @@ function FormContent() {
                         </label>
 
                         <label className="block">
-                          <span className="text-sm font-medium text-gray-700">{t.unit} <span className="text-red-500">*</span></span>
+                          <span className="text-sm font-medium text-[var(--ink)]">{t.unit} <span className="text-[var(--error)]">*</span></span>
                           {formData.buildingAddress && buildingUnits[formData.buildingAddress] ? (
                             <div className="relative mt-1">
                               <select
@@ -655,7 +655,7 @@ function FormContent() {
                         <button
                           type="button"
                           onClick={() => { if (validateSection(1)) setCurrentSection(2); }}
-                          className="w-full bg-blue-600 text-white py-3 sm:py-2 px-4 rounded-md hover:bg-blue-700 transition text-base font-medium"
+                          className="w-full bg-[var(--primary)] text-white py-3 sm:py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition text-base font-medium"
                         >
                           {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
                         </button>
@@ -665,16 +665,16 @@ function FormContent() {
 
                   {currentSection === 3 && (
                     <div className="space-y-4">
-                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                      <h2 className="text-lg sm:text-xl font-semibold text-[var(--ink)]">
                         {language === 'en' ? 'Pet Information' : language === 'es' ? 'Información de Mascotas' : 'Informações sobre Animais'}
                       </h2>
 
                       <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded">
-                        <h3 className="font-bold text-gray-900 mb-2">{policyContent[language].petPolicyHeading}</h3>
-                        <p className="text-sm text-gray-700 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
+                        <h3 className="font-bold text-[var(--ink)] mb-2">{policyContent[language].petPolicyHeading}</h3>
+                        <p className="text-sm text-[var(--ink)] whitespace-pre-line" dangerouslySetInnerHTML={{ __html: policyContent[language].petPolicyText }} />
                       </div>
 
-                      <div className="bg-white border border-gray-300 p-3 sm:p-4 rounded">
+                      <div className="bg-white border border-[var(--border)] p-3 sm:p-4 rounded-sm">
                         <InfoTable 
                           headers={policyContent[language].petRentTableHeaders}
                           rows={petRentTable}
@@ -683,7 +683,7 @@ function FormContent() {
                       </div>
 
                       <div className="space-y-3">
-                        <p className="text-sm font-medium text-gray-700">{t.petQuestion} <span className="text-red-500">*</span></p>
+                        <p className="text-sm font-medium text-[var(--ink)]">{t.petQuestion} <span className="text-[var(--error)]">*</span></p>
                         <div className="flex space-x-4">
                           <label className="flex items-center space-x-2">
                             <input
@@ -692,9 +692,9 @@ function FormContent() {
                               required
                               checked={formData.hasPets === true}
                               onChange={() => handleInputChange('hasPets', true)}
-                              className="text-blue-600 focus:ring-blue-500"
+                              className="text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
-                            <span className="text-sm text-gray-700">{t.yes}</span>
+                            <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                           </label>
                           <label className="flex items-center space-x-2">
                             <input
@@ -703,9 +703,9 @@ function FormContent() {
                               required
                               checked={formData.hasPets === false}
                               onChange={() => handleInputChange('hasPets', false)}
-                              className="text-blue-600 focus:ring-blue-500"
+                              className="text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
-                            <span className="text-sm text-gray-700">{t.no}</span>
+                            <span className="text-sm text-[var(--ink)]">{t.no}</span>
                           </label>
                         </div>
                       </div>
@@ -713,9 +713,9 @@ function FormContent() {
                       {formData.hasPets === true && (
                         <div className="space-y-4">
                           {formData.pets.map((pet, idx) => (
-                            <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                            <div key={idx} className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)] relative">
                               <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-sm font-semibold text-gray-900">{t.petNumber}{idx + 1}</h4>
+                                <h4 className="text-sm font-semibold text-[var(--ink)]">{t.petNumber}{idx + 1}</h4>
                                 {formData.pets.length > 1 && (
                                   <button
                                     type="button"
@@ -729,7 +729,7 @@ function FormContent() {
 
                               <div className="space-y-3">
                                 <div className="space-y-2">
-                                  <p className="text-sm font-medium text-gray-700">{t.petType} <span className="text-red-500">*</span></p>
+                                  <p className="text-sm font-medium text-[var(--ink)]">{t.petType} <span className="text-[var(--error)]">*</span></p>
                                   <div className="flex space-x-4">
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -738,9 +738,9 @@ function FormContent() {
                                         value="dog"
                                         checked={pet.petType === 'dog'}
                                         onChange={(e) => handlePetChange(idx, 'petType', e.target.value)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.dog}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.dog}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -749,57 +749,57 @@ function FormContent() {
                                         value="cat"
                                         checked={pet.petType === 'cat'}
                                         onChange={(e) => handlePetChange(idx, 'petType', e.target.value)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.cat}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.cat}</span>
                                     </label>
                                   </div>
                                 </div>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.petName} <span className="text-red-500">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petName} <span className="text-[var(--error)]">*</span></span>
                                   <input
                                     type="text"
                                     value={pet.petName}
                                     onChange={(e) => handlePetChange(idx, 'petName', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   />
                                 </label>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.petBreed} <span className="text-red-500">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petBreed} <span className="text-[var(--error)]">*</span></span>
                                   <input
                                     type="text"
                                     value={pet.petBreed}
                                     onChange={(e) => handlePetChange(idx, 'petBreed', e.target.value)}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                    className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                   />
                                 </label>
 
                                 <div className="grid grid-cols-2 gap-3">
                                   <label className="block">
-                                    <span className="text-sm font-medium text-gray-700">{t.petWeight} <span className="text-red-500">*</span></span>
+                                    <span className="text-sm font-medium text-[var(--ink)]">{t.petWeight} <span className="text-[var(--error)]">*</span></span>
                                     <input
                                       type="number"
                                       value={pet.petWeight}
                                       onChange={(e) => handlePetChange(idx, 'petWeight', e.target.value)}
-                                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                      className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                     />
                                   </label>
 
                                   <label className="block">
-                                    <span className="text-sm font-medium text-gray-700">{t.petColor} <span className="text-red-500">*</span></span>
+                                    <span className="text-sm font-medium text-[var(--ink)]">{t.petColor} <span className="text-[var(--error)]">*</span></span>
                                     <input
                                       type="text"
                                       value={pet.petColor}
                                       onChange={(e) => handlePetChange(idx, 'petColor', e.target.value)}
-                                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                      className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                                     />
                                   </label>
                                 </div>
 
                                 <div className="space-y-2">
-                                  <p className="text-sm font-medium text-gray-700">{t.petSpayed} <span className="text-red-500">*</span></p>
+                                  <p className="text-sm font-medium text-[var(--ink)]">{t.petSpayed} <span className="text-[var(--error)]">*</span></p>
                                   <div className="flex space-x-4">
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -807,9 +807,9 @@ function FormContent() {
                                         name={`petSpayed_${idx}`}
                                         checked={pet.petSpayed === true}
                                         onChange={() => handlePetChange(idx, 'petSpayed', true)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.yes}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -817,15 +817,15 @@ function FormContent() {
                                         name={`petSpayed_${idx}`}
                                         checked={pet.petSpayed === false}
                                         onChange={() => handlePetChange(idx, 'petSpayed', false)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.no}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.no}</span>
                                     </label>
                                   </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                  <p className="text-sm font-medium text-gray-700">{t.petVaccines} <span className="text-red-500">*</span></p>
+                                  <p className="text-sm font-medium text-[var(--ink)]">{t.petVaccines} <span className="text-[var(--error)]">*</span></p>
                                   <div className="flex space-x-4">
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -833,9 +833,9 @@ function FormContent() {
                                         name={`petVaccines_${idx}`}
                                         checked={pet.petVaccinationsCurrent === true}
                                         onChange={() => handlePetChange(idx, 'petVaccinationsCurrent', true)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.yes}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.yes}</span>
                                     </label>
                                     <label className="flex items-center space-x-2">
                                       <input
@@ -843,30 +843,30 @@ function FormContent() {
                                         name={`petVaccines_${idx}`}
                                         checked={pet.petVaccinationsCurrent === false}
                                         onChange={() => handlePetChange(idx, 'petVaccinationsCurrent', false)}
-                                        className="text-blue-600 focus:ring-blue-500"
+                                        className="text-[var(--primary)] focus:ring-[var(--primary)]"
                                       />
-                                      <span className="text-sm text-gray-700">{t.no}</span>
+                                      <span className="text-sm text-[var(--ink)]">{t.no}</span>
                                     </label>
                                   </div>
                                 </div>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.petVaccineUpload} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petVaccineUpload} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
                                   <input
                                     type="file"
                                     accept=".pdf,.jpg,.jpeg,.png"
                                     onChange={(e) => handlePetFileChange(idx, 'vaccination', e.target.files?.[0] || null)}
-                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    className="mt-1 block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
                                   />
                                 </label>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-gray-700">{t.petPhoto} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petPhoto} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
                                   <input
                                     type="file"
                                     accept=".jpg,.jpeg,.png"
                                     onChange={(e) => handlePetFileChange(idx, 'photo', e.target.files?.[0] || null)}
-                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    className="mt-1 block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
                                   />
                                 </label>
                               </div>
@@ -877,20 +877,20 @@ function FormContent() {
                             <button
                               type="button"
                               onClick={addPet}
-                              className="w-full py-2.5 px-4 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors text-sm font-medium"
+                              className="w-full py-2.5 px-4 border-2 border-dashed border-[var(--primary)]/30 rounded-sm text-[var(--primary)] hover:bg-[var(--primary)]/5 hover:border-[var(--primary)]/50 transition-colors text-sm font-medium"
                             >
                               + {t.addAnotherPet}
                             </button>
                           ) : (
-                            <p className="text-xs text-center text-gray-500">{t.maxPetsReached}</p>
+                            <p className="text-xs text-center text-[var(--muted)]">{t.maxPetsReached}</p>
                           )}
                         </div>
                       )}
 
                       {language === 'en' && (
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <h3 className="font-semibold text-gray-900 mb-2">Pet Addendum</h3>
-                          <p className="text-sm text-gray-700 whitespace-pre-line">{PET_ADDENDUM}</p>
+                        <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                          <h3 className="font-semibold text-[var(--ink)] mb-2">Pet Addendum</h3>
+                          <p className="text-sm text-[var(--ink)] whitespace-pre-line">{PET_ADDENDUM}</p>
                         </div>
                       )}
 
@@ -900,9 +900,9 @@ function FormContent() {
                             <input
                               type="checkbox"
                               required
-                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
-                            <span className="text-sm text-gray-700">{t.petAgree}</span>
+                            <span className="text-sm text-[var(--ink)]">{t.petAgree}</span>
                           </label>
                           <div className="space-y-2">
                             <SignatureCanvasComponent
@@ -918,13 +918,13 @@ function FormContent() {
                             )}
                           </div>
                           <label className="block">
-                            <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.date} <span className="text-[var(--error)]">*</span></span>
                             <input
                               type="date"
                               required
                               value={formData.petSignatureDate}
                               onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                             />
                           </label>
                         </div>
@@ -936,9 +936,9 @@ function FormContent() {
                             <input
                               type="checkbox"
                               required
-                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="mt-1 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
-                            <span className="text-sm text-gray-700">{t.petAgreeNone}</span>
+                            <span className="text-sm text-[var(--ink)]">{t.petAgreeNone}</span>
                           </label>
                           <div className="space-y-2">
                             <SignatureCanvasComponent
@@ -954,13 +954,13 @@ function FormContent() {
                             )}
                           </div>
                           <label className="block">
-                            <span className="text-sm font-medium text-gray-700">{t.date} <span className="text-red-500">*</span></span>
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.date} <span className="text-[var(--error)]">*</span></span>
                             <input
                               type="date"
                               required
                               value={formData.petSignatureDate}
                               onChange={(e) => handleInputChange('petSignatureDate', e.target.value)}
-                              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                             />
                           </label>
                         </div>
@@ -975,7 +975,7 @@ function FormContent() {
                       <button
                         type="button"
                         onClick={() => { if (validateSection(3)) setCurrentSection(4); }}
-                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition"
+                        className="w-full bg-[var(--primary)] text-white py-2 px-4 rounded-sm hover:bg-[var(--primary-light)] transition"
                       >
                         {language === 'en' ? 'Continue' : language === 'es' ? 'Continuar' : 'Continuar'}
                       </button>

@@ -65,3 +65,300 @@
     font-family: var(--font-sans);
   }
 }
+
+/* ========================================
+   PRINT STYLES - Professional Forms
+   Optimized for US Letter (8.5" x 11")
+   ======================================== */
+
+@media print {
+  /* Page Setup */
+  @page {
+    size: letter;
+    margin: 0.75in 0.75in 0.75in 0.75in;
+  }
+
+  /* Reset and Base Styles */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  /* Hide Screen-Only Elements */
+  .print\:hidden,
+  button:not(.print-visible),
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Form Container */
+  .print\:max-w-none {
+    max-width: none !important;
+  }
+
+  .print\:my-0 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:px-12 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .print\:py-8 {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Typography - Professional Hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+    color: black !important;
+  }
+
+  h1 {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 12pt;
+    margin-top: 0;
+  }
+
+  h2 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin-top: 18pt;
+    margin-bottom: 10pt;
+    border-bottom: 1.5pt solid #000;
+    padding-bottom: 4pt;
+  }
+
+  h3 {
+    font-size: 12pt;
+    font-weight: bold;
+    margin-top: 14pt;
+    margin-bottom: 8pt;
+  }
+
+  /* Company Header Styling */
+  .form-content strong:first-child,
+  .form-content > p:first-child strong {
+    font-size: 16pt;
+    display: block;
+    text-align: center;
+    margin-bottom: 4pt;
+    font-family: 'Libre Baskerville', Georgia, serif;
+  }
+
+  /* Paragraphs and Text */
+  p {
+    margin-bottom: 10pt;
+    orphans: 3;
+    widows: 3;
+  }
+
+  strong {
+    font-weight: 600;
+    color: black !important;
+  }
+
+  em, i {
+    font-style: italic;
+  }
+
+  /* Horizontal Rules - Section Dividers */
+  hr {
+    border: none;
+    border-top: 1.5pt solid #333;
+    margin: 16pt 0;
+    page-break-after: avoid;
+  }
+
+  /* Tables - Professional Form Fields */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    page-break-inside: avoid;
+    font-size: 10pt;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tbody {
+    display: table-row-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    border: 1pt solid #333;
+    padding: 8pt 6pt;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10pt;
+  }
+
+  td {
+    border: 1pt solid #666;
+    padding: 10pt 6pt;
+    min-height: 24pt;
+    vertical-align: top;
+  }
+
+  /* Alternating row colors for readability */
+  tbody tr:nth-child(even) {
+    background-color: #fafafa !important;
+  }
+
+  /* Checkboxes and Form Elements */
+  input[type="checkbox"] {
+    width: 14pt;
+    height: 14pt;
+    border: 1.5pt solid #333;
+    margin-right: 6pt;
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-block;
+    vertical-align: middle;
+    background: white;
+  }
+
+  input[type="checkbox"]:checked::before {
+    content: "✓";
+    display: block;
+    text-align: center;
+    font-size: 12pt;
+    line-height: 14pt;
+    font-weight: bold;
+  }
+
+  /* Form Field Underlines */
+  .form-content p:has(strong) {
+    margin-bottom: 14pt;
+  }
+
+  /* Blockquotes - Instructions/Notes */
+  blockquote {
+    border-left: 3pt solid #666;
+    padding-left: 12pt;
+    margin: 12pt 0;
+    font-style: italic;
+    color: #333 !important;
+    background-color: #f9f9f9 !important;
+    padding: 10pt 12pt;
+    page-break-inside: avoid;
+  }
+
+  /* Lists */
+  ul, ol {
+    margin: 10pt 0;
+    padding-left: 24pt;
+  }
+
+  li {
+    margin-bottom: 6pt;
+    line-height: 1.6;
+  }
+
+  /* Signature Lines and Date Fields - handled in component formatting */
+
+  /* Page Breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Spacing Adjustments for Print */
+  .form-content {
+    line-height: 1.6;
+  }
+
+  .form-content > * + * {
+    margin-top: 0;
+  }
+
+  /* Remove shadows and backgrounds */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Links - Show URL */
+  a {
+    color: black !important;
+    text-decoration: underline;
+  }
+
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    font-style: italic;
+  }
+
+  /* Ensure proper spacing for fillable fields */
+  .form-content br + br {
+    display: block;
+    content: "";
+    margin-top: 8pt;
+  }
+
+  /* Professional spacing for sections */
+  .form-content h2 + p,
+  .form-content h3 + p {
+    margin-top: 8pt;
+  }
+
+  /* Optimize checkbox lists */
+  .form-content div:has(input[type="checkbox"]) {
+    margin: 8pt 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 6pt;
+  }
+
+  /* Footer/Notes sections */
+  .form-content > p:last-child {
+    margin-top: 16pt;
+    padding-top: 12pt;
+    border-top: 1pt solid #ccc;
+    font-size: 9pt;
+    font-style: italic;
+  }
+
+  /* Ensure adequate spacing for manual completion */
+  .form-content table td:empty::after {
+    content: "\00a0";
+    display: block;
+    min-height: 20pt;
+  }
+
+  /* Professional appearance for office use sections - handled in component formatting */
+}
