@@ -61,7 +61,7 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
         await fetchParkingData();
         if (onRefresh) onRefresh();
       } else {
-        alert(`Failed to approve: ${data.message}`);
+        alert(`Failed to approve: ${data.message}${data.detail ? '\n\nDetail: ' + data.detail : ''}${data.code ? '\nCode: ' + data.code : ''}`);
       }
     } catch (error) {
       console.error('Approval error:', error);

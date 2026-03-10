@@ -130,11 +130,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Strip non-updatable fields before update
+    const { id: _id, created_at: _ca, ...updateFields } = mergedData;
+
     // Update primary submission with merged data
     const { error: updateError } = await supabase
       .from('submissions')
       .update({
-        ...mergedData,
+        ...updateFields,
         is_primary: true,
         admin_notes: mergedData.admin_notes 
           ? `${mergedData.admin_notes}\n\nMerged ${duplicateIds.length} duplicate submission(s) on ${new Date().toISOString()}`

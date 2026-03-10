@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canApproveAdditionalPermit } from '@/lib/parkingAnalytics';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
 
 export async function POST(request: NextRequest) {
+  const supabase = getSupabase();
+
   try {
     const body = await request.json();
     const { submissionId, admin } = body;
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     if (fetchError || !submission) {
       return NextResponse.json(
-        { success: false, message: 'Submission not found' },
+        { success: false, message: 'Submission not found', detail: fetchError?.message },
         { status: 404 }
       );
     }
@@ -49,13 +54,13 @@ export async function POST(request: NextRequest) {
 
     if (allError) {
       return NextResponse.json(
-        { success: false, message: 'Failed to check parking availability' },
+        { success: false, message: 'Failed to check parking availability', detail: allError.message },
         { status: 500 }
       );
     }
 
     // Check if we can approve (validates parking availability)
-    const canApprove = canApproveAdditionalPermit(submission.building_address, allSubmissions);
+    const canApprove = canApproveAdditionalPermit(submission.building_address, allSubmissions || []);
 
     if (!canApprove) {
       return NextResponse.json(
@@ -79,7 +84,12 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error approving additional vehicle:', error);
       return NextResponse.json(
-        { success: false, message: 'Failed to approve additional vehicle' },
+        {
+          success: false,
+          message: `Failed to approve: ${error.message}`,
+          code: error.code,
+          detail: error.details || error.hint,
+        },
         { status: 500 }
       );
     }

@@ -73,7 +73,11 @@ export function calculateParkingAvailability(
   let availableSpots = 0;
   let canApproveMore = false;
 
-  if (isStreetParking) {
+  if (totalSpots === undefined || totalSpots === null) {
+    // Building not in config — allow admin to approve (no capacity data to block on)
+    availableSpots = Infinity;
+    canApproveMore = true;
+  } else if (isStreetParking) {
     // Street parking is unlimited
     availableSpots = Infinity;
     canApproveMore = true;

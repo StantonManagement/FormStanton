@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!fullName || !phone || !buildingAddress || !unitNumber) {
+    if (!fullName || !buildingAddress || !unitNumber) {
       return NextResponse.json(
-        { success: false, message: 'Tenant information (name, phone, building, unit) is required' },
+        { success: false, message: 'Tenant information (name, building, unit) is required' },
         { status: 400 }
       );
     }
@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
     const { data: existingSubmissions, error: searchError } = await supabaseAdmin
       .from('submissions')
       .select('*')
-      .eq('phone', phone)
       .eq('building_address', buildingAddress)
-      .eq('unit_number', unitNumber);
+      .eq('unit_number', unitNumber)
+      .eq('full_name', fullName);
 
     if (searchError) {
       console.error('Error searching for existing submission:', searchError);

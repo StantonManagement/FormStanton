@@ -8,6 +8,9 @@ import { normalizeAddress, filterByBuilding, unitsMatch } from '@/lib/addressNor
 import ParkingManagementPanel from '@/components/ParkingManagementPanel';
 import DuplicateSubmissionAccordion from '@/components/DuplicateSubmissionAccordion';
 import { groupDuplicateSubmissions, SubmissionGroup } from '@/lib/duplicateDetection';
+import VehicleExportCenter from '@/components/VehicleExportCenter';
+import AddTenantModal from '@/components/AddTenantModal';
+import SubmissionEditModal from '@/components/SubmissionEditModal';
 
 interface TenantSubmission {
   id: string;
@@ -28,6 +31,9 @@ interface TenantSubmission {
   vehicle_submitted_by_phone?: boolean;
   vehicle_phone_submission_date?: string;
   vehicle_phone_submission_by?: string;
+  vehicle_exported?: boolean;
+  vehicle_exported_at?: string;
+  vehicle_exported_by?: string;
   permit_issued: boolean;
   permit_issued_at?: string;
   permit_issued_by?: string;
@@ -38,6 +44,7 @@ interface TenantSubmission {
   pet_verified: boolean;
   pet_signature?: string;
   pet_signature_date?: string;
+  pet_addendum_file?: string;
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
@@ -53,6 +60,16 @@ interface TenantSubmission {
   merged_into?: string;
   is_primary?: boolean;
   duplicate_group_id?: string;
+  additional_vehicles?: Array<{
+    vehicle_make: string;
+    vehicle_model: string;
+    vehicle_year: number | string;
+    vehicle_color: string;
+    vehicle_plate: string;
+    requested_at?: string;
+  }>;
+  additional_vehicle_approved?: boolean;
+  additional_vehicle_denied?: boolean;
 }
 
 interface TenantData {
@@ -110,15 +127,29 @@ export default function CompliancePage() {
     hasPets: boolean;
     hasInsurance: boolean;
     needsReview: boolean;
-  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false });
+    exportStatus: 'all' | 'exported' | 'not-exported';
+  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' });
   const [showDuplicatesGrouped, setShowDuplicatesGrouped] = useState(true);
   const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
   const [similarityThreshold, setSimilarityThreshold] = useState(85);
+  const [showExportCenter, setShowExportCenter] = useState(false);
+  const [showAddTenant, setShowAddTenant] = useState(false);
+  const [editingSubmission, setEditingSubmission] = useState<TenantSubmission | null>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Keep editingSubmission in sync with refreshed data
+  useEffect(() => {
+    if (editingSubmission) {
+      const refreshed = allSubmissions.find(s => s.id === editingSubmission.id);
+      if (refreshed && refreshed !== editingSubmission) {
+        setEditingSubmission(refreshed);
+      }
+    }
+  }, [allSubmissions]);
 
   // Keyboard shortcuts for power users
   useEffect(() => {
@@ -297,7 +328,7 @@ export default function CompliancePage() {
     buildingSubs = buildingSubs.filter(sub => !sub.merged_into);
     
     // Apply filters
-    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview) {
+    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') {
       buildingSubs = buildingSubs.filter(sub => {
         const matchesVehicle = !filters.hasVehicle || sub.has_vehicle;
         const matchesPets = !filters.hasPets || sub.has_pets;
@@ -306,8 +337,11 @@ export default function CompliancePage() {
           (sub.has_vehicle && !sub.vehicle_verified) ||
           (sub.has_pets && !sub.pet_verified) ||
           (sub.has_insurance && !sub.insurance_verified);
+        const matchesExportStatus = filters.exportStatus === 'all' ||
+          (filters.exportStatus === 'exported' && sub.vehicle_exported) ||
+          (filters.exportStatus === 'not-exported' && !sub.vehicle_exported);
         
-        return matchesVehicle && matchesPets && matchesInsurance && matchesNeedsReview;
+        return matchesVehicle && matchesPets && matchesInsurance && matchesNeedsReview && matchesExportStatus;
       });
     }
     
@@ -627,21 +661,10 @@ export default function CompliancePage() {
                 📋 Raw Data
               </a>
               <button
-                onClick={async () => {
-                  const response = await fetch(`/api/admin/compliance/export-vehicles?building=all`);
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `vehicles_all_${new Date().toISOString().split('T')[0]}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  document.body.removeChild(a);
-                }}
+                onClick={() => setShowExportCenter(true)}
                 className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium whitespace-nowrap"
               >
-                📊 Export
+                📊 Export Center
               </button>
             </div>
           </div>
@@ -743,9 +766,45 @@ export default function CompliancePage() {
                   />
                   Needs Review
                 </label>
-                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview) && (
+              </div>
+              
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <h4 className="text-xs font-semibold text-gray-700 mb-2">Export Status</h4>
+                <div className="space-y-1">
+                  <label className="flex items-center text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={filters.exportStatus === 'all'}
+                      onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'all' }))}
+                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    All Units
+                  </label>
+                  <label className="flex items-center text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={filters.exportStatus === 'exported'}
+                      onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'exported' }))}
+                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    📤 Exported
+                  </label>
+                  <label className="flex items-center text-xs cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={filters.exportStatus === 'not-exported'}
+                      onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'not-exported' }))}
+                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    ⚠️ Not Exported
+                  </label>
+                </div>
+              </div>
+              
+              <div className="mt-3">
+                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
                   <button
-                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false })}
+                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
                     className="text-xs text-blue-600 hover:text-blue-700 underline"
                   >
                     Clear all filters
@@ -870,23 +929,33 @@ export default function CompliancePage() {
                       <span>🅿️ Parking: {buildingParkingSpots[selectedBuilding] || 'N/A'} {typeof buildingParkingSpots[selectedBuilding] === 'number' ? 'spots' : ''}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={async () => {
-                      const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}`);
-                      const blob = await response.blob();
-                      const url = window.URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-                      document.body.appendChild(a);
-                      a.click();
-                      window.URL.revokeObjectURL(url);
-                      document.body.removeChild(a);
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    Export Vehicles
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowAddTenant(true)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                    >
+                      + Add Tenant
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const adminName = prompt('Enter your name:') || 'Admin';
+                        const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        fetchData();
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      Export Vehicles
+                    </button>
+                  </div>
                 </div>
 
                 {/* Building Stats - Responsive Grid */}
@@ -963,7 +1032,7 @@ export default function CompliancePage() {
               />
 
               {/* Filter Summary */}
-              {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview) && (
+              {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-blue-800">
@@ -972,9 +1041,11 @@ export default function CompliancePage() {
                       {filters.hasPets && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Has Pets</span>}
                       {filters.hasInsurance && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Has Insurance</span>}
                       {filters.needsReview && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Needs Review</span>}
+                      {filters.exportStatus === 'exported' && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">📤 Exported</span>}
+                      {filters.exportStatus === 'not-exported' && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">⚠️ Not Exported</span>}
                     </div>
                     <button
-                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false })}
+                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
                       Clear All
@@ -1023,9 +1094,20 @@ export default function CompliancePage() {
                       {/* Tenant Header */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h3 className="text-base font-semibold text-gray-900">
-                            Unit {submission.unit_number} - {submission.full_name}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base font-semibold text-gray-900">
+                              Unit {submission.unit_number} - {submission.full_name}
+                            </h3>
+                            <button
+                              onClick={() => setEditingSubmission(submission)}
+                              className="text-blue-600 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
+                              title="Edit submission"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
                           <div className="text-xs text-gray-600 mt-1">
                             {submission.phone} • {submission.email}
                           </div>
@@ -1190,6 +1272,31 @@ export default function CompliancePage() {
                               </div>
                             )}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Additional Vehicles Section */}
+                      {submission.additional_vehicles && submission.additional_vehicles.length > 0 && (
+                        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+                          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                            🚗+ Additional Vehicle{submission.additional_vehicles.length > 1 ? 's' : ''}
+                            {submission.additional_vehicle_approved && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
+                            )}
+                            {submission.additional_vehicle_denied && (
+                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Denied</span>
+                            )}
+                            {!submission.additional_vehicle_approved && !submission.additional_vehicle_denied && (
+                              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
+                            )}
+                          </h4>
+                          {submission.additional_vehicles.map((av, idx) => (
+                            <div key={idx} className="grid grid-cols-3 gap-3 text-sm mb-2">
+                              <div><span className="text-gray-500">Vehicle:</span> <span className="ml-1 font-medium">{av.vehicle_year} {av.vehicle_make} {av.vehicle_model}</span></div>
+                              <div><span className="text-gray-500">Color:</span> <span className="ml-1">{av.vehicle_color}</span></div>
+                              <div><span className="text-gray-500">Plate:</span> <span className="ml-1 font-mono">{av.vehicle_plate}</span></div>
+                            </div>
+                          ))}
                         </div>
                       )}
 
@@ -1414,6 +1521,35 @@ export default function CompliancePage() {
           </div>
         </div>
       )}
+
+      {/* Export Center Modal */}
+      {showExportCenter && (
+        <VehicleExportCenter
+          allSubmissions={allSubmissions}
+          buildings={buildings}
+          onClose={() => setShowExportCenter(false)}
+          onExportComplete={() => {
+            fetchData();
+          }}
+        />
+      )}
+
+      {/* Edit Submission Modal */}
+      {editingSubmission && (
+        <SubmissionEditModal
+          submission={editingSubmission}
+          onClose={() => setEditingSubmission(null)}
+          onSuccess={() => fetchData()}
+        />
+      )}
+
+      {/* Add Tenant Modal */}
+      <AddTenantModal
+        isOpen={showAddTenant}
+        onClose={() => setShowAddTenant(false)}
+        onSuccess={() => fetchData()}
+        prefilledBuilding={selectedBuilding}
+      />
     </div>
   );
 }

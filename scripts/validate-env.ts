@@ -43,11 +43,6 @@ const requiredVars = [
     validate: (val: string) => val.length > 100
   },
   {
-    name: 'RESEND_API_KEY',
-    description: 'Resend email API key',
-    validate: (val: string) => val.startsWith('re_')
-  },
-  {
     name: 'ADMIN_PASSWORD',
     description: 'Admin dashboard password',
     validate: (val: string) => val.length >= 8
@@ -61,6 +56,11 @@ const requiredVars = [
 
 // Optional variables
 const optionalVars = [
+  {
+    name: 'RESEND_API_KEY',
+    description: 'Resend email API key',
+    validate: (val: string) => val.startsWith('re_')
+  },
   {
     name: 'ANTHROPIC_API_KEY',
     description: 'Anthropic API key (for scan extraction)',

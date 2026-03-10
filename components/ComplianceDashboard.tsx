@@ -599,6 +599,7 @@ export default function ComplianceDashboard() {
               onIssuePermit={handleIssuePermit}
               onMarkPickedUp={handleMarkPickedUp}
               onUpdateNotes={handleUpdateNotes}
+              onRefresh={fetchBuildingSummary}
             />
           ))
         )}

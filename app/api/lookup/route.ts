@@ -5,7 +5,77 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q');
+    const building = searchParams.get('building');
+    const unit = searchParams.get('unit');
 
+    // Search by building + unit
+    if (building && unit) {
+      // Search submissions table
+      const { data: submissions, error: submissionsError } = await supabaseAdmin
+        .from('submissions')
+        .select('full_name, phone, email, building_address, unit_number')
+        .eq('building_address', building)
+        .eq('unit_number', unit)
+        .not('full_name', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (submissionsError) {
+        console.error('Submissions search error:', submissionsError);
+      }
+
+      // Search tenant_lookup table
+      const { data: tenants, error: tenantsError } = await supabaseAdmin
+        .from('tenant_lookup')
+        .select('name, first_name, last_name, email, building_address, unit_number')
+        .eq('building_address', building)
+        .eq('unit_number', unit)
+        .eq('is_current', true)
+        .limit(10);
+
+      if (tenantsError && tenantsError.code !== 'PGRST116') {
+        console.error('Tenant lookup search error:', tenantsError);
+      }
+
+      // Combine and deduplicate results
+      const results = new Map();
+
+      // Add submissions
+      submissions?.forEach(sub => {
+        const key = `${sub.full_name}-${sub.building_address}-${sub.unit_number}`;
+        if (!results.has(key)) {
+          results.set(key, {
+            full_name: sub.full_name,
+            phone: sub.phone || '',
+            email: sub.email || '',
+            building_address: sub.building_address,
+            unit_number: sub.unit_number,
+          });
+        }
+      });
+
+      // Add tenant_lookup results
+      tenants?.forEach(tenant => {
+        const fullName = tenant.name || `${tenant.first_name || ''} ${tenant.last_name || ''}`.trim();
+        const key = `${fullName}-${tenant.building_address}-${tenant.unit_number}`;
+        if (!results.has(key) && fullName) {
+          results.set(key, {
+            full_name: fullName,
+            phone: '',
+            email: tenant.email || '',
+            building_address: tenant.building_address,
+            unit_number: tenant.unit_number,
+          });
+        }
+      });
+
+      return NextResponse.json({
+        success: true,
+        results: Array.from(results.values()),
+      });
+    }
+
+    // Search by name (existing functionality)
     if (!query || query.trim().length < 2) {
       return NextResponse.json({
         success: true,

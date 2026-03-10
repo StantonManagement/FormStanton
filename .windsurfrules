@@ -1,0 +1,95 @@
+# Stanton Management — Windsurf Rules
+
+---
+
+## 1. Architecture First
+
+Before writing any code, understand what is being built and where it belongs in the system. A working solution that fits badly is not a solution.
+
+- When something doesn't work inside a container, question the container before patching the component
+- If you've tried the same fix twice and it hasn't worked, stop — the approach is wrong, not the fix
+- Never treat a workaround as a deliverable
+- Do not add conditionals to an existing component when the correct answer is a new component
+- Do not hardcode values that belong in config
+- Do not duplicate logic that belongs in a shared hook or utility
+
+---
+
+## 2. Components — Look Before You Build
+
+Before writing any UI, check for existing components:
+
+1. `@/components/kit/` — general UI primitives
+2. `@/components/form/` — all form elements
+
+If a component exists that covers the use case, use it. Do not inline equivalent markup. Only create a new component if nothing in the kit fits — and if you do, build it to the same standard so it belongs in the kit.
+
+---
+
+## 3. Design System
+
+All visual decisions come from the design system. No exceptions.
+
+- CSS custom properties for all colors — no hardcoded hex, no arbitrary Tailwind values
+- `rounded-none` on all inputs and buttons — no border radius
+- Serif fonts (`Libre Baskerville`) for headers only — `Inter` for everything else
+- Institutional aesthetic — no vibrant colors, no bouncing animations, no startup patterns
+- Transitions: 200–300ms ease-out only
+- Spacing from the defined scale — no arbitrary pixel values
+
+---
+
+## 4. Database Rules
+
+- All new payroll tables prefixed `payroll_`
+- Read from canonical tables only — never query `AF_` staging tables directly
+- Never write to AF-Authoritative columns (`tenants`, `work_orders`, `inspections`, `leases`)
+- FK to `properties`, `portfolios`, `units` from canonical tables — never duplicate these entities
+- `portfolios.id` is `TEXT` not `UUID` — FK columns referencing `portfolios` must be `TEXT`. All other canonical table PKs (`properties`, `payroll_employees`, etc.) are `UUID`
+- RLS required on every new table — no exceptions
+- No hard deletes — use `is_current = false`
+- Money: `NUMERIC(10,2)`
+- Status columns: lowercase TEXT with CHECK constraint
+- Every table needs `created_at`, `updated_at`, `created_by`
+- `updated_at` uses `trigger_set_updated_at()` — the function already exists
+
+---
+
+## 5. Layout & Sizing Decisions Are Local
+
+A layout rule made for one page does not apply to other pages. Never carry a sizing, width, or spacing constraint from one context to another without re-evaluating it in the new context.
+
+- Table width should fit the data it contains and the space available on that specific page
+- A component that works correctly when rendered standalone should not be distorted to fit a container — change the container
+- If a previous suggestion is causing a problem in a new context, surface the conflict rather than silently applying the old rule
+
+---
+
+## 6. Supabase Patterns
+
+- Queries go in hooks — no raw Supabase calls inside components
+- One hook per logical data domain
+- Always handle loading, error, and empty states explicitly
+- Realtime subscriptions must be cleaned up on unmount
+- When casting Supabase join results in TypeScript, use `as unknown as T` — Supabase infers joined relations as arrays even for many-to-one FKs, causing overlap errors with direct casts
+
+---
+
+## 7. File Operations
+
+When a file needs to be **completely replaced**, use `Set-Content` via PowerShell rather than iterative `edit` calls:
+
+```powershell
+Set-Content -Path "path/to/file.tsx" -Value "...new content..."
+```
+
+Repeated partial edits on a file being wholesale-replaced create loops and waste significant context. Use the shell for replacement; use `edit` only for targeted changes to files you intend to keep mostly intact.
+
+---
+
+## 8. When Stuck
+
+If a problem isn't resolving after two attempts:
+- State what approach was tried and why it isn't working
+- Propose an alternative approach before continuing
+- Do not re-attempt the same fix with minor variations

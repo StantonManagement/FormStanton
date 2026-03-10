@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SubmissionEditModal from './SubmissionEditModal';
 
 interface TenantSubmission {
   id: string;
@@ -8,6 +9,7 @@ interface TenantSubmission {
   unit_number: string;
   phone: string;
   email: string;
+  building_address: string;
   has_vehicle: boolean;
   vehicle_make?: string;
   vehicle_model?: string;
@@ -18,6 +20,9 @@ interface TenantSubmission {
   vehicle_submitted_by_phone?: boolean;
   vehicle_phone_submission_date?: string;
   vehicle_phone_submission_by?: string;
+  vehicle_exported?: boolean;
+  vehicle_exported_at?: string;
+  vehicle_exported_by?: string;
   permit_issued: boolean;
   permit_issued_at?: string;
   permit_issued_by?: string;
@@ -26,6 +31,7 @@ interface TenantSubmission {
   has_pets: boolean;
   pets?: any;
   pet_verified: boolean;
+  pet_addendum_file?: string;
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
@@ -44,20 +50,47 @@ interface TenantComplianceCardProps {
   onUpdateNotes: (submissionId: string, notes: string) => void;
   onIssuePermit?: (submissionId: string, admin: string) => void;
   onMarkPickedUp?: (submissionId: string) => void;
+  onRefresh?: () => void;
 }
 
 const ADMIN_USERS = ['Alex', 'Dean', 'Dan', 'Tiff'];
 
-export default function TenantComplianceCard({ submission, onVerify, onUpdateNotes, onIssuePermit, onMarkPickedUp }: TenantComplianceCardProps) {
+export default function TenantComplianceCard({ submission, onVerify, onUpdateNotes, onIssuePermit, onMarkPickedUp, onRefresh }: TenantComplianceCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(submission.admin_notes || '');
   const [showPermitModal, setShowPermitModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isTogglingExport, setIsTogglingExport] = useState(false);
 
   const handleSaveNotes = () => {
     onUpdateNotes(submission.id, notes);
     setEditingNotes(false);
+  };
+
+  const handleToggleExport = async () => {
+    setIsTogglingExport(true);
+    try {
+      const response = await fetch('/api/admin/compliance/toggle-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: submission.id,
+          exported: !submission.vehicle_exported,
+          adminName: selectedAdmin || 'Admin'
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error toggling export status:', error);
+    } finally {
+      setIsTogglingExport(false);
+    }
   };
 
   const getInsuranceStatus = () => {
@@ -142,16 +175,30 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
             </div>
           </div>
 
-          <button className="text-gray-400 hover:text-gray-600">
-            <svg 
-              className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEditModal(true);
+              }}
+              className="text-blue-600 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded transition-colors"
+              title="Edit submission"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button className="text-gray-400 hover:text-gray-600">
+              <svg 
+                className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -269,6 +316,41 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                       ✓ Picked up {submission.tenant_picked_up_at && `on ${new Date(submission.tenant_picked_up_at).toLocaleDateString()}`}
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Export Status */}
+              {submission.has_vehicle && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      {submission.vehicle_exported ? (
+                        <>
+                          <span className="text-blue-600 font-medium">📤 Exported</span>
+                          {submission.vehicle_exported_by && (
+                            <span className="text-gray-500">by {submission.vehicle_exported_by}</span>
+                          )}
+                          {submission.vehicle_exported_at && (
+                            <span className="text-gray-400 text-xs">
+                              {new Date(submission.vehicle_exported_at).toLocaleDateString()}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-amber-600 font-medium">⚠️ Not exported</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleExport();
+                      }}
+                      disabled={isTogglingExport}
+                      className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50"
+                    >
+                      {isTogglingExport ? 'Updating...' : (submission.vehicle_exported ? 'Mark Not Exported' : 'Mark Exported')}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -446,6 +528,17 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
             )}
           </div>
         </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <SubmissionEditModal
+          submission={submission}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
       )}
     </div>
   );

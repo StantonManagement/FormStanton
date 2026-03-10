@@ -32,7 +32,12 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error denying additional vehicle:', error);
       return NextResponse.json(
-        { success: false, message: 'Failed to deny additional vehicle' },
+        {
+          success: false,
+          message: `Failed to deny: ${error.message}`,
+          code: error.code,
+          detail: error.details || error.hint,
+        },
         { status: 500 }
       );
     }

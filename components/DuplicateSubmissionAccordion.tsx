@@ -131,9 +131,11 @@ export default function DuplicateSubmissionAccordion({
   return (
     <div className="border-2 border-orange-300 rounded-lg bg-white shadow-md overflow-hidden">
       {/* Collapsed Header */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-orange-50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-orange-50 transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-3 flex-1 text-left">
           <div className="text-2xl">🔄</div>
@@ -179,7 +181,7 @@ export default function DuplicateSubmissionAccordion({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-      </button>
+      </div>
 
       {/* Expanded Content */}
       {isExpanded && (
