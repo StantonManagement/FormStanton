@@ -6,7 +6,7 @@ Ordered by priority. Higher = more urgent or more load-bearing.
 ### P1 — Critical
 - **Digital forms with photo upload**: Tenants can submit forms with photo evidence directly from mobile devices — Status: partial (3 of 19 forms)
 - **Tenant onboarding system**: New tenants complete multilingual forms for pets, insurance, vehicles with automated document generation — Status: built
-- **Admin compliance dashboard**: Property managers track pending approvals, missing documentation, and review submissions — Status: built
+- **Admin compliance dashboard**: Property managers track pending approvals, missing documentation, and review submissions. Includes add tenant tool, inline edit modal (name/phone/email/vehicle/insurance/pets), additional vehicles display with approval badges, parking availability tracking — Status: built
 - **Supabase backend integration**: All form data persists to PostgreSQL with file storage for photos and signatures — Status: built
 - **Trilingual support**: All forms available in English, Spanish, Portuguese — Status: built
 
