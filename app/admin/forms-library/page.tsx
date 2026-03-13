@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { tenantForms, Department, departmentLabels, TenantForm, getFormsByDepartment, searchForms } from '@/lib/formsData';
+import { Department, departmentLabels, TenantForm } from '@/lib/formsData';
 import FormCard from '@/components/FormCard';
 import FormDetailModal from '@/components/FormDetailModal';
+import FormEditModal from '@/components/FormEditModal';
 
 export default function FormsLibraryPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -12,11 +13,25 @@ export default function FormsLibraryPage() {
   const [authError, setAuthError] = useState('');
   const [activeDepartment, setActiveDepartment] = useState<Department>('property_management');
   const [searchQuery, setSearchQuery] = useState('');
+  const [forms, setForms] = useState<TenantForm[]>([]);
+  const [formsError, setFormsError] = useState('');
+  const [isFormsLoading, setIsFormsLoading] = useState(false);
   const [selectedForm, setSelectedForm] = useState<TenantForm | null>(null);
+  const [editingForm, setEditingForm] = useState<TenantForm | null>(null);
+  const [isSavingForm, setIsSavingForm] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    void fetchForms();
+  }, [isAuthenticated]);
 
   const checkAuth = async () => {
     try {
@@ -58,8 +73,74 @@ export default function FormsLibraryPage() {
     try {
       await fetch('/api/admin/auth', { method: 'DELETE' });
       setIsAuthenticated(false);
+      setForms([]);
+      setEditingForm(null);
+      setSelectedForm(null);
     } catch (error) {
       console.error('Logout failed:', error);
+    }
+  };
+
+  const fetchForms = async () => {
+    setIsFormsLoading(true);
+    setFormsError('');
+
+    try {
+      const response = await fetch('/api/admin/forms-library');
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to load forms library');
+      }
+
+      setForms(data.data || []);
+    } catch (error: any) {
+      setFormsError(error.message || 'Failed to load forms library');
+    } finally {
+      setIsFormsLoading(false);
+    }
+  };
+
+  const handleSaveForm = async (updatedForm: {
+    id: number;
+    title: string;
+    department: Department;
+    description: string;
+    path?: string;
+    content?: string;
+  }) => {
+    setIsSavingForm(true);
+    setSaveError('');
+
+    try {
+      const response = await fetch(`/api/admin/forms-library/${updatedForm.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: updatedForm.title,
+          department: updatedForm.department,
+          description: updatedForm.description,
+          path: updatedForm.path ?? null,
+          content: updatedForm.content ?? null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to save changes');
+      }
+
+      setForms((previousForms) =>
+        previousForms.map((form) => (form.id === updatedForm.id ? { ...form, ...data.data } : form))
+      );
+      setEditingForm(null);
+    } catch (error: any) {
+      setSaveError(error.message || 'Failed to save changes');
+    } finally {
+      setIsSavingForm(false);
     }
   };
 
@@ -67,10 +148,19 @@ export default function FormsLibraryPage() {
 
   const displayedForms = useMemo(() => {
     if (searchQuery.trim()) {
-      return searchForms(searchQuery);
+      const query = searchQuery.trim().toLowerCase();
+      return forms.filter((form) => {
+        const content = form.content?.toLowerCase() ?? '';
+        return (
+          form.title.toLowerCase().includes(query) ||
+          form.description.toLowerCase().includes(query) ||
+          content.includes(query)
+        );
+      });
     }
-    return getFormsByDepartment(activeDepartment);
-  }, [activeDepartment, searchQuery]);
+
+    return forms.filter((form) => form.department === activeDepartment);
+  }, [activeDepartment, forms, searchQuery]);
 
   if (isLoading) {
     return (
@@ -159,6 +249,12 @@ export default function FormsLibraryPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {formsError && (
+          <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700 rounded-none">
+            {formsError}
+          </div>
+        )}
+
         {/* Search Bar */}
         <div className="mb-6">
           <div className="relative">
@@ -190,7 +286,7 @@ export default function FormsLibraryPage() {
           <div className="mb-6 border-b border-gray-200">
             <nav className="flex space-x-1">
               {departments.map((dept) => {
-                const count = getFormsByDepartment(dept).length;
+                const count = forms.filter((form) => form.department === dept).length;
                 return (
                   <button
                     key={dept}
@@ -228,13 +324,18 @@ export default function FormsLibraryPage() {
         </div>
 
         {/* Forms Grid */}
-        {displayedForms.length > 0 ? (
+        {isFormsLoading ? (
+          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <p className="text-gray-500">Loading forms...</p>
+          </div>
+        ) : displayedForms.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {displayedForms.map((form) => (
               <FormCard 
                 key={form.id} 
                 form={form} 
                 onView={setSelectedForm}
+                onEdit={setEditingForm}
               />
             ))}
           </div>
@@ -252,6 +353,17 @@ export default function FormsLibraryPage() {
       <FormDetailModal 
         form={selectedForm} 
         onClose={() => setSelectedForm(null)} 
+      />
+
+      <FormEditModal
+        form={editingForm}
+        isSaving={isSavingForm}
+        saveError={saveError}
+        onClose={() => {
+          setEditingForm(null);
+          setSaveError('');
+        }}
+        onSave={handleSaveForm}
       />
     </div>
   );
