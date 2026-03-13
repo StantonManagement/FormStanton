@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import { compareTwoStrings } from 'string-similarity';
 import * as fs from 'fs';
 import * as path from 'path';
+import { sanitizePlate } from '../lib/plateSanitizer';
 
 config({ path: '.env' });
 config({ path: '.env.local', override: true });
@@ -414,7 +415,7 @@ async function importHistoricalVehicles() {
           vehicle_model: car2.model,
           vehicle_year: car2.year,
           vehicle_color: historical.car2Color,
-          vehicle_plate: historical.car2Plate,
+          vehicle_plate: sanitizePlate(historical.car2Plate),
           requested_at: new Date('2025-05-13').toISOString(),
         });
       }
@@ -424,7 +425,7 @@ async function importHistoricalVehicles() {
           vehicle_model: car3.model,
           vehicle_year: car3.year,
           vehicle_color: historical.car3Color,
-          vehicle_plate: historical.car3Plate,
+          vehicle_plate: sanitizePlate(historical.car3Plate),
           requested_at: new Date('2025-05-13').toISOString(),
         });
       }
@@ -440,7 +441,7 @@ async function importHistoricalVehicles() {
         vehicle_model: car1.model,
         vehicle_year: car1.year,
         vehicle_color: historical.car1Color,
-        vehicle_plate: historical.car1Plate,
+        vehicle_plate: sanitizePlate(historical.car1Plate),
         additional_vehicles: additionalVehicles.length > 0 ? additionalVehicles : null,
         created_at: new Date('2025-05-13T16:01:00').toISOString(),
         ip_address: 'HISTORICAL_IMPORT',

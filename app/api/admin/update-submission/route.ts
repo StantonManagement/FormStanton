@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
+import { sanitizePlate } from '@/lib/plateSanitizer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       updateData.vehicle_model = vehicleModel;
       updateData.vehicle_year = vehicleYear ? parseInt(vehicleYear) : null;
       updateData.vehicle_color = vehicleColor;
-      updateData.vehicle_plate = vehiclePlate;
+      updateData.vehicle_plate = sanitizePlate(vehiclePlate);
       updateData.vehicle_submitted_by_phone = true;
       updateData.vehicle_phone_submission_date = new Date().toISOString();
       updateData.vehicle_phone_submission_by = staffName;

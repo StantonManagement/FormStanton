@@ -194,7 +194,9 @@ export default function CompliancePage() {
   }, [submissions, showDuplicatesGrouped, similarityThreshold]);
 
   useEffect(() => {
-    // Submissions state updated
+    if (selectedBuilding && allSubmissions.length > 0) {
+      loadBuildingSubmissions();
+    }
   }, [allSubmissions]);
 
   // Debounced search to reduce API calls
@@ -311,7 +313,12 @@ export default function CompliancePage() {
       const sortedBuildings = sortBuildingsByAssetId(buildingList);
       setBuildings(sortedBuildings);
       if (sortedBuildings.length > 0) {
-        setSelectedBuilding(sortedBuildings[0]);
+        setSelectedBuilding((currentBuilding) => {
+          if (currentBuilding && sortedBuildings.includes(currentBuilding)) {
+            return currentBuilding;
+          }
+          return sortedBuildings[0];
+        });
       }
 
     } catch (error) {
@@ -610,37 +617,83 @@ export default function CompliancePage() {
     })));
   }, [portfolioStats]);
 
+  const ui = {
+    page: 'min-h-screen bg-[var(--paper)] text-[var(--ink)]',
+    panel: 'bg-white border border-[var(--border)] shadow-sm',
+    panelSoft: 'bg-[var(--bg-section)] border border-[var(--divider)]',
+    title: 'font-serif text-[var(--primary)]',
+    input: 'w-full px-3 py-2 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] text-sm focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200 ease-out',
+    primaryButton: 'px-3 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out text-xs font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed',
+    secondaryButton: 'px-3 py-2 bg-white text-[var(--primary)] border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out text-xs font-medium whitespace-nowrap',
+  };
+
+  const selectedStats = buildingStats[selectedBuilding] || {
+    totalUnits: 0,
+    occupiedUnits: 0,
+    submissionCount: 0,
+    percentComplete: 0,
+    missingUnits: [],
+    missingSubmissions: [],
+    vacantUnits: 0,
+  };
+  const buildingSubmissionPool = selectedBuilding
+    ? filterByBuilding(allSubmissions, selectedBuilding)
+    : [];
+  const completeTenants = buildingSubmissionPool.filter(sub =>
+    (!sub.has_vehicle || sub.vehicle_verified) &&
+    (!sub.has_pets || sub.pet_verified) &&
+    (!sub.has_insurance || sub.insurance_verified)
+  ).length;
+  const incompleteTenants = Math.max(buildingSubmissionPool.length - completeTenants, 0);
+  const completionRate = buildingSubmissionPool.length > 0
+    ? Math.round((completeTenants / buildingSubmissionPool.length) * 100)
+    : 0;
+  const occupiedRate = selectedStats.totalUnits > 0
+    ? Math.round((selectedStats.occupiedUnits / selectedStats.totalUnits) * 100)
+    : 0;
+  const missingCount = selectedStats.missingSubmissions?.length || 0;
+  const buildingReadiness: 'good' | 'attention' | 'critical' = missingCount > 0
+    ? 'critical'
+    : incompleteTenants > 0
+      ? 'attention'
+      : 'good';
+  const tone = {
+    good: 'bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/35',
+    attention: 'bg-[var(--warning)]/10 text-[var(--warning)] border border-[var(--warning)]/35',
+    critical: 'bg-[var(--error)]/10 text-[var(--error)] border border-[var(--error)]/35',
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading compliance data...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--paper)]">
+        <div className="text-[var(--muted)]">Loading compliance data...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={ui.page}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-white border-b border-[var(--divider)] shadow-sm">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between gap-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Compliance Dashboard</h1>
-              <p className="text-sm text-gray-500 mt-1">Building-by-building review and verification</p>
+              <h1 className={`text-3xl ${ui.title}`}>Compliance Dashboard</h1>
+              <p className="text-sm text-[var(--muted)] mt-1 tracking-wide">Building-by-building review and verification</p>
             </div>
             
             {/* Portfolio Overview - Horizontal */}
             <div className="flex gap-3 flex-1 justify-center">
               {portfolioStats.map(stat => (
-                <div key={`${stat.name}-${stat.vehicleCount}`} className="px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-900">{stat.name}</div>
-                  <div className="text-xs text-gray-600 mt-0.5">
+                <div key={`${stat.name}-${stat.vehicleCount}`} className="px-3 py-2 bg-[var(--bg-section)] border border-[var(--divider)]">
+                  <div className="text-xs font-semibold text-[var(--primary)]">{stat.name}</div>
+                  <div className="text-xs text-[var(--muted)] mt-0.5">
                     {stat.buildingCount} bldgs
                   </div>
-                  <div className="text-xs text-gray-700 mt-0.5 font-medium">
+                  <div className="text-xs text-[var(--ink)] mt-0.5 font-medium">
                     {stat.totalUnits} units | {stat.occupiedUnits} occ | {stat.totalSubmissions} sub
                   </div>
-                  <div className="text-xs text-blue-600 mt-0.5 font-medium">
+                  <div className="text-xs text-[var(--primary)] mt-0.5 font-medium">
                     🚗 {stat.vehicleCount}
                   </div>
                 </div>
@@ -650,19 +703,19 @@ export default function CompliancePage() {
             <div className="flex gap-2 flex-shrink-0">
               <a
                 href="/admin"
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium whitespace-nowrap"
+                className={ui.secondaryButton}
               >
                 ← Back
               </a>
               <a
                 href="/admin?view=onboarding"
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium whitespace-nowrap"
+                className={ui.secondaryButton}
               >
                 📋 Raw Data
               </a>
               <button
                 onClick={() => setShowExportCenter(true)}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium whitespace-nowrap"
+                className={ui.primaryButton}
               >
                 📊 Export Center
               </button>
@@ -674,20 +727,20 @@ export default function CompliancePage() {
       {/* Main Content */}
       <div className="flex" style={{ height: 'calc(100vh - 120px)' }}>
         {/* Sidebar - Collapsible */}
-        <div className={`${sidebarCollapsed ? 'w-0' : 'w-72'} bg-white border-r border-gray-200 overflow-y-auto transition-all duration-300 flex-shrink-0`}>
+        <div className={`${sidebarCollapsed ? 'w-0' : 'w-72'} bg-white border-r border-[var(--divider)] overflow-y-auto transition-all duration-300 flex-shrink-0`}>
           <div className={`${sidebarCollapsed ? 'hidden' : 'block'} p-4 space-y-4`}>
             {/* Quick Lookup */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">🔍 Quick Tenant Lookup</h3>
-                <span className="text-xs text-gray-400">Ctrl+K</span>
+            <div className={`${ui.panelSoft} p-3`}>
+              <div className="flex items-center justify-between mb-3 border-b border-[var(--divider)] pb-2">
+                <h3 className="text-sm font-semibold text-[var(--primary)]">Quick Tenant Lookup</h3>
+                <span className="text-xs text-[var(--muted)]">Ctrl+K</span>
               </div>
               <input
                 type="text"
                 placeholder="Search name, unit, phone..."
                 value={quickLookupQuery}
                 onChange={(e) => setQuickLookupQuery(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={ui.input}
               />
               {quickLookupResults.length > 0 && (
                 <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
@@ -699,23 +752,23 @@ export default function CompliancePage() {
                         setQuickLookupQuery('');
                         setQuickLookupResults([]);
                       }}
-                      className="p-2 bg-gray-50 rounded cursor-pointer hover:bg-blue-50 transition-colors"
+                      className="p-2 bg-white border border-[var(--divider)] cursor-pointer hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
                     >
-                      <div className="text-xs font-medium">{result.full_name}</div>
-                      <div className="text-xs text-gray-500">{result.building_address} - Unit {result.unit_number}</div>
+                      <div className="text-xs font-medium text-[var(--ink)]">{result.full_name}</div>
+                      <div className="text-xs text-[var(--muted)]">{result.building_address} - Unit {result.unit_number}</div>
                       <div className="flex items-center gap-2 mt-1">
                         {result.has_vehicle && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${result.vehicle_verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 border ${result.vehicle_verified ? 'bg-[var(--bg-section)] text-[var(--success)] border-[var(--success)]/30' : 'bg-[var(--bg-section)] text-[var(--warning)] border-[var(--warning)]/30'}`}>
                             V: {result.vehicle_verified ? 'Yes' : 'No'}
                           </span>
                         )}
                         {result.has_pets && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${result.pet_verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 border ${result.pet_verified ? 'bg-[var(--bg-section)] text-[var(--success)] border-[var(--success)]/30' : 'bg-[var(--bg-section)] text-[var(--warning)] border-[var(--warning)]/30'}`}>
                             P: {result.pet_verified ? 'Yes' : 'No'}
                           </span>
                         )}
                         {result.has_insurance && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${result.insurance_verified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 border ${result.insurance_verified ? 'bg-[var(--bg-section)] text-[var(--success)] border-[var(--success)]/30' : 'bg-[var(--bg-section)] text-[var(--warning)] border-[var(--warning)]/30'}`}>
                             I: {result.insurance_verified ? 'Yes' : 'No'}
                           </span>
                         )}
@@ -727,15 +780,15 @@ export default function CompliancePage() {
             </div>
 
             {/* Multi-Select Filters */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">🔍 Filters</h3>
+            <div className={`${ui.panelSoft} p-3`}>
+              <h3 className="text-sm font-semibold text-[var(--primary)] mb-2 border-b border-[var(--divider)] pb-2">Filters</h3>
               <div className="space-y-2 mb-3">
                 <label className="flex items-center text-xs cursor-pointer">
                   <input
                     type="checkbox"
                     checked={filters.hasVehicle}
                     onChange={(e) => setFilters(prev => ({ ...prev, hasVehicle: e.target.checked }))}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Has Vehicle
                 </label>
@@ -744,7 +797,7 @@ export default function CompliancePage() {
                     type="checkbox"
                     checked={filters.hasPets}
                     onChange={(e) => setFilters(prev => ({ ...prev, hasPets: e.target.checked }))}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Has Pets
                 </label>
@@ -753,7 +806,7 @@ export default function CompliancePage() {
                     type="checkbox"
                     checked={filters.hasInsurance}
                     onChange={(e) => setFilters(prev => ({ ...prev, hasInsurance: e.target.checked }))}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Has Insurance
                 </label>
@@ -762,21 +815,21 @@ export default function CompliancePage() {
                     type="checkbox"
                     checked={filters.needsReview}
                     onChange={(e) => setFilters(prev => ({ ...prev, needsReview: e.target.checked }))}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Needs Review
                 </label>
               </div>
               
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-700 mb-2">Export Status</h4>
+              <div className="mt-3 pt-3 border-t border-[var(--divider)]">
+                <h4 className="text-xs font-semibold text-[var(--muted)] mb-2">Export Status</h4>
                 <div className="space-y-1">
                   <label className="flex items-center text-xs cursor-pointer">
                     <input
                       type="radio"
                       checked={filters.exportStatus === 'all'}
                       onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'all' }))}
-                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="mr-2 border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                     />
                     All Units
                   </label>
@@ -785,7 +838,7 @@ export default function CompliancePage() {
                       type="radio"
                       checked={filters.exportStatus === 'exported'}
                       onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'exported' }))}
-                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="mr-2 border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                     />
                     📤 Exported
                   </label>
@@ -794,7 +847,7 @@ export default function CompliancePage() {
                       type="radio"
                       checked={filters.exportStatus === 'not-exported'}
                       onChange={() => setFilters(prev => ({ ...prev, exportStatus: 'not-exported' }))}
-                      className="mr-2 border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="mr-2 border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                     />
                     ⚠️ Not Exported
                   </label>
@@ -805,7 +858,7 @@ export default function CompliancePage() {
                 {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
                   <button
                     onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
-                    className="text-xs text-blue-600 hover:text-blue-700 underline"
+                    className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                   >
                     Clear all filters
                   </button>
@@ -814,15 +867,15 @@ export default function CompliancePage() {
             </div>
 
             {/* Duplicate Detection Controls */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">🔄 Duplicate Detection</h3>
+            <div className={`${ui.panelSoft} p-3`}>
+              <h3 className="text-sm font-semibold text-[var(--primary)] mb-2 border-b border-[var(--divider)] pb-2">Duplicate Detection</h3>
               <div className="space-y-2 mb-3">
                 <label className="flex items-center text-xs cursor-pointer">
                   <input
                     type="checkbox"
                     checked={showDuplicatesGrouped}
                     onChange={(e) => setShowDuplicatesGrouped(e.target.checked)}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Group Duplicates
                 </label>
@@ -831,12 +884,12 @@ export default function CompliancePage() {
                     type="checkbox"
                     checked={showOnlyDuplicates}
                     onChange={(e) => setShowOnlyDuplicates(e.target.checked)}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
                   />
                   Show Only Duplicates
                 </label>
                 {duplicateGroups.length > 0 && (
-                  <div className="text-xs text-orange-600 font-medium mt-2">
+                  <div className="text-xs text-[var(--warning)] font-medium mt-2">
                     {duplicateGroups.length} duplicate group{duplicateGroups.length !== 1 ? 's' : ''} found
                   </div>
                 )}
@@ -844,12 +897,12 @@ export default function CompliancePage() {
             </div>
 
             {/* Portfolio Filter */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">📊 Portfolio</h3>
+            <div className={`${ui.panelSoft} p-3`}>
+              <h3 className="text-sm font-semibold text-[var(--primary)] mb-3 border-b border-[var(--divider)] pb-2">Portfolio</h3>
               <select
                 value={selectedPortfolio}
                 onChange={(e) => setSelectedPortfolio(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={ui.input}
               >
                 <option value="all">All Portfolios</option>
                 {portfolioOrder.map(portfolio => (
@@ -860,14 +913,14 @@ export default function CompliancePage() {
 
 
             {/* Building Search */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">🏢 Buildings</h3>
+            <div className={`${ui.panelSoft} p-3`}>
+              <h3 className="text-sm font-semibold text-[var(--primary)] mb-3 border-b border-[var(--divider)] pb-2">Buildings</h3>
               <input
                 type="text"
                 placeholder="Filter buildings..."
                 value={buildingSearch}
                 onChange={(e) => setBuildingSearch(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-3"
+                className={`${ui.input} mb-3`}
               />
               <div className="space-y-1 max-h-96 overflow-y-auto">
                 {filteredBuildings.map(building => {
@@ -879,14 +932,14 @@ export default function CompliancePage() {
                     <button
                       key={building}
                       onClick={() => setSelectedBuilding(building)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-xs border transition-colors duration-200 ease-out ${
                         selectedBuilding === building
-                          ? 'bg-blue-100 border-2 border-blue-500'
-                          : 'bg-white border border-gray-200 hover:bg-gray-50'
+                          ? 'bg-[var(--bg-section)] border-[var(--primary)] text-[var(--primary)]'
+                          : 'bg-white border-[var(--divider)] hover:bg-[var(--bg-section)]'
                       }`}
                     >
                       <div className="font-medium">{icon} {assetId} - {building}</div>
-                      <div className="text-gray-600 mt-1">
+                      <div className="text-[var(--muted)] mt-1">
                         {stats.totalUnits} units | {stats.occupiedUnits} occ | {stats.submissionCount} sub ({stats.percentComplete}%)
                       </div>
                     </button>
@@ -902,10 +955,10 @@ export default function CompliancePage() {
           {/* Sidebar Toggle Button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="absolute top-4 left-4 z-10 p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            className="absolute top-4 left-4 z-10 p-2 bg-white border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out shadow-sm"
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {sidebarCollapsed ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
               ) : (
@@ -915,13 +968,22 @@ export default function CompliancePage() {
           </button>
           <div className={sidebarCollapsed ? 'ml-0' : 'ml-0'}>
           {selectedBuilding && (
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-8">
+              <div className="relative py-4">
+                <div className="absolute left-0 top-1/2 w-full h-px bg-[var(--divider)]" />
+                <h2 className="relative inline-block bg-[var(--paper)] pr-4 font-serif text-xl text-[var(--primary)]">
+                  Building Review
+                </h2>
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 bg-[var(--paper)] pl-4 text-sm text-[var(--muted)] font-medium">
+                  Operational Summary
+                </span>
+              </div>
               {/* Building Header */}
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className={`${ui.panel} p-6`}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedBuilding}</h2>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                    <h2 className={`text-2xl ${ui.title}`}>{selectedBuilding}</h2>
+                    <div className="flex items-center gap-4 mt-2 text-sm text-[var(--muted)]">
                       <span>Asset ID: {buildingToAssetId[selectedBuilding]}</span>
                       <span>•</span>
                       <span>Portfolio: {buildingToPortfolio[selectedBuilding]}</span>
@@ -932,7 +994,7 @@ export default function CompliancePage() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowAddTenant(true)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-[var(--success)] text-white border border-[var(--success)] rounded-none hover:opacity-90 transition-colors duration-200 ease-out text-sm font-medium"
                     >
                       + Add Tenant
                     </button>
@@ -951,64 +1013,100 @@ export default function CompliancePage() {
                         document.body.removeChild(a);
                         fetchData();
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out text-sm font-medium"
                     >
                       Export Vehicles
                     </button>
                   </div>
                 </div>
 
+                <div className="mt-4 p-2.5 bg-[var(--bg-section)] border border-[var(--divider)] flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 text-xs text-[var(--ink)] flex-wrap">
+                    <span className="px-1.5 py-0.5 bg-white border border-[var(--success)]/30 text-[var(--success)]">{completeTenants} Complete</span>
+                    <span className="px-1.5 py-0.5 bg-white border border-[var(--warning)]/30 text-[var(--warning)]">{incompleteTenants} Incomplete</span>
+                    <span className="px-1.5 py-0.5 bg-white border border-[var(--error)]/30 text-[var(--error)]">{missingCount} Missing Submissions</span>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 ${tone[buildingReadiness]}`}>
+                    {buildingReadiness === 'good' ? 'Building Ready' : buildingReadiness === 'attention' ? 'Needs Verification' : 'Blocked by Missing Items'}
+                  </span>
+                </div>
+
                 {/* Building Stats - Responsive Grid */}
-                <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="p-3 bg-gray-50 rounded-lg border-2 border-gray-300">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {buildingStats[selectedBuilding]?.totalUnits || 0}
+                <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="p-2.5 bg-white border border-[var(--success)]/35">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Collection Complete</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-white border border-[var(--success)]/30 text-[var(--success)]">{completionRate}%</span>
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Total Units</div>
-                    <div className="text-xs text-gray-500 mt-1">All units in building</div>
+                    <div className="text-xl font-bold text-[var(--success)] leading-none">
+                      {completeTenants}
+                    </div>
+                    <div className="text-xs text-[var(--ink)] font-medium mt-1">Complete Tenants</div>
+                    <div className="text-[11px] text-[var(--muted)] mt-0.5">All required items verified</div>
                   </div>
-                  <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-300">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {buildingStats[selectedBuilding]?.occupiedUnits || 0}
+                  <div className="p-2.5 bg-[var(--bg-section)] border border-[var(--warning)]/35">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Needs Verification</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 ${incompleteTenants > 0 ? tone.attention : tone.good}`}>
+                        {incompleteTenants > 0 ? 'Action' : 'Clear'}
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Occupied Units</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {buildingStats[selectedBuilding]?.occupiedUnits > 0 
-                        ? Math.round((buildingStats[selectedBuilding]?.occupiedUnits / buildingStats[selectedBuilding]?.totalUnits) * 100)
-                        : 0}% of total
+                    <div className="text-xl font-bold text-[var(--warning)] leading-none">
+                      {incompleteTenants}
                     </div>
+                    <div className="text-xs text-[var(--ink)] font-medium mt-1">Incomplete Tenants</div>
+                    <div className="text-[11px] text-[var(--muted)] mt-0.5">Missing one or more verifications</div>
                   </div>
-                  <div className="p-3 bg-green-50 rounded-lg border-2 border-green-300">
-                    <div className="text-2xl font-bold text-green-600">
-                      {buildingStats[selectedBuilding]?.submissionCount || 0}
+                  <div className="p-2.5 bg-white border border-[var(--error)]/35">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Missing Submission</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 ${missingCount > 0 ? tone.critical : tone.good}`}>
+                        {missingCount > 0 ? 'Blocked' : 'Clear'}
+                      </span>
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Submitted Forms</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {buildingStats[selectedBuilding]?.percentComplete || 0}% of occupied
+                    <div className="text-xl font-bold text-[var(--error)] leading-none">
+                      {missingCount}
                     </div>
+                    <div className="text-xs text-[var(--ink)] font-medium mt-1">Missing Submissions</div>
+                    <div className="text-[11px] text-[var(--muted)] mt-0.5">Occupied units with no submission</div>
                   </div>
-                  <div className="p-3 bg-red-50 rounded-lg border-2 border-red-300">
-                    <div className="text-2xl font-bold text-red-600">
-                      {buildingStats[selectedBuilding]?.missingSubmissions?.length || 0}
+                  <div className="p-2.5 bg-white border border-[var(--divider)]">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">Occupancy Context</span>
+                      <span className="text-[10px] px-1.5 py-0.5 border border-[var(--divider)] bg-[var(--bg-section)] text-[var(--muted)]">Secondary</span>
                     </div>
-                    <div className="text-sm text-gray-600 font-medium">Missing Submissions</div>
-                    <div className="text-xs text-gray-500 mt-1">Occupied w/o forms</div>
+                    <div className="text-xl font-bold text-[var(--ink)] leading-none">
+                      {selectedStats.occupiedUnits}
+                    </div>
+                    <div className="text-xs text-[var(--ink)] font-medium mt-1">Occupied Units</div>
+                    <div className="text-[11px] text-[var(--muted)] mt-0.5">{occupiedRate}% of {selectedStats.totalUnits} total units</div>
                   </div>
                 </div>
 
                 {/* Missing Submissions - Occupied Units Without Forms */}
-                {buildingStats[selectedBuilding]?.missingSubmissions && buildingStats[selectedBuilding].missingSubmissions.length > 0 && (
-                  <div className="mt-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                    <div className="text-sm font-semibold text-red-800 mb-3">
-                      ❌ Missing Submissions ({buildingStats[selectedBuilding].missingSubmissions.length} occupied units):
+                {selectedStats.missingSubmissions && selectedStats.missingSubmissions.length > 0 && (
+                  <div className="mt-3 p-3 bg-[var(--error)]/10 border border-[var(--error)]/35">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="text-sm font-semibold text-[var(--error)]">
+                        🚨 Missing Submissions: {selectedStats.missingSubmissions.length} occupied units
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 bg-white border border-[var(--error)]/35 text-[var(--error)]">
+                        Action Required
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {buildingStats[selectedBuilding].missingSubmissions.map((missing, idx) => (
-                        <div key={idx} className="text-sm text-red-700 bg-white p-3 rounded border border-red-200">
-                          <div className="font-medium mb-1">Unit {missing.unit}</div>
-                          <div className="text-gray-900">{missing.tenant.tenant_name}</div>
-                          {missing.tenant.email && <div className="text-xs text-gray-600 mt-1 truncate">{missing.tenant.email}</div>}
-                          {missing.tenant.phone && <div className="text-xs text-gray-600">{missing.tenant.phone}</div>}
+                    <div className="text-[11px] text-[var(--warning)] mb-2">
+                      These units are occupied but blocked because no onboarding submission is on file.
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {selectedStats.missingSubmissions.map((missing, idx) => (
+                        <div key={idx} className="text-sm text-[var(--ink)] bg-white p-2 border border-[var(--error)]/25">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-[var(--error)]">Unit {missing.unit}</div>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-[var(--error)]/10 text-[var(--error)] border border-[var(--error)]/20">Missing</span>
+                          </div>
+                          <div className="text-[var(--ink)]">{missing.tenant.tenant_name}</div>
+                          {missing.tenant.email && <div className="text-[11px] text-[var(--muted)] mt-0.5 truncate">{missing.tenant.email}</div>}
+                          {missing.tenant.phone && <div className="text-[11px] text-[var(--muted)]">{missing.tenant.phone}</div>}
                         </div>
                       ))}
                     </div>
@@ -1017,8 +1115,8 @@ export default function CompliancePage() {
 
                 {/* Vacant Units Info */}
                 {buildingStats[selectedBuilding]?.vacantUnits > 0 && (
-                  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                    <div className="text-sm font-medium text-gray-700">
+                  <div className="mt-4 p-3 bg-[var(--bg-section)] border border-[var(--divider)]">
+                    <div className="text-sm font-medium text-[var(--muted)]">
                       ℹ️ Vacant Units: {buildingStats[selectedBuilding].vacantUnits}
                     </div>
                   </div>
@@ -1033,20 +1131,20 @@ export default function CompliancePage() {
 
               {/* Filter Summary */}
               {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="bg-[var(--bg-section)] border-l-4 border-[var(--accent)] p-3">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-blue-800">
+                    <div className="text-sm text-[var(--ink)]">
                       <span className="font-medium">Active Filters:</span>
-                      {filters.hasVehicle && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Has Vehicle</span>}
-                      {filters.hasPets && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Has Pets</span>}
-                      {filters.hasInsurance && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Has Insurance</span>}
-                      {filters.needsReview && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">Needs Review</span>}
-                      {filters.exportStatus === 'exported' && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">📤 Exported</span>}
-                      {filters.exportStatus === 'not-exported' && <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded text-xs">⚠️ Not Exported</span>}
+                      {filters.hasVehicle && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Vehicle</span>}
+                      {filters.hasPets && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Pets</span>}
+                      {filters.hasInsurance && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Insurance</span>}
+                      {filters.needsReview && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Needs Review</span>}
+                      {filters.exportStatus === 'exported' && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">📤 Exported</span>}
+                      {filters.exportStatus === 'not-exported' && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">⚠️ Not Exported</span>}
                     </div>
                     <button
                       onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium"
                     >
                       Clear All
                     </button>
@@ -1054,10 +1152,20 @@ export default function CompliancePage() {
                 </div>
               )}
 
+              <div className="relative py-3">
+                <div className="absolute left-0 top-1/2 w-full h-px bg-[var(--divider)]" />
+                <h3 className="relative inline-block bg-[var(--paper)] pr-4 font-serif text-lg text-[var(--primary)]">
+                  Tenant Records
+                </h3>
+                <span className="absolute right-0 top-1/2 -translate-y-1/2 bg-[var(--paper)] pl-4 text-sm text-[var(--muted)] font-medium">
+                  Review Queue
+                </span>
+              </div>
+
               {/* Tenant Cards */}
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {submissions.length === 0 ? (
-                  <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
+                  <div className="bg-white border border-[var(--border)] shadow-sm p-8 text-center text-[var(--muted)]">
                     No submissions for this building yet.
                   </div>
                 ) : (() => {
@@ -1089,18 +1197,42 @@ export default function CompliancePage() {
                       ))}
 
                       {/* Unique Submissions (not in duplicate groups) */}
-                      {!showOnlyDuplicates && uniqueSubmissions.map(submission => (
-                    <div key={submission.id} className="bg-white rounded-lg shadow-md p-4">
+                      {!showOnlyDuplicates && uniqueSubmissions.map(submission => {
+                        const hasReviewItems = submission.has_vehicle || submission.has_pets || submission.has_insurance;
+                        const unmetChecks = [
+                          submission.has_vehicle && !submission.vehicle_verified ? 'Vehicle' : null,
+                          submission.has_pets && !submission.pet_verified ? 'Pet' : null,
+                          submission.has_insurance && !submission.insurance_verified ? 'Insurance' : null,
+                        ].filter(Boolean) as string[];
+                        const readyForPermit = submission.has_vehicle && submission.vehicle_verified && submission.pet_verified && submission.insurance_verified;
+
+                        return (
+                    <div key={submission.id} className="bg-white border border-[var(--border)] shadow-sm p-4">
                       {/* Tenant Header */}
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-3 border-b border-[var(--divider)] pb-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base font-semibold text-gray-900">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-semibold text-[var(--primary)]">
                               Unit {submission.unit_number} - {submission.full_name}
                             </h3>
+                            {hasReviewItems && (
+                              <span className={`text-[10px] px-1.5 py-0.5 ${readyForPermit ? tone.good : unmetChecks.length > 1 ? tone.critical : tone.attention}`}>
+                                {readyForPermit ? 'Ready for Permit' : `${unmetChecks.length} Check${unmetChecks.length === 1 ? '' : 's'} Missing`}
+                              </span>
+                            )}
+                            {submission.ready_for_review && !submission.reviewed_for_permit && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-[var(--accent)]/12 text-[var(--accent)] border border-[var(--accent)]/35">
+                                Awaiting Admin Review
+                              </span>
+                            )}
+                            {submission.reviewed_for_permit && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/35">
+                                Reviewed
+                              </span>
+                            )}
                             <button
                               onClick={() => setEditingSubmission(submission)}
-                              className="text-blue-600 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
+                              className="text-[var(--primary)] hover:text-[var(--primary-light)] p-1 hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
                               title="Edit submission"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1108,9 +1240,14 @@ export default function CompliancePage() {
                               </svg>
                             </button>
                           </div>
-                          <div className="text-xs text-gray-600 mt-1">
+                          <div className="text-xs text-[var(--muted)] mt-1">
                             {submission.phone} • {submission.email}
                           </div>
+                          {hasReviewItems && unmetChecks.length > 0 && (
+                            <div className="text-[11px] text-[var(--warning)] mt-1">
+                              Missing verification: {unmetChecks.join(', ')}
+                            </div>
+                          )}
                         </div>
                         
                         {/* Verification Status Panel */}
@@ -1125,12 +1262,12 @@ export default function CompliancePage() {
                           const progressPercent = Math.round((verifiedCount / totalCount) * 100);
                           
                           return (
-                          <div className="ml-4 border-2 border-slate-200 rounded-lg bg-white p-3 shadow-sm min-w-[220px]">
+                          <div className="ml-4 border border-[var(--divider)] bg-[var(--bg-section)] p-3 shadow-sm min-w-[220px]">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-semibold text-slate-700">Verification Status</span>
+                              <span className="text-xs font-semibold text-[var(--primary)]">Verification Status</span>
                               <span className={`text-xs font-medium ${
-                                verifiedCount === totalCount ? 'text-emerald-600' : 'text-slate-500'
+                                verifiedCount === totalCount ? 'text-[var(--success)]' : 'text-[var(--muted)]'
                               }`}>
                                 {verifiedCount}/{totalCount}
                               </span>
@@ -1138,11 +1275,11 @@ export default function CompliancePage() {
                             
                             {/* Progress Bar */}
                             <div className="mb-3">
-                              <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div className="w-full bg-[var(--divider)] h-2">
                                 <div
-                                  className={`h-2 rounded-full transition-all duration-300 ${
-                                    progressPercent === 100 ? 'bg-emerald-500' : 
-                                    progressPercent > 0 ? 'bg-amber-500' : 'bg-slate-300'
+                                  className={`h-2 transition-all duration-300 ease-out ${
+                                    progressPercent === 100 ? 'bg-[var(--success)]' : 
+                                    progressPercent > 0 ? 'bg-[var(--accent)]' : 'bg-[var(--muted)]/40'
                                   }`}
                                   style={{ width: `${progressPercent}%` }}
                                 />
@@ -1153,42 +1290,42 @@ export default function CompliancePage() {
                             <div className="flex flex-col mb-2">
                               <button
                                 onClick={() => handleVerify(submission.id, 'vehicle', !submission.vehicle_verified)}
-                                className="flex items-center gap-2 text-xs leading-tight px-1 rounded hover:bg-slate-50 transition-colors text-left"
+                                className="flex items-center gap-2 text-xs leading-tight px-1 hover:bg-white transition-colors duration-200 ease-out text-left"
                               >
                                 <span className={`text-base ${
-                                  submission.vehicle_verified ? 'text-emerald-600' : 'text-slate-400'
+                                  submission.vehicle_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'
                                 }`}>
                                   {submission.vehicle_verified ? '☑' : '☐'}
                                 </span>
-                                <span className={submission.vehicle_verified ? 'text-emerald-700 font-medium' : 'text-slate-600'}>
+                                <span className={submission.vehicle_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
                                   Vehicle
                                 </span>
                               </button>
                               
                               <button
                                 onClick={() => handleVerify(submission.id, 'pet', !submission.pet_verified)}
-                                className="flex items-center gap-2 text-xs leading-tight px-1 rounded hover:bg-slate-50 transition-colors text-left"
+                                className="flex items-center gap-2 text-xs leading-tight px-1 hover:bg-white transition-colors duration-200 ease-out text-left"
                               >
                                 <span className={`text-base ${
-                                  submission.pet_verified ? 'text-emerald-600' : 'text-slate-400'
+                                  submission.pet_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'
                                 }`}>
                                   {submission.pet_verified ? '☑' : '☐'}
                                 </span>
-                                <span className={submission.pet_verified ? 'text-emerald-700 font-medium' : 'text-slate-600'}>
+                                <span className={submission.pet_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
                                   Pet
                                 </span>
                               </button>
                               
                               <button
                                 onClick={() => handleVerify(submission.id, 'insurance', !submission.insurance_verified)}
-                                className="flex items-center gap-2 text-xs leading-tight px-1 rounded hover:bg-slate-50 transition-colors text-left"
+                                className="flex items-center gap-2 text-xs leading-tight px-1 hover:bg-white transition-colors duration-200 ease-out text-left"
                               >
                                 <span className={`text-base ${
-                                  submission.insurance_verified ? 'text-emerald-600' : 'text-slate-400'
+                                  submission.insurance_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'
                                 }`}>
                                   {submission.insurance_verified ? '☑' : '☐'}
                                 </span>
-                                <span className={submission.insurance_verified ? 'text-emerald-700 font-medium' : 'text-slate-600'}>
+                                <span className={submission.insurance_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
                                   Insurance
                                 </span>
                               </button>
@@ -1196,14 +1333,14 @@ export default function CompliancePage() {
                             
                             {/* Permit Eligibility Indicator */}
                             {submission.has_vehicle && (
-                              <div className={`text-xs px-2.5 py-1.5 rounded-md font-medium border text-center ${
+                              <div className={`text-xs px-2.5 py-1.5 font-medium border text-center ${
                                 canIssuePermit 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  ? 'bg-white text-[var(--success)] border-[var(--success)]/30'
+                                  : 'bg-white text-[var(--warning)] border-[var(--warning)]/30'
                               }`}>
                                 {canIssuePermit ? (
                                   <div className="flex items-center justify-center gap-1.5">
-                                    <span className="text-emerald-600">✓</span>
+                                    <span className="text-[var(--success)]">✓</span>
                                     <span>Ready for Permit</span>
                                   </div>
                                 ) : (
@@ -1221,37 +1358,37 @@ export default function CompliancePage() {
 
                       {/* Vehicle Section */}
                       {submission.has_vehicle && (
-                        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-3">🚗 Vehicle Information</h4>
+                        <div className="mb-5 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                          <h4 className="font-serif text-[var(--primary)] mb-3">Vehicle Information</h4>
                           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-                            <div><span className="text-gray-500">Vehicle:</span> <span className="ml-1 font-medium">{submission.vehicle_year} {submission.vehicle_make} {submission.vehicle_model}</span></div>
-                            <div><span className="text-gray-500">Color:</span> <span className="ml-1">{submission.vehicle_color}</span></div>
-                            <div><span className="text-gray-500">Plate:</span> <span className="ml-1 font-mono">{submission.vehicle_plate}</span></div>
+                            <div><span className="text-[var(--muted)]">Vehicle:</span> <span className="ml-1 font-medium">{submission.vehicle_year} {submission.vehicle_make} {submission.vehicle_model}</span></div>
+                            <div><span className="text-[var(--muted)]">Color:</span> <span className="ml-1">{submission.vehicle_color}</span></div>
+                            <div><span className="text-[var(--muted)]">Plate:</span> <span className="ml-1 font-mono">{submission.vehicle_plate}</span></div>
                           </div>
                           {submission.vehicle_signature && (
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="text-green-600">✅ Signature Captured</span>
+                              <span className="text-[var(--success)]">✅ Signature Captured</span>
                               {submission.vehicle_signature_date && (
-                                <span className="text-gray-500">({new Date(submission.vehicle_signature_date).toLocaleDateString()})</span>
+                                <span className="text-[var(--muted)]">({new Date(submission.vehicle_signature_date).toLocaleDateString()})</span>
                               )}
                               <button
                                 onClick={() => viewSignature(submission.vehicle_signature!, 'Vehicle', submission.vehicle_signature_date)}
-                                className="text-blue-600 hover:text-blue-700 underline"
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                               >
                                 View Signature
                               </button>
                             </div>
                           )}
                           {!submission.vehicle_signature && (
-                            <div className="text-sm text-red-600">❌ No signature captured</div>
+                            <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                           )}
                           
                           {/* Review Workflow Buttons */}
-                          <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
+                          <div className="mt-3 pt-3 border-t border-[var(--divider)] flex gap-2">
                             {submission.vehicle_verified && !submission.ready_for_review && (
                               <button
                                 onClick={() => markReadyForReview(submission.id)}
-                                className="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                                className="px-3 py-1 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none text-xs font-medium hover:bg-[var(--primary-light)]"
                               >
                                 Mark Ready for Review
                               </button>
@@ -1260,14 +1397,14 @@ export default function CompliancePage() {
                             {submission.ready_for_review && !submission.reviewed_for_permit && (
                               <button
                                 onClick={() => setReviewingSubmission(submission)}
-                                className="px-3 py-1 bg-purple-600 text-white rounded text-xs font-medium hover:bg-purple-700"
+                                className="px-3 py-1 bg-[var(--accent)] text-white border border-[var(--accent)] rounded-none text-xs font-medium hover:opacity-90"
                               >
                                 Review for Permit
                               </button>
                             )}
                             
                             {submission.reviewed_for_permit && (
-                              <div className="text-sm text-green-600">
+                              <div className="text-sm text-[var(--success)]">
                                 ✅ Reviewed by {submission.reviewed_by} {submission.reviewed_at && `on ${new Date(submission.reviewed_at).toLocaleDateString()}`}
                               </div>
                             )}
@@ -1277,24 +1414,24 @@ export default function CompliancePage() {
 
                       {/* Additional Vehicles Section */}
                       {submission.additional_vehicles && submission.additional_vehicles.length > 0 && (
-                        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                        <div className="mb-5 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                          <h4 className="font-serif text-[var(--primary)] mb-3 flex items-center gap-2">
                             🚗+ Additional Vehicle{submission.additional_vehicles.length > 1 ? 's' : ''}
                             {submission.additional_vehicle_approved && (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Approved</span>
+                              <span className="text-xs bg-white text-[var(--success)] px-2 py-0.5 border border-[var(--success)]/30">Approved</span>
                             )}
                             {submission.additional_vehicle_denied && (
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Denied</span>
+                              <span className="text-xs bg-white text-[var(--error)] px-2 py-0.5 border border-[var(--error)]/30">Denied</span>
                             )}
                             {!submission.additional_vehicle_approved && !submission.additional_vehicle_denied && (
-                              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pending</span>
+                              <span className="text-xs bg-white text-[var(--warning)] px-2 py-0.5 border border-[var(--warning)]/30">Pending</span>
                             )}
                           </h4>
                           {submission.additional_vehicles.map((av, idx) => (
                             <div key={idx} className="grid grid-cols-3 gap-3 text-sm mb-2">
-                              <div><span className="text-gray-500">Vehicle:</span> <span className="ml-1 font-medium">{av.vehicle_year} {av.vehicle_make} {av.vehicle_model}</span></div>
-                              <div><span className="text-gray-500">Color:</span> <span className="ml-1">{av.vehicle_color}</span></div>
-                              <div><span className="text-gray-500">Plate:</span> <span className="ml-1 font-mono">{av.vehicle_plate}</span></div>
+                              <div><span className="text-[var(--muted)]">Vehicle:</span> <span className="ml-1 font-medium">{av.vehicle_year} {av.vehicle_make} {av.vehicle_model}</span></div>
+                              <div><span className="text-[var(--muted)]">Color:</span> <span className="ml-1">{av.vehicle_color}</span></div>
+                              <div><span className="text-[var(--muted)]">Plate:</span> <span className="ml-1 font-mono">{av.vehicle_plate}</span></div>
                             </div>
                           ))}
                         </div>
@@ -1302,8 +1439,8 @@ export default function CompliancePage() {
 
                       {/* Pet Section */}
                       {submission.has_pets && (
-                        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-3">🐾 Pet Information</h4>
+                        <div className="mb-5 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                          <h4 className="font-serif text-[var(--primary)] mb-3">Pet Information</h4>
                           {submission.pets && Array.isArray(submission.pets) && submission.pets.map((pet: any, idx: number) => (
                             <div key={idx} className="text-sm mb-2">
                               <span className="font-medium">{pet.pet_name}</span> ({pet.pet_type}) - {pet.pet_breed}, {pet.pet_weight} lbs
@@ -1311,38 +1448,38 @@ export default function CompliancePage() {
                           ))}
                           {submission.pet_signature && (
                             <div className="flex items-center gap-2 text-sm mt-2">
-                              <span className="text-green-600">✅ Signature Captured</span>
+                              <span className="text-[var(--success)]">✅ Signature Captured</span>
                               {submission.pet_signature_date && (
-                                <span className="text-gray-500">({new Date(submission.pet_signature_date).toLocaleDateString()})</span>
+                                <span className="text-[var(--muted)]">({new Date(submission.pet_signature_date).toLocaleDateString()})</span>
                               )}
                               <button
                                 onClick={() => viewSignature(submission.pet_signature!, 'Pet', submission.pet_signature_date)}
-                                className="text-blue-600 hover:text-blue-700 underline"
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                               >
                                 View Signature
                               </button>
                             </div>
                           )}
                           {!submission.pet_signature && (
-                            <div className="text-sm text-red-600">❌ No signature captured</div>
+                            <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                           )}
                         </div>
                       )}
 
                       {/* Insurance Section */}
                       {submission.has_insurance && (
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-2">🛡️ Insurance Information</h4>
+                        <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                          <h4 className="font-serif text-[var(--primary)] mb-2">Insurance Information</h4>
                           <div className="text-sm">
-                            <span className="text-gray-500">Provider:</span> <span className="ml-1">{submission.insurance_provider}</span>
+                            <span className="text-[var(--muted)]">Provider:</span> <span className="ml-1">{submission.insurance_provider}</span>
                             {submission.insurance_policy_number && (
-                              <span className="ml-3"><span className="text-gray-500">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></span>
+                              <span className="ml-3"><span className="text-[var(--muted)]">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></span>
                             )}
                           </div>
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                     </>
                   );
                 })()}
@@ -1360,14 +1497,14 @@ export default function CompliancePage() {
           onClick={() => setViewingSignature(null)}
         >
           <div
-            className="bg-white rounded-lg p-6 max-w-2xl w-full"
+            className="bg-white border border-[var(--border)] p-6 max-w-2xl w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">{viewingSignature.type} Signature</h3>
+              <h3 className={`text-lg ${ui.title}`}>{viewingSignature.type} Signature</h3>
               <button
                 onClick={() => setViewingSignature(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-[var(--muted)] hover:text-[var(--ink)]"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1375,11 +1512,11 @@ export default function CompliancePage() {
               </button>
             </div>
             {viewingSignature.date && (
-              <div className="text-sm text-gray-600 mb-4">
+              <div className="text-sm text-[var(--muted)] mb-4">
                 Signed: {new Date(viewingSignature.date).toLocaleString()}
               </div>
             )}
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div className="border border-[var(--divider)] p-4 bg-[var(--bg-section)]">
               <img
                 src={getSignatureUrl(viewingSignature.path)}
                 alt={`${viewingSignature.type} Signature`}
@@ -1397,14 +1534,14 @@ export default function CompliancePage() {
           onClick={() => setReviewingSubmission(null)}
         >
           <div
-            className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white border border-[var(--border)] p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Review for Permit Approval</h3>
+              <h3 className={`text-xl ${ui.title}`}>Review for Permit Approval</h3>
               <button
                 onClick={() => setReviewingSubmission(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-[var(--muted)] hover:text-[var(--ink)]"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1413,66 +1550,66 @@ export default function CompliancePage() {
             </div>
 
             <div className="mb-6">
-              <div className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-lg font-medium text-[var(--ink)] mb-2">
                 {reviewingSubmission.full_name} - Unit {reviewingSubmission.unit_number}
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-[var(--muted)]">
                 {reviewingSubmission.building_address}
               </div>
             </div>
 
             {/* Vehicle Details */}
             {reviewingSubmission.has_vehicle && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">🚗 Vehicle Information</h4>
+              <div className="mb-6 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                <h4 className="font-serif text-[var(--primary)] mb-3">Vehicle Information</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                  <div><span className="text-gray-500">Vehicle:</span> <span className="ml-1 font-medium">{reviewingSubmission.vehicle_year} {reviewingSubmission.vehicle_make} {reviewingSubmission.vehicle_model}</span></div>
-                  <div><span className="text-gray-500">Color:</span> <span className="ml-1">{reviewingSubmission.vehicle_color}</span></div>
-                  <div><span className="text-gray-500">Plate:</span> <span className="ml-1 font-mono">{reviewingSubmission.vehicle_plate}</span></div>
+                  <div><span className="text-[var(--muted)]">Vehicle:</span> <span className="ml-1 font-medium">{reviewingSubmission.vehicle_year} {reviewingSubmission.vehicle_make} {reviewingSubmission.vehicle_model}</span></div>
+                  <div><span className="text-[var(--muted)]">Color:</span> <span className="ml-1">{reviewingSubmission.vehicle_color}</span></div>
+                  <div><span className="text-[var(--muted)]">Plate:</span> <span className="ml-1 font-mono">{reviewingSubmission.vehicle_plate}</span></div>
                   <div>
-                    <span className="text-gray-500">Verified:</span> 
-                    <span className={`ml-1 font-medium ${reviewingSubmission.vehicle_verified ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className="text-[var(--muted)]">Verified:</span> 
+                    <span className={`ml-1 font-medium ${reviewingSubmission.vehicle_verified ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                       {reviewingSubmission.vehicle_verified ? '✅ Yes' : '❌ No'}
                     </span>
                   </div>
                 </div>
                 {reviewingSubmission.vehicle_signature ? (
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-green-600">✅ Signature Captured</span>
+                    <span className="text-[var(--success)]">✅ Signature Captured</span>
                     <button
                       onClick={() => viewSignature(reviewingSubmission.vehicle_signature!, 'Vehicle', reviewingSubmission.vehicle_signature_date)}
-                      className="text-blue-600 hover:text-blue-700 underline"
+                      className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                     >
                       View Signature
                     </button>
                   </div>
                 ) : (
-                  <div className="text-sm text-red-600">❌ No signature captured</div>
+                  <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                 )}
               </div>
             )}
 
             {/* Pet Details */}
             {reviewingSubmission.has_pets && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">🐾 Pet Information</h4>
+              <div className="mb-6 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                <h4 className="font-serif text-[var(--primary)] mb-3">Pet Information</h4>
                 {reviewingSubmission.pets && Array.isArray(reviewingSubmission.pets) && reviewingSubmission.pets.map((pet: any, idx: number) => (
                   <div key={idx} className="text-sm mb-2">
                     <span className="font-medium">{pet.pet_name}</span> ({pet.pet_type}) - {pet.pet_breed}, {pet.pet_weight} lbs
                   </div>
                 ))}
                 <div className="mt-2">
-                  <span className="text-gray-500 text-sm">Verified:</span> 
-                  <span className={`ml-1 font-medium text-sm ${reviewingSubmission.pet_verified ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className="text-[var(--muted)] text-sm">Verified:</span> 
+                  <span className={`ml-1 font-medium text-sm ${reviewingSubmission.pet_verified ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                     {reviewingSubmission.pet_verified ? '✅ Yes' : '❌ No'}
                   </span>
                 </div>
                 {reviewingSubmission.pet_signature && (
                   <div className="flex items-center gap-2 text-sm mt-2">
-                    <span className="text-green-600">✅ Signature Captured</span>
+                    <span className="text-[var(--success)]">✅ Signature Captured</span>
                     <button
                       onClick={() => viewSignature(reviewingSubmission.pet_signature!, 'Pet', reviewingSubmission.pet_signature_date)}
-                      className="text-blue-600 hover:text-blue-700 underline"
+                      className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                     >
                       View Signature
                     </button>
@@ -1483,13 +1620,13 @@ export default function CompliancePage() {
 
             {/* Admin Selection */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-[var(--ink)] mb-2">
                 Reviewed by:
               </label>
               <select
                 value={reviewAdmin}
                 onChange={(e) => setReviewAdmin(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-none bg-[var(--bg-input)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20"
               >
                 <option value="">Select admin...</option>
                 <option value="Alex">Alex</option>
@@ -1506,14 +1643,14 @@ export default function CompliancePage() {
                   setReviewingSubmission(null);
                   setReviewAdmin('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-[var(--border)] text-[var(--primary)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
               >
                 Cancel
               </button>
               <button
                 onClick={approveForPermit}
                 disabled={!reviewAdmin}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-[var(--muted)] disabled:border-[var(--muted)] disabled:cursor-not-allowed"
               >
                 Approve for Permit
               </button>

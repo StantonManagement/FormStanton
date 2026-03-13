@@ -43,11 +43,6 @@ const requiredVars = [
     validate: (val: string) => val.length > 100
   },
   {
-    name: 'ADMIN_PASSWORD',
-    description: 'Admin dashboard password',
-    validate: (val: string) => val.length >= 8
-  },
-  {
     name: 'SESSION_SECRET',
     description: 'Session encryption secret',
     validate: (val: string) => val.length >= 32
@@ -86,6 +81,44 @@ for (const varConfig of requiredVars) {
   }
 }
 
+// Check admin auth variables (hash preferred, plaintext legacy fallback)
+console.log('\n🔐 Admin Auth Variables:');
+const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+const adminPassword = process.env.ADMIN_PASSWORD;
+const bcryptRegex = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
+
+if (!adminPasswordHash && !adminPassword) {
+  result.valid = false;
+  result.errors.push('❌ ADMIN_PASSWORD_HASH (preferred) or ADMIN_PASSWORD (legacy) is required');
+  console.log('  ❌ ADMIN_PASSWORD_HASH / ADMIN_PASSWORD: MISSING');
+} else if (adminPasswordHash) {
+  if (adminPasswordHash !== adminPasswordHash.trim()) {
+    result.valid = false;
+    result.errors.push('❌ ADMIN_PASSWORD_HASH cannot have leading or trailing whitespace');
+    console.log('  ❌ ADMIN_PASSWORD_HASH: HAS SURROUNDING WHITESPACE');
+  } else if (!bcryptRegex.test(adminPasswordHash)) {
+    result.valid = false;
+    result.errors.push('❌ ADMIN_PASSWORD_HASH must be a valid bcrypt hash');
+    console.log('  ❌ ADMIN_PASSWORD_HASH: INVALID BCRYPT FORMAT');
+  } else {
+    console.log('  ✅ ADMIN_PASSWORD_HASH: OK (preferred)');
+  }
+
+  if (adminPassword) {
+    result.warnings.push('⚠️  ADMIN_PASSWORD is still set; remove it after confirming hash-based login in deployment');
+    console.log('  ⚠️  ADMIN_PASSWORD: PRESENT (legacy fallback still enabled)');
+  }
+} else if (adminPassword) {
+  if (adminPassword.length < 8) {
+    result.valid = false;
+    result.errors.push('❌ ADMIN_PASSWORD must be at least 8 characters long');
+    console.log('  ❌ ADMIN_PASSWORD: TOO SHORT');
+  } else {
+    result.warnings.push('⚠️  Using legacy ADMIN_PASSWORD. Migrate to ADMIN_PASSWORD_HASH as soon as possible');
+    console.log('  ⚠️  ADMIN_PASSWORD: OK (legacy fallback)');
+  }
+}
+
 // Check optional variables
 console.log('\n📋 Optional Variables:');
 for (const varConfig of optionalVars) {
@@ -115,8 +148,7 @@ if (envLocalExists) {
 // Security checks
 console.log('\n🔒 Security Checks:');
 
-// Check admin password strength
-const adminPassword = process.env.ADMIN_PASSWORD;
+// Check legacy admin password strength when present
 if (adminPassword) {
   if (adminPassword.length < 12) {
     result.warnings.push('⚠️  Admin password should be at least 12 characters');

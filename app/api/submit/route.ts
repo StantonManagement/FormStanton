@@ -6,6 +6,7 @@ import {
   generateNoPetsAddendumPdf,
   generateVehicleAddendumPdf,
 } from '@/lib/documentGenerator';
+import { sanitizePlate } from '@/lib/plateSanitizer';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
         vehicle_model: formDataJson.vehicleModel || null,
         vehicle_year: formDataJson.vehicleYear ? parseInt(formDataJson.vehicleYear) : null,
         vehicle_color: formDataJson.vehicleColor || null,
-        vehicle_plate: formDataJson.vehiclePlate || null,
+        vehicle_plate: sanitizePlate(formDataJson.vehiclePlate),
         vehicle_signature: vehicleSignaturePath,
         vehicle_signature_date: formDataJson.vehicleSignatureDate || null,
         additional_vehicles: formDataJson.additionalVehicles && formDataJson.additionalVehicles.length > 0
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
               vehicle_model: av.vehicleModel || null,
               vehicle_year: av.vehicleYear ? parseInt(av.vehicleYear) : null,
               vehicle_color: av.vehicleColor || null,
-              vehicle_plate: av.vehiclePlate || null,
+              vehicle_plate: sanitizePlate(av.vehiclePlate),
               requested_at: new Date().toISOString(),
             }))
           : null,

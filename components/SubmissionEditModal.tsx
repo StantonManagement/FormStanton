@@ -56,9 +56,15 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
   const [petDocPreview, setPetDocPreview] = useState<string | null>(null);
   const [insurancePreview, setInsurancePreview] = useState<string | null>(null);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
 
   const handleVehicleChange = (field: string, value: string) => {
     setVehicleData(prev => ({ ...prev, [field]: value }));
+    setInvalidFields(prev => {
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
     setError('');
   };
 
@@ -130,11 +136,19 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
       const hasVehicleData = vehicleData.make || vehicleData.model || vehicleData.year || vehicleData.color || vehicleData.plate;
       if (hasVehicleData) {
         if (!vehicleData.make || !vehicleData.model || !vehicleData.year || !vehicleData.color || !vehicleData.plate) {
+          const missing = new Set<string>();
+          if (!vehicleData.make) missing.add('make');
+          if (!vehicleData.model) missing.add('model');
+          if (!vehicleData.year) missing.add('year');
+          if (!vehicleData.color) missing.add('color');
+          if (!vehicleData.plate) missing.add('plate');
+          setInvalidFields(missing);
           setError('All vehicle fields are required if adding vehicle information');
           setIsSubmitting(false);
           return;
         }
         if (!staffName) {
+          setInvalidFields(new Set(['staffName']));
           setError('Staff name is required when adding vehicle information');
           setIsSubmitting(false);
           return;
@@ -276,7 +290,9 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   type="text"
                   value={vehicleData.make}
                   onChange={(e) => handleVehicleChange('make', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    invalidFields.has('make') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Toyota"
                 />
               </div>
@@ -289,7 +305,9 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   type="text"
                   value={vehicleData.model}
                   onChange={(e) => handleVehicleChange('model', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    invalidFields.has('model') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Camry"
                 />
               </div>
@@ -302,7 +320,9 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   type="text"
                   value={vehicleData.year}
                   onChange={(e) => handleVehicleChange('year', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    invalidFields.has('year') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., 2020"
                   maxLength={4}
                 />
@@ -316,7 +336,9 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   type="text"
                   value={vehicleData.color}
                   onChange={(e) => handleVehicleChange('color', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    invalidFields.has('color') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Silver"
                 />
               </div>
@@ -329,7 +351,9 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   type="text"
                   value={vehicleData.plate}
                   onChange={(e) => handleVehicleChange('plate', e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono ${
+                    invalidFields.has('plate') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., ABC123"
                 />
               </div>
@@ -341,8 +365,18 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                 <input
                   type="text"
                   value={staffName}
-                  onChange={(e) => setStaffName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) => {
+                    setStaffName(e.target.value);
+                    setInvalidFields(prev => {
+                      const next = new Set(prev);
+                      next.delete('staffName');
+                      return next;
+                    });
+                    setError('');
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    invalidFields.has('staffName') ? 'border-red-500 animate-pulse' : 'border-gray-300'
+                  }`}
                   placeholder="Your name"
                 />
               </div>

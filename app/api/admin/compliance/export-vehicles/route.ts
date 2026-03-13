@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isAuthenticated } from '@/lib/auth';
 import { buildingToAssetId } from '@/lib/buildingAssetIds';
+import { normalizeAddress } from '@/lib/addressNormalizer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,12 +33,15 @@ export async function GET(request: NextRequest) {
       .order('building_address', { ascending: true })
       .order('unit_number', { ascending: true });
 
+    let selectedNormalizedBuildings: Set<string> | null = null;
+
     if (buildingsParam) {
       // Multi-building export — always verified only
       const buildingList = buildingsParam.split(',').map(b => b.trim()).filter(Boolean);
-      query = query.in('building_address', buildingList).eq('vehicle_verified', true);
+      selectedNormalizedBuildings = new Set(buildingList.map(normalizeAddress));
+      query = query.eq('vehicle_verified', true);
     } else if (buildingAddress && buildingAddress !== 'all') {
-      query = query.eq('building_address', buildingAddress);
+      selectedNormalizedBuildings = new Set([normalizeAddress(buildingAddress)]);
       if (verifiedOnly) {
         query = query.eq('vehicle_verified', true);
       }
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('vehicle_verified', true);
     }
 
-    const { data: submissions, error } = await query;
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching vehicles:', error);
@@ -55,8 +59,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const submissions = selectedNormalizedBuildings
+      ? (data || []).filter((sub) => selectedNormalizedBuildings!.has(normalizeAddress(sub.building_address || '')))
+      : (data || []);
+
     // Mark all exported submissions
-    if (submissions && submissions.length > 0) {
+    if (submissions.length > 0) {
       const submissionIds = submissions.map(s => s.id);
       const now = new Date().toISOString();
       
@@ -71,6 +79,10 @@ export async function GET(request: NextRequest) {
 
       if (updateError) {
         console.error('Error marking submissions as exported:', updateError);
+        return NextResponse.json(
+          { success: false, message: 'Failed to mark exported vehicles' },
+          { status: 500 }
+        );
       }
     }
 
@@ -96,7 +108,7 @@ export async function GET(request: NextRequest) {
         for (const sub of byBuilding[addr]) {
           const additionalVehicles = sub.additional_vehicles
             ? (sub.additional_vehicles as any[]).map((v: any) =>
-                `${v.vehicle_year} ${v.vehicle_make} ${v.vehicle_model} (${v.vehicle_plate})`
+                `${v.vehicle_year} ${v.vehicle_make} ${v.vehicle_model} (${(v.vehicle_plate || '').toUpperCase()})`
               ).join('; ')
             : '';
 
@@ -108,7 +120,7 @@ export async function GET(request: NextRequest) {
             `"${sub.vehicle_model || ''}"`,
             `"${sub.vehicle_year || ''}"`,
             `"${sub.vehicle_color || ''}"`,
-            `"${sub.vehicle_plate || ''}"`,
+            `"${(sub.vehicle_plate || '').toUpperCase()}"`,
             `"${additionalVehicles}"`,
           ].join(','));
         }
@@ -135,7 +147,7 @@ export async function GET(request: NextRequest) {
       for (const sub of submissions) {
         const additionalVehicles = sub.additional_vehicles
           ? (sub.additional_vehicles as any[]).map((v: any) =>
-              `${v.vehicle_year} ${v.vehicle_make} ${v.vehicle_model} (${v.vehicle_plate})`
+              `${v.vehicle_year} ${v.vehicle_make} ${v.vehicle_model} (${(v.vehicle_plate || '').toUpperCase()})`
             ).join('; ')
           : '';
 
@@ -149,7 +161,7 @@ export async function GET(request: NextRequest) {
           `"${sub.vehicle_model || ''}"`,
           `"${sub.vehicle_year || ''}"`,
           `"${sub.vehicle_color || ''}"`,
-          `"${sub.vehicle_plate || ''}"`,
+          `"${(sub.vehicle_plate || '').toUpperCase()}"`,
           `"${additionalVehicles}"`,
           sub.vehicle_verified ? 'Yes' : 'No',
           `"${new Date(sub.created_at).toLocaleDateString()}"`

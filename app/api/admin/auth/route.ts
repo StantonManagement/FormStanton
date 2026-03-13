@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { getSession } from '@/lib/auth';
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { getAdminAuthSecrets } from '@/lib/server-env';
+
+async function verifyAdminPassword(inputPassword: string): Promise<boolean> {
+  const { adminPasswordHash, adminPasswordLegacy } = getAdminAuthSecrets();
+
+  if (adminPasswordHash) {
+    return bcrypt.compare(inputPassword, adminPasswordHash);
+  }
+
+  return inputPassword === adminPasswordLegacy;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json();
+
+    if (typeof password !== 'string' || password.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Password is required' },
+        { status: 400 }
+      );
+    }
     
     // Get IP address for rate limiting
     const ip = request.headers.get('x-forwarded-for') || 
@@ -25,16 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    
-    if (!adminPassword) {
-      return NextResponse.json(
-        { success: false, message: 'Admin password not configured' },
-        { status: 500 }
-      );
-    }
-    
-    if (password === adminPassword) {
+    const isValidPassword = await verifyAdminPassword(password);
+
+    if (isValidPassword) {
       // Reset rate limit on successful login
       resetRateLimit(`auth:${ip}`);
       

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "validate-env": "ts-node scripts/validate-env.ts",
+    "generate-admin-password-hash": "ts-node scripts/generate-admin-password-hash.ts",
     "predev": "npm run validate-env"
   },
   "dependencies": {

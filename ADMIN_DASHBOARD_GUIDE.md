@@ -84,12 +84,16 @@ Click the "Export to Excel" button to download submissions data:
 Add to your `.env.local` file:
 
 ```env
-ADMIN_PASSWORD=your_secure_admin_password
+ADMIN_PASSWORD_HASH=$2b$12$your_generated_bcrypt_hash
+# Optional legacy fallback during migration only
+# ADMIN_PASSWORD=your_legacy_password
 SESSION_SECRET=your_session_secret_at_least_32_characters_long
 ```
 
 **Important**: 
-- Choose a strong admin password
+- `ADMIN_PASSWORD_HASH` is the canonical authentication secret
+- Generate hashes with `npm run generate-admin-password-hash`
+- Keep `ADMIN_PASSWORD` only as a temporary migration fallback
 - The session secret must be at least 32 characters long
 - Never commit these values to version control
 
@@ -144,7 +148,9 @@ Consider adding:
 
 ### Cannot Login
 
-- Verify `ADMIN_PASSWORD` is set in `.env.local`
+- Verify `ADMIN_PASSWORD_HASH` is set and is a valid bcrypt hash
+- If using migration fallback, verify `ADMIN_PASSWORD` is set exactly (no leading/trailing spaces)
+- In Vercel, confirm variable scope includes the target environment and redeploy after any env update
 - Check browser console for errors
 - Ensure session secret is at least 32 characters
 

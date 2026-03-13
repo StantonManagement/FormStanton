@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizePlate } from '@/lib/plateSanitizer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
           vehicle_model: data.vehicle_model || null,
           vehicle_year: data.vehicle_year || null,
           vehicle_color: data.vehicle_color || null,
-          vehicle_plate: data.vehicle_plate || null,
+          vehicle_plate: sanitizePlate(data.vehicle_plate),
           vehicle_signature: null,
           vehicle_signature_date: null,
           additional_vehicles: null,

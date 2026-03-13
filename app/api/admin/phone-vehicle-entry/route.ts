@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
+import { sanitizePlate } from '@/lib/plateSanitizer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       vehicle_model: vehicleModel,
       vehicle_year: parseInt(vehicleYear),
       vehicle_color: vehicleColor,
-      vehicle_plate: vehiclePlate,
+      vehicle_plate: sanitizePlate(vehiclePlate),
       vehicle_submitted_by_phone: true,
       vehicle_phone_submission_date: now,
       vehicle_phone_submission_by: staffName,

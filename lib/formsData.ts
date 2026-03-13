@@ -5,7 +5,8 @@ export interface TenantForm {
   title: string;
   department: Department;
   description: string;
-  content: string;
+  content?: string;
+  path?: string;
 }
 
 export const departmentLabels: Record<Department, string> = {
@@ -15,6 +16,9 @@ export const departmentLabels: Record<Department, string> = {
   finance: 'Finance',
 };
 
+// Canonical registry for forms shown in Admin > Forms Library.
+// When adding a new live form route, add it here with `path` so it appears in the library.
+// If you also want printable/template preview in the modal, provide `content`.
 export const tenantForms: TenantForm[] = [
   // PROPERTY MANAGEMENT FORMS
   {
@@ -22,6 +26,7 @@ export const tenantForms: TenantForm[] = [
     title: 'Move-In Inspection Form',
     department: 'property_management',
     description: 'Document unit condition at move-in to protect security deposit',
+    path: '/move-in-inspection',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -145,6 +150,7 @@ By signing below, both parties acknowledge the condition of the unit as document
     title: 'Smoke & CO Detector Acknowledgment',
     department: 'property_management',
     description: 'Confirm smoke and CO detectors are present and functioning',
+    path: '/smoke-detector',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -422,6 +428,7 @@ _______________________________________________
     title: 'Maintenance Request (Paper Backup)',
     department: 'maintenance',
     description: 'Paper form for maintenance requests when app/portal unavailable',
+    path: '/maintenance-request',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -563,6 +570,7 @@ I understand the following:
     title: 'Bulk Item Disposal Request',
     department: 'maintenance',
     description: 'Request approval before disposing furniture or large items',
+    path: '/bulk-disposal',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -603,6 +611,7 @@ Staff initials: __________`,
     title: 'Pet Approval Request / Pet Addendum',
     department: 'compliance',
     description: 'Request approval to keep a pet in the unit',
+    path: '/pet-approval',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -654,6 +663,7 @@ By signing below, the tenant agrees to the following:
     title: 'Extended Guest Disclosure',
     department: 'compliance',
     description: 'Disclose guests staying more than 14 consecutive days',
+    path: '/guest-disclosure',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -701,6 +711,7 @@ By signing below, the tenant agrees to the following:
     title: 'Common Area Violation Warning',
     department: 'compliance',
     description: 'Notice of violation in common areas with fine details',
+    path: '/common-area-violation',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -763,6 +774,7 @@ Failure to comply may result in escalating fines or lease action.
     title: 'Unauthorized Pet — Cure Notice / Retroactive Approval',
     department: 'compliance',
     description: 'Notice for unauthorized pet with options to remove or apply for approval',
+    path: '/unauthorized-pet',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -960,6 +972,7 @@ Delivered to tenant: [ ] Yes Method: __________ Date: __________`,
     title: 'Tenant Billing Dispute Form',
     department: 'finance',
     description: 'Formally dispute charges or security deposit deductions',
+    path: '/billing-dispute',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -1014,6 +1027,70 @@ _______________________________________________
 *Received by (Stanton Management):* _________________________ Date: __________
 *Response due by:* __________
 *Outcome:* ___________________________________________________`,
+  },
+  {
+    id: 20,
+    title: 'Reimbursement Request',
+    department: 'finance',
+    description: 'Submit reimbursement details and supporting documentation',
+    path: '/reimbursement',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**Tenant Name:** _________________________________________________
+
+**Unit Address:** _________________________________________________
+
+**Date of Request:** ______________________________________________
+
+---
+
+## Reimbursement Details
+
+**Amount Requested:** $____________________________________________
+
+**Reason for Reimbursement:** _____________________________________
+
+**Description / Notes:**
+
+_______________________________________________
+_______________________________________________
+
+**Receipts Attached:** [ ] Yes [ ] No
+
+---
+
+**Tenant Signature:** _________________________ Date: __________
+
+*For office use:* Approved [ ] Denied [ ] Amount: $__________ Date: __________`,
+  },
+  {
+    id: 21,
+    title: 'Tenant Assessment',
+    department: 'property_management',
+    description: 'Hartford market quick assessment for prospective tenants',
+    path: '/tenant-assessment',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**Tenant Assessment**
+
+Use the live form for full submission workflow and voice notes.
+
+Route: /tenant-assessment
+
+---
+
+**Summary Fields**
+- Basic Information
+- Quick Observations / Red Flags
+- Housing, Kids/Pets, Employment, Local Connections
+- Agent Assessment + Recommendation
+`,
   },
 ];
 

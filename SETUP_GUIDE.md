@@ -114,6 +114,16 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 RESEND_API_KEY=re_your_resend_key_here
+ADMIN_PASSWORD_HASH=$2b$12$your_generated_bcrypt_hash
+# Optional only during migration:
+# ADMIN_PASSWORD=your_legacy_admin_password
+SESSION_SECRET=your_session_secret_at_least_32_characters_long
+```
+
+Generate `ADMIN_PASSWORD_HASH` with:
+
+```bash
+npm run generate-admin-password-hash
 ```
 
 **Important:** Never commit `.env.local` to version control!
@@ -174,11 +184,17 @@ git push -u origin main
 
 5. Add Environment Variables:
    - Click "Environment Variables"
-   - Add all four variables from your `.env.local`:
+   - Add variables from your `.env.local`:
      - `NEXT_PUBLIC_SUPABASE_URL`
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
      - `SUPABASE_SERVICE_ROLE_KEY`
      - `RESEND_API_KEY`
+     - `ADMIN_PASSWORD_HASH` (required, preferred)
+     - `SESSION_SECRET` (required)
+     - `ADMIN_PASSWORD` (optional temporary migration fallback)
+
+   - Ensure variables are scoped to the correct environment(s): Production and/or Preview
+   - Redeploy after any auth-related env changes (`ADMIN_PASSWORD_HASH`, `ADMIN_PASSWORD`, `SESSION_SECRET`)
 
 6. Click "Deploy"
 

@@ -20,6 +20,8 @@ export default function FormDetailModal({ form, onClose }: FormDetailModalProps)
 
   if (!form) return null;
 
+  const hasTemplateContent = Boolean(form.content);
+
   const handlePrint = () => {
     window.print();
   };
@@ -62,13 +64,18 @@ export default function FormDetailModal({ form, onClose }: FormDetailModalProps)
         {/* Form Content */}
         <div className="px-6 py-6 print:px-0 print:py-0">
           <div className="prose prose-sm max-w-none print:prose-base">
-            {/* Render form content with proper formatting */}
-            <div 
-              className="form-content"
-              dangerouslySetInnerHTML={{ 
-                __html: formatFormContent(form.content) 
-              }}
-            />
+            {hasTemplateContent ? (
+              <div
+                className="form-content"
+                dangerouslySetInnerHTML={{
+                  __html: formatFormContent(form.content as string)
+                }}
+              />
+            ) : (
+              <div className="text-sm text-gray-600">
+                No printable template is available for this form.
+              </div>
+            )}
           </div>
         </div>
       </div>

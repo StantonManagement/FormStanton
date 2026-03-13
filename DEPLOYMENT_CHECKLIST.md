@@ -23,6 +23,9 @@ Use this checklist before deploying to production.
 - [ ] `.env.local.example` file updated
 - [ ] `.gitignore` includes `.env.local`
 - [ ] Vercel environment variables configured
+- [ ] `ADMIN_PASSWORD_HASH` set for target environment(s) (Production/Preview)
+- [ ] `SESSION_SECRET` set and 32+ characters
+- [ ] `ADMIN_PASSWORD` only set if temporary migration fallback is intentionally enabled
 
 ### Testing
 - [ ] Form submission works in development
@@ -45,6 +48,8 @@ Use this checklist before deploying to production.
 ### Vercel Setup
 - [ ] Repository connected to Vercel
 - [ ] Environment variables added
+- [ ] Environment variable scope verified (Production vs Preview)
+- [ ] Redeploy triggered after any auth env change (`ADMIN_PASSWORD_HASH`, `ADMIN_PASSWORD`, `SESSION_SECRET`)
 - [ ] Build succeeds without errors
 - [ ] Preview deployment tested
 
@@ -57,6 +62,9 @@ Use this checklist before deploying to production.
 ### Post-Deployment Testing
 - [ ] Production URL accessible
 - [ ] Form submission works in production
+- [ ] `POST /api/admin/auth` rejects invalid password
+- [ ] `POST /api/admin/auth` accepts valid password and admin session is created
+- [ ] Admin logout (`DELETE /api/admin/auth`) clears session
 - [ ] Files upload to Supabase storage
 - [ ] Database records created correctly
 - [ ] Emails send successfully
