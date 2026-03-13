@@ -1,48 +1,246 @@
-# FormsStanton — Plan
+# FormsStanton
+FormsStanton is a production tenant onboarding and compliance platform for Stanton Management that digitizes lease-related workflows with multilingual forms, signatures, photos, and admin review tooling. The system currently supports core live workflows while expanding conversion of remaining paper forms into digital flows.
 
-## Significant Features
-Ordered by priority. Higher = more urgent or more load-bearing.
+## Features
 
-### P1 — Critical
-- **Digital forms with photo upload**: Tenants can submit forms with photo evidence directly from mobile devices — Status: partial (3 of 19 forms)
-- **Tenant onboarding system**: New tenants complete multilingual forms for pets, insurance, vehicles with automated document generation — Status: built
-- **Admin compliance dashboard**: Property managers track pending approvals, missing documentation, and review submissions. Includes add tenant tool, inline edit modal (name/phone/email/vehicle/insurance/pets), additional vehicles display with approval badges, parking availability tracking — Status: built
-- **Supabase backend integration**: All form data persists to PostgreSQL with file storage for photos and signatures — Status: built
-- **Trilingual support**: All forms available in English, Spanish, Portuguese — Status: built
+### Digital forms with photo upload
+- **Status:** partial
+- **Description:** Tenants can submit evidence-backed forms from mobile or desktop using photo uploads.
+- **Blockers:** FormPhotoUpload integration is not completed across Forms 4-19.
+- **Dependencies:** none
+- **Unlocks:** End-to-end digital processing for all tenant compliance workflows.
+- **Effort:** large
+- **Priority:** P1
 
-### P2 — High
-- **Move-in inspection form**: Digital checklist with room-by-room condition codes and damage photos (max 20) — Status: planned
-- **Billing dispute form**: Tenants submit disputes with supporting evidence photos (max 10) — Status: planned
-- **Bulk disposal request**: Photo-based approval workflow for furniture/appliance removal (max 3) — Status: planned
-- **Maintenance request enhancement**: Expand existing form with photo upload capability — Status: planned
-- **Guest disclosure form**: Extended guest notification with digital signature — Status: built
-- **Pet approval workflow**: Multi-pet requests with vaccination records and photos — Status: built
+### Tenant onboarding system
+- **Status:** active
+- **Description:** New tenants submit core onboarding data for pets, insurance, and vehicles with automated document generation.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Faster move-in readiness and reduced paper intake overhead.
+- **Effort:** medium
+- **Priority:** P1
 
-### P3 — Backlog
-- **Smoke detector acknowledgment**: Digital signature for detector functionality confirmation — Status: planned
-- **Utility transfer confirmation**: Track utility account setup before key release — Status: planned
-- **Entry permission management**: Standing authorization vs. restricted entry preferences — Status: planned
-- **Lock/key replacement**: Authorization workflow with cost approval — Status: planned
-- **Move-out notice**: 30-day notice submission with forwarding address — Status: planned
-- **Common area violation**: Warning notice delivery and fine tracking — Status: planned
-- **Lease renewal workflow**: Tenant intent capture and management offer generation — Status: planned
-- **Section 8 recertification**: Checklist and document tracking for housing authority compliance — Status: planned
-- **Historical data migration**: Import existing tenant/vehicle data from Excel/CSV sources — Status: partial
-- **AI scan extraction**: Extract data from scanned paper forms using Claude API — Status: built
-- **Duplicate submission detection**: Identify and display potential duplicate form submissions — Status: built
-- **Print styling optimization**: Professional document-style print layouts for generated forms — Status: built
-- **Mobile UI enhancements**: Touch-optimized interactions and responsive layouts — Status: built
+### Admin compliance dashboard
+- **Status:** active
+- **Description:** Property management staff can track missing documentation, approvals, and submission status by building.
+- **Blockers:** Inline photo review flow still needs completion in admin review workflow.
+- **Dependencies:** none
+- **Unlocks:** Centralized compliance operations and better exception handling.
+- **Effort:** medium
+- **Priority:** P1
 
-## Known Blockers
-- **Forms 4-19 digital conversion** → blocked by FormPhotoUpload component integration (component exists, needs implementation per form)
-- **Admin review workflow** → blocked by photo inline display in compliance dashboard
-- **Email notifications** → blocked by Resend API configuration for each new form type
+### Supabase backend integration
+- **Status:** active
+- **Description:** Form records, signatures, and photos persist in Supabase PostgreSQL and Storage.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Auditability, reporting, and durable submission history.
+- **Effort:** medium
+- **Priority:** P1
 
-## Commit Format
-All feature commits: feat(formsstanton): [what capability this adds for the user]
-All fixes: fix(formsstanton): [what was broken]
-Infrastructure changes: infra: [what changed]
-Never describe code changes. Always describe user-facing or operational impact.
+### Trilingual form experience
+- **Status:** active
+- **Description:** Forms are available in English, Spanish, and Portuguese.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Tenant accessibility across language preferences.
+- **Effort:** medium
+- **Priority:** P1
+
+### Move-in inspection form
+- **Status:** planned
+- **Description:** Room-by-room move-in checklist with condition codes and up to 20 damage photos.
+- **Blockers:** Awaiting full digital form conversion implementation.
+- **Dependencies:** none
+- **Unlocks:** Standardized intake evidence for unit condition disputes.
+- **Effort:** large
+- **Priority:** P2
+
+### Billing dispute form
+- **Status:** planned
+- **Description:** Structured dispute submission with supporting photo evidence and dispute basis capture.
+- **Blockers:** Awaiting full digital form conversion implementation.
+- **Dependencies:** none
+- **Unlocks:** Faster adjudication and traceable tenant billing exceptions.
+- **Effort:** medium
+- **Priority:** P2
+
+### Bulk disposal request
+- **Status:** planned
+- **Description:** Furniture/appliance disposal request flow with photo proof and approval intent.
+- **Blockers:** Awaiting full digital form conversion implementation.
+- **Dependencies:** none
+- **Unlocks:** Better operational control of disposal and violation prevention.
+- **Effort:** medium
+- **Priority:** P2
+
+### Maintenance request enhancement
+- **Status:** planned
+- **Description:** Existing maintenance workflow expansion with deeper photo-based issue documentation.
+- **Blockers:** Email notification configuration by form type remains incomplete.
+- **Dependencies:** none
+- **Unlocks:** Faster maintenance triage and clearer field context.
+- **Effort:** medium
+- **Priority:** P2
+
+### Guest disclosure form
+- **Status:** active
+- **Description:** Extended guest disclosure captures stay details and digital signature.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Compliance tracking for occupancy exceptions.
+- **Effort:** small
+- **Priority:** P2
+
+### Pet approval workflow
+- **Status:** active
+- **Description:** Multi-pet intake captures vaccination records, photos, and approval data.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Policy enforcement and addendum generation for pet-related compliance.
+- **Effort:** medium
+- **Priority:** P2
+
+### Smoke detector acknowledgment
+- **Status:** planned
+- **Description:** Digital acknowledgment workflow for detector functionality and tenant confirmation.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Better safety compliance audit trails.
+- **Effort:** small
+- **Priority:** P3
+
+### Utility transfer confirmation
+- **Status:** planned
+- **Description:** Utility account setup confirmation before key release.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Reduced move-in utility handoff errors.
+- **Effort:** small
+- **Priority:** P3
+
+### Entry permission management
+- **Status:** planned
+- **Description:** Authorization preferences for permitted or restricted maintenance entry.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Clear resident consent trail for access events.
+- **Effort:** medium
+- **Priority:** P3
+
+### Lock/key replacement workflow
+- **Status:** planned
+- **Description:** Tenant authorization process for lock/key replacement with cost acknowledgement.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Standardized handling of lock change requests and approvals.
+- **Effort:** small
+- **Priority:** P3
+
+### Move-out notice workflow
+- **Status:** planned
+- **Description:** Notice submission flow with forwarding address and timeline capture.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Cleaner turnover preparation and communication workflows.
+- **Effort:** medium
+- **Priority:** P3
+
+### Common area violation workflow
+- **Status:** planned
+- **Description:** Formal warning and follow-up tracking for common area policy violations.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** More consistent policy enforcement operations.
+- **Effort:** medium
+- **Priority:** P3
+
+### Lease renewal workflow
+- **Status:** planned
+- **Description:** Tenant renewal/non-renewal intent capture with management follow-through.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Better renewal forecasting and outreach timing.
+- **Effort:** medium
+- **Priority:** P3
+
+### Section 8 recertification workflow
+- **Status:** planned
+- **Description:** Recertification checklist and supporting document tracking.
+- **Blockers:** Awaiting backlog implementation capacity.
+- **Dependencies:** none
+- **Unlocks:** Stronger compliance posture for assisted housing requirements.
+- **Effort:** medium
+- **Priority:** P3
+
+### Historical data migration
+- **Status:** partial
+- **Description:** Imports tenant and vehicle history from CSV/Excel sources into digital records.
+- **Blockers:** Migration scripts exist but import execution and cleanup remain incomplete.
+- **Dependencies:** AppFolio Sync Layer
+- **Unlocks:** Better continuity between historical paper/legacy records and new digital workflows.
+- **Effort:** large
+- **Priority:** P3
+
+### AI scan extraction
+- **Status:** active
+- **Description:** Claude-powered extraction of scanned form data for faster data entry.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Accelerated conversion of legacy scanned intake documents.
+- **Effort:** medium
+- **Priority:** P3
+
+### Duplicate submission detection
+- **Status:** active
+- **Description:** Duplicate detection UI highlights potential repeated submissions for review.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Reduced redundant processing and cleaner records.
+- **Effort:** small
+- **Priority:** P3
+
+### Print styling optimization
+- **Status:** active
+- **Description:** Print-specific layouts improve generated document readability and professionalism.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Better print-ready legal and compliance artifacts.
+- **Effort:** small
+- **Priority:** P3
+
+### Mobile UI enhancements
+- **Status:** active
+- **Description:** Touch-first and responsive UX improvements support mobile form completion.
+- **Blockers:** none
+- **Dependencies:** none
+- **Unlocks:** Higher mobile completion rates and fewer submission errors.
+- **Effort:** medium
+- **Priority:** P3
+
+## Recent Changes
+- Updated PLAN documentation to capture compliance dashboard additions, including add tenant tooling and edit capabilities.
+- Added compliance dashboard features for tenant creation, inline submission editing, additional vehicle display, and parking context.
+- Added priority backlog forms including Smoke Detector, Common Area Violation, and Unauthorized Pet workflows.
+- Converted README into NavChart-oriented project metadata format.
+- Added Bulk Item Disposal, Billing Dispute, and Move-In Inspection form implementations.
+- Added maintenance request digital form support with photo upload.
+
+## Known Debt
+- Form conversion coverage remains incomplete across remaining paper workflows (Forms 4-19).
+- Admin review experience still lacks full inline photo display completion.
+- Email notification wiring for each new form type is incomplete.
+- Historical import scripts exist but migration execution/validation is only partially complete.
+- Institutional redesign follow-through is incomplete for onboarding page, signature styling, and final accessibility verification.
+
+## Next Milestone
+Deliver the next conversion tranche (Move-In Inspection, Billing Dispute, and Bulk Disposal) with complete FormPhotoUpload integration and admin-review-ready submission data.
+
+## Triage Flags
+- Digital conversion pace is constrained by per-form integration bandwidth despite shared component availability.
+- Admin review workflow quality is impacted until inline photo review is fully closed.
+- Resend configuration introduces rollout risk for newly digitalized forms.
 
 ---
 
