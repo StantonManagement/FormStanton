@@ -1,214 +1,262 @@
-# Permit, Insurance & Pet System
-### What We Built and How It Works
+Team,
+
+This is a full walkthrough of the tenant onboarding system — what it covers, how tenants and staff interact with it, and the specific scenarios it handles. The short version is at the top if that's all you need. The rest is here for reference.
+
+
+---------------------------------------
+THE SHORT VERSION
+---------------------------------------
+
+One system now handles pet registration, renters insurance, and parking permits across all 41 buildings and 3 portfolios. Tenants complete everything online in English, Spanish, or Portuguese. Staff can look up any tenant, verify their status, handle walk-ins, issue permits, print documents, and track AppFolio uploads — all from one place.
+
+The four things worth knowing:
+• Every tenant must address pets, insurance, and parking — the system won't let anything get skipped
+• Staff can't issue a permit until every prerequisite is verified — this is enforced automatically, not manually
+• Every action in the system is logged with who did it and when — full audit trail on everything
+• AppFolio document tracking shows exactly which documents have been uploaded and which fees have been added to tenant accounts
+
+If you want the detail, keep reading.
+
+
+---------------------------------------
+WHAT TENANTS SEE
+---------------------------------------
+
+Tenants receive a link via text or email. The form opens on their phone or computer and starts with a language selector — English, Spanish, or Portuguese. The entire form adjusts: every label, instruction, policy explanation, and error message switches to their language. These aren't machine translations — each version was written to read naturally. Legal addendums stay in English since they're legal documents.
+
+The form has four sections:
+
+
+PERSONAL INFO
+Name, phone number, building (dropdown of all properties), and unit number. There's also a checkbox to flag a new or changed phone number — this tells staff the number needs to be updated in Appfolio, so stale contact info gets caught during onboarding instead of months later.
+
+
+PARKING & VEHICLE
+If their building has parking, they register their vehicle — make, model, year, color, and plate number. They see the fee schedule:
+• Mopeds, motorcycles, ATVs, scooters — $20/month
+• Sedans, SUVs, pickups (under 20 ft) — $50/month
+• Oversized vehicles (over 20 ft) — $60/month
+• Boats, trailers, equipment — $60+/month (approval required)
+
+They read and digitally sign the vehicle addendum on screen. At buildings that allow multiple vehicles, they can request additional spots — those requests go into a staff approval queue.
+
+
+PET REGISTRATION
+Every tenant completes this section — not just pet owners.
+
+If they have dogs or cats, they enter details for each animal: breed, weight, color, spayed/neutered status, and vaccination status. They upload a photo and vaccination records, then sign the pet addendum. The fee schedule is shown upfront:
+• Cat — $25/month + $150 one-time fee
+• Small dog (under 25 lbs) — $25/month + $200 one-time fee
+• Medium dog (25–50 lbs) — $35/month + $250 one-time fee
+• Large dog (50+ lbs) — $45/month + $300 one-time fee
+
+If they don't have pets, they still sign a dated confirmation stating they have no animals. That signature is the legal basis for the $500 fine plus back-owed pet rent if an unregistered dog or cat is found after the signature date.
+
+Fish, birds, hamsters, and anything kept in a cage or tank are exempt — no registration, no fees.
+
+
+INSURANCE
+Two options:
+
+Option 1: They already have renters insurance. They upload proof and enter their provider name and policy number. The form shows them which LLC to list as Additional Insured based on their building (e.g., 31-33 Park St ? SREP Park 1 LLC c/o Stanton Management LLC).
+
+Option 2: They want Stanton to enroll them through Appfolio ($10–25/month, added to rent). If they choose this, they must sign a digital authorization giving Stanton permission to enroll them and add the premium to their monthly rent.
+
+
+AFTER SUBMISSION
+The system records the tenant's IP address, browser, and timestamp for the audit trail. They see a confirmation screen summarizing everything they submitted.
+
+
+PET FEE EXEMPTION (SEPARATE FORM)
+Tenants with emotional support animals or service animals fill out a separate exemption form. They select their reason (ESA, service animal, medical necessity, financial hardship, or grandfathered agreement), describe the animal, upload supporting documentation, and sign. The request enters a staff review queue.
+
+
+---------------------------------------
+WHAT THE OFFICE HAS
+---------------------------------------
+
+Five tools, each built for a different part of the daily workflow.
+
+
+-----------------------------
+1. COMPLIANCE DASHBOARD
+-----------------------------
+
+The command center. Shows every building organized by portfolio group with real-time stats: occupied units vs. total, tenants submitted vs. still missing, specific names and units of who hasn't submitted yet, and completion percentages per building.
+
+Click into any building and you see every submission — pet status, insurance status, vehicle status, and verification state for each tenant. Filter by: has vehicle, has pets, has insurance, needs review, export status, fee exemption status, or AppFolio status (ready to upload, partially uploaded, or complete).
+
+Five built-in features:
+
+Quick Tenant Lookup — Search across all buildings by name, unit, phone, or email from the sidebar. No need to navigate building by building.
+
+Duplicate Detection — Automatically flags tenants who may have submitted twice. Uses fuzzy name matching that catches typos, reversed name order, and misspellings. When duplicates are found, staff can view both side by side, compare the differences, merge them (keeping the most complete data from each), mark one as primary and archive the other, or dismiss false matches. The sensitivity threshold is adjustable.
+
+Vehicle Export Center — Select buildings and export verified vehicle data as CSV files. The system tracks which vehicles have already been exported vs. which are new since the last export, so nothing gets double-exported.
+
+Parking Management — Real-time parking capacity per building: total spots, permits issued, additional permits approved, spots remaining, with a visual capacity bar. When a tenant requests an additional vehicle, the request enters an approval queue. Staff can approve if spots are available, or deny with a reason that gets recorded. If the lot is full, the approve button is disabled with a warning.
+
+AppFolio Document Tracking — Once a permit is issued, property managers see an "AppFolio Documents" section showing which documents (pet addendum, vehicle addendum, insurance) have been uploaded to Appfolio and which fees (pet rent, permit fee) have been added to the tenant's account. Each document has a download button and a "Mark Uploaded" button. Staff can mark documents as uploaded even without a digital scan by adding a note like "Physical document uploaded directly to Appfolio." Fee tracking includes the actual dollar amount entered. Everything records who did it and when. A "Download All Documents (ZIP)" button lets property managers batch-download all three documents at once for faster processing.
+
+
+-----------------------------
+2. LOBBY TOOL
+-----------------------------
+
+Built for when tenants walk into the office. Designed around speed.
+
+Staff logs in and selects their name (Alex, Dean, Dan, or Tiff). The system loads every tenant across all buildings. Search supports name, unit number, building address, phone, email, and even initials — typing "J S" finds "John Smith." If there's exactly one match, it auto-selects. Multiple matches show a list to pick from.
+
+Once a tenant is selected, their full compliance card loads with four sections:
+• Pet — details, photos, vaccination records, signature status, exemption status
+• Insurance — provider, policy number, uploaded documents, insurance type classification
+• Vehicle — details, signature status, addendum documents
+• Parking permit — issue permit, mark picked up
+
+Each section has verification checkboxes that enforce the business rules — for example, insurance classified as "car insurance" can't be verified as renters insurance.
+
+Documents can be uploaded right from this screen. Physical forms brought in person can be marked as "received" with the staff member's name and timestamp.
+
+
+LOBBY INTAKE PANEL
+
+Opens on top of the tenant card. Four tabs:
+
+Vehicle — Register a vehicle in person. Shows the fee schedule. "Print Addendum" button generates a professional Stanton-branded form ready for a physical signature.
+
+Pet — Register a pet in person. Shows the full fee schedule (monthly rent + one-time fee by size). Print button for physical addendums.
+
+Insurance — Record a policy or enroll through Appfolio. Tracks whether proof has been received and whether the Additional Insured LLC has been added to the policy. Shows color-coded policy status:
+  • Green — active and current
+  • Yellow with "EXPIRING SOON" badge — expires within 30 days
+  • Red with "EXPIRED" badge — past expiration date
+
+"Print Additional Insured Instructions" button generates a sheet with the exact LLC name for the tenant's building and the Stanton mailing address. The system records that instructions were given, by whom, and when.
+
+Also has a "Tenant has pets" checkbox. When checked, if coverage is below $300,000, a red warning appears — pet owners must carry $300K liability, not the standard $100K. This catches the discrepancy before staff accidentally verifies an insufficient policy.
+
+History — A complete timeline of every interaction with that tenant: vehicles registered, insurance recorded, forms printed, documents uploaded, permits issued — each entry showing who did it and when. This creates a CRM-like record for every tenant across all visits.
+
+
+-----------------------------
+3. PHONE VEHICLE ENTRY
+-----------------------------
+
+For when tenants call in their vehicle information. Staff enters the building and unit, and the system automatically looks up the tenant's name, phone, and email from the directory. If multiple tenants share the unit, a dropdown lets you pick the right one. Enter vehicle details and submit. The entry flows into the same compliance dashboard as online submissions, flagged as a phone entry so the source is clear.
+
+
+-----------------------------
+4. ONBOARDING SUBMISSIONS
+-----------------------------
+
+A filterable, sortable table of every submission in the system. Filter by building, date range, pet status, or insurance status. Click any row to open a detail modal showing all their information, signatures, and uploaded documents. Export the filtered set to Excel at any time.
+
+
+-----------------------------
+5. FORMS LIBRARY
+-----------------------------
+
+Printable forms organized by language. Staff can generate and print blank vehicle addendums, pet addendums, insurance authorization forms, and Additional Insured instruction sheets in English, Spanish, or Portuguese. Each form is professionally formatted with Stanton branding. The system tracks which forms were printed, by whom, and when.
+
+
+---------------------------------------
+EDGE CASES — EVERY SCENARIO WE HANDLE
+---------------------------------------
+
+This is where the real thought went in. Every one of these situations has been accounted for.
+
+
+WALK-INS & FORM HANDLING
+
+Tenant walks in without submitting online — The lobby tool shows a yellow "No Form Submission" warning. Their basic contact info still appears (from the tenant directory import). Staff can direct them to complete the form online, or use the Lobby Intake panel to register their vehicle, pet, and insurance information right there — and print the addendums for physical signatures.
+
+Tenant submitted online AND brings a physical form — Both are tracked separately. The system shows "Signed online" with the date and a signature viewer, and also has a "Mark Physical Form Received" button. Either one satisfies verification. Both stay on file.
+
+Staff needs to edit a submission after the fact — The compliance dashboard has an edit modal where staff can correct vehicle details, update contact info, upload replacement documents, and add admin notes. Every edit records which staff member made the change and when.
+
+
+INSURANCE SCENARIOS
+
+Tenant uploads car insurance instead of renters insurance — Staff classifies the uploaded document as "Renters," "Car," or "Other" using a dropdown. Car insurance and Other are blocked from being verified. Only documents classified as "Renters" can be approved. This prevents accidentally verifying the wrong type of coverage.
+
+Tenant chooses Appfolio enrollment but hasn't signed the authorization — The lobby tool shows whether the authorization signature is on file, with a link to view it. If a tenant opts in at the office without having submitted online, staff is reminded that a physical authorization signature is needed before enrollment can proceed.
+
+Pet owner only has $100K liability coverage — The insurance tab flags this automatically. When "Tenant has pets" is checked and coverage is below $300K, a red warning blocks verification until the coverage is corrected.
+
+Insurance is about to expire — Color-coded status gives staff a heads-up during any interaction: green for active, yellow for expiring within 30 days, red for expired.
+
+Tenant needs to add the LLC as Additional Insured — One click prints a professional instruction sheet with the exact LLC name for their building and the Stanton mailing address. The system logs that the instructions were provided, who gave them, and when.
+
+
+PET SCENARIOS
+
+Tenant has an ESA or service animal — The exemption enters a review queue visible in the compliance dashboard. Staff can approve, deny, or request more info. Every action records who did it and when. The lobby tool shows a status badge: green for approved, yellow for pending, red for denied, blue for "more info needed." An approved exemption waives the pet fee and displays "FEE EXEMPT" prominently on the tenant's card. Critically, an approved exemption does not block the parking permit — the system skips pet verification when an exemption is in place.
+
+Tenant only has fish, birds, or hamsters — Only dogs and cats require registration and fees. Small animals in cages or tanks don't count toward pet verification. A tenant with only fish shows "No pets registered" and doesn't go through the addendum process.
+
+
+PARKING SCENARIOS
+
+Tenant wants a second parking spot — The request goes into the approval queue in Parking Management. Staff sees total spots, permits issued, additional permits approved, and spots remaining with a visual capacity bar. If spots are available, staff approves. If the lot is full, the approve button is disabled with a warning. Denials require a reason that gets recorded.
+
+Trying to issue a permit before everything is verified — The "Issue Permit" button is disabled and shows exactly what's still missing: "Missing: Pet verification, Insurance verification" (or whichever items remain). You cannot issue a permit until all prerequisites are green.
+
+Permit issued but tenant hasn't picked it up — Tracked as two separate states: "Permit Issued" and "Picked Up." Before a permit can be marked as picked up, staff must photograph the tenant's ID — the system requires the photo upload before the "Mark Picked Up" button becomes active. The photo is stored and viewable from the tenant's card. This gives us a verified identity for every permit handoff.
+
+
+APPFOLIO SCENARIOS
+
+Document uploaded to Appfolio without a digital scan — Property managers can mark any document as uploaded even if there's no PDF in the system by adding a note explaining why (e.g., "Physical addendum uploaded directly from tenant file"). The note is saved with the upload record.
+
+Tracking which fees were added and for how much — Each fee (pet rent, permit fee) has an amount input field. When a property manager marks a fee as added, they enter the exact dollar amount. The system records the amount, who added it, and when. This creates a complete financial audit trail.
+
+Filtering by AppFolio status — The compliance dashboard filter includes "AppFolio Status" with four options: All, Ready to Upload (permit issued but documents not uploaded yet), Partially Uploaded (some documents uploaded but not all), and Complete (all documents uploaded and all fees added). This lets property managers focus on what still needs attention.
+
+
+COMPLIANCE LOGIC
+
+The system dynamically determines what "complete" means based on each tenant's actual situation:
+• Has vehicle, has pets — insurance + pet registration + vehicle verification all required before permit
+• Has vehicle, no pets — insurance + vehicle verification required; pet check is skipped
+• Has pets, no vehicle — pet registration + insurance required; no permit needed
+• No pets, no vehicle — insurance verification alone marks them as complete
+
+
+DATA QUALITY
+
+Tenant submitted twice — Duplicate detection catches it using fuzzy name matching (handles typos, reversed names, misspellings). Staff can view both submissions side by side, merge the most complete data from each, mark one as primary and archive the other, or dismiss if it's a false match. The sensitivity threshold is adjustable.
+
+Tenant's phone number is new or different — The "This is a new phone number" checkbox on the online form flags the submission so staff knows to update Appfolio. New or changed numbers get caught during onboarding instead of going stale.
+
+
+---------------------------------------
+UNDER THE HOOD
+---------------------------------------
+
+This is a custom-built web application, not an off-the-shelf product or a form builder with workarounds.
+
+• Trilingual from the ground up — every label, instruction, policy explanation, and error message exists in all three languages, written to read naturally in each
+
+• Smart search — the lobby tool uses debounced live search (results appear as you type without overloading the server) and supports initials matching
+
+• Fuzzy duplicate detection — string similarity algorithms with a configurable confidence threshold, catching duplicates even with misspelled or reordered names
+
+• Real-time parking capacity — tracks every permit issued and every additional vehicle approved against each building's total spots, with a live availability count
+
+• Print-ready document generation — professionally formatted addendums, authorization forms, and instruction sheets styled with Stanton branding, printable directly from the browser
+
+• Complete audit trail — every verification, permit issuance, document upload, form receipt, exemption review, and AppFolio upload is logged with who did it and when
+
+• Per-tenant interaction history — a running log of every touchpoint, creating a CRM-like timeline for compliance tracking
+
+• AppFolio integration workflow — property managers download documents, upload them to Appfolio, then mark them uploaded in our system with notes if needed. Fee tracking includes dollar amounts. ZIP download batches all three documents for faster processing.
+
+• 41 buildings, 3 portfolios, hundreds of tenants — all in one system with per-building stats and per-portfolio rollups visible from the dashboard header
+
+This was designed around the actual workflows, edge cases, and conversations that happen in the office every day.
 
 ---
 
-## The Big Picture
+Happy to walk through any of this live or answer questions.
 
-We built a complete digital system that handles the entire lifecycle of tenant onboarding compliance â€” pets, insurance, and parking permits â€” across all 41 buildings. It replaces the old process of paper forms, phone calls with no paper trail, and manually tracking who still owes what. Now, tenants can submit everything online in English, Spanish, or Portuguese. Staff can verify, track, and issue permits from any computer. Every action is logged with who did it and when.
-
----
-
-## How Tenants Use It
-
-A tenant receives a link (via text or email) that opens the onboarding form on their phone or computer. The first thing they see is a language selection screen â€” English, Spanish, or Portuguese â€” and the entire form adjusts to their choice.
-
-The form walks them through four sections:
-
-1. **Personal Info** â€” Name, phone, building, unit. The system validates the phone number format and checks the email. Tenants can also flag if the phone number they're providing is new or different from what's on file â€” this helps staff identify numbers that need to be updated in Appfolio.
-2. **Parking & Vehicle** â€” If their building has parking, they register their vehicle (make, model, year, color, plate) and sign the vehicle addendum digitally on screen. Buildings that allow multiple vehicles let them request additional spots.
-3. **Pet Registration** â€” They declare whether they have pets. If yes, they enter details for each dog or cat (breed, weight, color, spayed/neutered, vaccinations), upload a photo and vaccination record, and sign the pet addendum. If no, **they still must sign confirming they have no pets** â€” this dated signature creates a legal record so that if an unregistered dog or cat is found after the signature date, a $500 fine plus all back-owed pet rent can be enforced.
-4. **Insurance** â€” They either upload proof of renters insurance, or choose to have Stanton enroll them through Appfolio (added to rent). If they choose the Appfolio option, **they must sign a digital authorization** giving Stanton permission to enroll them and add the premium to their monthly rent. If they already have a policy, they enter their provider and policy number.
-
-When they hit submit, they get a confirmation screen. The system records their IP address, browser, and timestamp for the audit trail.
-
-**There is also a separate Pet Fee Exemption form** for tenants with emotional support animals or service animals. They select their reason, describe the animal, upload supporting documentation (like an ESA letter), and sign. This goes into a separate review queue.
-
----
-
-## How the Office Uses It
-
-The admin portal has four main tools, each designed for a different part of the workflow.
-
-### 1. Compliance Dashboard
-
-This is the command center. It shows every building in the portfolio, organized by portfolio group, with real-time stats:
-
-- **How many units are occupied** vs. total units
-- **How many tenants have submitted** vs. how many are still missing
-- **Which specific tenants haven't submitted yet** (by name and unit)
-- **Completion percentages** for each building
-
-When you click into a building, you see every submission for that building. Each tenant row shows their pet status, insurance status, vehicle status, and whether each item has been verified. You can filter by:
-
-- Has vehicle / Has pets / Has insurance
-- Needs review (something unverified)
-- Export status (exported to CSV or not)
-- Fee exemption status
-
-**Quick Tenant Lookup** in the sidebar lets you search across all buildings by name, unit, phone, or email â€” no need to navigate building by building.
-
-**Duplicate Detection** automatically flags tenants who may have submitted twice. It uses name similarity matching with an adjustable sensitivity threshold. When duplicates are found, you can compare them side by side, choose which to keep as the primary record, merge them, or dismiss false matches.
-
-**Vehicle Export Center** lets you select buildings and export verified vehicle data as CSV files. It tracks which vehicles have already been exported and which are new since the last export, so you never accidentally double-export.
-
-**Parking Management** shows real-time parking capacity for each building â€” total spots, permits issued, additional permits approved, and spots remaining. When a tenant requests an additional vehicle, it enters an approval queue. Staff can approve (if spots are available) or deny (with a reason).
-
-### 2. Lobby Tool
-
-This is what staff use when a tenant walks into the office. It's designed for speed â€” you search for the tenant, and their entire compliance status loads instantly.
-
-**Session start:** Staff logs in, selects their name (Alex, Dean, Dan, or Tiff), and the system loads every tenant across all buildings.
-
-**Tenant search** supports typing a name, unit number, building address, phone, or email. It also supports initials â€” typing "J S" will find "John Smith." If there's exactly one match, it auto-selects. If there are multiple, you pick from a list.
-
-Once a tenant is selected, you see their full card:
-
-- **Pet section** â€” pet details, photos, vaccination records, signature status, exemption status
-- **Insurance section** â€” provider, policy number, uploaded documents, insurance type classification
-- **Vehicle section** â€” vehicle details, signature status, addendum documents
-- **Parking permit section** â€” issue permit, mark picked up
-
-Each section has verification checkboxes that enforce rules (more on this below in edge cases). Documents can be uploaded right from this screen. Physical forms brought in person can be marked as "received" with the staff member's name and timestamp.
-
-**Lobby Intake** is a panel that opens on top of the tenant card. It has four tabs:
-
-- **Vehicle** â€” Register a vehicle in person, with fee display and a "Print Addendum" button that generates a professional printed form
-- **Pet** â€” Register a pet with fee schedule (monthly rent + deposit by size), with a print button
-- **Insurance** â€” Record an insurance policy or enroll through Appfolio, track whether proof has been received, check if the Additional Insured LLC has been added, print authorization forms and instruction sheets
-- **History** â€” A timeline of every interaction with this tenant (vehicle registered, insurance recorded, forms printed, etc.), with who did it and when
-
-### 3. Phone Vehicle Entry
-
-When a tenant calls the office to give their vehicle information over the phone, staff uses this tool. You type the building and unit, and the system automatically looks up the tenant's name, phone, and email from the directory. If multiple tenants share the unit, you pick from a dropdown. Then enter the vehicle details and submit. The submission flows into the same compliance dashboard as online submissions, flagged as a phone entry.
-
-### 4. Onboarding Submissions (Raw Data)
-
-A filterable, sortable table of every submission in the system. You can filter by building, date range, pet status, and insurance status. Click any row to see the full detail modal with all their information, signatures, and uploaded documents. Export the filtered set to Excel at any time.
-
----
-
-## Edge Cases â€” "What If...?"
-
-This is where the real thought went in. Every one of these scenarios is handled.
-
-### What if a tenant walks in and hasn't submitted the online form?
-
-The lobby tool shows a yellow warning: "No Form Submission." Their basic contact info still appears (pulled from the tenant directory import). Staff can either contact them to complete it online, or use the **Lobby Intake** panel to register their vehicle, pet, and insurance information right there in person â€” and print the addendums for them to sign physically.
-
-### What if a tenant submitted online AND brings a physical form?
-
-Both are tracked separately. The system shows "Signed online" with date and signature viewer, AND has a "Mark Physical Form Received" button. You can have both on file. The verification checkbox accepts either one.
-
-### What if a tenant uploads car insurance instead of renters insurance?
-
-Staff classifies the uploaded document as "Renters," "Car," or "Other" using a dropdown in the lobby tool. If it's classified as **car insurance**, the system blocks verification and displays: *"Car insurance uploaded â€” renters insurance required."* Same for "Other." Only documents classified as "Renters" can be verified. This prevents accidentally approving the wrong type of coverage.
-
-### What if a tenant chooses to add insurance to their rent instead?
-
-If they selected the Appfolio option (insurance added to rent), they must first sign a digital authorization â€” either online when completing the form, or on a physical authorization form printed at the lobby desk. The lobby tool shows whether the authorization signature is on file, with a link to view it. If a tenant opts in at the office without having submitted online, staff is reminded that a physical authorization signature is needed before enrollment.
-
-### What if a tenant has pets and only $100,000 coverage?
-
-Pet owners are required to carry $300,000 in liability coverage, not the standard $100,000. The Lobby Intake insurance tab has a "Tenant has pets" checkbox. When checked, if the coverage amount is below $300,000, a red warning appears: *"Coverage is below $300,000 â€” pet owners must have at least $300,000 liability."* This ensures staff catches the discrepancy before verifying.
-
-### What if a tenant has a pet fee exemption (ESA or service animal)?
-
-There's a dedicated Pet Fee Exemption form that tenants fill out separately. They select the reason (Emotional Support Animal, Service Animal, medical necessity, financial hardship, or grandfathered/prior agreement), describe the animal, and upload supporting documents like an ESA letter.
-
-The exemption enters a review queue visible in the compliance dashboard. Staff can **approve**, **deny**, or **request more info**. Every review action records who did it and when. The lobby tool shows an exemption status badge â€” green for approved, yellow for pending, red for denied, blue for "more info needed."
-
-An approved exemption waives the pet fee and is displayed prominently as **"FEE EXEMPT"** on the tenant's card. Importantly, an approved exemption does not block the parking permit â€” the system knows to skip pet verification when an exemption is in place.
-
-### What if a tenant only has fish, hamsters, or birds?
-
-Only dogs and cats require registration and fees. The system filters pets by type â€” small animals kept in cages or tanks don't count toward pet verification requirements. So a tenant with only fish will show "No pets registered" in the system and won't need to go through the pet addendum process.
-
-### What if a tenant has a vehicle but no pets?
-
-The permit issuance still requires insurance verification and vehicle verification, but skips the pet check entirely. The system dynamically determines what "complete" means based on what the tenant actually has.
-
-### What if a tenant has pets but no vehicle?
-
-No parking permit is needed. Compliance is complete once pet registration and insurance are both verified. The system shows "Compliance complete (no vehicle)" when this is the case.
-
-### What if a tenant has neither pets nor a vehicle?
-
-Insurance verification alone marks them as complete.
-
-### What if you try to issue a permit before everything is verified?
-
-The "Issue Permit" button is disabled and shows exactly what's missing: *"Missing: Pet verification, Insurance verification"* (or whichever items remain). You physically cannot issue a permit until all prerequisites are green.
-
-### What if the same tenant submitted the form twice?
-
-The duplicate detection engine compares submissions within each building using fuzzy name matching (accounting for typos, name order, etc.). When it finds likely duplicates, it groups them with a similarity score. Staff can:
-
-- **View both side by side** and compare the differences
-- **Merge** them (keeping the most complete data from each)
-- **Mark one as primary** and archive the other
-- **Dismiss** the match if it's a false positive (different people, same name)
-
-The similarity threshold is adjustable â€” tighten it to only catch near-exact matches, or loosen it to catch more creative typos.
-
-### What if a tenant wants a second parking spot?
-
-The online form (at buildings that allow it) lets tenants request additional vehicles. These requests go into a separate approval queue in the Parking Management panel. The panel shows:
-
-- Total parking spots for the building
-- How many primary permits have been issued
-- How many additional permits have been approved
-- How many spots are still available
-- A visual capacity bar
-
-If spots are available, staff can approve. If the lot is full, the approve button is disabled with a warning: *"No parking spots available. Cannot approve at this time."* Staff can also deny with a reason that gets recorded.
-
-### What if a tenant's phone number is new or different?
-
-The online form has a checkbox: "This is a new phone number." When a tenant checks it, the submission is flagged so staff knows the number needs to be manually updated in Appfolio. This prevents tenant contact info from going stale â€” any new or changed number gets caught during the onboarding process rather than discovered months later.
-
-### What if a tenant's insurance is about to expire?
-
-The Lobby Intake insurance tab shows a color-coded status for the current policy on file:
-
-- **Green** â€” policy is active and current
-- **Yellow** with "EXPIRING SOON" badge â€” expires within 30 days
-- **Red** with "EXPIRED" badge â€” past expiration date
-
-This gives staff a heads-up to ask the tenant about renewal when they come in.
-
-### What if a tenant needs to add the LLC as Additional Insured on their policy?
-
-The Lobby Intake has a dedicated button: "Print Additional Insured Instructions." It generates a professional instruction sheet that tells the tenant exactly what to tell their insurance company, including the correct LLC name for their building and the mailing address. The system records that the instructions were given, by whom, and when.
-
-### What if a permit was issued but the tenant hasn't picked it up yet?
-
-The system tracks this as a two-step process: "Permit Issued" and "Picked Up" are separate states. The lobby tool shows the issued date and staff member. Before a permit can be marked as picked up, **staff must photograph the tenant's ID** â€” the system requires an ID photo upload before the "Mark Picked Up" button becomes active. The photo is stored on file and can be viewed later from the tenant's card. This ensures we have a verified identity for every permit handoff.
-
-### What if staff needs to edit a submission after the fact?
-
-The compliance dashboard has an edit modal where staff can correct vehicle details (make, model, year, color, plate), update contact info, upload replacement documents for pet addendums or insurance, and add admin notes. Every edit records which staff member made the change.
-
----
-
-## Under the Hood
-
-For those who are curious about the technology â€” this is a custom-built web application, not an off-the-shelf product. A few highlights:
-
-- **Trilingual from the ground up** â€” Every label, instruction, policy explanation, and error message exists in English, Spanish, and Portuguese. This isn't Google Translate â€” each translation was written to be natural and accurate.
-
-- **Smart search** â€” The tenant search in the lobby tool uses debounced live search (results appear as you type, without hammering the server) and supports initials matching. Typing "J D" finds "Jane Doe" instantly.
-
-- **Fuzzy duplicate detection** â€” Uses string similarity algorithms with a configurable confidence threshold to catch duplicate submissions even when names are misspelled or in different order.
-
-- **Real-time parking capacity** â€” Tracks every permit issued and every additional vehicle approved against the known parking spots for each building, with a live availability counter.
-
-- **Print-ready document generation** â€” The Lobby Intake can generate professionally formatted addendums (vehicle, pet, insurance authorization, Additional Insured instructions) styled with Stanton's branding, ready to print directly from the browser.
-
-- **Complete audit trail** â€” Every verification, permit issuance, document upload, form receipt, and exemption review records who did it and exactly when. Nothing happens in the system without a name and timestamp attached.
-
-- **Interaction history per tenant** â€” The lobby tool maintains a running log of every touchpoint with each tenant â€” what was discussed, what forms were given, what was registered â€” creating a CRM-like history for compliance tracking.
-
-- **41 buildings, 3 portfolios, hundreds of tenants** â€” all in one system, with per-building stats, per-portfolio rollups, and portfolio-level vehicle counts visible at a glance from the compliance dashboard header.
-
-This was purpose-built for how Stanton actually operates â€” not a generic form builder with workarounds, but a tool designed around the real workflows, real edge cases, and real conversations that happen in the office every day.
+Alex

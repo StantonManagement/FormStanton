@@ -199,6 +199,7 @@ CO Detectors: _______________________________________________
     title: 'Utility Transfer Confirmation',
     department: 'property_management',
     description: 'Confirm utilities transferred before key release',
+    path: '/utility-transfer',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -241,6 +242,7 @@ Keys will not be released until required utilities have been transferred into th
     title: 'Permission to Enter / Entry Restriction',
     department: 'property_management',
     description: 'Set entry preferences for maintenance and inspections',
+    path: '/permission-to-enter',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -287,6 +289,7 @@ I understand that in the event of an emergency, Stanton Management may enter wit
     title: 'Move-Out Notice',
     department: 'property_management',
     description: '30-day written notice required before moving out',
+    path: '/move-out-notice',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -343,6 +346,7 @@ I understand that:
     title: 'Forwarding Address Submission',
     department: 'property_management',
     description: 'Required for security deposit return',
+    path: '/forwarding-address',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -380,6 +384,7 @@ I understand that:
     title: 'Lease Renewal / Non-Renewal Notice',
     department: 'property_management',
     description: 'Tenant intent to renew or vacate at lease end',
+    path: '/lease-renewal',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -487,6 +492,7 @@ Work order created: __________ By: __________ Date: __________`,
     title: 'Lock / Key Replacement Authorization',
     department: 'maintenance',
     description: 'Request and authorize charges for lost keys or lock changes',
+    path: '/lock-key-replacement',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -538,6 +544,7 @@ I authorize Stanton Management to charge the cost of replacement to my account.
     title: 'After-Hours Lockout Acknowledgment',
     department: 'maintenance',
     description: 'Acknowledge tenant responsibility for after-hours lockouts',
+    path: '/after-hours-lockout',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -831,6 +838,7 @@ Complete and submit a Pet Approval Request (Form 4) within **5 business days** o
     title: 'Section 8 Recertification Checklist',
     department: 'compliance',
     description: 'Annual recertification requirements for Section 8 tenants',
+    path: '/section8-recertification',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -915,6 +923,7 @@ _______________________________________________
     title: 'Cash Payment Appointment Request',
     department: 'finance',
     description: 'Schedule appointment for cash rent payment (no walk-ins)',
+    path: '/cash-payment-appointment',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -947,6 +956,7 @@ Receipt issued: [ ] Yes Receipt #: __________`,
     title: 'PaySlip Request',
     department: 'finance',
     description: 'Request PaySlip barcode to pay rent at retail locations',
+    path: '/payslip-request',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 

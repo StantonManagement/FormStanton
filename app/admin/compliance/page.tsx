@@ -14,6 +14,9 @@ import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
+import AppFolioDocumentRow from '@/components/AppFolioDocumentRow';
+import AppFolioFeeRow from '@/components/AppFolioFeeRow';
+import AppFolioStatusFilter from '@/components/AppFolioStatusFilter';
 
 interface TenantSubmission {
   id: string;
@@ -89,6 +92,27 @@ interface TenantSubmission {
   }>;
   additional_vehicle_approved?: boolean;
   additional_vehicle_denied?: boolean;
+  // AppFolio tracking fields
+  pet_addendum_uploaded_to_appfolio?: boolean;
+  pet_addendum_uploaded_to_appfolio_at?: string;
+  pet_addendum_uploaded_to_appfolio_by?: string;
+  pet_addendum_upload_note?: string;
+  vehicle_addendum_uploaded_to_appfolio?: boolean;
+  vehicle_addendum_uploaded_to_appfolio_at?: string;
+  vehicle_addendum_uploaded_to_appfolio_by?: string;
+  vehicle_addendum_upload_note?: string;
+  insurance_uploaded_to_appfolio?: boolean;
+  insurance_uploaded_to_appfolio_at?: string;
+  insurance_uploaded_to_appfolio_by?: string;
+  insurance_upload_note?: string;
+  pet_fee_added_to_appfolio?: boolean;
+  pet_fee_added_to_appfolio_at?: string;
+  pet_fee_added_to_appfolio_by?: string;
+  pet_fee_amount?: number;
+  permit_fee_added_to_appfolio?: boolean;
+  permit_fee_added_to_appfolio_at?: string;
+  permit_fee_added_to_appfolio_by?: string;
+  permit_fee_amount?: number;
 }
 
 interface TenantData {
@@ -154,7 +178,9 @@ export default function CompliancePage() {
     needsReview: boolean;
     exportStatus: 'all' | 'exported' | 'not-exported';
     hasFeeExemption: boolean;
-  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false });
+    appfolioStatus: 'all' | 'ready' | 'partial' | 'complete';
+  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' });
+  const [adminName, setAdminName] = useState<string>('');
   const [showDuplicatesGrouped, setShowDuplicatesGrouped] = useState(true);
   const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
@@ -389,7 +415,7 @@ export default function CompliancePage() {
     buildingSubs = buildingSubs.filter(sub => !sub.merged_into);
     
     // Apply filters
-    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption) {
+    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption || filters.appfolioStatus !== 'all') {
       buildingSubs = buildingSubs.filter(sub => {
         const matchesVehicle = !filters.hasVehicle || sub.has_vehicle;
         const matchesPets = !filters.hasPets || sub.has_pets;
@@ -403,7 +429,24 @@ export default function CompliancePage() {
           (filters.exportStatus === 'exported' && sub.vehicle_exported) ||
           (filters.exportStatus === 'not-exported' && !sub.vehicle_exported);
         
-        return matchesVehicle && matchesPets && matchesInsurance && matchesFeeExemption && matchesNeedsReview && matchesExportStatus;
+        // AppFolio status filter
+        let matchesAppfolioStatus = true;
+        if (filters.appfolioStatus !== 'all') {
+          const allVerified = sub.vehicle_verified && sub.pet_verified && sub.insurance_verified && sub.permit_issued;
+          const docsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) && (sub.vehicle_addendum_uploaded_to_appfolio === true) && (sub.insurance_uploaded_to_appfolio === true);
+          const feesAdded = (!sub.has_pets || sub.pet_fee_added_to_appfolio === true) && (!sub.has_vehicle || sub.permit_fee_added_to_appfolio === true);
+          const someDocsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) || (sub.vehicle_addendum_uploaded_to_appfolio === true) || (sub.insurance_uploaded_to_appfolio === true);
+          
+          if (filters.appfolioStatus === 'ready') {
+            matchesAppfolioStatus = allVerified && !docsUploaded;
+          } else if (filters.appfolioStatus === 'partial') {
+            matchesAppfolioStatus = someDocsUploaded && !docsUploaded;
+          } else if (filters.appfolioStatus === 'complete') {
+            matchesAppfolioStatus = docsUploaded && feesAdded;
+          }
+        }
+        
+        return matchesVehicle && matchesPets && matchesInsurance && matchesFeeExemption && matchesNeedsReview && matchesExportStatus && matchesAppfolioStatus;
       });
     }
     
@@ -637,6 +680,76 @@ export default function CompliancePage() {
     } catch (error) {
       console.error('Failed to update exemption:', error);
       alert('Failed to update exemption. Please try again.');
+    }
+  };
+
+  const handleMarkDocumentUploaded = async (submissionId: string, documentType: 'pet_addendum' | 'vehicle_addendum' | 'insurance', note: string) => {
+    if (!adminName) {
+      const name = prompt('Enter your name:');
+      if (!name) return;
+      setAdminName(name);
+    }
+
+    const uploaderName = adminName || prompt('Enter your name:');
+    if (!uploaderName) return;
+
+    try {
+      const response = await fetch('/api/admin/compliance/mark-appfolio-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          documentType,
+          uploadedBy: uploaderName,
+          note: note || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        throw new Error(data.message || 'Failed to mark document uploaded');
+      }
+    } catch (error) {
+      console.error('Failed to mark document uploaded:', error);
+      alert('Failed to mark document uploaded');
+    }
+  };
+
+  const handleMarkFeeAdded = async (submissionId: string, feeType: 'pet_rent' | 'permit_fee', amount: number) => {
+    if (!adminName) {
+      const name = prompt('Enter your name:');
+      if (!name) return;
+      setAdminName(name);
+    }
+
+    const adderName = adminName || prompt('Enter your name:');
+    if (!adderName) return;
+
+    try {
+      const response = await fetch('/api/admin/compliance/mark-fee-added', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId,
+          feeType,
+          amount,
+          addedBy: adderName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        await fetchData();
+      } else {
+        throw new Error(data.message || 'Failed to mark fee added');
+      }
+    } catch (error) {
+      console.error('Failed to mark fee added:', error);
+      alert('Failed to mark fee added');
     }
   };
 
@@ -954,11 +1067,19 @@ export default function CompliancePage() {
                   </label>
                 </div>
               </div>
+
+              {/* AppFolio Status Filter */}
+              <div className="border-t border-[var(--divider)] pt-3 mt-3">
+                <AppFolioStatusFilter
+                  value={filters.appfolioStatus}
+                  onChange={(value) => setFilters(prev => ({ ...prev, appfolioStatus: value }))}
+                />
+              </div>
               
               <div className="mt-3">
-                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption) && (
+                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption || filters.appfolioStatus !== 'all') && (
                   <button
-                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false })}
+                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' })}
                     className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                   >
                     Clear all filters
@@ -1245,7 +1366,7 @@ export default function CompliancePage() {
                       {filters.exportStatus === 'not-exported' && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">⚠️ Not Exported</span>}
                     </div>
                     <button
-                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false })}
+                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' })}
                       className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium"
                     >
                       Clear All
@@ -1732,6 +1853,84 @@ export default function CompliancePage() {
                                 </button>
                               </div>
                             )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AppFolio Documents Section - Only show when permit issued */}
+                      {submission.permit_issued && (
+                        <div className="mt-5 p-4 bg-white border-2 border-[var(--primary)]/20">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-serif text-[var(--primary)]">AppFolio Documents</h4>
+                            <div className="text-xs text-[var(--muted)]">
+                              {submission.pet_addendum_uploaded_to_appfolio && submission.vehicle_addendum_uploaded_to_appfolio && submission.insurance_uploaded_to_appfolio ? (
+                                <span className="text-[var(--success)] font-medium">✓ All Uploaded</span>
+                              ) : (
+                                <span>Ready for upload</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="space-y-0">
+                            <AppFolioDocumentRow
+                              documentType="Pet Addendum"
+                              documentPath={submission.pet_addendum_file}
+                              uploadedToAppfolio={submission.pet_addendum_uploaded_to_appfolio || false}
+                              uploadedAt={submission.pet_addendum_uploaded_to_appfolio_at}
+                              uploadedBy={submission.pet_addendum_uploaded_to_appfolio_by}
+                              uploadNote={submission.pet_addendum_upload_note}
+                              onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'pet_addendum', note)}
+                            />
+
+                            {submission.has_vehicle && (
+                              <AppFolioDocumentRow
+                                documentType="Vehicle Addendum"
+                                documentPath={submission.vehicle_addendum_file}
+                                uploadedToAppfolio={submission.vehicle_addendum_uploaded_to_appfolio || false}
+                                uploadedAt={submission.vehicle_addendum_uploaded_to_appfolio_at}
+                                uploadedBy={submission.vehicle_addendum_uploaded_to_appfolio_by}
+                                uploadNote={submission.vehicle_addendum_upload_note}
+                                onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'vehicle_addendum', note)}
+                              />
+                            )}
+
+                            <AppFolioDocumentRow
+                              documentType="Insurance"
+                              documentPath={submission.insurance_file}
+                              uploadedToAppfolio={submission.insurance_uploaded_to_appfolio || false}
+                              uploadedAt={submission.insurance_uploaded_to_appfolio_at}
+                              uploadedBy={submission.insurance_uploaded_to_appfolio_by}
+                              uploadNote={submission.insurance_upload_note}
+                              onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'insurance', note)}
+                            />
+                          </div>
+
+                          {/* Fees Section */}
+                          <div className="mt-4 pt-4 border-t border-[var(--divider)]">
+                            <h5 className="text-sm font-medium text-[var(--ink)] mb-2">Fees Added to AppFolio</h5>
+                            <div className="space-y-0">
+                              {submission.has_pets && !submission.has_fee_exemption && (
+                                <AppFolioFeeRow
+                                  feeType="Pet Rent"
+                                  feeAdded={submission.pet_fee_added_to_appfolio || false}
+                                  amount={submission.pet_fee_amount}
+                                  addedAt={submission.pet_fee_added_to_appfolio_at}
+                                  addedBy={submission.pet_fee_added_to_appfolio_by}
+                                  onMarkAdded={(amount) => handleMarkFeeAdded(submission.id, 'pet_rent', amount)}
+                                />
+                              )}
+
+                              {submission.has_vehicle && (
+                                <AppFolioFeeRow
+                                  feeType="Permit Fee"
+                                  feeAdded={submission.permit_fee_added_to_appfolio || false}
+                                  amount={submission.permit_fee_amount}
+                                  addedAt={submission.permit_fee_added_to_appfolio_at}
+                                  addedBy={submission.permit_fee_added_to_appfolio_by}
+                                  onMarkAdded={(amount) => handleMarkFeeAdded(submission.id, 'permit_fee', amount)}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
