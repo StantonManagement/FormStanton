@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Head from 'next/head';
 
 export default function AdminLoginPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shake, setShake] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function AdminLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
+    setIsSubmitting(true);
 
     try {
       const response = await fetch('/api/admin/auth', {
@@ -46,66 +48,88 @@ export default function AdminLoginPage() {
       if (data.success) {
         router.push('/admin/send-links');
       } else {
+        setPassword('');
         setAuthError(data.message || 'Invalid password');
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
       }
     } catch (error) {
       setAuthError('Login failed. Please try again.');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfcfa]">
+        <div className="text-[var(--muted)]">Loading...</div>
       </div>
     );
   }
 
   return (
-    <>
-      <Head>
-        <title>Admin Login - Stanton Management</title>
-        <meta name="robots" content="noindex nofollow" />
-      </Head>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-          <div className="flex justify-center mb-6">
-            <img
-              src="/Stanton-logo.PNG"
-              alt="Stanton Management"
-              className="max-w-[200px] w-full h-auto"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+    <div className="min-h-screen flex items-center justify-center bg-[#fdfcfa]">
+      <div
+        className={`bg-white p-10 shadow-lg w-full max-w-sm border border-[var(--divider)] transition-transform duration-200 ${shake ? 'animate-shake' : ''}`}
+      >
+        <div className="flex justify-center mb-8">
+          <img
+            src="/Stanton-logo.PNG"
+            alt="Stanton Management"
+            className="max-w-[180px] w-full h-auto"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+        <h1 className="text-xl font-serif text-[var(--primary)] mb-6 text-center">Admin Portal</h1>
+        <form onSubmit={handleLogin}>
+          <div className="mb-5">
+            <label htmlFor="password" className="block text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setAuthError(''); }}
+              className={`w-full px-4 py-2.5 border rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-colors duration-200 ${
+                authError ? 'border-red-400 bg-red-50/30' : 'border-[var(--border)]'
+              }`}
+              placeholder="Enter admin password"
+              autoFocus
+              required
             />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Login</h1>
-          <form onSubmit={handleLogin}>
-            <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+          {authError && (
+            <div className="mb-5 p-3 bg-red-50 border-l-3 border-red-500 text-red-700 text-sm" style={{ borderLeftWidth: '3px' }}>
+              <div className="font-medium">{authError}</div>
+              {authError.includes('locked') && (
+                <div className="text-xs mt-1 text-red-600">Too many attempts. Wait before trying again.</div>
+              )}
             </div>
-            {authError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {authError}
-              </div>
-            )}
-            <button
-              type="submit"
-              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors font-medium"
-            >
-              Login
-            </button>
-          </form>
-        </div>
+          )}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-[var(--primary)] text-white py-2.5 px-4 rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
       </div>
-    </>
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
+    </div>
   );
 }
