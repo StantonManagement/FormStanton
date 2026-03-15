@@ -62,6 +62,7 @@ export const translations = {
     insuranceHelper: "Your policy must show your address, at least $100,000 liability coverage ($300,000 if you have pets), and your building's LLC as Additional Insured at 421 Park St, Hartford CT 06106.",
     insuranceNotice: "Renters insurance is required. Cost is $10-25 per month. You can get your own from any provider (Lemonade, GEICO, Progressive, etc.) or we can add coverage to your monthly rent.",
     insuranceAddToRent: "I do not have insurance. Please add renters insurance to my monthly rent.",
+    insuranceAuthSignature: "By signing below, I authorize Stanton Management to enroll me in renters insurance and add the premium to my monthly rent.",
     signatureRequired: "Signature required",
     
     vehicleQuestion: "Do you have a vehicle that needs a parking permit?",
@@ -151,6 +152,7 @@ export const translations = {
     insuranceHelper: "Su póliza debe mostrar su dirección, al menos $100,000 de cobertura ($300,000 si tiene mascotas), y el LLC de su edificio como Asegurado Adicional en 421 Park St, Hartford CT 06106.",
     insuranceNotice: "El seguro de inquilino es obligatorio. Cuesta $10-25 por mes. Puede obtener el suyo de cualquier proveedor (Lemonade, GEICO, Progressive, etc.) o podemos agregar cobertura a su alquiler mensual.",
     insuranceAddToRent: "No tengo seguro. Por favor agregue el seguro de inquilino a mi alquiler mensual.",
+    insuranceAuthSignature: "Al firmar a continuación, autorizo a Stanton Management a inscribirme en el seguro de inquilino y agregar la prima a mi alquiler mensual.",
     signatureRequired: "Firma requerida",
     
     vehicleQuestion: "¿Tiene un vehículo que necesita permiso de estacionamiento?",
@@ -240,6 +242,7 @@ export const translations = {
     insuranceHelper: "Sua apólice deve mostrar seu endereço, pelo menos $100,000 de cobertura ($300,000 se tiver animais), e a LLC do seu prédio como Segurado Adicional em 421 Park St, Hartford CT 06106.",
     insuranceNotice: "O seguro de locatário é obrigatório. Custa $10-25 por mês. Você pode obter o seu de qualquer provedor (Lemonade, GEICO, Progressive, etc.) ou podemos adicionar cobertura ao seu aluguel mensal.",
     insuranceAddToRent: "Não tenho seguro. Por favor adicione o seguro de locatário ao meu aluguel mensal.",
+    insuranceAuthSignature: "Ao assinar abaixo, autorizo a Stanton Management a me inscrever no seguro de locatário e adicionar o prêmio ao meu aluguel mensal.",
     signatureRequired: "Assinatura obrigatória",
     
     vehicleQuestion: "Você tem um veículo que precisa de autorização de estacionamento?",

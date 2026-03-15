@@ -1,0 +1,399 @@
+Property Name,Unit,Tenant,Status,Tenant Type,Phone Numbers,Emails,Move-in,Lease To,Rent,Deposit,Tenant Tags,Commercial Lease Type,Tenant Integration ID
+
+000 - Test Property,D1,"Test, Dan",Current,Financially Responsible,Mobile: (860) 614-3327,,02/01/2026,02/28/2027,"1,500.00",0.00,,,2ce9c2c7-0d22-11f1-b6c3-02094d1ce055
+S0001 - 90 Park St,Retail 1,Bueno Grocery LLC,Current,Financially Responsible,Mobile: (860) 951-1559,miguelbueno9296@gmail.com,01/01/1970,10/31/2026,"2,546.00","2,000.00",,,39586d02-0cef-11ed-8887-020b2875343c
+S0001 - 90 Park St,Retail 2,El Bohio Cafe 2 LLC,Current,Financially Responsible,Phone: (959) 710-6580,elbohio90@gmail.com,01/01/1970,12/31/2026,"2,625.00",0.00,,,39be155c-0cef-11ed-8887-020b2875343c
+S0001 - 90 Park St,10,"Estrada, Maritza",Current,Financially Responsible,Phone: (860) 834-7953,elbohiocafe90@gmail.com,01/01/1970,,"1,560.00","1,500.00",,,43896a76-0cef-11ed-8887-020b2875343c
+S0001 - 90 Park St,5 - B,"Valdez, Rosa M.",Current,Financially Responsible,Phone: (860) 982-9716,rosav6201@gmail.com,11/01/2022,,700.00,1.00,,,53a7ad48-5aa3-11ed-81dd-0af088ad11e8
+S0001 - 90 Park St,5 - B,"Santiago , Jose  A.",Current,Financially Responsible,,Rosalarose61@gmail.com,11/01/2022,,700.00,1.00,,,53c31c48-5aa3-11ed-81dd-0af088ad11e8
+S0001 - 90 Park St,9,"Rodriguez , Jessica",Current,Financially Responsible,Phone: (860) 461-4044,jecca06114@gmail.com,05/01/2023,04/30/2024,"1,700.00","3,200.00",Hartford Housing,,3c73b516-e7cb-11ed-b6c3-02094d1ce055
+S0001 - 90 Park St,5 - D,"Cintron, Steve",Current,Financially Responsible,Mobile: (860) 960-5042,stevecintron42@gmail.com,04/12/2024,04/11/2025,700.00,680.00,,,a1a86e84-f8ef-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,4,"Trevino, Amanda P.",Current,Financially Responsible,Phone: (860) 984-5689,nunirivera0726@icloud.com,04/29/2024,04/16/2025,"2,425.00","3,733.00",J D'Amelia,,14f4052d-f933-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,4,"Flores, Nalani",Current,Other Occupant,,,05/01/2024,04/16/2025,"2,425.00","3,733.00",J D'Amelia,,15007921-f933-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,4,"Flores, Nyalis",Current,Other Occupant,,,05/01/2024,04/16/2025,"2,425.00","3,733.00",J D'Amelia,,150af30e-f933-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,4,"Figueroa, Noellei",Current,Other Occupant,,,05/01/2024,04/16/2025,"2,425.00","3,733.00",J D'Amelia,,15165b1d-f933-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,4,"Rivera, Novalisse",Current,Other Occupant,,,05/01/2024,04/16/2025,"2,425.00","3,733.00",J D'Amelia,,1521b6b3-f933-11ee-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Ferguson , Shara L.",Current,Financially Responsible,"Phone: (860) 331-3667, Mobile: (860) 336-7514, Phone: (959) 333-0893",fergusonshara80@gmail.com,11/04/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,efb6d86e-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Hines , Jaidyn",Current,Other Occupant,,,12/01/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,efc5c7d1-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Byfield, Cahlize",Current,Other Occupant,,,12/01/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,efd0439d-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Byfield, Justice",Current,Other Occupant,,,12/01/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,efdb0268-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Byfield, King",Current,Other Occupant,,,12/01/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,efe5cf95-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,1,"Ferguson , Kaleb",Current,Other Occupant,,,12/01/2024,10/31/2025,"2,189.00","3,743.00",Imagineers,,eff16daf-8041-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,3,"Mcquillar, Ashley M.",Current,Financially Responsible,Mobile: (203) 415-6038,ashleymcquillar88@gmail.com,10/01/2024,09/30/2025,"2,500.00","4,684.00",J D'Amelia,,1df4aa3b-8810-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,5 - A,"Rivera, Cristobal",Current,Financially Responsible,Mobile: (959) 248-1413,crivera010@gmail.com,01/03/2025,01/02/2026,700.00,0.00,,,f6d6a8a6-cec3-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,2,"Gonzalez, Maritsa",Current,Financially Responsible,"Mobile: (860) 984-0609, Mobile: (860) 717-3965",maritsagonzalez27@gmail.com,03/17/2025,03/31/2026,"2,450.00","4,900.00",Hartford Housing,,6e61eaba-feb2-11ef-b6c3-02094d1ce055
+S0001 - 90 Park St,7 - A,"Santiago , German",Current,Financially Responsible,Phone: (860) 244-3209,,05/01/2025,,700.00,0.00,,,06ef4796-2b81-11f0-b6c3-02094d1ce055
+S0001 - 90 Park St,7 - B,"Morales, Natalie",Current,Financially Responsible,,,05/01/2025,04/30/2026,700.00,0.00,,,6ba57872-2b81-11f0-b6c3-02094d1ce055
+S0001 - 90 Park St,2,"Perez, Walfredo",Current,Other Occupant,Phone: 41353771169,maritsagonzalez27@gmail.com,06/09/2025,03/31/2026,"2,450.00","4,900.00",Hartford Housing,,9b52e639-4554-11f0-b6c3-02094d1ce055
+S0001 - 90 Park St,5 - C,"Mena, Robert",Current,Financially Responsible,,,09/04/2025,08/31/2026,700.00,0.00,,,c747b153-9afb-11f0-b6c3-02094d1ce055
+S0001 - 90 Park St,5 - E,"Moure, Jose A.",Current,Financially Responsible,Mobile: (959) 258-1716,Josemoure36@gmail.com,01/03/2026,12/31/2026,700.00,700.00,,,450ce4c9-ea30-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,Retail 1,Connecticut State Check Cashing,Current,Financially Responsible,Phone: (203) 581-0880,Mike@ctstatecheckcashing.com,01/01/1970,02/28/2026,"1,850.00",900.00,,,43d5b303-0cef-11ed-8887-020b2875343c
+S0002 - 101 Maple,C2,"Chau, Nam",Current,Financially Responsible,Mobile: (860) 597-4392,namchau3658@gmail.com,01/01/1970,,"1,650.00",750.00,,,45974ac2-0cef-11ed-8887-020b2875343c
+S0002 - 101 Maple,C1 - -,"Hubbard, Trevor M.",Current,Financially Responsible,"Mobile: (860) 839-6812, Mobile: (203) 572-9126",thubbard5567@gmail.com,01/04/2023,,"1,300.00",675.00,,,829d313c-8b81-11ed-b6c3-02094d1ce055
+S0002 - 101 Maple,C1 - -,"Tam, Shevette",Current,Other Occupant,,,01/04/2023,,"1,300.00",675.00,,,82b64974-8b81-11ed-b6c3-02094d1ce055
+S0002 - 101 Maple,B1 - C,"Breedlove , Asia D.",Current,Financially Responsible,Mobile: (860) 970-7162,asiabreedlove@yahoo.com,02/01/2023,02/09/2024,800.00,700.00,,,477bc40f-a7cb-11ed-b6c3-02094d1ce055
+S0002 - 101 Maple,D4 - A,"Vega, Gian carlos M.",Current,Financially Responsible,"Phone: (860) 719-5371, Phone: (860) 477-8042, Mobile: (860) 789-4695",gvega6340@gmail.com,03/08/2023,03/07/2024,800.00,"1,300.00",,,db99b6e3-bed5-11ed-b6c3-02094d1ce055
+S0002 - 101 Maple,A2,"Cruz, Walberto",Current,Financially Responsible,Phone: (860) 910-6042,cruzwalberto64@gmail.com,04/21/2023,04/20/2024,"1,300.00","2,600.00",,,6b33e214-e246-11ed-b6c3-02094d1ce055
+S0002 - 101 Maple,B4 - C,"Patterson, William",Current,Financially Responsible,Phone: (860) 921-2755,williampatterson1123@gmail.com,06/12/2023,06/11/2024,800.00,0.00,,,c2ed1879-0ac5-11ee-b6c3-02094d1ce055
+S0002 - 101 Maple,D4 - B,"Jenkins, Jahim",Current,Financially Responsible,,"mikelmaharg@gmail.com, Steven.C.Hurley@ct.gov",04/13/2024,01/18/2025,800.00,675.00,Advance Behavioral Health Inc.,,5f9861f9-f930-11ee-b6c3-02094d1ce055
+S0002 - 101 Maple,C4,"Redfield, Floyd F.",Current,Financially Responsible,Mobile: (860) 656-5264,fredfield@hotmail.com,09/29/2024,,800.00,0.00,,,514388c5-7f35-11ef-b6c3-02094d1ce055
+S0002 - 101 Maple,B4 - A,"Shuff, Jerry",Current,Financially Responsible,,,11/01/2024,10/31/2025,800.00,700.00,,,9a952438-a036-11ef-b6c3-02094d1ce055
+S0002 - 101 Maple,D1,"Harris, Tiea T.",Current,Financially Responsible,"Phone: (860) 804-3396, Phone: (860) 452-3126",tawana.0814@gmail.com,02/01/2025,01/31/2026,"1,526.00","1,500.00",Hartford Housing,,3c222b73-ddaa-11ef-b6c3-02094d1ce055
+S0002 - 101 Maple,D1,"Frank, Ki-ron",Current,Other Occupant,,,02/01/2025,01/31/2026,"1,526.00","1,500.00",Hartford Housing,,3c3341be-ddaa-11ef-b6c3-02094d1ce055
+S0002 - 101 Maple,D1,"Goodman, Loyalty",Current,Other Occupant,,,02/01/2025,01/31/2026,"1,526.00","1,500.00",Hartford Housing,,3c401a9c-ddaa-11ef-b6c3-02094d1ce055
+S0002 - 101 Maple,C4 - B,"Henriquez, Miguel A.",Current,Financially Responsible,Mobile: (929) 580-9026,cirujano0710@gmail.com,04/01/2025,,800.00,0.00,,,1f69a0c3-10b3-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,C4 - A,"Carmichael , Dorian  T.",Current,Financially Responsible,Mobile: (843) 591-4575,dorian1carmichael@gmail.com,04/07/2025,,800.00,200.00,,,c0d59da8-118b-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,D3,"Bruno, Noriannette",Current,Financially Responsible,"Mobile: (860) 890-7220, Phone: (860) 503-7352",b_noriannette@yahoo.com,05/01/2025,04/30/2026,"1,230.00","1,230.00",Hartford Housing,,6baee5d2-29a9-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,Retail 2,Island Vibes Tavern LLC,Current,Financially Responsible,Phone: (917) 256-9433,,05/01/2025,04/30/2026,"3,000.00",0.00,,,f5384331-2abf-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,C3,"Guevarez, Sandy",Current,Financially Responsible,Phone: (860) 796-2985,princesssandyguevarez76@gmail.com,07/08/2025,07/07/2026,"1,200.00","1,450.00",Hartford Housing,,66561523-5b6b-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,B2,"Guzman Torres, Juan C.",Current,Financially Responsible,Mobile: (860) 924-9519,juan.guzman28@gmail.com,07/13/2025,06/30/2026,"1,600.00","3,135.00",,,4fdea168-5f82-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,B1 - A,"Santos, Victor",Current,Financially Responsible,Mobile: (475) 284-9562,vicsantos053067@gmail.com,07/13/2025,,800.00,800.00,,,aa1dfbcd-5f88-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,B1 - B,"Salazar, Jaime",Current,Financially Responsible,,,11/27/2025,10/31/2026,800.00,0.00,,,c7914064-cca8-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,D2,"Thompson , Shalece  T.",Current,Financially Responsible,Mobile: (860) 494-0121,Mrsslece831@yahoo.com,12/01/2025,11/30/2026,"1,540.00","1,500.00",J D'Amelia,,805333b5-cee3-11f0-b6c3-02094d1ce055
+S0002 - 101 Maple,D2,"Thompson , Najaye",Current,Other Occupant,,,12/01/2025,11/30/2026,"1,540.00","1,500.00",J D'Amelia,,8069465b-cee3-11f0-b6c3-02094d1ce055
+S0003 - 222 Maple,3S,"Walker , Kishan  A.",Current,Financially Responsible,Mobile: (860) 869-3514,kishanwalker250@gmail.com,07/01/2023,06/30/2024,"1,650.00",0.00,,,3f21b8da-2785-11ee-b6c3-02094d1ce055
+S0003 - 222 Maple,1S,"Inabinett , Shamiesha T.",Current,Financially Responsible,"Phone: (203) 710-0235, Mobile: (860) 982-7745",Shamieshai@yahoo.com,11/01/2023,08/31/2024,"1,600.00",0.00,Imagineers,,e33acb67-4368-11ee-b6c3-02094d1ce055
+S0003 - 222 Maple,1S,"Lanier , Shamaree",Current,Other Occupant,,,09/01/2023,08/31/2024,"1,600.00",0.00,Imagineers,,e35c549e-4368-11ee-b6c3-02094d1ce055
+S0003 - 222 Maple,3N,"Comrie, Mackalia B.",Current,Financially Responsible,"Mobile: (865) 549-2443, Mobile: (860) 890-8491",mackaliabcomrie@gmail.com,09/15/2023,09/30/2025,"1,625.00","1,600.00",,,bdf9d405-569e-11ee-b6c3-02094d1ce055
+S0003 - 222 Maple,3N,"Whyte, Shamar L.",Current,Other Occupant,,,08/29/2024,09/30/2025,"1,625.00","1,600.00",,,79fab134-663f-11ef-b6c3-02094d1ce055
+S0003 - 222 Maple,1N,"Ogman, Starr T.",Current,Financially Responsible,"Mobile: (860) 804-5415, Phone: (860) 597-6293",li.miyung@icloud.com,02/01/2025,01/31/2026,"1,573.00","1,500.00",Hartford Housing,,8138736f-e012-11ef-b6c3-02094d1ce055
+S0003 - 222 Maple,1N,"Thompson, Tahari",Current,Other Occupant,,,02/01/2025,01/31/2026,"1,573.00","1,500.00",Hartford Housing,,814941b8-e012-11ef-b6c3-02094d1ce055
+S0003 - 222 Maple,1N,"Thompson , Takari",Current,Other Occupant,,,02/01/2025,01/31/2026,"1,573.00","1,500.00",Hartford Housing,,8155dd1c-e012-11ef-b6c3-02094d1ce055
+S0003 - 222 Maple,2N,"Shapiro, Harvey",Current,Financially Responsible,Phone: (917) 256-9433,aks@arborhaven.dev,04/01/2025,03/31/2026,"1,600.00",0.00,,,7da68dea-14b1-11f0-b6c3-02094d1ce055
+S0003 - 222 Maple,2N,"S, AKS",Current,Financially Responsible,,,10/28/2025,03/31/2026,"1,600.00",0.00,,,eb548e62-b41b-11f0-b6c3-02094d1ce055
+S0003 - 222 Maple,2S,"Drummond , Latasha",Current,Financially Responsible,Mobile: (959) 276-2401,shinekasmith08@gmail.com,01/01/2026,12/31/2026,"1,650.00",900.00,J D'Amelia,,2ac8c26d-df70-11f0-b6c3-02094d1ce055
+S0003 - 222 Maple,2S,"Drummond , logan",Current,Other Occupant,,,01/01/2026,12/31/2026,"1,650.00",900.00,J D'Amelia,,2aef2ad6-df70-11f0-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar , Clarissa",Current,Financially Responsible,"Mobile: (959) 258-5208, Phone: (860) 706-6991","clara.futtnerlaw@gmail.com, joesesco@icloud.com",10/01/2023,,"2,400.00",0.00,Hartford Housing,,4d152c6c-63a4-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar , Joesmarie",Current,Other Occupant,,,10/01/2023,,"2,400.00",0.00,Hartford Housing,,4d238ff4-63a4-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar , Jayden",Current,Other Occupant,,,10/01/2023,,"2,400.00",0.00,Hartford Housing,,4d2e29c6-63a4-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar , Jaydelin",Current,Other Occupant,,,10/01/2023,,"2,400.00",0.00,Hartford Housing,,4d392afc-63a4-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar , Jaylani",Current,Other Occupant,,,10/01/2023,,"2,400.00",0.00,Hartford Housing,,4d4567be-63a4-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,3N,"Vail, Judithlynn C.",Current,Financially Responsible,Mobile: (860) 503-2708,Judithvail0613@gmail.com,05/01/2024,04/30/2025,"2,400.00","4,650.00",Hartford Housing,,b7df02eb-a5fc-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,1N,"Ramos , Daisy",Current,Financially Responsible,Mobile: (860) 913-7534,,03/12/2024,03/01/2025,"1,700.00","1,500.00",Imagineers,,ef278625-c12c-11ee-b6c3-02094d1ce055
+S0004 - 43 Frank,1S,"Vazquez, Valerie",Current,Financially Responsible,Phone: (860) 921-2480,Vazquezvalerie249@gmail.com,10/25/2024,09/30/2025,"2,000.00",0.00,Hartford Housing,,0b75f07a-8814-11ef-b6c3-02094d1ce055
+S0004 - 43 Frank,2N,"Escobar, Joesmarie",Current,Financially Responsible,,,11/01/2024,,"2,400.00",0.00,Hartford Housing,,abf6aaa2-b432-11f0-b6c3-02094d1ce055
+S0005 - 47 Frank,3,"Arroyo, Dolores",Current,Financially Responsible,Phone: (860) 904-9330,,07/01/2022,,"1,650.00",900.00,Imagineers,,4b2098ea-0cef-11ed-8887-020b2875343c
+S0005 - 47 Frank,4,"Nieves, Carlos",Current,Financially Responsible,Mobile: (860) 818-6283,,09/05/2023,05/31/2025,"1,650.00",0.00,,,b69ac17f-4c2a-11ee-b6c3-02094d1ce055
+S0005 - 47 Frank,2,"Burnham, Cynthia L.",Current,Financially Responsible,Phone: (860) 656-5984,cyndim749@gmail.com,05/17/2024,05/14/2025,"1,600.00","3,060.00",Hartford Housing,,78fb71bc-0805-11ef-b6c3-02094d1ce055
+S0005 - 47 Frank,2,"Morales , Savonnah",Current,Other Occupant,,,05/15/2024,05/14/2025,"1,600.00","3,060.00",Hartford Housing,,790b8dc2-0805-11ef-b6c3-02094d1ce055
+S0005 - 47 Frank,1,"Montesdeoca, Darwin",Current,Financially Responsible,Phone: (860) 806-4652,darwinmontedeoca169@gmail.com,09/01/2025,08/31/2026,"1,650.00",0.00,,,03985065-922e-11f0-b6c3-02094d1ce055
+S0006 - 15 Whit,1W - B & C,"Maldonado , Lui",Current,Financially Responsible,Mobile: (860) 789-7247,Citocangri@gmail.com,12/01/2023,10/31/2024,925.00,700.00,,,9446e66b-8f9a-11ee-b6c3-02094d1ce055
+S0006 - 15 Whit,1W - A,"Santiago , Nizi",Current,Financially Responsible,,allegiance.conservator.finance@gmail.com,02/01/2024,,700.00,700.00,,,88b9573e-bcce-11ee-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Zegarra, Alex",Current,Other Occupant,,,06/01/2024,05/31/2025,"1,550.00","1,550.00",,,84d2aeed-1f93-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Vargas, Elizabeth",Current,Other Occupant,,,06/01/2024,05/31/2025,"1,550.00","1,550.00",,,84e496be-1f93-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Zegarra, Junior",Current,Other Occupant,,,06/01/2024,05/31/2025,"1,550.00","1,550.00",,,84effc43-1f93-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Zegarra, Lionel",Current,Other Occupant,,,06/01/2024,05/31/2025,"1,550.00","1,550.00",,,84fd4ea0-1f93-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3E,"Dalessandro, Angelina A.",Current,Financially Responsible,"Mobile: (203) 833-0869, Mobile: (860) 280-4665",ANGIE051908@GMAIL.COM,06/09/2024,06/30/2025,"1,600.00","3,200.00",,,4acb8248-2670-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3E,"perry, Alani",Current,Other Occupant,,,06/09/2024,06/30/2025,"1,600.00","3,200.00",,,4ad7b05c-2670-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3E,"Perry, Jazmin",Current,Other Occupant,,,06/09/2024,06/30/2025,"1,600.00","3,200.00",,,4ae25113-2670-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3E,"perry , jeremiah",Current,Other Occupant,,,06/09/2024,06/30/2025,"1,600.00","3,200.00",,,4aed89a0-2670-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,2E,"Smith, Tania",Current,Financially Responsible,Phone: (959) 999-6762,,10/30/2024,09/30/2025,"1,600.00",0.00,Imagineers,,3d060d67-8813-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,1E,"Ragland, Shawneice  E.",Current,Financially Responsible,Phone: (860) 280-4665,sragland1115@gmail.com,12/03/2024,11/30/2025,"1,588.00","1,500.00",Hartford Housing,,7057006f-b196-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,2W,"Peele, Destiny S.",Current,Financially Responsible,Mobile: (959) 208-6327,peeledestiny@gmail.com,11/01/2024,12/31/2025,"1,517.00","1,517.00","The Connection, Assistance Program (Not Section 8)",,96e5ad70-b729-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,2W,"Peele, Athena",Current,Other Occupant,,,11/01/2024,12/31/2025,"1,517.00","1,517.00","The Connection, Assistance Program (Not Section 8)",,96f7caf8-b729-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,2W,"Stephenson , Ezra",Current,Other Occupant,,,11/01/2024,12/31/2025,"1,517.00","1,517.00","The Connection, Assistance Program (Not Section 8)",,9704056e-b729-11ef-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Currie, Mary L.",Current,Financially Responsible,Phone: (860) 881-9941,marycurrie36@gmail.com,09/12/2025,09/11/2026,"1,600.00",314.00,Hartford Housing,,6fe65e39-923e-11f0-b6c3-02094d1ce055
+S0006 - 15 Whit,3W,"Perry, Kevion M.",Current,Other Occupant,Phone: (475) 346-5933,,09/12/2025,09/11/2026,"1,600.00",314.00,Hartford Housing,,6ffa55e6-923e-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,2E,"Allen , Shaneequa S.",Current,Financially Responsible,"Phone: (860) 719-7463, Mobile: (860) 890-3069",shaneequa02@gmail.com,04/15/2024,04/30/2025,"1,850.00","3,700.00",Hartford Housing,,6a3b4622-f667-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,2E,"Allen adgers, Arkhari",Current,Other Occupant,,,04/15/2024,04/30/2025,"1,850.00","3,700.00",Hartford Housing,,6a487b90-f667-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,2E,"Allen adgers, Zyion",Current,Other Occupant,,,04/15/2024,04/30/2025,"1,850.00","3,700.00",Hartford Housing,,6a4f33cc-f667-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,2E,"Allen adgers, Bryson",Current,Other Occupant,,,04/15/2024,04/30/2025,"1,850.00","3,700.00",Hartford Housing,,6a55dc7c-f667-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3W,"Casiano, Ramon",Current,Financially Responsible,Phone: (860) 967-4098,ramonc1211@gmail.com,05/10/2024,04/30/2025,"1,900.00","3,800.00",Hartford Housing,,ff5a5e6c-f927-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3E,"Rodriguez-Ortiz, Yessica",Current,Financially Responsible,Mobile: (860) 477-6241,rodriguezyessica9797@gmail.com,05/10/2024,04/30/2025,"1,900.00","3,800.00",Imagineers,,08802f86-feda-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3E,"Knott, Amaya",Current,Other Occupant,,,05/01/2024,04/30/2025,"1,900.00","3,800.00",Imagineers,,088ae49d-feda-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3E,"Knott, Kaitlyn",Current,Other Occupant,,,05/01/2024,04/30/2025,"1,900.00","3,800.00",Imagineers,,08919021-feda-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3E,"Rivera, Zayvian",Current,Other Occupant,,,05/01/2024,04/30/2025,"1,900.00","3,800.00",Imagineers,,089811b8-feda-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,3E,"Rivera, Jahdiel",Current,Other Occupant,,,05/01/2024,04/30/2025,"1,900.00","3,800.00",Imagineers,,089e9c37-feda-11ee-b6c3-02094d1ce055
+S0007 - 36 Whit,1E,"Sierra, Janice M.",Current,Other Occupant,Phone: (860) 786-2608,sierrajanice@ymail.com,08/01/2024,07/31/2025,"1,900.00","3,800.00",,,1453ebfc-2d16-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1E,"Lopez, Jonylah",Current,Other Occupant,,,07/01/2024,07/31/2025,"1,900.00","3,800.00",,,1460056b-2d16-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1E,"Lopez, Noah",Current,Other Occupant,,,07/01/2024,07/31/2025,"1,900.00","3,800.00",,,146924a8-2d16-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1E,"Lopez, Evan",Current,Other Occupant,,,07/01/2024,07/31/2025,"1,900.00","3,800.00",,,147273e6-2d16-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1W,"Ortiz, Iyanna",Current,Other Occupant,,,12/01/2024,09/30/2026,"1,900.00",0.00,,,ae0a160c-7c40-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1W,"Reyes, Javion",Current,Other Occupant,,,12/01/2024,09/30/2026,"1,900.00",0.00,,,ae144ebd-7c40-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1W,"Wallace, Taurie M.",Current,Financially Responsible,Phone: (860) 849-0232,tauriewallace453@gmail.com,11/25/2024,10/30/2025,"1,950.00","3,874.00",J D'Amelia,,0c376f65-acfa-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,3W,"Gonzalez, Jeanete Mercedez",Current,Financially Responsible,,,03/05/2025,04/30/2025,"1,900.00","3,800.00",Hartford Housing,,951dc12b-fa01-11ef-b6c3-02094d1ce055
+S0007 - 36 Whit,1E,"Vargas-Espinosa, Carmen R.",Current,Financially Responsible,Phone: (860) 840-6460,"carmen.valle.5056@gmail.com, yahaira3584@gmail.com",05/01/2025,04/30/2026,"1,800.00","1,790.00",Hartford Housing,,fb7b21de-26a2-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,2W,"Claudio, Orayme N.",Current,Financially Responsible,Mobile: (585) 503-3117,orayme18@gmail.com,11/01/2025,10/31/2026,"1,900.00","1,900.00",Hartford Housing,,971276b0-af4d-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,2W,"Santiago, Yesdrian",Current,Other Occupant,,,11/01/2025,10/31/2026,"1,900.00","1,900.00",Hartford Housing,,97226992-af4d-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,2W,"Santiago, Josxian",Current,Other Occupant,,,11/01/2025,10/31/2026,"1,900.00","1,900.00",Hartford Housing,,972d4648-af4d-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,2W,"Santiago, Jhanziel",Current,Other Occupant,,,11/01/2025,10/31/2026,"1,900.00","1,900.00",Hartford Housing,,97396dd8-af4d-11f0-b6c3-02094d1ce055
+S0007 - 36 Whit,1W,"Foster , Arielle",Current,Financially Responsible,,,11/25/2024,10/30/2025,"1,950.00","3,874.00",J D'Amelia,,b1770a3b-b43c-11f0-b6c3-02094d1ce055
+S0008 - 38 Whit,2W,"Jordan , Samantha  L.",Current,Financially Responsible,Mobile: (860) 776-5557,briaysha@aol.com,01/05/2024,12/31/2024,"2,336.00","3,611.43",J D'Amelia,,1f4db3a5-a5fc-11ee-b6c3-02094d1ce055
+S0008 - 38 Whit,1W,"Torres, Sylvana",Current,Financially Responsible,Phone: (860) 419-4929,sylvanatorres86@gmail.com,01/01/2024,01/31/2025,"2,400.00",0.00,Hartford Housing,,1c3e033e-a5fe-11ee-b6c3-02094d1ce055
+S0008 - 38 Whit,3E,"Negron-Soto, Migdalia",Current,Financially Responsible,"Phone: (860) 719-6894, Phone: (860) 707-7537",migdalia.negron1@icloud.com,02/01/2024,01/31/2025,"2,359.00","2,323.00",Imagineers,,4a9b6fcf-c12c-11ee-b6c3-02094d1ce055
+S0008 - 38 Whit,1E,"Smith, Toccara D.",Current,Financially Responsible,Mobile: (860) 796-2104,smithtoccara30ts.29@gmail.com,08/01/2024,07/31/2025,"2,400.00","4,800.00",Hartford Housing,,ec982d98-3eec-11ef-b6c3-02094d1ce055
+S0008 - 38 Whit,1E,"Baker, Nariya",Current,Other Occupant,,,09/01/2024,07/31/2025,"2,400.00","4,800.00",Hartford Housing,,eca6f3d8-3eec-11ef-b6c3-02094d1ce055
+S0008 - 38 Whit,1E,"Smith , Andrew",Current,Other Occupant,,,09/01/2024,07/31/2025,"2,400.00","4,800.00",Hartford Housing,,ecb33c40-3eec-11ef-b6c3-02094d1ce055
+S0008 - 38 Whit,1E,"Haugabook , Kijuan",Current,Other Occupant,,,09/01/2024,07/31/2025,"2,400.00","4,800.00",Hartford Housing,,ecc0d969-3eec-11ef-b6c3-02094d1ce055
+S0008 - 38 Whit,3W,"Arroyo-Mendez, Sanya M.",Current,Financially Responsible,Mobile: (959) 261-7575,sanyaarroyo26@gmail.com,08/27/2024,07/31/2026,"2,241.00","4,498.00",J D'Amelia,,36ea3adc-3eed-11ef-b6c3-02094d1ce055
+S0010 - 228 Maple,3N,"LaPane, Timothy P.",Current,Financially Responsible,Mobile: (860) 795-4610,timlapane120184@gmail.com,07/01/2025,06/30/2026,"2,100.00","4,400.00",,,5d589a32-528f-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,2S,"Williams, Tashandavelle N.",Current,Financially Responsible,"Phone: (860) 461-3922, Phone: +1860-530-8663",tashandavill@gmail.com,07/02/2025,06/30/2026,"2,050.00",0.00,Hartford Housing,,2d5d9d32-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,1N,"Martinez, Migdalia",Current,Financially Responsible,Phone: (959) 256-7834,migdaliam@964gmail.com,07/01/2025,06/30/2026,"1,993.00","4,200.00",Imagineers,,8e060b5f-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,1N,"Morales, Carlos",Current,Other Occupant,,,07/01/2025,06/30/2026,"1,993.00","4,200.00",Imagineers,,8e19aa36-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,1N,"Feliciano, Angel",Current,Other Occupant,,,07/01/2025,06/30/2026,"1,993.00","4,200.00",Imagineers,,8e28a4d5-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,1N,"Feliciano, Dazlyn",Current,Other Occupant,,,07/01/2025,06/30/2026,"1,993.00","4,200.00",Imagineers,,8e389485-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3S,"Knight, Mahogany L.",Current,Financially Responsible,Mobile: (860) 209-5436,kookiesndcream22@gmail.com,07/02/2025,06/30/2026,"2,000.00","4,000.00",Rapid Rehousing,,d75edb34-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3S,"Knight , Jariah",Current,Other Occupant,,,07/02/2025,06/30/2026,"2,000.00","4,000.00",Rapid Rehousing,,d76d37ea-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3S,"Outlaw , Kasir",Current,Other Occupant,,,07/01/2025,06/30/2026,"2,000.00","4,000.00",Rapid Rehousing,,d77958e9-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3S,"Kinght, Jhyqwez",Current,Other Occupant,,,07/01/2025,06/30/2026,"2,000.00","4,000.00",Rapid Rehousing,,d785d1fd-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3S,"Knight, Amor",Current,Other Occupant,,,07/01/2025,06/30/2026,"2,000.00","4,000.00",Rapid Rehousing,,d790d945-55b6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3N,"Michaelis, Shareena K.",Current,Financially Responsible,Mobile: (860) 806-7797,braydenkomons1985@gmail.com,07/01/2025,06/30/2026,"2,100.00","4,400.00",,,7aa74a1c-55d9-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,3N,"Komons, Brayden",Current,Other Occupant,,,04/28/2025,06/30/2026,"2,100.00","4,400.00",,,7ab774eb-55d9-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,2N,"Mesquita, Andrea M.",Current,Financially Responsible,Home: (860) 836-7263,mesquitaandrea5@gmail.com,08/01/2025,07/31/2026,"2,100.00","4,200.00",Imagineers,,7485bf4c-6ee6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,2N,"White, Victoria",Current,Other Occupant,,,08/01/2025,07/31/2026,"2,100.00","4,200.00",Imagineers,,749d1180-6ee6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,2N,"White, Minetta",Current,Other Occupant,,,08/01/2025,07/31/2026,"2,100.00","4,200.00",Imagineers,,74ac9482-6ee6-11f0-b6c3-02094d1ce055
+S0010 - 228 Maple,2N,"White, Gabriel A.",Current,Financially Responsible,,jay122153@gmail.com,08/01/2025,07/31/2026,"2,100.00","4,200.00",Imagineers,,056fa4e6-7f57-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,1,"Smith, Roxanne",Current,Financially Responsible,"Phone: (203) 970-0155, Phone: (860) 714-5871",charityblossom13@gmail.com,05/03/2023,,"1,400.00",0.00,,,b68f4338-eadb-11ed-b6c3-02094d1ce055
+S0011 - 110 Martin,2,"Leach, Tammy",Current,Financially Responsible,Phone: (860) 895-7373,tleach952@gmail.com,05/03/2023,,"1,600.00",0.00,,,b705dc46-eadb-11ed-b6c3-02094d1ce055
+S0011 - 110 Martin,5,"Barno Swain, Lerona",Current,Financially Responsible,Phone: (860) 834-8273,leronabarno@yahoo.com,05/03/2023,03/31/2025,"1,908.00","4,691.00",Hartford Housing,,b7ec451f-eadb-11ed-b6c3-02094d1ce055
+S0011 - 110 Martin,7,"Coleman, Theresa",Current,Financially Responsible,Mobile: (860) 734-7309,colemantaz3@icloud.com,05/03/2023,,"1,700.00",0.00,Imagineers,,b8a6723f-eadb-11ed-b6c3-02094d1ce055
+S0011 - 110 Martin,4,"Rivera, Salena R.",Current,Financially Responsible,"Mobile: (959) 262-6103, Phone: (413) 252-6633, Mobile: (413) 310-4226",salenarivera@yahoo.com,06/12/2024,05/31/2025,"2,000.00","3,800.00",Hartford Housing,,606f6248-1a11-11ef-b6c3-02094d1ce055
+S0011 - 110 Martin,4,"Rivera-Brace, Marqel",Current,Other Occupant,,,06/10/2024,05/31/2025,"2,000.00","3,800.00",Hartford Housing,,607bed2e-1a11-11ef-b6c3-02094d1ce055
+S0011 - 110 Martin,4,"Rivera-Brace, Marqese",Current,Other Occupant,,,06/10/2024,05/31/2025,"2,000.00","3,800.00",Hartford Housing,,6085b2d7-1a11-11ef-b6c3-02094d1ce055
+S0011 - 110 Martin,4,"Rivera-Brace, Alizaida",Current,Other Occupant,,,06/10/2024,05/31/2025,"2,000.00","3,800.00",Hartford Housing,,60900407-1a11-11ef-b6c3-02094d1ce055
+S0011 - 110 Martin,6,"Ledbetter, Miesha M.",Current,Financially Responsible,Mobile: (860) 655-3289,mieshaledbetter89@gmail.com,06/09/2025,05/30/2026,"1,950.00","3,900.00",,,05995db7-4315-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,6,"Matthews , Ra’Miya",Current,Other Occupant,,,06/09/2025,05/30/2026,"1,950.00","3,900.00",,,05ae59f4-4315-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,6,"Matthews , Rashad",Current,Other Occupant,,,06/09/2025,05/30/2026,"1,950.00","3,900.00",,,05bbda08-4315-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,6,"Thornton , Lai’Jah",Current,Other Occupant,,,06/09/2025,05/30/2026,"1,950.00","3,900.00",,,05c93300-4315-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,3,"Chandler, Demarius T.",Current,Financially Responsible,"Phone: (860) 890-2420, Phone: (860) 890-4507",jaquantc@gmail.com,07/08/2025,06/30/2026,"1,624.00",0.00,Hartford Housing,,ce4005ed-575d-11f0-b6c3-02094d1ce055
+S0011 - 110 Martin,3,"Chandler, Jaquan  T.",Current,Financially Responsible,Mobile: None,jaquantc@gmail.com,07/08/2025,06/30/2026,"1,624.00",0.00,Hartford Housing,,5337a949-7f82-11f0-b6c3-02094d1ce055
+S0012 - 120 Martin,2nd,"Diaz, Rosa",Current,Financially Responsible,Phone: (860) 995-3362,diazmorenita975@gmail.com,05/03/2023,,"2,350.00","1,350.00",Imagineers,,93215c0f-eadd-11ed-b6c3-02094d1ce055
+S0012 - 120 Martin,1st,"Leonard, Jahmisha  D.",Current,Financially Responsible,Mobile: (860) 985-4672,Jahmishal@gmail.com,01/14/2026,12/31/2026,"1,675.00","1,679.35",,,ae0441f8-ebea-11f0-b6c3-02094d1ce055
+S0012 - 120 Martin,1st,"Thompson, Curtis",Current,Other Occupant,,,01/12/2026,12/31/2026,"1,675.00","1,679.35",,,ae153a75-ebea-11f0-b6c3-02094d1ce055
+S0013 - 152 Wooster,1A,"Rivera, Pedro",Current,Financially Responsible,Phone: (860) 882-7635,pedro.rivera1024@yahoo.com,05/01/2023,,777.00,630.00,J D'Amelia,,d4ef97d2-eade-11ed-b6c3-02094d1ce055
+S0013 - 152 Wooster,1B,"Rivera, Madelene",Current,Financially Responsible,Phone: (860) 656-4293,,05/01/2023,,777.00,0.00,J D'Amelia,,d5741254-eade-11ed-b6c3-02094d1ce055
+S0013 - 152 Wooster,2A,"Hudson, Johnnie",Current,Financially Responsible,"Phone: (860) 890-0280, Phone: (860) 840-9160","ejoylaw@gmail.com, shulerleonard5@gmail.com",05/01/2023,05/31/2025,"1,500.00","1,800.00",J D'Amelia,,d5abe8e4-eade-11ed-b6c3-02094d1ce055
+S0013 - 152 Wooster,2A,"Schuler, Leondard",Current,Financially Responsible,,ejoylaw@gmail.com,05/01/2023,05/31/2025,"1,500.00","1,800.00",J D'Amelia,,d5d59b90-eade-11ed-b6c3-02094d1ce055
+S0013 - 152 Wooster,2B,"Rivera, Marilyn",Current,Financially Responsible,Phone: (860) 463-8447,Marilyn.rivera@hhchealth.org,05/01/2023,,"1,600.00",630.00,,,d62c6de2-eade-11ed-b6c3-02094d1ce055
+S0013 - 152 Wooster,3A,"Rivera, Denise",Current,Financially Responsible,Phone: (860) 532-9969,denise.rivera73@gmail.com,05/01/2023,,"1,550.00",0.00,,,d6c37948-eade-11ed-b6c3-02094d1ce055
+S0014 - 160 Wooster,1,"Burgos, Dilcia",Current,Financially Responsible,Phone: (860) 833-2364,moyaburgosd@gmail.com,05/01/2023,11/30/2025,"1,950.00",0.00,Imagineers,,9e0dd1c8-eadf-11ed-b6c3-02094d1ce055
+S0014 - 160 Wooster,3,"Vinson, Eriyana",Current,Financially Responsible,Mobile: (959) 221-0036,eriyanavinson@aol.com,05/01/2023,05/31/2025,"1,897.00","6,594.00",J D'Amelia,,9ebe3c46-eadf-11ed-b6c3-02094d1ce055
+S0014 - 160 Wooster,2,"Thornton, Michelle  C.",Current,Financially Responsible,Mobile: (617) 874-6024,michellethornton644@gmail.com,11/01/2025,10/31/2026,"1,950.00","3,900.00",,,8261e9c6-b126-11f0-b6c3-02094d1ce055
+S0014 - 160 Wooster,2,"Thornton, Qalynn T.",Current,Financially Responsible,Mobile: (931) 346-8749,thorntonqalynn11@gmail.com,11/01/2025,10/31/2026,"1,950.00","3,900.00",,,3262381a-b127-11f0-b6c3-02094d1ce055
+S0014 - 160 Wooster,2,"Cash , Marshala L.",Current,Financially Responsible,Mobile: (931) 346-8661,Marshalacash344@gmail.com,11/01/2025,10/31/2026,"1,950.00","3,900.00",,,3272a12a-b127-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,1A,"Brown, Karud",Current,Financially Responsible,Phone: (959) 999-0268,karudbrown632@gmail.com,05/01/2023,03/31/2025,"1,584.00","4,018.00","Hartford Housing, PBV",,1a650119-eae0-11ed-b6c3-02094d1ce055
+S0015 - 165 Westland,1C,"Owens, Clarence",Current,Financially Responsible,Phone: (860) 796-9165,dion8270@gmail.com,05/01/2023,03/31/2025,"1,584.00","1,688.15","Hartford Housing, PBV",,1ad861c6-eae0-11ed-b6c3-02094d1ce055
+S0015 - 165 Westland,1D,"James, Gloria",Current,Financially Responsible,Phone: (860) 922-2958,gloriaj733@hotmail.com,05/01/2023,03/31/2025,"2,321.00","5,377.00","Hartford Housing, PBV",,1b45931b-eae0-11ed-b6c3-02094d1ce055
+S0015 - 165 Westland,2A,"Gallup, Danielle",Current,Financially Responsible,Phone: (860) 929-0466,daniellegallup@gmail.com,05/01/2023,,"1,600.00",581.00,,,1c1b6b53-eae0-11ed-b6c3-02094d1ce055
+S0015 - 165 Westland,2E,"Townsend, Stefanie",Current,Financially Responsible,Mobile: (334) 208-6927,townsendstefanie74@yahoo.com,05/01/2023,07/31/2025,"1,600.00","1,000.00",Hartford Housing,,1cfe5a71-eae0-11ed-b6c3-02094d1ce055
+S0015 - 165 Westland,2B,"Cardona , Sandra",Current,Financially Responsible,"Phone: (860) 883-0572, Phone: (860) 883-0572, Phone: (860) 502-8688",sandracardona56@gmail.com,03/08/2024,02/28/2025,"1,908.00","4,000.00",Hartford Housing,,41791b38-d727-11ee-b6c3-02094d1ce055
+S0015 - 165 Westland,1C,"Johnson, Thomas",Current,Financially Responsible,,,04/08/2024,03/31/2025,"1,584.00","1,688.15","Hartford Housing, PBV",,0a2fc319-f5b1-11ee-b6c3-02094d1ce055
+S0015 - 165 Westland,3E,"Marquez, Yariliz",Current,Financially Responsible,Phone: (860) 656-8103,yarimarquez1123@gmail.com,08/01/2024,07/31/2026,"1,600.00","3,168.00","Hartford Housing, PBV",,c14b2254-1a0f-11ef-b6c3-02094d1ce055
+S0015 - 165 Westland,3A,"Todd, Zahra A.",Current,Financially Responsible,"Mobile: (860) 719-6534, Phone: (860) 804-8792",zahratodd@gmail.com,04/01/2025,03/31/2026,"1,600.00","3,200.00",,,58d20a16-0b49-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3A,"Zene, Qu'Niyah",Current,Other Occupant,,,04/01/2025,03/31/2026,"1,600.00","3,200.00",,,58e43879-0b49-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3A,"Zene, Nevayah",Current,Other Occupant,,,04/01/2025,03/31/2026,"1,600.00","3,200.00",,,58f0c4f1-0b49-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,2C,"Mangual, Jahaira",Current,Financially Responsible,Mobile: (475) 467-0645,mangualjahaira@gmail.com,08/12/2025,07/31/2026,"2,321.00","2,321.00",Hartford Housing,,e08706d0-73c9-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,2C,"Sanchez, Jaiden L.",Current,Financially Responsible,Mobile: (475) 467-0645,mangualjahaira@gmail.com,08/09/2025,07/31/2026,"2,321.00","2,321.00",Hartford Housing,,e0a260e2-73c9-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3D,"Dominguez, Christina M.",Current,Financially Responsible,Mobile: (860) 374-3057,christinadominguez214@gmail.com,09/15/2025,,"1,540.00",0.00,J D'Amelia,,d2030e3c-927f-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,1E,"Williams, Tommie",Current,Financially Responsible,Phone: (860) 680-0298,tommierw1968@gmail.com,09/16/2025,08/31/2026,"1,636.00",0.00,Imagineers,,6378c1b1-955e-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,2D,"Hampton, Nynekia",Current,Financially Responsible,Mobile: (959) 278-9041,nynekia@gmail.com,10/10/2025,10/31/2026,"1,650.00",0.00,Hartford Housing,,78694e01-a48e-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3B,"Sterling, Sequoia A.",Current,Financially Responsible,Mobile: (860) 943-3506,sequoiasterling@yahoo.com,12/07/2025,10/31/2026,"1,908.00","3,900.00",Hartford Housing,,c7245b1a-b5af-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3B,"Sterling , Amelia",Current,Other Occupant,,,11/15/2025,10/31/2026,"1,908.00","3,900.00",Hartford Housing,,c737c1bf-b5af-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3B,"Sterling , Malachi",Current,Other Occupant,,,11/15/2025,10/31/2026,"1,908.00","3,900.00",Hartford Housing,,c744d74f-b5af-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3C,"Crespo , Nicole",Current,Financially Responsible,Mobile: (860) 920-8381,nicole.josh09@gmail.com,12/15/2025,11/30/2026,"2,450.00",500.00,Hartford Housing,,a026c643-da05-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3C,"Morales, Nathalies",Current,Other Occupant,,,12/15/2025,11/30/2026,"2,450.00",500.00,Hartford Housing,,e8594ec2-da05-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3C,"Morales, Amaya Jazzy",Current,Other Occupant,,,12/15/2025,11/30/2026,"2,450.00",500.00,Hartford Housing,,f73fcba9-da05-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3C,"Morales, Jeremiah Joshua",Current,Other Occupant,,,12/15/2025,11/30/2026,"2,450.00",500.00,Hartford Housing,,02a29808-da06-11f0-b6c3-02094d1ce055
+S0015 - 165 Westland,3C,"Morales, Kaylani Marie",Current,Other Occupant,,,12/15/2025,11/30/2026,"2,450.00",500.00,Hartford Housing,,109d218e-da06-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1721,"Gonzalez, Heriberto / Evelyn",Current,Financially Responsible,"Phone: (860) 816-1635, Mobile: (860) 997-6324",eddieyevy5862@gmail.com,05/01/2023,,"1,500.00",550.00,,,7b88bab2-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1723,"Harris, Lawanne",Current,Financially Responsible,Mobile: (959) 282-6493,harrislawanne12@gmail.com,05/01/2023,02/28/2025,"1,908.00","1,908.00","Hartford Housing, PBV",,7bfa86cd-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1727,"Brooks, Rondesha",Current,Financially Responsible,"Mobile: (959) 466-7384, Mobile: (860) 821-4750",rondesha622@gmail.com,05/01/2023,08/31/2025,"1,650.00",0.00,Hartford Housing,,7c9c1d2b-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1729,"Jackson, Jaylin",Current,Financially Responsible,Home: (959) 599-7832,jaylinj494@gmail.com,05/01/2023,02/28/2025,"1,584.00","1,584.00","Hartford Housing, PBV",,7cd0ed7e-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1733,"Rivera, Coraima",Current,Financially Responsible,Phone: (860) 888-8957,4coraima@gmail.com,05/01/2023,,"1,908.00","3,816.00","Hartford Housing, PBV",,7d4d1b44-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1735,"Williams, Essie",Current,Financially Responsible,Phone: (860) 422-8201,,05/01/2023,,"1,600.00",0.00,"Hartford Housing, Northend",,7d84ff01-eae0-11ed-b6c3-02094d1ce055
+S0016 - 1721 Main,1721,"Rivera, Evelyn",Current,Financially Responsible,,,10/15/2010,,"1,500.00",550.00,,,bc533d54-8b23-11ef-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"McCray, LaJuana J.",Current,Financially Responsible,Mobile: (860) 776-4279,lmccray310.lm@gmail.com,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,6598dc7a-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"Mccray, Nakii",Current,Other Occupant,,,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,65ceecbe-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"McCray , April",Current,Other Occupant,,,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,65e236b9-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"Mitchell , Rainbow",Current,Other Occupant,,,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,65f94f76-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"Mitchell , Willo",Current,Other Occupant,,,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,660d38c6-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1725,"Mitchell , Prince",Current,Other Occupant,,,08/22/2025,07/31/2026,"2,217.00","1,700.00",Imagineers,,6624103e-7ed2-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1731,"Canales, Ariana A.",Current,Financially Responsible,Mobile: (475) 449-2308,arianacanales04@gmail.com,12/01/2025,11/30/2026,"1,982.00","2,450.00",Hartford Housing,,63b5f31b-b5b0-11f0-b6c3-02094d1ce055
+S0016 - 1721 Main,1731,"Sorria, Myalee",Current,Other Occupant,,,11/07/2025,11/30/2026,"1,982.00","2,450.00",Hartford Housing,,63c53580-b5b0-11f0-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71A,"Wilson, Heidi",Current,Financially Responsible,Phone: (860) 890-1970,heidi_jackson07@yahoo.com,05/03/2023,02/28/2025,"1,584.00","3,768.00","Hartford Housing, PBV",,e47f266b-ead2-11ed-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71B,"Drunnamanio , Larry",Current,Financially Responsible,Phone: (860) 310-9778,biggkaronbigg@gmail.com,05/03/2023,03/31/2025,"1,584.00","4,018.00","Hartford Housing, PBV",,e49fff4e-ead2-11ed-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71C,"Gaston, Shanette",Current,Financially Responsible,Phone: (959) 599-8875,nettie1477@gmail.com,05/03/2023,03/31/2025,"1,908.00","4,666.00","Hartford Housing, PBV",,e4bfbaf3-ead2-11ed-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73B,"Taylor, Takaria",Current,Financially Responsible,Phone: (860) 938-5154,takariataylor28@yahoo.com,05/03/2023,10/31/2025,"1,925.00",950.00,Hartford Housing,,e5469dd3-ead2-11ed-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73E,"Smith, Ruby",Current,Financially Responsible,"Phone: (860) 837-1597, Phone: (203) 850-9260",rubysmith824@gmail.com,05/03/2023,11/30/2025,"1,900.00","4,850.00",Hartford Housing,,e64f4b02-ead2-11ed-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71D,"Quinones, Adamaris",Current,Financially Responsible,Mobile: (860) 794-1573,dami7014@gmail.com,04/01/2024,03/31/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,5ebf9674-eb99-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71D,"Vazquez, Joelis",Current,Other Occupant,,,04/01/2024,03/31/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,5ece52b5-eb99-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71D,"Vazquez, Joel Magdiel",Current,Other Occupant,,,04/01/2024,03/31/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,5ed7759d-eb99-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71D,"Vazquez, Jomael",Current,Other Occupant,,,04/01/2024,03/31/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,5edf1592-eb99-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71D,"Vazquez, Joelianys",Current,Other Occupant,,,04/01/2024,03/31/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,5ee76f64-eb99-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,71E,"Garrett, Tamisha N.",Current,Financially Responsible,Mobile: (860) 970-3581,Tamishagarrett79@gmail.com,04/04/2024,04/03/2025,"2,321.00","4,642.00","Hartford Housing, PBV",,af1c88dd-f36f-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73D,"Snipes, Shanelle L.",Current,Financially Responsible,Phone: (860) 804-9327,shanelle.snipes4@gmail.com,03/15/2024,04/30/2025,"1,584.00","1,584.00","Hartford Housing, PBV",,05d12cdc-f379-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73D,"Snipes, Serenty",Current,Other Occupant,,,03/15/2024,04/30/2025,"1,584.00","1,584.00","Hartford Housing, PBV",,05def5d3-f379-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73C,"Bolden, Gloria",Current,Financially Responsible,Phone: (860) 789-7089,gdorthy424@aol.com,04/16/2024,04/30/2025,"1,584.00","1,008.00","Hartford Housing, PBV",,1452968a-f7ff-11ee-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73A,"Lopez Santiago , Mariangelys",Current,Financially Responsible,Mobile: (959) 256-7035,"gelylopez91@icloud.com, Mariangely_s@yahoo.com",07/19/2024,07/31/2025,"2,400.00",0.00,"Hartford Housing, PBV",,b563581f-1ac0-11ef-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73A,"Lopez , Gelianys",Current,Other Occupant,,,06/01/2024,07/31/2025,"2,400.00",0.00,"Hartford Housing, PBV",,b5769e0a-1ac0-11ef-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73A,"Aviles , Lianys",Current,Other Occupant,,,06/01/2024,07/31/2025,"2,400.00",0.00,"Hartford Housing, PBV",,b58302d9-1ac0-11ef-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73A,"Aviles , Dylan",Current,Other Occupant,,,06/01/2024,07/31/2025,"2,400.00",0.00,"Hartford Housing, PBV",,b58ec4e6-1ac0-11ef-b6c3-02094d1ce055
+S0017 - 69 Chestnut,73A,"Lozada , Milanys",Current,Other Occupant,,,06/01/2024,07/31/2025,"2,400.00",0.00,"Hartford Housing, PBV",,b59e7762-1ac0-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90A,"Battle, Johnnie",Current,Financially Responsible,Phone: (860) 804-6976,,05/03/2023,,"1,600.00",475.00,,,5f9b5eb5-ead7-11ed-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Shaw, Latiff",Current,Other Occupant,,,02/15/2025,01/15/2026,"2,650.00",500.00,,,27081cd9-d50b-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Shaw, Pamela",Current,Other Occupant,,,02/15/2025,01/15/2026,"2,650.00",500.00,,,2718799a-d50b-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Shaw, Ariella",Current,Other Occupant,,,02/15/2025,01/15/2026,"2,650.00",500.00,,,27267c24-d50b-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Kanyamiheto, Jean P.",Current,Other Occupant,Mobile: (646) 770-6398,grassrootslandscaping6@gmail.com,02/15/2025,01/15/2026,"2,650.00",500.00,,,2739e53a-d50b-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90C,"Mara Branch , Claryssa",Current,Financially Responsible,"Mobile: (860) 553-2397, Phone: (754) 302-9464",8claryssa8@gmail.com,02/21/2025,02/28/2025,"1,908.00",0.00,"Hartford Housing, PBV",,9f6a4928-f0a1-11ef-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Richardson , Angie  L.",Current,Financially Responsible,Mobile: (860) 816-0340,AngieRichardson3476@gmail.com,08/01/2025,07/31/2026,"1,750.00","3,500.00",,,640a142f-6ecf-11f0-b6c3-02094d1ce055
+S0018 - 90 Edwards,90B,"Ash, Dareyrell E.",Current,Financially Responsible,Mobile: (860) 994-2800,Miamirell81@gmail.com,08/01/2025,07/31/2026,"1,750.00","3,500.00",,,64248c95-6ecf-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,1,"Collier, Yasmine  S.",Current,Financially Responsible,"Phone: (860) 840-6457, Phone: (860) 994-1428",yasminecollier04@gmail.com,05/06/2025,05/05/2026,"2,500.00","2,500.00",J D'Amelia,,82514749-d8dd-11ef-b6c3-02094d1ce055
+S0019 - 93 Maple,1,"Collier, Brenda",Current,Financially Responsible,,,03/15/2025,05/05/2026,"2,500.00","2,500.00",J D'Amelia,,82682f6e-d8dd-11ef-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Adger, Chelsea N.",Current,Financially Responsible,Mobile: (860) 970-5561,Adger_chelsea@yahoo.com,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4be92576-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Graham, Nayirah",Current,Other Occupant,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4bfd0abd-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Wallace, Ahnesty",Current,Other Occupant,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4c08c6d5-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Bourne, Zaelynn",Current,Other Occupant,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4c14b83e-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Bourne, Zhymir",Current,Other Occupant,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4c21850c-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Bourne, Zhalae",Current,Other Occupant,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4c2edd57-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Wallace, Kimoi K.",Current,Financially Responsible,Mobile: (470) 461-0197,keyz470@gmail.com,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,4c3deba3-749a-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Bourne, Zhymir Leo",Current,Financially Responsible,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,6ee6abaf-b4c5-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,3,"Bourne, Zhalae Brionne",Current,Financially Responsible,,,08/09/2025,07/31/2027,"2,650.00","5,300.00",Hartford Housing,,9b249962-b4c5-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,2,"Miranda , Juan A.",Current,Financially Responsible,Mobile: (203) 818-5138,vannesamiranda15@gmail.com,01/01/2026,12/31/2026,"2,500.00","2,500.00",Hartford Housing,,a22f6982-e29d-11f0-b6c3-02094d1ce055
+S0019 - 93 Maple,2,"Miranda, Vannesa",Current,Other Occupant,Mobile: (203) 818-5138,vannesamiranda15@gmail.com,01/01/2026,12/31/2026,"2,500.00","2,500.00",Hartford Housing,,a242c119-e29d-11f0-b6c3-02094d1ce055
+S0020 - 31 Park,Retail 1,Danny's Grocery,Current,Financially Responsible,"Phone: (860) 209-5462, Phone: (860) 931-2148, Phone: (860) 461-4867","jiminianmariely@gmail.com, randcgrocery@yahoo.com",08/01/2024,07/31/2025,"2,500.00",0.00,,,5ba50738-649d-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,COM 67 Park,Boostmobile,Current,Financially Responsible,"Phone: (475) 300-1088, Phone: (631) 838-9430",boostexpress67@gmail.com,08/01/2024,,"2,500.00","3,600.12",,,6b81975e-5b25-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,201,"Corona, Domitila",Current,Financially Responsible,"Phone: (860) 293-1991, Mobile: (860) 553-1600",,08/01/2024,,"1,600.00",401.86,Imagineers,,6be95059-5b25-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,202,"Nunez, Maria",Current,Financially Responsible,"Phone: (860) 778-2400, Phone: (860) 597-5295",chuchi69@icloud.com,08/01/2024,,"1,600.00",100.23,Imagineers,,6c45673e-5b25-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,302,"Lockhart, Omyra",Current,Financially Responsible,Phone: (959) 333-6862,lockhartOmyra@gmail.com,08/01/2024,,"1,600.00",0.00,Imagineers,,6cf8b0b3-5b25-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,COM 75 Park,Mi Sabor Restaurant,Current,Financially Responsible,Phone: (860) 595-3062,,08/01/2024,,"2,600.00",0.00,,,6d198b27-5b25-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,302,"Johnson, Kailyn  J.",Current,Other Occupant,,,08/01/2024,,"1,600.00",0.00,Imagineers,,64d239d3-7075-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,302,"Johnson, Olivia K.",Current,Other Occupant,,,08/01/2024,,"1,600.00",0.00,Imagineers,,936bba53-7075-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,302,"Johnson, Oceayn K.",Current,Other Occupant,,,08/01/2024,,"1,600.00",0.00,Imagineers,,1dd86ece-7076-11ef-b6c3-02094d1ce055
+S0021 - 67 Park,302,"Johnson, Kailyn J.",Current,Financially Responsible,,,07/01/2024,,"1,600.00",0.00,Imagineers,,3fb04869-b4c6-11f0-b6c3-02094d1ce055
+S0022 - 83 Park,COM 83 Park,Antojitos - Donde Julio Restaurant,Current,Financially Responsible,Phone: (860) 840-5904,"dondejuliorestaurant@gmail.com, lina.cardona.va@gmail.com",08/01/2024,,"2,100.00","1,050.00",,,d36b0ba4-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,201,"Vega, Victor",Current,Financially Responsible,Phone: (860) 960-1028,,08/01/2024,,"1,500.00",204.32,Imagineers,,d4178405-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,202,"Rivera, Carlos",Current,Financially Responsible,Phone: (860) 995-6766,"carlos10301994@gmail.com, rivera4819@gmail.com, rivera48@gmail.com",08/01/2024,,"1,650.00",950.00,Vernon Housing,,d47eb9b9-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,203,"Barrientos, Julio",Current,Financially Responsible,"Phone: (917) 703-4652, Phone: (860) 234-6062",juliorafel01@gmail.com,08/01/2024,08/31/2026,"1,350.00",826.16,,,d4d9c584-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,301,"Wentworth, John W.",Current,Financially Responsible,"Mobile: (959) 200-6806, Phone: (617) 781-9520",,08/01/2024,,"1,400.00",851.07,Imagineers,,d53966f3-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,302,"Cruz, Jeffrey",Current,Financially Responsible,Phone: (203) 892-7326,jeffreycruz0122@gmail.com,08/01/2024,,"1,307.00",878.06,Imagineers,,d5906c32-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,303,"Serrano, Sandra",Current,Financially Responsible,Phone: (860) 477-7088,SISCD_2530@hotmail.com,08/01/2024,,"1,350.00",592.62,,,d5ee16ce-5b26-11ef-b6c3-02094d1ce055
+S0022 - 83 Park,COM 91 Park,Brother's Barbershop,Current,Financially Responsible,"Phone: (860) 796-0184, Mobile: (860) 796-0184",,08/01/2024,,"2,100.00","1,002.27",,,d6aac67f-5b26-11ef-b6c3-02094d1ce055
+S0023 - 57 Park,2W,"Soto, Minerva",Current,Financially Responsible,"Mobile: (860) 553-7815, Mobile: (860) 890-2860",minerva4753@gmail.com,12/01/2024,,"1,900.00",0.00,Imagineers,,546d0786-e00d-11ef-b6c3-02094d1ce055
+S0023 - 57 Park,COM 57 Park,Hartford Pharmacy II,Current,Financially Responsible,"Mobile: (860) 244-2222, Phone: (860) 244-8000, Phone: (201) 270-8013","dhulipallap@gmail.com, vscuss2@aol.com",01/03/2025,,"2,190.24",0.00,,,47955726-e7f4-11ef-b6c3-02094d1ce055
+S0023 - 57 Park,2W,"Rivera, Jose",Current,Financially Responsible,,,01/01/2025,,"1,900.00",0.00,Imagineers,,5963eb38-09ba-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,1N,"Maldonado, Lydia",Current,Financially Responsible,Phone: (959) 282-9622,rosacotto1958@gmail.com,08/01/2015,,"1,300.00",830.00,J. D'AmeIia,,ceed660e-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,1S,"Cruz, Aidalina",Current,Financially Responsible,Phone: (860) 881-3969,meralig9@gmail.com,04/01/2014,,"1,300.00",546.21,Imagineers,,cf54ec50-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,2N,"De La Cruz, Rosanny",Current,Financially Responsible,Phone: (860) 944-3641,marianny1917@gmail.com,07/01/2022,06/30/2026,"1,300.00","1,000.00",,,cf9cda43-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,2S,"R. Santos, Daniela",Current,Financially Responsible,Phone: (860) 804-7197,daanitsrocha@gmail.com,06/20/2025,06/19/2026,"1,350.00","1,350.00",,,cfe10fe3-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,3N,"Perez, Maribell",Current,Financially Responsible,"Phone: (860) 595-6468, Phone: (860) 995-2096",maribellaperez314@yahoo.com,07/01/2016,,"1,300.00",792.00,Imagineers,,d02fbb94-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,3S,"Teixeira Silva, Rosangela",Current,Financially Responsible,Phone: (774) 540-5227,mateus_freitasgv980@icloud.com,12/08/2024,12/07/2025,"1,250.00",600.00,,,d0787d56-e0de-11f0-b6c3-02094d1ce055
+S0025 - 179 Affleck,4N,"Rosado, Alberto",Current,Financially Responsible,"Phone: (860) 778-3735, Phone: (860) 655-2986",albertor622@gmail.com,09/01/2014,,"1,300.00",500.00,,,d0c7cd67-e0de-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,1S,"Estrada, Ana",Current,Financially Responsible,Phone: (860) 853-5628,axela2503@yahoo.com,12/01/2019,,"1,350.00",865.00,J. D'AmeIia,,e7114a6d-e0ea-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,2S,"Antoniadis, John",Current,Financially Responsible,Phone: (959) 262-7692,,07/01/2019,,"1,300.00",850.00,Imagineers,,e7c02886-e0ea-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,3S,"L. Degross, Santha",Current,Financially Responsible,Phone: (860) 995-4901,degross26@gmail.com,03/01/2018,,"1,250.00",775.00,,,e832e192-e0ea-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,2N,"H Neves, Diego",Current,Financially Responsible,Phone: (860) 992-8660,cinehi@hotmail.com,04/01/2025,03/31/2026,"1,300.00","1,301.00",,,e9310316-e0ea-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,3N,"Lozada, Mia",Current,Financially Responsible,Phone: (860) 834-7644,mialozada94@gmail.com,06/01/2015,05/30/2026,"1,300.00",750.00,,,e99d780b-e0ea-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,3N,"Cruz, Ismael",Current,Other Occupant,,,01/09/2026,05/30/2026,"1,300.00",750.00,,,28447cc5-ed90-11f0-b6c3-02094d1ce055
+S0026 - 144 Affleck,3N,"Gomez, Eduviges",Current,Financially Responsible,Phone: (860) 995-8629,,02/08/2026,05/30/2026,"1,300.00",750.00,,,2eb09f31-052c-11f1-b6c3-02094d1ce055
+S0026 - 144 Affleck,3N,"Osorio, Miguel",Current,Other Occupant,,,02/08/2026,05/30/2026,"1,300.00",750.00,,,488a14c9-052c-11f1-b6c3-02094d1ce055
+S0027 - 178 Affleck,1,"A Soto, Carlos",Current,Financially Responsible,Phone: (203) 410-0880,carlossoto4282@gmail.com,01/01/2025,12/31/2025,"1,400.00","1,400.00",,,c6669ac0-ed6f-11f0-b6c3-02094d1ce055
+S0027 - 178 Affleck,2,"Quinones, Maribel",Current,Financially Responsible,Phone: (860) 778-6104,maribelquinones78@gmail.com,05/01/2016,,"1,400.00",0.00,,,c6f6f37d-ed6f-11f0-b6c3-02094d1ce055
+S0027 - 178 Affleck,3,"Nieves, Clarybell",Current,Financially Responsible,Phone: (860) 776-6550,luisloveclary@gmail.com,01/18/2025,01/17/2026,"1,450.00","1,275.16",,,c722d835-ed6f-11f0-b6c3-02094d1ce055
+S0027 - 178 Affleck,4,"Aguilar, Zonia",Current,Financially Responsible,Phone: (860) 816-5956,ericalive48@gmail.com,12/01/2014,11/30/2026,"1,350.00",561.00,,,c7831ab5-ed6f-11f0-b6c3-02094d1ce055
+S0027 - 178 Affleck,4S,"Cotzojay, Michael",Current,Financially Responsible,Phone: (959) 999-0055,mcotzojayguevara@gmail.com,06/15/2018,,"1,300.00",750.00,,,ca9aeaa3-ed6f-11f0-b6c3-02094d1ce055
+S0027 - 178 Affleck,4,"Oliveros, Erika",Current,Financially Responsible,Mobile: (860) 816-5956,ericalive48@gmail.com,02/05/2026,11/30/2026,"1,350.00",561.00,,,3aed97f1-02e5-11f1-b6c3-02094d1ce055
+S0028 - 182 Affleck,1,"Santiago, Carmen",Current,Financially Responsible,"Phone: (860) 997-0912, Phone: (860) 997-1528",cecysantiago86@gmail.com,04/01/2015,03/30/2026,"1,400.00",705.00,Hartford Housing,,f108c2e8-e0ec-11f0-b6c3-02094d1ce055
+S0028 - 182 Affleck,2,"M. Malave, Deborah",Current,Financially Responsible,Phone: (413) 505-6886,dmr3082@yahoo.com,07/20/2018,,"1,400.00","1,532.00",Imagineers,,f19fd211-e0ec-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,1S,"Quintero, Angela",Current,Financially Responsible,Mobile: (959) 529-1939,,02/01/2019,,"1,300.00",546.00,Hartford Housing,,299458d3-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,2S,"Catano, Vanessa",Current,Financially Responsible,Phone: (860) 833-0160,,01/03/2025,01/02/2026,"1,250.00",500.00,,,29ea5f32-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,3S,"Geronimo, Reyna",Current,Financially Responsible,Phone: (860) 776-8994,Reynageronimosanchez@gmail.com,01/01/2022,,"1,200.00",851.85,,,2a2bc97a-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,1N,"Vargas, Wanda",Current,Financially Responsible,Phone: (860) 477-8677,,07/01/2014,,"1,300.00",825.00,Imagineers,,2a70390c-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,2N,"Irving, Norma",Current,Financially Responsible,Phone: (860) 725-2603,,05/01/2014,,"1,300.00",456.00,,,2abe73ee-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,3N,"Matos, Pilar",Current,Financially Responsible,"Mobile: (860) 995-0140, Home: (860) 264-7003",csantiago069@yahoo.com,06/01/2015,05/31/2026,"1,300.00",880.00,Hartford Housing,,2b0bd3c1-e0ed-11f0-b6c3-02094d1ce055
+S0029 - 190 Affleck,3N,"Matos, Carmen",Current,Other Occupant,"Phone: (860) 995-0140, Phone: (860) 995-0140",,01/01/2026,05/31/2026,"1,300.00",880.00,Hartford Housing,,7a9e16ff-ea61-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,1B,"Rivera, Anibal",Current,Financially Responsible,Phone: (959) 258-5283,,07/01/2014,,"1,100.00",650.00,,,8b929d65-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,2A,"Almeida Lima, Leidimar",Current,Financially Responsible,Phone: (860) 865-4636,leidelima412@gmail.com,02/07/2025,02/06/2026,"1,300.00",800.00,,,8c72bde9-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,2B,"Badillo, Zoraida",Current,Financially Responsible,Phone: (860) 718-1340,badillozory7@gmail.com,07/31/2024,,"1,650.00",0.00,Hartford Housing,,8cc20ae6-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,3A,"Moura Santos, Edneya",Current,Financially Responsible,Mobile: (959) 867-8515,neynhasantos93@gmail.com,12/13/2024,12/12/2025,"1,250.00",0.00,,,8ce57908-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,3B,"Cordero, Marilyn",Current,Financially Responsible,"Phone: (959) 867-8515, Phone: (860) 477-8973",,04/01/2013,03/30/2026,"1,300.00",800.00,,,8d069124-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,4A,"Velasquez, Irene",Current,Financially Responsible,Phone: (860) 776-4443,,12/01/2013,,"1,400.00",200.00,,,8d587740-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,4B,"M. Perez, Carmen",Current,Financially Responsible,Phone: (860) 810-1760,,08/07/2018,07/31/2026,"1,400.00",850.00,,,8db423cc-e0ed-11f0-b6c3-02094d1ce055
+S0030 - 195 Affleck,3B,"Cordero, Jose",Current,Financially Responsible,Phone: (860) 477-8973,,03/10/2026,03/30/2026,"1,300.00",800.00,,,2fc0bc31-1cb4-11f1-b6c3-02094d1ce055
+S0031 - 88-90 Ward,1B,"Dos Anjos, Raylander",Current,Financially Responsible,Phone: (862) 291-9991,"raylanderdosanjos88419200@gmail.com, sobrinhoraylander@gmail.com",03/28/2024,,"1,300.00","1,250.00",,,00548df5-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,2B,"Januario, Gladston",Current,Financially Responsible,,,03/21/2022,02/28/2026,"1,200.00","1,050.00",,,010b5998-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,3B,"T. De Miranda, Lucas",Current,Financially Responsible,Phone: (860) 863-3105,a.jones.121627@gmail.coma,03/07/2022,,"1,200.00","1,050.00",,,018f57a7-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,1A,"Ferreira, Magno",Current,Financially Responsible,Phone: (860) 590-5632,m7975912@gmail.com,04/15/2023,03/31/2026,"1,200.00","1,100.00",,,0206d76b-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,2A,"Sanchez, Zoraida",Current,Financially Responsible,Phone: (860) 259-8538,,05/16/2019,,"1,306.00",848.00,Hartford Housing,,02787fbd-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,3A,"Cotto, Yamaris",Current,Financially Responsible,Phone: (860) 995-7454,cottoyamaris730@gmail.com,01/01/2004,12/31/2025,"1,200.00",384.00,,,02f0fb45-e0e3-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,2B,"Pinto, Elaine",Current,Financially Responsible,Phone: (860) 890-9970,souzapinto0209@gmail.com,01/20/2026,02/28/2026,"1,200.00","1,050.00",,,5a2046d9-f64d-11f0-b6c3-02094d1ce055
+S0031 - 88-90 Ward,2B,"Januario, Gladston Estácio",Current,Other Occupant,,,01/20/2026,02/28/2026,"1,200.00","1,050.00",,,26259b52-f65f-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,A1,"De Oliveira, Breno",Current,Financially Responsible,Phone: (862) 910-6730,brenobrant06@gmail.com,10/27/2025,10/26/2026,900.00,900.00,,,e68971a3-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,A2,"P. Azevedo, Uander",Current,Financially Responsible,Phone: (860) 553-2943,uanderpolicarpo@gmail.com,07/15/2022,,900.00,725.00,,,e70f9f6e-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,A3,"L Rosa, Ana",Current,Financially Responsible,Phone: (860) 502-2994,mbproducoes_gv@hotmail.com,02/08/2025,02/07/2026,850.00,0.00,,,e764656a-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,B1,"N. Colon, Luis",Current,Financially Responsible,Mobile: (860) 812-5124,,08/01/2020,,710.00,"1,270.00",,,e788d90b-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,B2,"M. Monsalve, Jennifer",Current,Financially Responsible,Phone: (860) 890-5522,jenmonsalve80@gmail.com,01/02/2020,,850.00,952.00,,,e7ec6847-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,B3,"Rodrigues, Marta Sueli",Current,Financially Responsible,Mobile: (857) 406-6579,vzanoni@hotmail.com,10/29/2024,09/30/2026,850.00,850.00,,,e845a353-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,B4,"Policarpo, Loyane",Current,Financially Responsible,Phone: (860) 539-6401,loyanepg@gmail.com,12/01/2025,11/30/2026,900.00,"1,100.00",,,e89f8d29-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,C1,"Wagner Goncalves, Wilson",Current,Financially Responsible,Phone: (860) 840-6505,wilsonwagnergoncalves4@gmail.com,01/10/2025,01/09/2026,900.00,900.29,,,e8f8aeb6-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,C3,"Aparecida, Josie",Current,Financially Responsible,"Phone: (860) 804-5288, Phone: (860) 719-7268",j.gonzalezatyahoo.com@gmail.com,05/01/2023,,800.00,735.00,,,eac1be89-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,C4,"Lenon Gabriel De Jesus, John",Current,Financially Responsible,Phone: 0,,05/01/2025,04/30/2026,900.00,685.00,,,eb1f22e3-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,D1,"Emanuel Coelho, Vitor",Current,Financially Responsible,"Phone: (860) 992-2725, Phone: (860) 249-9016",tivivi1503@gmail.com,11/17/2023,,950.00,800.00,,,eb82484b-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,D2,"Avelino, Fabio",Current,Financially Responsible,Phone: (860) 462-4054,junioavelino@icloud.com,12/03/2025,12/02/2026,900.00,900.00,,,ebe169ff-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,D4,"Alves, Maura",Current,Financially Responsible,Phone: (207) 408-6349,camposbastos763@gmail.com,09/15/2025,09/14/2026,900.00,900.00,,,ecc1e064-e0e4-11f0-b6c3-02094d1ce055
+S0032 - 865 Broad,D4,"Bastos-Campos, Valdemar",Current,Financially Responsible,,,09/15/2025,09/14/2026,900.00,900.00,,,a90c0b24-1cbb-11f1-b6c3-02094d1ce055
+S0033 - 142 Seymour,1,"Rodriguez, Sonia",Current,Financially Responsible,"Home: (860) 883-2340, Phone: (860) 331-5796",ivette84rodriguez@gmail.com,11/01/2017,,"2,300.00",728.00,Imagineers,,b8c724d0-e0e3-11f0-b6c3-02094d1ce055
+S0033 - 142 Seymour,2,"Franceschini, Wilma",Current,Financially Responsible,Phone: (860) 997-5944,wilmafranceschini@yahoo.com,11/01/2017,,"1,915.00","1,219.00",Hartford Housing,,b967b556-e0e3-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,1E,"Maiotti, Brenda",Current,Financially Responsible,Phone: (860) 328-6270,engenheirorodrigodias@gmail.com,07/21/2023,,"1,400.00","1,250.00",,,7fc26de5-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,1W,"Soto/Rosario, Americo",Current,Financially Responsible,Phone: (413) 325-9853,,01/01/2014,,"1,200.00",800.00,Imagineers,,805158da-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,2E,"De Oliveira/Costa, Bruno",Current,Financially Responsible,Phone: (413) 821-4593,newenglandccorp@gmail.com,12/02/2024,12/01/2025,"1,450.00",350.00,,,80b258a8-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,2W,"Lopes/Oliveira, Matheus",Current,Financially Responsible,Phone: (860) 713-4142,rachel.dealmeida1997@gmail.com,05/02/2024,,"1,500.00","1,400.00",,,8119b659-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,3W,"Nunez, Mildred",Current,Financially Responsible,"Phone: (203) 808-0574, Phone: (475) 449-0887",neysha.m.cruz@gmail.com,12/01/2009,11/30/2026,"1,450.00",450.00,,,81ebe623-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,4E,"Da Silva, Luciano",Current,Financially Responsible,"Phone: 0, Mobile: (860) 601-1441",rosangelamarques1@icloud.com,12/06/2024,12/05/2025,"1,400.00","1,400.00",,,82510db9-e0e5-11f0-b6c3-02094d1ce055
+S0034 - 158 Seymour,4W,"Bressette, Heather",Current,Financially Responsible,Phone: (860) 840-0825,heatherb197538@gmail.com,03/01/2015,02/28/2026,"1,700.00",27.00,Imagineers,,82ab658a-e0e5-11f0-b6c3-02094d1ce055
+S0035 - 164 Seymour,1,"Ferreira, Sostenes",Current,Financially Responsible,Phone: (203) 617-9424,,08/26/2024,,"1,350.00",450.00,,,34a50b0b-e0e6-11f0-b6c3-02094d1ce055
+S0035 - 164 Seymour,2,"Tavares, Jessica",Current,Financially Responsible,Phone: (954) 880-7500,jehvicgabriel@gmail.com,07/01/2025,06/30/2026,"1,350.00","1,351.00",,,34f273ed-e0e6-11f0-b6c3-02094d1ce055
+S0035 - 164 Seymour,3,"A. Muratore, Kathleen",Current,Financially Responsible,Phone: (959) 333-5724,muratorekathy0@gmail.com,01/18/2022,,"1,600.00","1,200.00",Imagineers,,3530c19e-e0e6-11f0-b6c3-02094d1ce055
+S0035 - 164 Seymour,2,"Seymour, Kyle J. George",Current,Financially Responsible,Phone: (413) 777-5351,,02/02/2026,06/30/2026,"1,350.00","1,351.00",,,d5b0fabe-006f-11f1-b6c3-02094d1ce055
+S0036 - 167 Seymour,1NE,"Arango, Carmen",Current,Financially Responsible,Phone: (860) 890-0885,carmenarango1025@gmail.com,08/16/2019,,"1,700.00",699.00,,,94a093c9-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,1NW,"Parkman, Donna",Current,Financially Responsible,Phone: (959) 610-1032,,07/15/2022,,"1,200.00",900.00,West Hartford housing,,9532653c-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,1SE,"Andino, Margarita",Current,Financially Responsible,"Phone: (860) 814-8963, Phone: (860) 833-2436",,12/01/2015,,"1,500.00",826.00,Imagineers,,95ae6833-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,2NE,"Nunez, Juan",Current,Financially Responsible,Phone: (860) 869-7459,,02/01/2023,,"1,630.00",0.00,,,969a6cb5-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,2NW,"C. De Araujo, Elias",Current,Financially Responsible,Phone: 0,,08/01/2025,07/31/2026,"1,150.00",0.00,,,96c9116e-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,2SE,"Manuel Dos Santos, Jose",Current,Financially Responsible,Phone: (860) 849-1110,dossantostasmira@icloud.com,11/10/2023,10/31/2026,"1,450.00","1,400.00",,,96e9f2b6-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,3NE,"Dornelles Souza, Ernesto",Current,Financially Responsible,Mobile: (860) 818-7604,ernestomourao534@gmail.com,09/01/2025,08/31/2026,"1,450.00",0.00,,,977b9eb3-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,3NW,"Gonzalez, Saul",Current,Financially Responsible,Phone: (413) 376-3687,jhonuelgonzalez@gmail.com,12/08/2020,11/30/2026,"1,300.00","1,312.00",Hartford Housing,,97992c19-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,3SE,"M. Hunt, Shelia",Current,Financially Responsible,Phone: (959) 278-9069,,02/01/2022,,"1,272.00","1,272.00",Imagineers,,97e44d7c-e0e6-11f0-b6c3-02094d1ce055
+S0036 - 167 Seymour,3SW,"Caballero, Ramonita",Current,Financially Responsible,Phone: (860) 634-9110,,12/01/2014,,"1,400.00",553.00,West Hartford housing,,9833bbd1-e0e6-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,1N,"Tiggett, George",Current,Financially Responsible,"Phone: (860) 308-5931, Phone: (860) 906-1698",,09/01/2021,,"1,200.00",0.00,West Hartford housing,,bdbec5d4-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,1S,"C Ferreira, Bianca",Current,Financially Responsible,Phone: (774) 340-8360,carolineb.2k17@gmail.com,09/29/2025,09/28/2026,"1,150.00","1,150.00",,,bdfc453d-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,2N,"Santos, Leon",Current,Financially Responsible,Phone: (787) 429-6011,icarrion126@gmail.com,05/01/2017,04/30/2026,"1,300.00",875.00,,,be6080a7-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,2S,"Graham, Keesha",Current,Financially Responsible,Phone: (516) 401-2163,pebblez.pp@gmail.com,12/01/2013,11/30/2026,"1,300.00",976.00,,,bec643bb-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,2W,"Quinones, Maribel",Current,Financially Responsible,Phone: (860) 834-6899,maribelquinones920@yahoo.com,09/01/2019,,"1,504.00","1,100.00",Imagineers,,bf412713-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,3N,"Lebron, Luz",Current,Financially Responsible,Phone: (860) 212-7089,,09/01/2013,02/28/2026,"1,300.00",585.00,West Hartford housing,,bfabb423-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,3S,"Sena/De Oliveira, Bianca",Current,Financially Responsible,,,05/01/2025,04/30/2026,"1,350.00","1,350.00",,,c01037e4-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,3W,"De Souza, Marcus",Current,Financially Responsible,,,03/10/2023,,"1,300.00",525.00,,,c07981ab-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,4N,"Miranda, Orinaldo",Current,Financially Responsible,"Phone: (860) 553-5707, Phone: (351) 210-0584",jaquelinedcmiranda@gmail.com,11/09/2023,,"1,200.00","1,350.00",,,c0d6efe0-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,4S,"Lemes De Araujo, Joao",Current,Financially Responsible,Mobile: (959) 262-7032,joselemes1362@gmail.com,11/07/2025,11/06/2026,"1,350.00","1,350.00",,,c1852208-e0e7-11f0-b6c3-02094d1ce055
+S0037 - 169 Seymour,4W,"Luzunaris, Tammy",Current,Financially Responsible,Phone: (860) 249-4114,,06/01/2019,,"1,500.00","1,000.00",Imagineers,,c21dc165-e0e7-11f0-b6c3-02094d1ce055
+S0038 - 170 Seymour,1N,"Ortiz, Carmen",Current,Financially Responsible,"Phone: (860) 328-8256, Phone: (860) 519-5169",,11/15/2019,,950.00,875.00,,,9c480e44-e0e8-11f0-b6c3-02094d1ce055
+S0038 - 170 Seymour,1S,"H Barbosa, Gabriel",Current,Financially Responsible,Phone: (617) 606-2415,gabrielhortencio1@gmail.com,09/18/2025,09/30/2026,"1,200.00","1,200.00",,,9d23d2bb-e0e8-11f0-b6c3-02094d1ce055
+S0038 - 170 Seymour,3N,"Figueroa, Glory",Current,Financially Responsible,Phone: (860) 776-8374,cruz.anatasha@gmail.com,06/01/2016,05/30/2026,"1,400.00",800.00,,,9df334be-e0e8-11f0-b6c3-02094d1ce055
+S0038 - 170 Seymour,3S,"Diaz, Leslie",Current,Financially Responsible,Phone: (860) 989-4295,,11/01/2011,,"1,300.00",722.50,Imagineers,,9e7c98dc-e0e8-11f0-b6c3-02094d1ce055
+S0039 - 180 Seymour,1,"Rodriguez, Israel",Current,Financially Responsible,Home: (860) 263-3785,miyukie824@gmail.com,11/01/2015,,"1,460.00",800.00,,,f0a5a23f-e0e8-11f0-b6c3-02094d1ce055
+S0039 - 180 Seymour,2,"Cisnero, Rafael",Current,Financially Responsible,,,03/01/2017,,"1,500.00","1,050.00",,,f1c788c3-e0e8-11f0-b6c3-02094d1ce055
+S0039 - 180 Seymour,2,"Jaquez, Jessica",Current,Financially Responsible,Phone: (860) 313-8207,jesse_nelly@live.com,02/10/2026,,"1,500.00","1,050.00",,,94843370-06b5-11f1-b6c3-02094d1ce055
+S0040 - 213 Buckingh,202,"Torres, Marisol",Current,Financially Responsible,Phone: (860) 913-0697,marisoltorres0869@gmail.com,02/01/2016,01/31/2026,850.00,440.00,,,71b5162e-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,205,"Rodrigues, Misael",Current,Financially Responsible,Phone: (860) 804-2454,misael91268074@gmail.com,05/09/2023,,"1,100.00",28.33,,,72d03f9d-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,206,"M. Aquino, David",Current,Financially Responsible,Phone: (860) 212-6950,aquidac@gmail.com,03/05/2020,04/30/2026,900.00,"1,270.00",,,734a33c1-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,207,"Vargas Rivera, Sonia",Current,Financially Responsible,Phone: (860) 268-9421,milany1979@yahoo.com,08/01/2021,,"1,300.00",775.00,Imagineers,,73b74859-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,301,"Santos, Cristina",Current,Financially Responsible,Phone: (860) 938-8848,,11/01/2016,10/31/2026,900.00,600.00,,,7456d938-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,302,"Reyes, Angel",Current,Financially Responsible,Phone: (860) 436-1694,,11/01/2015,10/31/2026,"1,100.00",650.00,,,74e017aa-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,304,"Aparecida Dos Santos, Karine",Current,Financially Responsible,Phone: (860) 921-2175,karine.aparecida7@gmail.com,09/22/2023,08/31/2026,900.00,800.00,,,75765e82-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,305,"Owens, Michael",Current,Financially Responsible,Phone: (860) 595-5103,mike02452@yahoo.com,07/01/2023,,"1,100.00",0.00,,,76fc529b-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,306,"Alberto Cardoso, Cailan",Current,Financially Responsible,Phone: (860) 984-4860,,08/11/2025,08/03/2026,900.00,900.00,,,772e4044-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,307,"Fuentes, William",Current,Financially Responsible,"Phone: (413) 693-6936, Phone: (860) 920-8316",,11/01/1998,10/30/2026,"1,200.00",224.00,Imagineers,,778f428a-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,406,"Oliveira/Santos, Lines",Current,Financially Responsible,Phone: (954) 573-5674,linessantos2131@gmail.com,08/29/2025,08/28/2026,900.00,900.90,,,7804afb1-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,407,"Rodrigues, Lorrayni",Current,Financially Responsible,Phone: (860) 805-3101,lorraynirodrigues422@gmail.com,08/01/2025,07/31/2026,"1,000.00",0.00,,,788a34c6-e0ea-11f0-b6c3-02094d1ce055
+S0040 - 213 Buckingh,302,"Torres, Norma",Current,Financially Responsible,Mobile: (860) 502-2505,,02/02/2026,10/31/2026,"1,100.00",650.00,,,5f575775-0064-11f1-b6c3-02094d1ce055
+S0041 - 23-31 Squire,1A,"Olinda Lopes, Maria",Current,Financially Responsible,Phone: (860) 804-9550,Olindaapandora@gmail.com,10/28/2024,,"1,100.00",276.00,,,31f4ba33-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,1B,"Torres, Noemi",Current,Financially Responsible,Phone: (860) 502-0871,torresl.noemi0324@gmail.com,05/01/2016,,"1,200.00",700.00,Imagineers,,3264e6b1-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,1C,"Soto & Yaitza Monserrate, Christopher",Current,Financially Responsible,Phone: (860) 518-5856,yaitzasoto24@gmail.com,07/01/2013,,"1,300.00",356.00,,,32ccf6b7-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,1D,"Pagan, Hector",Current,Financially Responsible,Phone: (860) 817-9751,,03/19/2024,,"1,300.00",14.00,,,33490eed-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2A,"Hartage, Danielle",Current,Financially Responsible,Phone: (860) 256-9779,hartage20@gmail.com,10/01/2018,,"1,700.00",0.00,,,339e1438-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2B,"Diaz, Anabell",Current,Financially Responsible,Phone: (860) 853-4582,anabelldiaz39@yahoo.com,06/01/2017,,835.00,992.00,Imagineers,,33c5e535-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2C,"Ortiz, Linda",Current,Financially Responsible,Phone: (860) 938-0868,somersalllinda@icloud.com,06/01/2020,05/31/2026,"1,500.00","1,175.00",,,341d72de-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2D,"& Miguel Griffith Ramos, Charlene",Current,Financially Responsible,"Phone: (860) 995-5615, Phone: (860) 997-1030",miguel16ramos@gmail.com,05/01/2017,,"1,350.00",526.00,,,3472a8b8-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2E,"Gonzalez, Maria",Current,Financially Responsible,Phone: (860) 502-2037,mariaeg910@gmail.com,07/01/2013,,"1,690.00",0.00,Imagineers,,34cf1d06-fbc5-11f0-b6c3-02094d1ce055
+S0041 - 23-31 Squire,2F,"Ramos, Lisette",Current,Financially Responsible,Phone: (860) 890-9205,ramoslisette@hotmail.com,04/01/2017,,"1,600.00","1,250.00",,,34f9846c-fbc5-11f0-b6c3-02094d1ce055
+
+Total,,,,,,,,,,,,,

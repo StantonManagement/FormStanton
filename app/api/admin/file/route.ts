@@ -23,9 +23,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Determine bucket from path
+    let bucket = 'submissions';
+    let filePath = path;
+
+    // Signatures are stored in the submissions bucket with "signatures/" prefix
+    // Pet photos are stored in the submissions bucket with "pet_photos/" prefix
+    // No need to change the path, just use it as-is
+
     const { data, error } = await supabaseAdmin.storage
-      .from('submissions')
-      .download(path);
+      .from(bucket)
+      .download(filePath);
 
     if (error) throw error;
 

@@ -1,0 +1,1489 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Head from 'next/head';
+import { buildings } from '@/lib/buildings';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
+import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
+import LobbyIntakePanel from '@/components/LobbyIntakePanel';
+
+interface TenantSubmission {
+  id: string;
+  full_name: string;
+  unit_number: string;
+  phone: string;
+  email: string;
+  building_address: string;
+  has_pets: boolean;
+  pets?: any[];
+  pet_signature?: string;
+  pet_signature_date?: string;
+  pet_addendum_file?: string;
+  pet_verified: boolean;
+  pet_addendum_received: boolean;
+  pet_addendum_received_at?: string;
+  pet_addendum_received_by?: string;
+  // Exemption fields
+  exemption_status?: 'pending' | 'approved' | 'denied' | 'more_info_needed' | null;
+  exemption_reason?: string;
+  exemption_documents?: string[];
+  exemption_reviewed_by?: string;
+  exemption_reviewed_at?: string;
+  exemption_notes?: string;
+  has_fee_exemption?: boolean;
+  has_insurance: boolean;
+  insurance_provider?: string;
+  insurance_policy_number?: string;
+  insurance_file?: string;
+  insurance_type?: 'renters' | 'car' | 'other';
+  insurance_upload_pending: boolean;
+  insurance_verified: boolean;
+  add_insurance_to_rent: boolean;
+  insurance_authorization_signature?: string;
+  insurance_authorization_signature_date?: string;
+  has_vehicle: boolean;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_year?: number;
+  vehicle_color?: string;
+  vehicle_plate?: string;
+  vehicle_signature?: string;
+  vehicle_signature_date?: string;
+  vehicle_addendum_file?: string;
+  vehicle_verified: boolean;
+  vehicle_addendum_received: boolean;
+  vehicle_addendum_received_at?: string;
+  vehicle_addendum_received_by?: string;
+  permit_issued: boolean;
+  permit_issued_at?: string;
+  permit_issued_by?: string;
+  tenant_picked_up: boolean;
+  tenant_picked_up_at?: string;
+  pickup_id_photo?: string;
+  pickup_id_photo_at?: string;
+  merged_into?: string;
+  created_at: string;
+}
+
+interface UnifiedTenant {
+  key: string;
+  name: string;
+  unit_number: string;
+  building_address: string;
+  phone: string | null;
+  email: string | null;
+  hasSubmission: boolean;
+  submissionData: TenantSubmission | null;
+  tenantLookupId: string | null;
+  move_in: string | null;
+  is_current: boolean;
+}
+
+const ADMIN_USERS = ['Alex', 'Dean', 'Dan', 'Tiff'];
+
+export default function LobbyPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [adminName, setAdminName] = useState('');
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [allTenants, setAllTenants] = useState<UnifiedTenant[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UnifiedTenant[]>([]);
+  const [activeTenant, setActiveTenant] = useState<UnifiedTenant | null>(null);
+
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [updatingField, setUpdatingField] = useState<string | null>(null);
+  const [documentViewer, setDocumentViewer] = useState<{
+    isOpen: boolean;
+    documentPath: string | null;
+    documentType: 'signature' | 'insurance' | 'addendum' | 'photo';
+    title?: string;
+    date?: string;
+  }>({ isOpen: false, documentPath: null, documentType: 'signature' });
+
+  const [showIntakePanel, setShowIntakePanel] = useState(false);
+  const [pickupIdFile, setPickupIdFile] = useState<File | null>(null);
+  const [pickupIdPreview, setPickupIdPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // Keyboard shortcuts
+  // Live search with debouncing
+  useEffect(() => {
+    if (!searchQuery.trim() || activeTenant) {
+      setSearchResults([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(() => {
+      const query = searchQuery.toLowerCase().trim();
+      
+      // Helper function to check if text matches initials pattern
+      const matchesInitials = (text: string, searchParts: string[]): boolean => {
+        const words = text.toLowerCase().split(/\s+/);
+        let partIndex = 0;
+        
+        for (const word of words) {
+          if (partIndex < searchParts.length && word.startsWith(searchParts[partIndex])) {
+            partIndex++;
+          }
+        }
+        
+        return partIndex === searchParts.length;
+      };
+      
+      // Split query into parts for initials matching
+      const queryParts = query.split(/\s+/).filter(p => p.length > 0);
+      
+      const results = allTenants.filter((t) => {
+        // Standard substring matching (existing behavior)
+        const substringMatch = 
+          t.name.toLowerCase().includes(query) ||
+          t.unit_number.toLowerCase().includes(query) ||
+          t.building_address.toLowerCase().includes(query) ||
+          (t.phone && t.phone.includes(query)) ||
+          (t.email && t.email.toLowerCase().includes(query));
+        
+        // Initials/word-start matching (new feature)
+        const initialsMatch = queryParts.length > 1 && (
+          matchesInitials(t.name, queryParts) ||
+          matchesInitials(t.building_address, queryParts) ||
+          matchesInitials(`${t.unit_number} ${t.building_address}`, queryParts)
+        );
+        
+        return substringMatch || initialsMatch;
+      });
+
+      if (results.length === 1) {
+        setActiveTenant(results[0]);
+        setSearchResults([]);
+        setSearchQuery('');
+      } else {
+        setSearchResults(results);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery, allTenants, activeTenant]);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K: Focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder="Search by name, unit, or building..."]') as HTMLInputElement;
+        searchInput?.focus();
+      }
+      
+      // Escape: Clear tenant or close modal
+      if (e.key === 'Escape') {
+        if (documentViewer.isOpen) {
+          setDocumentViewer({ isOpen: false, documentPath: null, documentType: 'signature' });
+        } else if (activeTenant) {
+          handleClear();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [activeTenant, documentViewer.isOpen]);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/admin/auth');
+      const data = await response.json();
+      setIsAuthenticated(data.isAuthenticated);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsAuthenticated(true);
+      } else {
+        setAuthError(data.message || 'Invalid password');
+      }
+    } catch (error: any) {
+      setAuthError(error.message);
+    }
+  };
+
+  const handleStartSession = async () => {
+    if (!adminName) {
+      alert('Please enter your name');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/unified-tenants');
+      const result = await response.json();
+
+      if (result.success) {
+        setAllTenants(result.data);
+        setSessionStarted(true);
+      }
+    } catch (error) {
+      console.error('Failed to load tenants:', error);
+      alert('Failed to load tenants');
+    }
+  };
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const results = allTenants.filter(
+      (t) =>
+        t.name.toLowerCase().includes(query) ||
+        t.unit_number.toLowerCase().includes(query) ||
+        t.building_address.toLowerCase().includes(query)
+    );
+
+    if (results.length === 1) {
+      setActiveTenant(results[0]);
+      setSearchResults([]);
+      setSearchQuery('');
+    } else {
+      setSearchResults(results);
+    }
+  };
+
+  const handleClear = () => {
+    setActiveTenant(null);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleUploadDocument = async (
+    documentType: 'pet_addendum' | 'insurance' | 'vehicle_addendum',
+    file: File
+  ) => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+
+    setUploadingDoc(documentType);
+
+    try {
+      const formData = new FormData();
+      formData.append('submissionId', activeTenant.submissionData.id);
+      formData.append('documentType', documentType);
+      formData.append('file', file);
+
+      const response = await fetch('/api/admin/compliance/attach-document', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+      } else {
+        alert(`Upload failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed');
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
+
+  const handleSetInsuranceType = async (insuranceType: 'renters' | 'car' | 'other') => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+
+    setUpdatingField('insurance_type');
+
+    try {
+      const response = await fetch('/api/admin/compliance/insurance-type', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          insuranceType,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+      } else {
+        alert(`Update failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Update failed');
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleMarkReceived = async (type: 'pet' | 'vehicle') => {
+    if (!activeTenant || !adminName || !activeTenant.submissionData) return;
+
+    const endpoint = type === 'pet' ? 'pet-receipt' : 'vehicle-receipt';
+    setUpdatingField(`${type}_receipt`);
+
+    try {
+      const response = await fetch(`/api/admin/compliance/${endpoint}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          receivedBy: adminName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+      } else {
+        alert(`Update failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Update failed');
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleToggleVerified = async (itemType: 'vehicle' | 'pet' | 'insurance') => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+
+    const newValue = !activeTenant.submissionData[`${itemType}_verified`];
+    setUpdatingField(`${itemType}_verified`);
+
+    try {
+      const response = await fetch('/api/admin/compliance/building-summary', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          itemType,
+          verified: newValue,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+      } else {
+        alert(`Update failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Update failed');
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleIssuePermit = async () => {
+    if (!activeTenant || !adminName || !activeTenant.submissionData) return;
+
+    setUpdatingField('permit_issue');
+
+    try {
+      const response = await fetch('/api/admin/compliance/permit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          admin: adminName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+      } else {
+        alert(`Failed to issue permit: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Issue permit error:', error);
+      alert('Failed to issue permit');
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleMarkPickedUp = async () => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+
+    if (!pickupIdFile) {
+      alert('Please take a photo of the tenant\'s ID before marking as picked up.');
+      return;
+    }
+
+    setUpdatingField('mark_picked_up');
+
+    try {
+      // Upload ID photo first via attach-document API
+      const fileFormData = new FormData();
+      fileFormData.append('submissionId', activeTenant.submissionData.id);
+      fileFormData.append('documentType', 'pickup_id_photo');
+      fileFormData.append('file', pickupIdFile);
+
+      const uploadResponse = await fetch('/api/admin/compliance/attach-document', {
+        method: 'POST',
+        body: fileFormData,
+      });
+
+      const uploadResult = await uploadResponse.json();
+      if (!uploadResult.success) {
+        alert(`ID photo upload failed: ${uploadResult.message}`);
+        setUpdatingField(null);
+        return;
+      }
+
+      const response = await fetch('/api/admin/compliance/permit', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          idPhotoPath: uploadResult.filePath,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+        setPickupIdFile(null);
+        setPickupIdPreview(null);
+      } else {
+        alert(`Update failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Update failed');
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+
+  // Conditional lock checks
+  const getPetVerifiedStatus = () => {
+    if (!activeTenant || !activeTenant.submissionData) return { canVerify: false, reason: '' };
+
+    const sub = activeTenant.submissionData;
+    const hasForm = sub.pet_signature || sub.pet_addendum_received;
+
+    // Count only dogs and cats
+    const dogsAndCats = sub.pets?.filter((p: any) => 
+      p.pet_type === 'dog' || p.pet_type === 'cat'
+    ) || [];
+
+    if (sub.has_pets && dogsAndCats.length > 0) {
+      // Has dogs/cats - check that all have details
+      const hasPetDetails = dogsAndCats.every((pet: any) => 
+        pet.pet_name && pet.pet_type && pet.pet_breed
+      );
+      if (!hasPetDetails) {
+        return { 
+          canVerify: false, 
+          reason: `Pet details incomplete - need details for all ${dogsAndCats.length} dog(s)/cat(s)` 
+        };
+      }
+      if (!hasForm) {
+        return { canVerify: false, reason: 'No pet addendum on file — receive physical copy or have tenant submit online' };
+      }
+      return { canVerify: true, reason: '' };
+    } else {
+      // No dogs/cats or exemption
+      if (!hasForm) {
+        return { canVerify: false, reason: 'No "no pets" form on file — receive physical copy or have tenant submit online' };
+      }
+      return { canVerify: true, reason: '' };
+    }
+  };
+
+  const getInsuranceVerifiedStatus = () => {
+    if (!activeTenant || !activeTenant.submissionData) return { canVerify: false, reason: '' };
+
+    const sub = activeTenant.submissionData;
+
+    if (sub.add_insurance_to_rent) {
+      return { canVerify: true, reason: '' };
+    }
+
+    if (!sub.insurance_file) {
+      return { canVerify: false, reason: 'No insurance document on file' };
+    }
+
+    if (!sub.insurance_type) {
+      return { canVerify: false, reason: 'Classify insurance type first' };
+    }
+
+    if (sub.insurance_type === 'car') {
+      return { canVerify: false, reason: 'Car insurance uploaded — renters insurance required' };
+    }
+
+    if (sub.insurance_type === 'other') {
+      return { canVerify: false, reason: 'Document type not accepted — renters insurance required' };
+    }
+
+    return { canVerify: true, reason: '' };
+  };
+
+  const getVehicleVerifiedStatus = () => {
+    if (!activeTenant || !activeTenant.submissionData) return { canVerify: false, reason: '' };
+
+    const sub = activeTenant.submissionData;
+    const hasDetails = sub.vehicle_make && sub.vehicle_model && sub.vehicle_plate;
+    const hasForm = sub.vehicle_signature || sub.vehicle_addendum_received;
+
+    if (!hasDetails) {
+      return { canVerify: false, reason: 'Vehicle details incomplete' };
+    }
+
+    if (!hasForm) {
+      return { canVerify: false, reason: 'No vehicle addendum on file — receive physical copy or have tenant submit online' };
+    }
+
+    return { canVerify: true, reason: '' };
+  };
+
+  const getPermitStatus = () => {
+    if (!activeTenant || !activeTenant.submissionData || !activeTenant.submissionData.has_vehicle) {
+      return { canIssue: false, blocking: [] };
+    }
+
+    const sub = activeTenant.submissionData;
+    const blocking: string[] = [];
+
+    // Only block on pet verification if they have dogs/cats and no exemption
+    if (!sub.pet_verified && sub.has_pets && !sub.has_fee_exemption) blocking.push('Pet verification');
+    if (!sub.insurance_verified) blocking.push('Insurance verification');
+    if (!sub.vehicle_verified) blocking.push('Vehicle verification');
+
+    return {
+      canIssue: blocking.length === 0 && !sub.permit_issued,
+      blocking,
+    };
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="text-[var(--primary)]">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
+        <div className="bg-white border border-[var(--border)] p-8 w-full max-w-md">
+          <h1 className="text-2xl font-serif text-[var(--primary)] mb-6">Lobby — Admin Login</h1>
+          <form onSubmit={handleLogin}>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="w-full px-4 py-2 border border-[var(--border)] rounded-none mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            />
+            {authError && <div className="text-[var(--error)] text-sm mb-4">{authError}</div>}
+            <button
+              type="submit"
+              className="w-full bg-[var(--primary)] text-white px-4 py-2 rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+            >
+              Login
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sessionStarted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] p-8">
+        <div className="bg-white border border-[var(--border)] p-8 w-full max-w-md">
+          <h1 className="text-2xl font-serif text-[var(--primary)] mb-6">Start Lobby Session</h1>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-[var(--primary)] mb-2">
+              Your Name
+            </label>
+            <select
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              className="w-full px-4 py-2 border border-[var(--border)] rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            >
+              <option value="">Select your name...</option>
+              {ADMIN_USERS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={handleStartSession}
+            disabled={!adminName}
+            className="w-full bg-[var(--primary)] text-white px-4 py-2 rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Start Session
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const petStatus = getPetVerifiedStatus();
+  const insuranceStatus = getInsuranceVerifiedStatus();
+  const vehicleStatus = getVehicleVerifiedStatus();
+  const permitStatus = getPermitStatus();
+
+  const isComplete = (() => {
+    if (!activeTenant?.submissionData) return false;
+    
+    const sub = activeTenant.submissionData;
+    
+    if (sub.has_vehicle) {
+      return sub.permit_issued && sub.tenant_picked_up;
+    } else if (sub.has_pets) {
+      return (sub.has_fee_exemption || sub.pet_verified) && sub.insurance_verified;
+    } else {
+      return sub.insurance_verified;
+    }
+  })();
+
+  return (
+    <>
+      <Head>
+        <title>Lobby Admin - Stanton Management</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+      <div className="min-h-screen bg-[var(--bg)] p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="bg-white border border-[var(--border)] p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-serif text-[var(--primary)]">Lobby — Permit Distribution</h1>
+              <div className="text-sm text-[var(--muted)] mt-1">
+                All Buildings • {adminName} • Press Ctrl+K to search
+              </div>
+            </div>
+            {activeTenant && (
+              <button
+                onClick={handleClear}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-none hover:bg-gray-300 transition-colors duration-200 ease-out"
+              >
+                Clear / Next Tenant
+              </button>
+            )}
+          </div>
+
+          {/* Search */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Search by name, unit, or building..."
+              className="flex-1 px-4 py-2 border border-[var(--border)] rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              disabled={!!activeTenant}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={!!activeTenant}
+              className="px-6 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300"
+            >
+              Search
+            </button>
+          </div>
+
+          {/* Search Results */}
+          {searchResults.length > 1 && (
+            <div className="mt-4 border border-[var(--border)] p-4">
+              <div className="text-sm font-medium text-[var(--primary)] mb-2">
+                Multiple matches — select one:
+              </div>
+              {searchResults.map((result) => (
+                <button
+                  key={result.key}
+                  onClick={() => {
+                    setActiveTenant(result);
+                    setSearchResults([]);
+                    setSearchQuery('');
+                  }}
+                  className="block w-full text-left px-3 py-2 hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+                >
+                  <span className="font-medium">{result.name}</span> — {result.building_address} Unit {result.unit_number}
+                  {!result.hasSubmission && <span className="ml-2 text-xs text-yellow-600">(No submission)</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {searchResults.length === 0 && searchQuery && !activeTenant && (
+            <div className="mt-4 text-sm text-[var(--muted)]">No matching tenants found</div>
+          )}
+        </div>
+
+        {/* Tenant Card */}
+        {activeTenant && (
+          <div className="bg-white border border-[var(--border)] p-6">
+            {/* Tenant Header */}
+            <div className="border-b border-[var(--divider)] pb-4 mb-6">
+              <h2 className="text-xl font-serif text-[var(--primary)]">
+                {activeTenant.name}
+              </h2>
+              <div className="text-sm text-[var(--muted)] mt-1">
+                {activeTenant.building_address} • Unit {activeTenant.unit_number}
+              </div>
+              <div className="text-sm text-[var(--muted)]">
+                {activeTenant.phone || 'No phone'} • {activeTenant.email || 'No email'}
+              </div>
+              {!activeTenant.hasSubmission && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200">
+                  <div className="text-sm font-medium text-yellow-800">⚠️ No Form Submission</div>
+                  <div className="text-xs text-yellow-700 mt-1">This tenant has not submitted the online form yet. Contact info shown from tenant directory.</div>
+                </div>
+              )}
+              {isComplete && (
+                <div className="mt-3 text-lg font-medium text-[var(--success)]">
+                  ✓ COMPLETE
+                </div>
+              )}
+              {activeTenant.submissionData?.has_fee_exemption && (
+                <div className="mt-2 text-lg font-bold text-green-700 bg-green-100 px-3 py-1 border border-green-300">
+                  FEE EXEMPT
+                </div>
+              )}
+            </div>
+
+            {/* Show submission sections only if tenant has submitted */}
+            {!activeTenant.hasSubmission ? (
+              <div className="text-center py-8 text-[var(--muted)]">
+                <p className="mb-4">Tenant has not completed the online form.</p>
+                <p className="text-sm mb-4">They can be contacted at the phone/email above to complete their submission.</p>
+                <button
+                  onClick={() => setShowIntakePanel(true)}
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+                >
+                  Lobby Intake
+                </button>
+              </div>
+            ) : (
+            <>
+            {/* Lobby Intake Button (for tenants with submissions too) */}
+            <div className="mb-4 flex justify-end">
+              <button
+                onClick={() => setShowIntakePanel(true)}
+                className="px-4 py-2 bg-[var(--primary)] text-white text-sm rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+              >
+                Lobby Intake
+              </button>
+            </div>
+            {(() => {
+              const sub = activeTenant.submissionData!;
+              return (
+                <>
+            {/* Pet Section */}
+            <div className="mb-6 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-serif text-[var(--primary)]">Pet Information</h3>
+                {sub.exemption_status && (
+                  <ExemptionStatusBadge 
+                    status={sub.exemption_status} 
+                    reason={sub.exemption_reason}
+                    compact
+                  />
+                )}
+              </div>
+
+              <div className="text-sm mb-3">
+                {sub.has_pets ? (
+                  <div>
+                    <div className="font-medium mb-1">Has pets:</div>
+                    {sub.pets?.filter((pet: any) => 
+                      pet.pet_type === 'dog' || pet.pet_type === 'cat'
+                    ).map((pet: any, idx: number) => (
+                      <div key={idx} className="text-[var(--muted)] ml-2 mb-2">
+                        • {pet.pet_name} ({pet.pet_type}) - {pet.pet_breed}
+                        {pet.pet_photo_file && (
+                          <div className="mt-1">
+                            <button
+                              onClick={() => setDocumentViewer({
+                                isOpen: true,
+                                documentPath: pet.pet_photo_file,
+                                documentType: 'photo',
+                                title: `${pet.pet_name} - Pet Photo`
+                              })}
+                              className="text-blue-600 hover:underline text-sm ml-2"
+                            >
+                              View Photo
+                            </button>
+                          </div>
+                        )}
+                        {pet.pet_vaccination_file && (
+                          <div className="mt-1">
+                            <button
+                              onClick={() => setDocumentViewer({
+                                isOpen: true,
+                                documentPath: pet.pet_vaccination_file,
+                                documentType: 'addendum',
+                                title: `${pet.pet_name} - Vaccination Record`
+                              })}
+                              className="text-blue-600 hover:underline text-sm ml-2"
+                            >
+                              View Vaccination
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[var(--muted)]">No pets registered</div>
+                )}
+              </div>
+
+              <div className="space-y-2 mb-4">
+                {sub.pet_signature && (
+                  <div className="text-sm">
+                    <span className="text-[var(--success)]">✅ Signed online</span>
+                    {sub.pet_signature_date && (
+                      <span className="text-[var(--muted)] ml-2">
+                        ({new Date(sub.pet_signature_date).toLocaleDateString()})
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setDocumentViewer({
+                        isOpen: true,
+                        documentPath: sub.pet_signature || null,
+                        documentType: 'signature',
+                        title: 'Pet Addendum Signature',
+                        date: sub.pet_signature_date
+                      })}
+                      className="ml-2 text-blue-600 hover:underline text-sm"
+                    >
+                      View Signature
+                    </button>
+                  </div>
+                )}
+
+                {sub.pet_addendum_received && (
+                  <div className="text-sm">
+                    <span className="text-[var(--success)]">✅ Physical form received</span>
+                    {sub.pet_addendum_received_by && (
+                      <span className="text-[var(--muted)] ml-2">
+                        by {sub.pet_addendum_received_by}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {sub.pet_addendum_file && (
+                  <div className="text-sm text-[var(--success)]">
+                    ✅ File on record
+                    <button
+                      onClick={() => setDocumentViewer({
+                        isOpen: true,
+                        documentPath: sub.pet_addendum_file || null,
+                        documentType: 'addendum',
+                        title: 'Pet Addendum Document'
+                      })}
+                      className="ml-2 text-blue-600 hover:underline text-sm"
+                    >
+                      View Document
+                    </button>
+                  </div>
+                )}
+
+                {/* Exemption Documents */}
+                {sub.exemption_status && sub.exemption_documents && sub.exemption_documents.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-[var(--divider)]">
+                    <h4 className="text-sm font-semibold text-[var(--primary)] mb-2">Exemption Documents</h4>
+                    <div className="space-y-1">
+                      {sub.exemption_documents.map((docUrl: string, idx: number) => (
+                        <button
+                          key={idx}
+                          onClick={() => setDocumentViewer({
+                            isOpen: true,
+                            documentPath: docUrl,
+                            documentType: 'addendum',
+                            title: `Exemption Document ${idx + 1}`
+                          })}
+                          className="text-blue-600 hover:underline text-sm block"
+                        >
+                          View Exemption Document {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                    {sub.exemption_reviewed_at && (
+                      <div className="text-xs text-[var(--muted)] mt-2">
+                        Reviewed by {sub.exemption_reviewed_by} on {new Date(sub.exemption_reviewed_at).toLocaleDateString()}
+                        {sub.exemption_notes && (
+                          <div className="mt-1 text-[var(--ink)]">Notes: {sub.exemption_notes}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 mb-4">
+                {!sub.pet_addendum_received && (
+                  <button
+                    onClick={() => handleMarkReceived('pet')}
+                    disabled={updatingField === 'pet_receipt'}
+                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300"
+                  >
+                    {updatingField === 'pet_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
+                  </button>
+                )}
+
+                <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
+                  {uploadingDoc === 'pet_addendum' ? 'Uploading...' : 'Upload Document'}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadDocument('pet_addendum', file);
+                    }}
+                    disabled={uploadingDoc === 'pet_addendum'}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <button
+                onClick={() => handleToggleVerified('pet')}
+                disabled={!petStatus.canVerify || updatingField === 'pet_verified'}
+                className={`flex items-center gap-2 text-sm px-3 py-2 transition-colors duration-200 ease-out ${
+                  petStatus.canVerify
+                    ? 'hover:bg-white cursor-pointer'
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <span className={`text-lg ${sub.pet_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'}`}>
+                  {sub.pet_verified ? '☑' : '☐'}
+                </span>
+                <span className={sub.pet_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
+                  Pet Verified
+                </span>
+              </button>
+
+              {!petStatus.canVerify && (
+                <div className="text-xs text-[var(--error)] mt-2">
+                  ⚠️ {petStatus.reason}
+                </div>
+              )}
+            </div>
+
+            {/* Insurance Section */}
+            <div className="mb-6 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+              <h3 className="font-serif text-[var(--primary)] mb-3">Insurance Information</h3>
+
+              <div className="text-sm mb-3">
+                {sub.add_insurance_to_rent ? (
+                  <div>
+                    <div className="text-[var(--muted)]">Opted into rent-added insurance</div>
+                    {sub.insurance_authorization_signature ? (
+                      <div className="text-sm mt-1">
+                        <span className="text-[var(--success)]">✅ Authorization signed</span>
+                        {sub.insurance_authorization_signature_date && (
+                          <span className="text-[var(--muted)] ml-2">
+                            ({new Date(sub.insurance_authorization_signature_date).toLocaleDateString()})
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setDocumentViewer({
+                            isOpen: true,
+                            documentPath: sub.insurance_authorization_signature || null,
+                            documentType: 'signature',
+                            title: 'Insurance Authorization Signature',
+                            date: sub.insurance_authorization_signature_date
+                          })}
+                          className="ml-2 text-blue-600 hover:underline text-sm"
+                        >
+                          View Signature
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-[var(--error)] mt-1">
+                        ⚠️ No authorization signature on file
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    {sub.insurance_provider && (
+                      <div>
+                        <span className="font-medium">Provider:</span> {sub.insurance_provider}
+                      </div>
+                    )}
+                    {sub.insurance_policy_number && (
+                      <div className="text-[var(--muted)]">
+                        Policy: {sub.insurance_policy_number}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!sub.add_insurance_to_rent && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                      Insurance Type
+                    </label>
+                    <select
+                      value={sub.insurance_type || ''}
+                      onChange={(e) => handleSetInsuranceType(e.target.value as 'renters' | 'car' | 'other')}
+                      disabled={updatingField === 'insurance_type'}
+                      className="w-full px-3 py-2 text-sm border border-[var(--border)] rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    >
+                      <option value="">— Unclassified —</option>
+                      <option value="renters">Renters Insurance</option>
+                      <option value="car">Car Insurance</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  {sub.insurance_file && (
+                    <div className="text-sm text-[var(--success)] mb-3">
+                      ✅ File on record
+                      <button
+                        onClick={() => setDocumentViewer({
+                          isOpen: true,
+                          documentPath: sub.insurance_file || null,
+                          documentType: 'insurance',
+                          title: 'Insurance Document'
+                        })}
+                        className="ml-2 text-blue-600 hover:underline text-sm"
+                      >
+                        View Document
+                      </button>
+                    </div>
+                  )}
+
+                  <label className="inline-block px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer mb-4">
+                    {uploadingDoc === 'insurance' ? 'Uploading...' : 'Upload Insurance Document'}
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadDocument('insurance', file);
+                      }}
+                      disabled={uploadingDoc === 'insurance'}
+                      className="hidden"
+                    />
+                  </label>
+                </>
+              )}
+
+              <button
+                onClick={() => handleToggleVerified('insurance')}
+                disabled={!insuranceStatus.canVerify || updatingField === 'insurance_verified'}
+                className={`flex items-center gap-2 text-sm px-3 py-2 transition-colors duration-200 ease-out ${
+                  insuranceStatus.canVerify
+                    ? 'hover:bg-white cursor-pointer'
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <span className={`text-lg ${sub.insurance_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'}`}>
+                  {sub.insurance_verified ? '☑' : '☐'}
+                </span>
+                <span className={sub.insurance_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
+                  Insurance Verified
+                </span>
+              </button>
+
+              {!insuranceStatus.canVerify && (
+                <div className="text-xs text-[var(--error)] mt-2">
+                  ⚠️ {insuranceStatus.reason}
+                </div>
+              )}
+            </div>
+
+            {/* Vehicle Section */}
+            {sub.has_vehicle ? (
+              <>
+                <div className="mb-6 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                  <h3 className="font-serif text-[var(--primary)] mb-3">Vehicle Information</h3>
+
+                  <div className="text-sm mb-3">
+                    {sub.vehicle_year && sub.vehicle_make && sub.vehicle_model ? (
+                      <div>
+                        <div className="font-medium">
+                          {sub.vehicle_year} {sub.vehicle_make} {sub.vehicle_model}
+                        </div>
+                        <div className="text-[var(--muted)]">
+                          {sub.vehicle_color} • Plate: {sub.vehicle_plate}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[var(--error)]">Vehicle details incomplete</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    {sub.vehicle_signature && (
+                      <div className="text-sm">
+                        <span className="text-[var(--success)]">✅ Signed online</span>
+                        {sub.vehicle_signature_date && (
+                          <span className="text-[var(--muted)] ml-2">
+                            ({new Date(sub.vehicle_signature_date).toLocaleDateString()})
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setDocumentViewer({
+                            isOpen: true,
+                            documentPath: sub.vehicle_signature || null,
+                            documentType: 'signature',
+                            title: 'Vehicle Addendum Signature',
+                            date: sub.vehicle_signature_date
+                          })}
+                          className="ml-2 text-blue-600 hover:underline text-sm"
+                        >
+                          View Signature
+                        </button>
+                      </div>
+                    )}
+
+                    {sub.vehicle_addendum_received && (
+                      <div className="text-sm">
+                        <span className="text-[var(--success)]">✅ Physical form received</span>
+                        {sub.vehicle_addendum_received_by && (
+                          <span className="text-[var(--muted)] ml-2">
+                            by {sub.vehicle_addendum_received_by}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {sub.vehicle_addendum_file && (
+                      <div className="text-sm text-[var(--success)]">
+                        ✅ File on record
+                        <button
+                          onClick={() => setDocumentViewer({
+                            isOpen: true,
+                            documentPath: sub.vehicle_addendum_file || null,
+                            documentType: 'addendum',
+                            title: 'Vehicle Addendum Document'
+                          })}
+                          className="ml-2 text-blue-600 hover:underline text-sm"
+                        >
+                          View Document
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 mb-4">
+                    {!sub.vehicle_addendum_received && (
+                      <button
+                        onClick={() => handleMarkReceived('vehicle')}
+                        disabled={updatingField === 'vehicle_receipt'}
+                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300"
+                      >
+                        {updatingField === 'vehicle_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
+                      </button>
+                    )}
+
+                    <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
+                      {uploadingDoc === 'vehicle_addendum' ? 'Uploading...' : 'Upload Document'}
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument('vehicle_addendum', file);
+                        }}
+                        disabled={uploadingDoc === 'vehicle_addendum'}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <button
+                    onClick={() => handleToggleVerified('vehicle')}
+                    disabled={!vehicleStatus.canVerify || updatingField === 'vehicle_verified'}
+                    className={`flex items-center gap-2 text-sm px-3 py-2 transition-colors duration-200 ease-out ${
+                      vehicleStatus.canVerify
+                        ? 'hover:bg-white cursor-pointer'
+                        : 'opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    <span className={`text-lg ${sub.vehicle_verified ? 'text-[var(--success)]' : 'text-[var(--muted)]'}`}>
+                      {sub.vehicle_verified ? '☑' : '☐'}
+                    </span>
+                    <span className={sub.vehicle_verified ? 'text-[var(--success)] font-medium' : 'text-[var(--muted)]'}>
+                      Vehicle Verified
+                    </span>
+                  </button>
+
+                  {!vehicleStatus.canVerify && (
+                    <div className="text-xs text-[var(--error)] mt-2">
+                      ⚠️ {vehicleStatus.reason}
+                    </div>
+                  )}
+                </div>
+
+                {/* Permit Issuance Section */}
+                <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                  <h3 className="font-serif text-[var(--primary)] mb-3">Parking Permit</h3>
+
+                  {sub.permit_issued ? (
+                    <div>
+                      <div className="text-sm text-[var(--success)] mb-3">
+                        ✅ Permit Issued by {sub.permit_issued_by}
+                        {sub.permit_issued_at && (
+                          <span className="text-[var(--muted)] ml-2">
+                            on {new Date(sub.permit_issued_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {!sub.tenant_picked_up ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                              Tenant ID Photo <span className="text-[var(--error)]">*</span>
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <label className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
+                                {pickupIdFile ? '✓ Photo Selected' : '📷 Take / Upload ID Photo'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setPickupIdFile(file);
+                                      setPickupIdPreview(URL.createObjectURL(file));
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                              </label>
+                              {pickupIdFile && (
+                                <button
+                                  onClick={() => { setPickupIdFile(null); setPickupIdPreview(null); }}
+                                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                            {pickupIdPreview && (
+                              <img src={pickupIdPreview} alt="ID Preview" className="mt-2 max-h-32 border border-[var(--border)]" />
+                            )}
+                            {!pickupIdFile && (
+                              <p className="text-xs text-[var(--muted)] mt-1">
+                                Photo of tenant's ID is required before marking permit as picked up.
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={handleMarkPickedUp}
+                            disabled={updatingField === 'mark_picked_up' || !pickupIdFile}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-none hover:bg-purple-700 transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
+                          >
+                            {updatingField === 'mark_picked_up' ? 'Uploading & Saving...' : 'Mark Picked Up'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-[var(--success)]">
+                          ✓ Picked up
+                          {sub.tenant_picked_up_at && (
+                            <span className="text-[var(--muted)] ml-2">
+                              on {new Date(sub.tenant_picked_up_at).toLocaleDateString()}
+                            </span>
+                          )}
+                          {sub.pickup_id_photo && (
+                            <button
+                              onClick={() => setDocumentViewer({
+                                isOpen: true,
+                                documentPath: sub.pickup_id_photo || null,
+                                documentType: 'photo',
+                                title: 'Tenant ID Photo'
+                              })}
+                              className="ml-2 text-blue-600 hover:underline text-sm"
+                            >
+                              View ID
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <button
+                        onClick={handleIssuePermit}
+                        disabled={!permitStatus.canIssue || updatingField === 'permit_issue'}
+                        className="px-4 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        {updatingField === 'permit_issue' ? 'Issuing...' : '🎫 Issue Permit'}
+                      </button>
+
+                      {permitStatus.blocking.length > 0 && (
+                        <div className="text-xs text-[var(--error)] mt-2">
+                          ⚠️ Missing: {permitStatus.blocking.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
+                <div className="text-sm text-[var(--muted)]">No vehicle registered</div>
+                {sub.pet_verified && sub.insurance_verified && (
+                  <div className="text-sm text-[var(--success)] mt-2">
+                    ✓ Compliance complete (no vehicle)
+                  </div>
+                )}
+              </div>
+            )}
+                </>
+              );
+            })()}
+            </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+    {/* Document Viewer Modal */}
+    <DocumentViewerModal
+      isOpen={documentViewer.isOpen}
+      onClose={() => setDocumentViewer({ isOpen: false, documentPath: null, documentType: 'signature' })}
+      documentPath={documentViewer.documentPath}
+      documentType={documentViewer.documentType}
+      title={documentViewer.title}
+      date={documentViewer.date}
+    />
+    {/* Lobby Intake Panel */}
+    {showIntakePanel && activeTenant && (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-12 px-4" onClick={() => setShowIntakePanel(false)}>
+        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <LobbyIntakePanel
+            tenant={{
+              name: activeTenant.name,
+              buildingAddress: activeTenant.building_address,
+              unitNumber: activeTenant.unit_number,
+              phone: activeTenant.phone || undefined,
+              email: activeTenant.email || undefined,
+            }}
+            staffName={adminName}
+            onClose={() => setShowIntakePanel(false)}
+          />
+        </div>
+      </div>
+    )}
+  </>
+);
+}

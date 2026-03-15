@@ -40,10 +40,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Filter out "Occupied Unit" placeholders
+    const filteredTenants = (tenants || []).filter(t => t.name !== 'Occupied Unit');
+
     // Group tenants by normalized building address
     const buildingMap = new Map<string, TenantData[]>();
 
-    tenants?.forEach(tenant => {
+    filteredTenants.forEach(tenant => {
       const normalizedBuilding = normalizeAddress(tenant.building_address || '');
       const tenantData: TenantData = {
         unit_number: tenant.unit_number || '',
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: buildingData,
-      total_tenants: tenants?.length || 0,
+      total_tenants: filteredTenants.length,
     });
 
   } catch (error: any) {

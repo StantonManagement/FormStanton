@@ -110,6 +110,20 @@ export async function POST(request: NextRequest) {
       vehicleSignaturePath = data.path;
     }
 
+    let insuranceAuthSignaturePath = null;
+    if (signaturesJson.insurance) {
+      const base64Data = signaturesJson.insurance.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const fileName = `${submissionId}_insurance_auth_signature.png`;
+      const { data, error } = await supabaseAdmin.storage
+        .from('submissions')
+        .upload(`signatures/${fileName}`, buffer, {
+          contentType: 'image/png',
+        });
+      if (error) throw error;
+      insuranceAuthSignaturePath = data.path;
+    }
+
     const { error: dbError } = await supabaseAdmin
       .from('submissions')
       .insert({
@@ -131,6 +145,8 @@ export async function POST(request: NextRequest) {
         insurance_file: insuranceProofPath,
         insurance_upload_pending: formDataJson.insuranceUploadPending || false,
         add_insurance_to_rent: formDataJson.addInsuranceToRent,
+        insurance_authorization_signature: insuranceAuthSignaturePath,
+        insurance_authorization_signature_date: formDataJson.addInsuranceToRent ? new Date().toISOString().split('T')[0] : null,
         has_vehicle: formDataJson.hasVehicle,
         vehicle_make: formDataJson.vehicleMake || null,
         vehicle_model: formDataJson.vehicleModel || null,

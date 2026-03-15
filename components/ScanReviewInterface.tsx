@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { FormPhoneInput } from '@/components/form';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -350,13 +351,10 @@ export default function ScanReviewInterface({ batchId, onClose, onImportComplete
                     className="w-full px-3 py-2 border rounded"
                   />
                   
-                  <input
-                    type="tel"
-                    placeholder="Phone (10 digits)"
+                  <FormPhoneInput
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})}
-                    maxLength={10}
-                    className="w-full px-3 py-2 border rounded"
+                    onChange={(digits) => setFormData({...formData, phone: digits})}
+                    placeholder="(860) 555-0123"
                   />
                   
                   <input

@@ -13,11 +13,12 @@ import {
   FormLayout,
   SuccessScreen,
   FormTextarea,
+  FormPhoneInput,
 } from '@/components/form';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
-import { validateEmail, validatePhone, sanitizePhone } from '@/lib/formUtils';
+import { validateEmail, validatePhone, formatPhone } from '@/lib/formUtils';
 import { useFormSubmit, useFieldValidation, useFormData } from '@/lib/formHooks';
 
 type Recommendation = 'approve' | 'maybe' | 'hell_no' | '';
@@ -353,13 +354,12 @@ export default function TenantAssessmentPage() {
                 <FormInput type="text" value={formData.prospectName} onChange={(e) => updateField('prospectName', e.target.value)} error={!!errors.prospectName} required />
               </FormField>
               <FormField label="Phone Number" required error={errors.phoneNumber}>
-                <FormInput
-                  type="tel"
+                <FormPhoneInput
                   value={formData.phoneNumber}
-                  onChange={(e) => updateField('phoneNumber', sanitizePhone(e.target.value))}
-                  maxLength={10}
+                  onChange={(digits) => updateField('phoneNumber', digits)}
                   placeholder="(555) 123-4567"
                   error={!!errors.phoneNumber}
+                  errorMessage={errors.phoneNumber}
                   required
                 />
               </FormField>

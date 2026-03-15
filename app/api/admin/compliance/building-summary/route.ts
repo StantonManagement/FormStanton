@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabase';
+import { isAuthenticated } from '@/lib/auth';
 
 interface TenantSubmission {
   id: string;
@@ -35,7 +31,15 @@ interface TenantSubmission {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const searchParams = request.nextUrl.searchParams;
     const buildingAddress = searchParams.get('building');
 
     if (!buildingAddress) {
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all submissions for this building
-    const { data: submissions, error } = await supabase
+    const { data: submissions, error } = await supabaseAdmin
       .from('submissions')
       .select('*')
       .eq('building_address', buildingAddress)
@@ -96,6 +100,14 @@ export async function GET(request: NextRequest) {
 // Update verification status
 export async function PUT(request: NextRequest) {
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { submissionId, itemType, verified, notes } = body;
 
@@ -122,7 +134,7 @@ export async function PUT(request: NextRequest) {
       updateData.admin_notes = notes;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('submissions')
       .update(updateData)
       .eq('id', submissionId)

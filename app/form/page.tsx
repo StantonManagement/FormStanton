@@ -13,6 +13,8 @@ import InfoTable from '@/components/InfoTable';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TabNavigation from '@/components/TabNavigation';
+import { FormPhoneInput } from '@/components/form';
+import { formatPhone } from '@/lib/formUtils';
 import SectionHeader from '@/components/SectionHeader';
 import InsuranceUpdateModal from '@/components/InsuranceUpdateModal';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
@@ -122,6 +124,7 @@ function FormContent() {
   const [signatures, setSignatures] = useState({
     pet: '',
     vehicle: '',
+    insurance: '',
   });
 
   const [currentSection, setCurrentSection] = useState(1);
@@ -134,6 +137,7 @@ function FormContent() {
   const [signatureErrors, setSignatureErrors] = useState({
     pet: '',
     vehicle: '',
+    insurance: '',
   });
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
 
@@ -187,7 +191,7 @@ function FormContent() {
     }
   };
 
-  const handleSignature = (type: 'pet' | 'vehicle', dataUrl: string) => {
+  const handleSignature = (type: 'pet' | 'vehicle' | 'insurance', dataUrl: string) => {
     setSignatures(prev => ({ ...prev, [type]: dataUrl }));
   };
 
@@ -277,6 +281,10 @@ function FormContent() {
           return false;
         }
       }
+      if (formData.addInsuranceToRent && !signatures.insurance) {
+        setSectionError(t.signatureRequired);
+        return false;
+      }
       return true;
     }
 
@@ -289,7 +297,7 @@ function FormContent() {
     setSubmitError('');
 
     let hasValidationErrors = false;
-    const newSignatureErrors = { pet: '', vehicle: '' };
+    const newSignatureErrors = { pet: '', vehicle: '', insurance: '' };
 
     // Validate phone number is exactly 10 digits
     if (formData.phone.length !== 10) {
@@ -347,6 +355,11 @@ function FormContent() {
 
     if (hasParking && formData.hasVehicle === true && !signatures.vehicle) {
       newSignatureErrors.vehicle = t.signatureRequired;
+      hasValidationErrors = true;
+    }
+
+    if (formData.addInsuranceToRent && !signatures.insurance) {
+      newSignatureErrors.insurance = t.signatureRequired;
       hasValidationErrors = true;
     }
 
@@ -549,26 +562,17 @@ function FormContent() {
 
                         <label className="block">
                           <span className="text-sm font-medium text-[var(--ink)]">{t.phone} <span className="text-[var(--error)]">*</span></span>
-                          <input
-                            type="tel"
-                            required
+                          <FormPhoneInput
                             value={formData.phone}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '');
-                              handleInputChange('phone', value);
-                              if (value.length !== 10 && value.length > 0) {
-                                setPhoneValidationError(t.phoneValidationError);
-                              } else {
-                                setPhoneValidationError('');
-                              }
+                            onChange={(digits) => {
+                              handleInputChange('phone', digits);
+                              setPhoneValidationError('');
                             }}
                             placeholder="(860) 555-0123"
-                            maxLength={10}
-                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            error={!!phoneValidationError}
+                            errorMessage={phoneValidationError}
+                            required
                           />
-                          {phoneValidationError && (
-                            <p className="text-xs text-[var(--error)] mt-1">{phoneValidationError}</p>
-                          )}
                           <label className="flex items-center space-x-2 mt-2">
                             <input
                               type="checkbox"
@@ -1121,6 +1125,19 @@ function FormContent() {
                       />
                       <span className="text-sm text-[var(--ink)]">{t.insuranceAddToRent}</span>
                     </label>
+
+                    {formData.addInsuranceToRent && (
+                      <div className="mt-4 space-y-3">
+                        <p className="text-sm text-[var(--ink)] font-medium">{t.insuranceAuthSignature}</p>
+                        <SignatureCanvasComponent
+                          onSave={(dataUrl) => handleSignature('insurance', dataUrl)}
+                          label={language === 'en' ? 'Authorization Signature' : language === 'es' ? 'Firma de Autorización' : 'Assinatura de Autorização'}
+                        />
+                        {signatureErrors.insurance && (
+                          <p className="text-sm text-red-600">{signatureErrors.insurance}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1564,7 +1581,7 @@ function FormContent() {
                       <div><span className="text-[var(--muted)]">{t.unit}:</span></div>
                       <div className="font-medium">{formData.unitNumber}</div>
                       <div><span className="text-[var(--muted)]">{t.phone}:</span></div>
-                      <div className="font-medium">{formData.phone}</div>
+                      <div className="font-medium">{formatPhone(formData.phone)}</div>
                       {formData.email && (
                         <>
                           <div><span className="text-[var(--muted)]">{t.email}:</span></div>

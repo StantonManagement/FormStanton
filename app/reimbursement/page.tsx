@@ -13,6 +13,8 @@ import Footer from '@/components/Footer';
 import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
+import { FormPhoneInput } from '@/components/form';
+import { formatPhone } from '@/lib/formUtils';
 
 function ReimbursementLanguageLanding({ onSelect }: { onSelect: (lang: Language) => void }) {
   return (
@@ -382,26 +384,17 @@ function ReimbursementFormContent() {
 
                         <label className="block">
                           <span className="text-sm font-medium text-[var(--ink)]">{t.phone} <span className="text-[var(--error)]">*</span></span>
-                          <input
-                            type="tel"
-                            required
+                          <FormPhoneInput
                             value={formData.phone}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '');
-                              handleInputChange('phone', value);
-                              if (value.length !== 10 && value.length > 0) {
-                                setPhoneValidationError(t.phoneValidationError);
-                              } else {
-                                setPhoneValidationError('');
-                              }
+                            onChange={(digits) => {
+                              handleInputChange('phone', digits);
+                              setPhoneValidationError('');
                             }}
                             placeholder={t.phonePlaceholder}
-                            maxLength={10}
-                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            error={!!phoneValidationError}
+                            errorMessage={phoneValidationError}
+                            required
                           />
-                          {phoneValidationError && (
-                            <p className="text-xs text-[var(--error)] mt-1">{phoneValidationError}</p>
-                          )}
                         </label>
 
                         <label className="block">
@@ -772,7 +765,7 @@ function ReimbursementFormContent() {
                             <div><span className="text-[var(--muted)]">{t.unit}:</span></div>
                             <div className="font-medium">{formData.unitNumber}</div>
                             <div><span className="text-[var(--muted)]">{t.phone}:</span></div>
-                            <div className="font-medium">{formData.phone}</div>
+                            <div className="font-medium">{formatPhone(formData.phone)}</div>
                             <div><span className="text-[var(--muted)]">{t.email}:</span></div>
                             <div className="font-medium">{formData.email}</div>
                           </div>

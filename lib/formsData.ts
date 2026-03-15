@@ -1,3 +1,9 @@
+import { llcTable } from './policyContent';
+
+// IMPORTANT: PDF generation uses WinAnsi encoding (ASCII only)
+// Do NOT use Unicode characters: → • — " " ' '
+// Use ASCII equivalents: -> - -- " ' instead
+
 export type Department = 'property_management' | 'maintenance' | 'compliance' | 'finance';
 
 export interface TenantForm {
@@ -172,7 +178,7 @@ I/we confirm the following:
 - [ ] Carbon monoxide (CO) detector(s) are present and functioning in the unit as of move-in
 - [ ] I have been informed that tampering with, disabling, removing, or covering any smoke or CO detector is a criminal offense and grounds for immediate eviction
 - [ ] I understand that a fine of **$85** will be charged for any tampering or removal
-- [ ] If a detector beeps or malfunctions, I will submit a maintenance request — I will not remove it myself
+- [ ] If a detector beeps or malfunctions, I will submit a maintenance request -- I will not remove it myself
 
 **Detector Locations:**
 
@@ -228,7 +234,7 @@ Keys will not be released until required utilities have been transferred into th
 
 **Received by (Stanton Management):** _________________________ Date: __________
 
-*Keys released:* [ ] Yes — Date: __________ Staff initials: __________`,
+*Keys released:* [ ] Yes -- Date: __________ Staff initials: __________`,
   },
   {
     id: 4,
@@ -250,9 +256,9 @@ Keys will not be released until required utilities have been transferred into th
 
 ## Select One
 
-### Option A — Standing Permission to Enter
+### Option A -- Standing Permission to Enter
 
-I authorize Stanton Management and its contractors to enter my unit for scheduled maintenance and inspections during standard hours (Mon–Fri, 8 AM–6 PM) with 24 hours' advance notice, without requiring me to be present.
+I authorize Stanton Management and its contractors to enter my unit for scheduled maintenance and inspections during standard hours (Mon-Fri, 8 AM-6 PM) with 24 hours' advance notice, without requiring me to be present.
 
 - [ ] I also have a pet in the unit. Please take precautions: ___________________________
 
@@ -260,7 +266,7 @@ I authorize Stanton Management and its contractors to enter my unit for schedule
 
 ---
 
-### Option B — Entry Restriction / Must Be Present
+### Option B -- Entry Restriction / Must Be Present
 
 I require that a Stanton Management representative contact me before any non-emergency entry. I understand this may delay repairs.
 
@@ -274,7 +280,7 @@ I understand that in the event of an emergency, Stanton Management may enter wit
 
 ---
 
-*For office use — noted in file:* __________ Date: __________`,
+*For office use -- noted in file:* __________ Date: __________`,
   },
   {
     id: 5,
@@ -284,7 +290,7 @@ I understand that in the event of an emergency, Stanton Management may enter wit
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
-> Written notice is required before moving out — no exceptions.
+> Written notice is required before moving out -- no exceptions.
 > Month-to-month and fixed-term tenants: 30 days written notice required.
 
 ---
@@ -389,7 +395,7 @@ I understand that:
 
 ---
 
-## Section A — For Tenant Use
+## Section A -- For Tenant Use
 
 **I intend to:**
 
@@ -401,7 +407,7 @@ I understand that:
 
 ---
 
-## Section B — For Management Use (Renewal Offer)
+## Section B -- For Management Use (Renewal Offer)
 
 **New Lease Term:** _____________________________________________ to _________________
 
@@ -432,7 +438,7 @@ _______________________________________________
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
-> **Preferred submission:** AppFolio app/portal or call (860) 993-3401 → Press 2
+> **Preferred submission:** AppFolio app/portal or call (860) 993-3401 -> Press 2
 > Use this paper form only if you cannot access those channels.
 
 ---
@@ -457,7 +463,7 @@ _______________________________________________
 _______________________________________________
 _______________________________________________
 
-**Is this an emergency?** [ ] Yes — I have also called (860) 993-3401 → Press 2 [ ] No
+**Is this an emergency?** [ ] Yes -- I have also called (860) 993-3401 -> Press 2 [ ] No
 
 **Photos attached?** [ ] Yes [ ] No
 
@@ -465,9 +471,9 @@ _______________________________________________
 
 ## Entry Authorization
 
-- [ ] You have permission to enter my unit if I am not home during standard hours (Mon–Fri, 8 AM–6 PM)
-- [ ] I require advance notice and must be present — please call me first at: __________________
-- [ ] I have a pet in the unit — please be aware: _______________________________________________
+- [ ] You have permission to enter my unit if I am not home during standard hours (Mon-Fri, 8 AM-6 PM)
+- [ ] I require advance notice and must be present -- please call me first at: __________________
+- [ ] I have a pet in the unit -- please be aware: _______________________________________________
 
 ---
 
@@ -499,7 +505,7 @@ Work order created: __________ By: __________ Date: __________`,
 - [ ] Lost key(s)
 - [ ] Lost key fob(s)
 - [ ] Damaged key(s)
-- [ ] Lock change requested (security concern — describe below)
+- [ ] Lock change requested (security concern -- describe below)
 - [ ] Other: ___________________________________________________
 
 **Details:** _______________________________________________
@@ -600,7 +606,7 @@ I understand the following:
 ---
 
 *For office use:*
-Approved: [ ] Yes [ ] No — Reason: _______________________________
+Approved: [ ] Yes [ ] No -- Reason: _______________________________
 Scheduled pickup: __________ Notes: _____________________________
 Staff initials: __________`,
   },
@@ -643,7 +649,7 @@ Staff initials: __________`,
 
 By signing below, the tenant agrees to the following:
 
-- Pets must remain approved and on file — adding a new pet requires a new request
+- Pets must remain approved and on file -- adding a new pet requires a new request
 - Tenant is fully responsible for any and all damage caused by their pet
 - Tenant is responsible for ensuring their pet does not disturb neighbors
 - Unauthorized pets are a lease violation and subject to immediate action
@@ -654,7 +660,7 @@ By signing below, the tenant agrees to the following:
 
 **Tenant Signature:** _________________________ Date: __________
 
-**Stanton Management — Approved / Denied:** _________________________ Date: __________
+**Stanton Management -- Approved / Denied:** _________________________ Date: __________
 
 **Notes:** _______________________________________________`,
   },
@@ -729,10 +735,10 @@ By signing below, the tenant agrees to the following:
 
 ## Violation Type
 
-- [ ] Improper trash disposal — Fine: Starting at $100
-- [ ] Personal items left in hallway / stairwell — Fine: Up to $300
-- [ ] Cigarette butts outside designated containers — Fine: Starting at $125
-- [ ] Noise violation (common areas) — Fine: Starting at $100
+- [ ] Improper trash disposal -- Fine: Starting at $100
+- [ ] Personal items left in hallway / stairwell -- Fine: Up to $300
+- [ ] Cigarette butts outside designated containers -- Fine: Starting at $125
+- [ ] Noise violation (common areas) -- Fine: Starting at $100
 - [ ] Other: ___________________________________________________
 
 ---
@@ -771,7 +777,7 @@ Failure to comply may result in escalating fines or lease action.
   },
   {
     id: 15,
-    title: 'Unauthorized Pet — Cure Notice / Retroactive Approval',
+    title: 'Unauthorized Pet -- Cure Notice / Retroactive Approval',
     department: 'compliance',
     description: 'Notice for unauthorized pet with options to remove or apply for approval',
     path: '/unauthorized-pet',
@@ -794,13 +800,13 @@ It has come to our attention that you may have an unauthorized pet in your unit.
 
 **You have the following options:**
 
-### Option A — Remove the Pet
+### Option A -- Remove the Pet
 
 Remove the pet from the unit by: **__________________________ (date)**
 
 Confirm removal in writing to the office.
 
-### Option B — Apply for Retroactive Approval
+### Option B -- Apply for Retroactive Approval
 
 Complete and submit a Pet Approval Request (Form 4) within **5 business days** of this notice. Approval is not guaranteed. If approved, a pet deposit and any applicable fees will apply immediately.
 
@@ -810,7 +816,7 @@ Complete and submit a Pet Approval Request (Form 4) within **5 business days** o
 
 - [ ] I will remove the pet by the date above
 - [ ] I am applying for retroactive approval (Form 4 attached)
-- [ ] I dispute that an unauthorized pet is present — explanation: _____________________
+- [ ] I dispute that an unauthorized pet is present -- explanation: _____________________
 
 ---
 
@@ -849,7 +855,7 @@ Complete and submit a Pet Approval Request (Form 4) within **5 business days** o
 Complete and submit these items to your housing authority by your recertification deadline. Keep copies of everything.
 
 **Income Verification**
-- [ ] Current pay stubs (last 4–8 weeks, per housing authority requirement)
+- [ ] Current pay stubs (last 4-8 weeks, per housing authority requirement)
 - [ ] Employer verification letter (if requested)
 - [ ] Social Security / disability award letters (if applicable)
 - [ ] Self-employment income documentation (if applicable)
@@ -945,7 +951,7 @@ Receipt issued: [ ] Yes Receipt #: __________`,
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
 > PaySlip lets you pay rent with cash at CVS, Walmart, 7-Eleven, and other participating stores.
-> The office generates your barcode — you take it to the store and pay.
+> The office generates your barcode -- you take it to the store and pay.
 
 ---
 
@@ -1005,7 +1011,7 @@ Delivered to tenant: [ ] Yes Method: __________ Date: __________`,
 - [ ] The damage was pre-existing and documented on my move-in inspection form
 - [ ] The charge does not reflect normal wear and tear
 - [ ] I was not given proper notice before entry / repair
-- [ ] The amount charged is incorrect — I believe the correct amount is $__________
+- [ ] The amount charged is incorrect -- I believe the correct amount is $__________
 - [ ] Other: ___________________________________________________
 
 **Supporting Documentation Attached:**
@@ -1092,6 +1098,232 @@ Route: /tenant-assessment
 - Agent Assessment + Recommendation
 `,
   },
+  {
+    id: 22,
+    title: 'Vehicle & Parking Addendum',
+    department: 'compliance',
+    description: 'Register vehicle and parking permit',
+    path: '/vehicle-addendum',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**Tenant Name(s):** _______________________________________________
+
+**Unit Address:** _________________________________________________
+
+**Date:** ______________________________________________
+
+---
+
+VEHICLE & PARKING ADDENDUM TO RENTAL AGREEMENT
+
+You understand that parking is not included with this Lease and that we may or may NOT allow you to park your vehicles on the property. We reserve the right to restrict, condition, or revoke any prior authorization given at any time.
+
+You also acknowledge that if we allow you to park on the property, you must register your vehicle with us and pay parking fees as follows:
+
+PARKING FEES: $50 per vehicle per month
+
+PERMIT LIMIT: Each tenant is limited to one (1) parking permit. Additional permits may be available on a first-come, first-served basis after all tenants in the building have had the opportunity to obtain their first permit. Not all buildings allow a second permit. Contact the office for availability.
+
+TERMS AND CONDITIONS
+
+All authorized vehicles shall be parked in a designated parking spot, and you will not block or impede us or any other tenants' access to the parking lot or driveways. We may, in our discretion, designate parking areas specific to mopeds, motorcycles and motorized scooters.
+
+If we authorize your vehicle and you elect to park on the property you agree that we are not liable for any damage, theft, or accident suffered or caused by your vehicle. You agree to indemnify and hold us harmless for any injury to person or property caused by your vehicle.
+
+If your vehicle damages any property or damages the parking lot, you will be responsible for all costs we incur in correcting said damage.
+
+DAMAGE FEES:
+- Parking lot damage: Cost of repair + $250 administrative fee
+- Property damage: Full cost of repair
+
+You understand and agree that you will not park any disabled, significantly damaged, or other defective vehicles on the Property. You agree and acknowledge that you will provide us with proof of insurance and registration for any vehicles we authorize you to park on the property.
+
+WE RESERVE THE RIGHT TO TOW ANY VEHICLES ON THE PROPERTY AT YOUR COST WITH OR WITHOUT PRIOR NOTICE IN OUR SOLE AND ABSOLUTE DISCRETION.
+
+The parking permit must be displayed on the upper driver's side of the windshield at all times.
+
+---
+
+**Vehicle Information:**
+Make: ______________ Model: ______________ Year: __________
+Color: __________ License Plate: _________________________
+
+---
+
+**Tenant Signature:** _________________________ Date: __________
+
+**Stanton Management -- Approved / Denied:** _________________________ Date: __________
+
+**Notes:** _______________________________________________`,
+  },
+  {
+    id: 23,
+    title: 'Renters Insurance Information',
+    department: 'compliance',
+    description: 'Insurance requirements and Additional Insured details',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**RENTERS INSURANCE REQUIREMENT**
+
+---
+
+**Tenant Name(s):** _______________________________________________
+
+**Unit Address:** _________________________________________________
+
+**Date:** ________________________________________________________
+
+---
+
+## Why Renters Insurance is Required
+
+Renters insurance protects your personal belongings and provides liability coverage for unexpected events such as:
+- Theft or damage to your personal property
+- Fire or water damage to your belongings
+- Liability if a guest is injured in your unit
+- Liability if your pet causes injury
+
+---
+
+## Insurance Requirements
+
+Your policy must include:
+- **Minimum Liability Coverage:** $100,000 ($300,000 if you have pets)
+- **Your unit address** listed on the policy
+- **Additional Insured:** See your building's LLC below
+
+---
+
+## Your Building's Additional Insured Information
+
+**Additional Insured Name:**
+{{llc_name}}
+
+**Additional Insured Address:**
+{{llc_address}}
+
+---
+
+## Two Options
+
+### Option 1: Get Your Own Insurance
+Purchase from any insurance provider (Lemonade, GEICO, State Farm, etc.)
+- Cost: Typically $10-25 per month
+- You manage it directly
+- Must provide proof of coverage showing requirements above
+
+### Option 2: Stanton Management Partnership
+We can enroll you through our partnership with Appfolio Renters Insurance
+- Cost: $10-25 per month (added to rent)
+- Managed automatically
+- No separate bills to track
+
+---
+
+**Tenant Signature:** _________________________ Date: __________
+
+**Received by (Stanton Management):** _________________________ Date: __________`,
+  },
+  {
+    id: 24,
+    title: 'How to Add Additional Insured (Step-by-Step)',
+    department: 'compliance',
+    description: 'Simple instructions for adding LLC to insurance policy',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**HOW TO ADD ADDITIONAL INSURED TO YOUR RENTERS INSURANCE**
+
+**Step-by-Step Instructions**
+
+---
+
+**What You Need:**
+
+The information below (already filled in for your building):
+- Additional Insured Name: **{{llc_name}}**
+- Additional Insured Address: **{{llc_address}}**
+
+---
+
+## STEP 1: Log Into Your Insurance Account
+
+Go to your insurance company's website or app:
+- **Lemonade**: lemonade.com -> Log in
+- **GEICO**: geico.com -> Log in
+- **State Farm**: statefarm.com -> Log in
+- **Allstate**: allstate.com -> Log in
+- **Other companies**: Use their website or app
+
+---
+
+## STEP 2: Find the Right Section
+
+Look for one of these options in your account:
+- "Edit Policy"
+- "Additional Insured"
+- "Add Interest" or "Interested Party"
+- "Policy Details" or "Manage Policy"
+
+**Can't find it?** Call your insurance company and say: *"I need to add an Additional Insured to my renters policy"*
+
+---
+
+## STEP 3: Enter This Information
+
+When the form asks for Additional Insured details, enter **EXACTLY**:
+
+**Name/Company:**
+{{llc_name}}
+
+**Address:**
+{{llc_address}}
+
+**Relationship:** Landlord
+
+---
+
+## STEP 4: Confirm & Get Proof
+
+After you add it:
+1. **Download** or **screenshot** your updated policy showing the Additional Insured
+2. **Bring it to the office** OR **email to**: info@stantonmgmt.com
+
+---
+
+## YOUR BUILDING'S ADDITIONAL INSURED INFORMATION
+
+**Copy this information exactly:**
+
+**Additional Insured Name:**
+{{llc_name}}
+
+**Additional Insured Address:**
+{{llc_address}}
+
+---
+
+## STILL STUCK? WE CAN HELP
+
+**Option 1:** Bring your phone/laptop to the office during pickup hours and we'll walk you through it
+
+**Option 2:** Call your insurance company and tell them:
+"I need to add an Additional Insured. The name is {{llc_name}} and the address is {{llc_address}}"
+
+**Option 3:** Choose our partnership insurance (we handle everything) - ask at the office
+
+---
+
+**Questions?** Call (860) 993-3401 or visit the office Mon-Fri 9 AM - 5 PM`,
+  },
 ];
 
 export function getFormsByDepartment(department: Department): TenantForm[] {
@@ -1109,4 +1341,11 @@ export function searchForms(query: string): TenantForm[] {
       form.title.toLowerCase().includes(lowerQuery) ||
       form.description.toLowerCase().includes(lowerQuery)
   );
+}
+
+export function getLLCForAddress(address: string): string {
+  const entry = llcTable.find(([building]) => 
+    address.toLowerCase().includes(building.toLowerCase())
+  );
+  return entry ? entry[1] : 'Contact office for Additional Insured information';
 }

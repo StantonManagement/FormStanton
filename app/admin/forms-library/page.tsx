@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Head from 'next/head';
 import { Department, departmentLabels, TenantForm } from '@/lib/formsData';
 import FormCard from '@/components/FormCard';
 import FormDetailModal from '@/components/FormDetailModal';
@@ -215,7 +216,12 @@ export default function FormsLibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Forms Library - Stanton Management</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -366,5 +372,6 @@ export default function FormsLibraryPage() {
         onSave={handleSaveForm}
       />
     </div>
+    </>
   );
 }

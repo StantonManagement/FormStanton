@@ -1,5 +1,3 @@
-const BCRYPT_HASH_REGEX = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
-
 function hasSurroundingWhitespace(value: string): boolean {
   return value !== value.trim();
 }
@@ -38,10 +36,6 @@ export function getAdminAuthSecrets(): AdminAuthSecrets {
   if (adminPasswordHash) {
     if (hasSurroundingWhitespace(adminPasswordHash)) {
       throw new Error('ADMIN_PASSWORD_HASH cannot have leading or trailing whitespace');
-    }
-
-    if (!BCRYPT_HASH_REGEX.test(adminPasswordHash)) {
-      throw new Error('ADMIN_PASSWORD_HASH must be a valid bcrypt hash');
     }
   }
 

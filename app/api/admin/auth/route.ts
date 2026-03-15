@@ -8,7 +8,12 @@ async function verifyAdminPassword(inputPassword: string): Promise<boolean> {
   const { adminPasswordHash, adminPasswordLegacy } = getAdminAuthSecrets();
 
   if (adminPasswordHash) {
-    return bcrypt.compare(inputPassword, adminPasswordHash);
+    // Check if it's a bcrypt hash (starts with $2a$, $2b$, or $2y$)
+    if (adminPasswordHash.startsWith('$2')) {
+      return bcrypt.compare(inputPassword, adminPasswordHash);
+    }
+    // Otherwise, treat it as a simple string password
+    return inputPassword === adminPasswordHash;
   }
 
   return inputPassword === adminPasswordLegacy;

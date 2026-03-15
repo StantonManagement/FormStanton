@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FormPhoneInput } from '@/components/form';
 
 interface TenantSubmission {
   id: string;
@@ -246,13 +247,10 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Phone
                 </label>
-                <input
-                  type="tel"
+                <FormPhoneInput
                   value={phone}
-                  onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '')); setError(''); }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="1234567890"
-                  maxLength={10}
+                  onChange={(digits) => { setPhone(digits); setError(''); }}
+                  placeholder="(860) 555-0123"
                 />
               </div>
               <div>

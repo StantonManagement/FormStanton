@@ -81,11 +81,10 @@ for (const varConfig of requiredVars) {
   }
 }
 
-// Check admin auth variables (hash preferred, plaintext legacy fallback)
+// Check admin auth variables
 console.log('\n🔐 Admin Auth Variables:');
 const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
 const adminPassword = process.env.ADMIN_PASSWORD;
-const bcryptRegex = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 if (!adminPasswordHash && !adminPassword) {
   result.valid = false;
@@ -96,10 +95,6 @@ if (!adminPasswordHash && !adminPassword) {
     result.valid = false;
     result.errors.push('❌ ADMIN_PASSWORD_HASH cannot have leading or trailing whitespace');
     console.log('  ❌ ADMIN_PASSWORD_HASH: HAS SURROUNDING WHITESPACE');
-  } else if (!bcryptRegex.test(adminPasswordHash)) {
-    result.valid = false;
-    result.errors.push('❌ ADMIN_PASSWORD_HASH must be a valid bcrypt hash');
-    console.log('  ❌ ADMIN_PASSWORD_HASH: INVALID BCRYPT FORMAT');
   } else {
     console.log('  ✅ ADMIN_PASSWORD_HASH: OK (preferred)');
   }

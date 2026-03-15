@@ -18,6 +18,7 @@ import {
   SuccessScreen,
   FormTextarea,
   FormPhotoUpload,
+  FormPhoneInput,
 } from '@/components/form';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -25,7 +26,7 @@ import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
-import { validatePhone, sanitizePhone } from '@/lib/formUtils';
+import { validatePhone, formatPhone } from '@/lib/formUtils';
 import { useFormSection, useFormSubmit, useFieldValidation, useFormData } from '@/lib/formHooks';
 
 interface UnauthorizedPetFormData {
@@ -244,13 +245,12 @@ function UnauthorizedPetFormContent() {
                   </FormField>
                   
                   <FormField label={t.phone} required error={errors.phone}>
-                    <FormInput
-                      type="tel"
+                    <FormPhoneInput
                       value={formData.phone}
-                      onChange={(e) => updateField('phone', sanitizePhone(e.target.value))}
+                      onChange={(digits) => updateField('phone', digits)}
                       placeholder={t.phonePlaceholder}
-                      maxLength={10}
                       error={!!errors.phone}
+                      errorMessage={errors.phone}
                       required
                     />
                   </FormField>
@@ -398,7 +398,7 @@ function UnauthorizedPetFormContent() {
                       <div className="text-[var(--muted)]">{t.unit}:</div>
                       <div className="font-medium">{formData.unitNumber}</div>
                       <div className="text-[var(--muted)]">{t.phone}:</div>
-                      <div className="font-medium">{formData.phone}</div>
+                      <div className="font-medium">{formatPhone(formData.phone)}</div>
                     </div>
                   </div>
                   

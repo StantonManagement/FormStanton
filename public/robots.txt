@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /admin/*
+Disallow: /api/admin/*
+
+# Allow all other content
+Allow: /

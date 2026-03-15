@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { FormPhoneInput } from '@/components/form';
 import BuildingAutocomplete from './BuildingAutocomplete';
 import { buildings as buildingsList, buildingUnits } from '@/lib/buildings';
 
@@ -235,13 +236,10 @@ export default function AddTenantModal({ isOpen, onClose, onSuccess, prefilledBu
           {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input
-              type="tel"
+            <FormPhoneInput
               value={formData.phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-none text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="1234567890"
-              maxLength={10}
+              onChange={(digits) => setFormData(prev => ({ ...prev, phone: digits }))}
+              placeholder="(860) 555-0123"
             />
           </div>
 

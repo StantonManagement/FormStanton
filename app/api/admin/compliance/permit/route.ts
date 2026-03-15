@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabase';
+import { isAuthenticated } from '@/lib/auth';
 
 // Issue permit
 export async function POST(request: NextRequest) {
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { submissionId, admin } = body;
 
@@ -20,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch submission to validate all requirements are met
-    const { data: submission, error: fetchError } = await supabase
+    const { data: submission, error: fetchError } = await supabaseAdmin
       .from('submissions')
       .select('*')
       .eq('id', submissionId)
@@ -58,8 +62,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // All requirements met - issue the permit
-    const { data, error } = await supabase
+    // All requirements met - issue the permit (no PDF, permits are hand-written)
+    const { data, error } = await supabaseAdmin
       .from('submissions')
       .update({
         permit_issued: true,
@@ -95,8 +99,16 @@ export async function POST(request: NextRequest) {
 // Mark as picked up
 export async function PUT(request: NextRequest) {
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { submissionId } = body;
+    const { submissionId, idPhotoPath } = body;
 
     if (!submissionId) {
       return NextResponse.json(
@@ -105,12 +117,19 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const updateData: Record<string, any> = {
+      tenant_picked_up: true,
+      tenant_picked_up_at: new Date().toISOString(),
+    };
+
+    if (idPhotoPath) {
+      updateData.pickup_id_photo = idPhotoPath;
+      updateData.pickup_id_photo_at = new Date().toISOString();
+    }
+
+    const { data, error } = await supabaseAdmin
       .from('submissions')
-      .update({
-        tenant_picked_up: true,
-        tenant_picked_up_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', submissionId)
       .select()
       .single();

@@ -1,53 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { PET_ADDENDUM, VEHICLE_ADDENDUM } from '@/lib/addendums';
-
-// Helper: wrap text to fit within a given width
-function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
-  const lines: string[] = [];
-  const paragraphs = text.split('\n');
-  for (const para of paragraphs) {
-    if (para.trim() === '') { lines.push(''); continue; }
-    const words = para.split(' ');
-    let currentLine = '';
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const width = font.widthOfTextAtSize(testLine, fontSize);
-      if (width > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    if (currentLine) lines.push(currentLine);
-  }
-  return lines;
-}
-
-// Helper: draw text block and return new Y position, adding pages as needed
-function drawTextBlock(
-  doc: PDFDocument,
-  page: PDFPage,
-  lines: string[],
-  x: number,
-  startY: number,
-  font: PDFFont,
-  fontSize: number,
-  lineHeight: number,
-  color = rgb(0.1, 0.1, 0.1),
-): { page: PDFPage; y: number } {
-  let y = startY;
-  let currentPage = page;
-  for (const line of lines) {
-    if (y < 50) {
-      currentPage = doc.addPage([612, 792]);
-      y = 742;
-    }
-    currentPage.drawText(line, { x, y, size: fontSize, font, color });
-    y -= lineHeight;
-  }
-  return { page: currentPage, y };
-}
+import { drawHeader, drawFooter, wrapText, drawTextBlock, drawCheckbox, drawSignatureLine } from './pdfTemplates';
 
 export async function generatePetAddendumPdf(
   formData: any,

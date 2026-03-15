@@ -36,9 +36,16 @@ interface TenantSubmission {
   insurance_provider?: string;
   insurance_policy_number?: string;
   insurance_file?: string;
+  insurance_type?: 'renters' | 'car' | 'other';
   insurance_upload_pending: boolean;
   add_insurance_to_rent?: boolean;
   insurance_verified: boolean;
+  pet_addendum_received?: boolean;
+  pet_addendum_received_at?: string;
+  pet_addendum_received_by?: string;
+  vehicle_addendum_received?: boolean;
+  vehicle_addendum_received_at?: string;
+  vehicle_addendum_received_by?: string;
   admin_notes?: string;
   last_reviewed_at?: string;
   created_at: string;
@@ -297,6 +304,20 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                 </div>
               )}
               
+              {/* Physical Addendum Received */}
+              {submission.vehicle_addendum_received && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-xs text-green-600">
+                    ✓ Physical form received by {submission.vehicle_addendum_received_by}
+                    {submission.vehicle_addendum_received_at && (
+                      <span className="text-gray-500 ml-1">
+                        ({new Date(submission.vehicle_addendum_received_at).toLocaleDateString()})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Permit Status */}
               {submission.permit_issued && (
                 <div className="mt-2 pt-2 border-t border-gray-200">
@@ -433,6 +454,16 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   </div>
                 </div>
               ))}
+              {submission.pet_addendum_received && (
+                <div className="text-xs text-green-600 mt-2 pt-2 border-t border-gray-100">
+                  ✓ Physical form received by {submission.pet_addendum_received_by}
+                  {submission.pet_addendum_received_at && (
+                    <span className="text-gray-500 ml-1">
+                      ({new Date(submission.pet_addendum_received_at).toLocaleDateString()})
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -459,6 +490,20 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                 <div><span className="text-gray-500">Provider:</span> <span className="ml-1">{submission.insurance_provider}</span></div>
                 <div><span className="text-gray-500">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></div>
                 <div><span className="text-gray-500">Status:</span> <span className="ml-1">{getInsuranceStatus()}</span></div>
+                {submission.insurance_type && (
+                  <div className="pt-1">
+                    <span className="text-gray-500">Type:</span>
+                    <span className={`ml-1 ${
+                      submission.insurance_type === 'renters' 
+                        ? 'text-green-600 font-medium' 
+                        : 'text-amber-600'
+                    }`}>
+                      {submission.insurance_type === 'renters' ? '✓ Renters' : 
+                       submission.insurance_type === 'car' ? '⚠ Car Insurance' : 
+                       '⚠ Other'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}

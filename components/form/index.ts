@@ -10,3 +10,5 @@ export { default as FormLayout } from './FormLayout';
 export { default as LanguageLanding } from './LanguageLanding';
 export { default as SuccessScreen } from './SuccessScreen';
 export { default as FormPhotoUpload } from './FormPhotoUpload';
+export { default as FormDocumentUpload } from './FormDocumentUpload';
+export { default as FormPhoneInput } from './FormPhoneInput';

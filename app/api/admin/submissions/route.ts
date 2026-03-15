@@ -24,6 +24,52 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+const ALLOWED_FIELDS = new Set([
+  'full_name', 'phone', 'email', 'building_address', 'unit_number',
+  'vehicle_make', 'vehicle_model', 'vehicle_year', 'vehicle_color', 'vehicle_plate',
+  'insurance_provider', 'insurance_policy_number', 'pets',
+]);
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, updates } = await request.json();
+    if (!id || !updates || typeof updates !== 'object') {
+      return NextResponse.json({ success: false, message: 'Missing id or updates' }, { status: 400 });
+    }
+
+    // Only allow whitelisted fields
+    const sanitized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updates)) {
+      if (ALLOWED_FIELDS.has(key)) {
+        sanitized[key] = value;
+      }
+    }
+
+    if (Object.keys(sanitized).length === 0) {
+      return NextResponse.json({ success: false, message: 'No valid fields to update' }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('submissions')
+      .update(sanitized)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Submission PATCH error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authenticated = await isAuthenticated();
