@@ -9,8 +9,14 @@ export function normalizeAddress(address: string): string {
   
   let normalized = address.trim();
   
+  // Collapse multiple spaces: "170  Seymour" -> "170 Seymour"
+  normalized = normalized.replace(/\s+/g, ' ');
+  
   // Strip city, state, zip (e.g., "Hartford, CT 06120" or "Hartford, CT 06114")
   normalized = normalized.replace(/\s+Hartford,?\s+CT\s+\d{5}$/i, '');
+  
+  // Normalize plus signs in ranges: "190+192" -> "190-192"
+  normalized = normalized.replace(/(\d+)\+(\d+)/, '$1-$2');
   
   // Normalize dash spacing in number ranges: "1721 - 1739" -> "1721-1739"
   normalized = normalized.replace(/(\d+)\s*-\s*(\d+)/, '$1-$2');
@@ -59,6 +65,36 @@ export function normalizeAddress(address: string): string {
   // Handle 222-224 Maple range
   if (/^(222-224|222|224)\s+Maple/i.test(normalized)) {
     normalized = '222-224 Maple Ave';
+  }
+  
+  // Handle 90-100 Park -> canonical "90 Park Street"
+  if (/^(90-100|90)\s+Park/i.test(normalized)) {
+    normalized = '90 Park Street';
+  }
+  
+  // Handle 57-59 Park -> canonical "57 Park St"
+  if (/^(57-59|57)\s+Park/i.test(normalized)) {
+    normalized = '57 Park St';
+  }
+  
+  // Handle 182-184 Affleck -> canonical "182 Affleck St"
+  if (/^(182-184|182)\s+Affleck/i.test(normalized)) {
+    normalized = '182 Affleck St';
+  }
+  
+  // Handle 190-192 Affleck -> canonical "190 Affleck St"
+  if (/^(190-192|190)\s+Affleck/i.test(normalized)) {
+    normalized = '190 Affleck St';
+  }
+  
+  // Handle 71-73 Chestnut -> canonical "69-73 Chestnut St"
+  if (/^(69-73|71-73)\s+Chestnut/i.test(normalized)) {
+    normalized = '69-73 Chestnut St';
+  }
+  
+  // Handle 90 Edwards -> canonical "91 Edwards St"
+  if (/^(90|91)\s+Edwards/i.test(normalized)) {
+    normalized = '91 Edwards St';
   }
   
   return normalized;
