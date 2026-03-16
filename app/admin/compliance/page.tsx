@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Head from 'next/head';
 import { sortBuildingsByAssetId, buildingToAssetId, buildingParkingSpots } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
 import { buildingUnits } from '@/lib/buildings';
@@ -12,13 +11,6 @@ import { groupDuplicateSubmissions, SubmissionGroup } from '@/lib/duplicateDetec
 import VehicleExportCenter from '@/components/VehicleExportCenter';
 import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
-import DocumentViewerModal from '@/components/DocumentViewerModal';
-import { useAdminAuth } from '@/lib/adminAuthContext';
-import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
-import AppFolioDocumentRow from '@/components/AppFolioDocumentRow';
-import AppFolioFeeRow from '@/components/AppFolioFeeRow';
-import AppFolioStatusFilter from '@/components/AppFolioStatusFilter';
-import AlertDialog from '@/components/kit/AlertDialog';
 
 interface TenantSubmission {
   id: string;
@@ -53,28 +45,16 @@ interface TenantSubmission {
   pet_signature?: string;
   pet_signature_date?: string;
   pet_addendum_file?: string;
-  vehicle_addendum_file?: string;
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
+  insurance_expiration_date?: string;
   insurance_file?: string;
-  insurance_type?: 'renters' | 'car' | 'other';
   insurance_upload_pending: boolean;
   insurance_verified: boolean;
-  pet_addendum_received?: boolean;
-  pet_addendum_received_at?: string;
-  pet_addendum_received_by?: string;
-  vehicle_addendum_received?: boolean;
-  vehicle_addendum_received_at?: string;
-  vehicle_addendum_received_by?: string;
-  // Exemption fields
-  exemption_status?: 'pending' | 'approved' | 'denied' | 'more_info_needed' | null;
-  exemption_reason?: string;
-  exemption_documents?: string[];
-  exemption_reviewed_by?: string;
-  exemption_reviewed_at?: string;
-  exemption_notes?: string;
-  has_fee_exemption?: boolean;
+  vehicle_notes?: string;
+  pet_notes?: string;
+  insurance_notes?: string;
   admin_notes?: string;
   ready_for_review: boolean;
   reviewed_for_permit: boolean;
@@ -94,27 +74,6 @@ interface TenantSubmission {
   }>;
   additional_vehicle_approved?: boolean;
   additional_vehicle_denied?: boolean;
-  // AppFolio tracking fields
-  pet_addendum_uploaded_to_appfolio?: boolean;
-  pet_addendum_uploaded_to_appfolio_at?: string;
-  pet_addendum_uploaded_to_appfolio_by?: string;
-  pet_addendum_upload_note?: string;
-  vehicle_addendum_uploaded_to_appfolio?: boolean;
-  vehicle_addendum_uploaded_to_appfolio_at?: string;
-  vehicle_addendum_uploaded_to_appfolio_by?: string;
-  vehicle_addendum_upload_note?: string;
-  insurance_uploaded_to_appfolio?: boolean;
-  insurance_uploaded_to_appfolio_at?: string;
-  insurance_uploaded_to_appfolio_by?: string;
-  insurance_upload_note?: string;
-  pet_fee_added_to_appfolio?: boolean;
-  pet_fee_added_to_appfolio_at?: string;
-  pet_fee_added_to_appfolio_by?: string;
-  pet_fee_amount?: number;
-  permit_fee_added_to_appfolio?: boolean;
-  permit_fee_added_to_appfolio_at?: string;
-  permit_fee_added_to_appfolio_by?: string;
-  permit_fee_amount?: number;
 }
 
 interface TenantData {
@@ -163,16 +122,9 @@ export default function CompliancePage() {
   const [submissions, setSubmissions] = useState<TenantSubmission[]>([]);
   const [tenantData, setTenantData] = useState<BuildingTenantData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [documentViewer, setDocumentViewer] = useState<{
-    isOpen: boolean;
-    documentPath: string | null;
-    documentType: 'signature' | 'insurance' | 'addendum' | 'photo';
-    title?: string;
-    date?: string;
-  }>({ isOpen: false, documentPath: null, documentType: 'insurance' });
+  const [viewingSignature, setViewingSignature] = useState<{ path: string; type: string; date?: string } | null>(null);
   const [reviewingSubmission, setReviewingSubmission] = useState<TenantSubmission | null>(null);
-  const { user: authUser } = useAdminAuth();
-  const adminName = authUser?.displayName || 'Admin';
+  const [reviewAdmin, setReviewAdmin] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [filters, setFilters] = useState<{
     hasVehicle: boolean;
@@ -180,19 +132,10 @@ export default function CompliancePage() {
     hasInsurance: boolean;
     needsReview: boolean;
     exportStatus: 'all' | 'exported' | 'not-exported';
-    hasFeeExemption: boolean;
-    appfolioStatus: 'all' | 'ready' | 'partial' | 'complete';
-  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' });
+  }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' });
   const [showDuplicatesGrouped, setShowDuplicatesGrouped] = useState(true);
   const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
-
-  const [alertDialog, setAlertDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    variant?: 'success' | 'error' | 'info';
-  }>({ isOpen: false, title: '', message: '' });
   const [similarityThreshold, setSimilarityThreshold] = useState(85);
   const [showExportCenter, setShowExportCenter] = useState(false);
   const [showAddTenant, setShowAddTenant] = useState(false);
@@ -260,51 +203,23 @@ export default function CompliancePage() {
     }
   }, [allSubmissions]);
 
-  // Debounced search to reduce API calls - searches ALL current tenants, not just those with submissions
+  // Debounced search to reduce API calls
   useEffect(() => {
     if (quickLookupQuery.trim().length < 2) {
       setQuickLookupResults([]);
       return;
     }
 
-    const debounceTimer = setTimeout(async () => {
+    const debounceTimer = setTimeout(() => {
       const query = quickLookupQuery.toLowerCase();
-      
-      // Fetch unified tenants (includes both submitted and non-submitted tenants)
-      try {
-        const response = await fetch('/api/admin/unified-tenants');
-        const result = await response.json();
-        
-        if (result.success) {
-          const allTenants = result.data;
-          const matchedTenants = allTenants.filter((t: any) =>
-            t.name?.toLowerCase().includes(query) ||
-            t.building_address?.toLowerCase().includes(query) ||
-            t.unit_number?.toLowerCase().includes(query) ||
-            (t.phone && t.phone.includes(query)) ||
-            (t.email && t.email?.toLowerCase().includes(query))
-          );
-          
-          // Convert to submission format for display compatibility
-          const results = matchedTenants
-            .filter((t: any) => t.hasSubmission)
-            .map((t: any) => t.submissionData)
-            .slice(0, 10);
-          
-          setQuickLookupResults(results);
-        }
-      } catch (error) {
-        console.error('Quick lookup error:', error);
-        // Fallback to searching existing submissions
-        const results = allSubmissions.filter(sub =>
-          sub.full_name?.toLowerCase().includes(query) ||
-          sub.building_address?.toLowerCase().includes(query) ||
-          sub.unit_number?.toLowerCase().includes(query) ||
-          sub.phone?.includes(query) ||
-          sub.email?.toLowerCase().includes(query)
-        );
-        setQuickLookupResults(results.slice(0, 10));
-      }
+      const results = allSubmissions.filter(sub =>
+        sub.full_name?.toLowerCase().includes(query) ||
+        sub.building_address?.toLowerCase().includes(query) ||
+        sub.unit_number?.toLowerCase().includes(query) ||
+        sub.phone?.includes(query) ||
+        sub.email?.toLowerCase().includes(query)
+      );
+      setQuickLookupResults(results.slice(0, 10));
     }, 300); // 300ms debounce
 
     return () => clearTimeout(debounceTimer);
@@ -424,12 +339,11 @@ export default function CompliancePage() {
     buildingSubs = buildingSubs.filter(sub => !sub.merged_into);
     
     // Apply filters
-    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption || filters.appfolioStatus !== 'all') {
+    if (filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') {
       buildingSubs = buildingSubs.filter(sub => {
         const matchesVehicle = !filters.hasVehicle || sub.has_vehicle;
         const matchesPets = !filters.hasPets || sub.has_pets;
         const matchesInsurance = !filters.hasInsurance || sub.has_insurance;
-        const matchesFeeExemption = !filters.hasFeeExemption || sub.has_fee_exemption;
         const matchesNeedsReview = !filters.needsReview || 
           (sub.has_vehicle && !sub.vehicle_verified) ||
           (sub.has_pets && !sub.pet_verified) ||
@@ -438,24 +352,7 @@ export default function CompliancePage() {
           (filters.exportStatus === 'exported' && sub.vehicle_exported) ||
           (filters.exportStatus === 'not-exported' && !sub.vehicle_exported);
         
-        // AppFolio status filter
-        let matchesAppfolioStatus = true;
-        if (filters.appfolioStatus !== 'all') {
-          const allVerified = sub.vehicle_verified && sub.pet_verified && sub.insurance_verified;
-          const docsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) && (sub.vehicle_addendum_uploaded_to_appfolio === true) && (sub.insurance_uploaded_to_appfolio === true);
-          const feesAdded = (!sub.has_pets || sub.pet_fee_added_to_appfolio === true) && (!sub.has_vehicle || sub.permit_fee_added_to_appfolio === true);
-          const someDocsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) || (sub.vehicle_addendum_uploaded_to_appfolio === true) || (sub.insurance_uploaded_to_appfolio === true);
-          
-          if (filters.appfolioStatus === 'ready') {
-            matchesAppfolioStatus = allVerified && !docsUploaded;
-          } else if (filters.appfolioStatus === 'partial') {
-            matchesAppfolioStatus = someDocsUploaded && !docsUploaded;
-          } else if (filters.appfolioStatus === 'complete') {
-            matchesAppfolioStatus = docsUploaded && feesAdded;
-          }
-        }
-        
-        return matchesVehicle && matchesPets && matchesInsurance && matchesFeeExemption && matchesNeedsReview && matchesExportStatus && matchesAppfolioStatus;
+        return matchesVehicle && matchesPets && matchesInsurance && matchesNeedsReview && matchesExportStatus;
       });
     }
     
@@ -519,7 +416,7 @@ export default function CompliancePage() {
   };
 
   const approveForPermit = async () => {
-    if (!reviewingSubmission) return;
+    if (!reviewingSubmission || !reviewAdmin) return;
 
     try {
       const response = await fetch('/api/admin/compliance/building-summary', {
@@ -528,12 +425,12 @@ export default function CompliancePage() {
         body: JSON.stringify({
           submissionId: reviewingSubmission.id,
           itemType: 'vehicle',
-          notes: `Reviewed by ${adminName}`
+          notes: `Reviewed by ${reviewAdmin}`
         }),
       });
 
       if (response.ok) {
-        const updatedData = { reviewed_for_permit: true, reviewed_by: adminName, reviewed_at: new Date().toISOString() };
+        const updatedData = { reviewed_for_permit: true, reviewed_by: reviewAdmin, reviewed_at: new Date().toISOString() };
         // Update local submissions state
         setSubmissions(prev => prev.map(sub => 
           sub.id === reviewingSubmission.id 
@@ -547,6 +444,7 @@ export default function CompliancePage() {
             : sub
         ));
         setReviewingSubmission(null);
+        setReviewAdmin('');
       }
     } catch (error) {
       console.error('Failed to approve for permit:', error);
@@ -576,39 +474,19 @@ export default function CompliancePage() {
           return sub;
         }));
         await fetchData();
-        setAlertDialog({
-          isOpen: true,
-          title: 'Permit Issued',
-          message: 'Permit issued successfully!',
-          variant: 'success'
-        });
+        alert('Permit issued successfully!');
       } else {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Failed',
-          message: data.message || 'Failed to issue permit',
-          variant: 'error'
-        });
+        // Show validation error message
+        alert(data.message || 'Failed to issue permit');
       }
     } catch (error) {
       console.error('Failed to issue permit:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to issue permit. Please try again.',
-        variant: 'error'
-      });
+      alert('Failed to issue permit. Please try again.');
     }
   };
 
   const viewSignature = (path: string, type: string, date?: string) => {
-    setDocumentViewer({
-      isOpen: true,
-      documentPath: path,
-      documentType: 'signature',
-      title: `${type} Signature`,
-      date
-    });
+    setViewingSignature({ path, type, date });
   };
 
   const handleMergeSubmissions = async (primaryId: string, duplicateIds: string[]) => {
@@ -622,12 +500,7 @@ export default function CompliancePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Merge Successful',
-          message: `Successfully merged ${duplicateIds.length} submission(s)`,
-          variant: 'success'
-        });
+        alert(`Successfully merged ${duplicateIds.length} submission(s)`);
         await fetchData();
       } else {
         throw new Error(data.message || 'Failed to merge submissions');
@@ -680,109 +553,8 @@ export default function CompliancePage() {
     }
   };
 
-  const handleExemptionReview = async (submissionId: string, action: 'approve' | 'deny' | 'request_more_info', notes?: string) => {
-    const reviewerName = adminName;
-
-    try {
-      const response = await fetch('/api/admin/compliance/exemption-review', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          submissionId, 
-          action, 
-          notes: notes || '',
-          reviewerName 
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await fetchData();
-        setAlertDialog({
-          isOpen: true,
-          title: 'Exemption Updated',
-          message: `Exemption ${action}d successfully`,
-          variant: 'success'
-        });
-      } else {
-        throw new Error(data.message || 'Failed to update exemption');
-      }
-    } catch (error) {
-      console.error('Failed to update exemption:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to update exemption. Please try again.',
-        variant: 'error'
-      });
-    }
-  };
-
-  const handleMarkDocumentUploaded = async (submissionId: string, documentType: 'pet_addendum' | 'vehicle_addendum' | 'insurance', note: string) => {
-    const uploaderName = adminName;
-
-    try {
-      const response = await fetch('/api/admin/compliance/mark-appfolio-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId,
-          documentType,
-          uploadedBy: uploaderName,
-          note: note || undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await fetchData();
-      } else {
-        throw new Error(data.message || 'Failed to mark document uploaded');
-      }
-    } catch (error) {
-      console.error('Failed to mark document uploaded:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to mark document uploaded',
-        variant: 'error'
-      });
-    }
-  };
-
-  const handleMarkFeeAdded = async (submissionId: string, feeType: 'pet_rent' | 'permit_fee', amount: number) => {
-    const adderName = adminName;
-
-    try {
-      const response = await fetch('/api/admin/compliance/mark-fee-added', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId,
-          feeType,
-          amount,
-          addedBy: adderName,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        await fetchData();
-      } else {
-        throw new Error(data.message || 'Failed to mark fee added');
-      }
-    } catch (error) {
-      console.error('Failed to mark fee added:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: 'Failed to mark fee added',
-        variant: 'error'
-      });
-    }
+  const getSignatureUrl = (path: string) => {
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/submissions/${path}`;
   };
 
   const filteredBuildings = buildings.filter(building => {
@@ -904,12 +676,7 @@ export default function CompliancePage() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Compliance Dashboard - Stanton Management</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Head>
-      <div className={ui.page}>
+    <div className={ui.page}>
       {/* Header */}
       <div className="bg-white border-b border-[var(--divider)] shadow-sm">
         <div className="px-8 py-4">
@@ -1041,15 +808,6 @@ export default function CompliancePage() {
                 <label className="flex items-center text-xs cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={filters.hasFeeExemption}
-                    onChange={(e) => setFilters(prev => ({ ...prev, hasFeeExemption: e.target.checked }))}
-                    className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
-                  />
-                  Fee Exempt
-                </label>
-                <label className="flex items-center text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
                     checked={filters.hasInsurance}
                     onChange={(e) => setFilters(prev => ({ ...prev, hasInsurance: e.target.checked }))}
                     className="mr-2 rounded-none border-[var(--border)] text-[var(--primary)] focus:ring-[var(--primary)]/20"
@@ -1099,19 +857,11 @@ export default function CompliancePage() {
                   </label>
                 </div>
               </div>
-
-              {/* AppFolio Status Filter */}
-              <div className="border-t border-[var(--divider)] pt-3 mt-3">
-                <AppFolioStatusFilter
-                  value={filters.appfolioStatus}
-                  onChange={(value) => setFilters(prev => ({ ...prev, appfolioStatus: value }))}
-                />
-              </div>
               
               <div className="mt-3">
-                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption || filters.appfolioStatus !== 'all') && (
+                {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
                   <button
-                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' })}
+                    onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
                     className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] underline"
                   >
                     Clear all filters
@@ -1254,25 +1004,18 @@ export default function CompliancePage() {
                     </button>
                     <button
                       onClick={async () => {
-                        try {
-                          const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
-                          if (!response.ok) {
-                            const errData = await response.json().catch(() => null);
-                            throw new Error(errData?.message || 'Export failed');
-                          }
-                          const blob = await response.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-                          document.body.appendChild(a);
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                          document.body.removeChild(a);
-                          fetchData();
-                        } catch (err: any) {
-                          setAlertDialog({ isOpen: true, title: 'Export Error', message: err.message || 'Failed to export vehicles', variant: 'error' });
-                        }
+                        const adminName = prompt('Enter your name:') || 'Admin';
+                        const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        fetchData();
                       }}
                       className="px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out text-sm font-medium"
                     >
@@ -1391,21 +1134,20 @@ export default function CompliancePage() {
               />
 
               {/* Filter Summary */}
-              {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all' || filters.hasFeeExemption) && (
+              {(filters.hasVehicle || filters.hasPets || filters.hasInsurance || filters.needsReview || filters.exportStatus !== 'all') && (
                 <div className="bg-[var(--bg-section)] border-l-4 border-[var(--accent)] p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-[var(--ink)]">
                       <span className="font-medium">Active Filters:</span>
                       {filters.hasVehicle && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Vehicle</span>}
                       {filters.hasPets && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Pets</span>}
-                      {filters.hasFeeExemption && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Fee Exempt</span>}
                       {filters.hasInsurance && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Has Insurance</span>}
                       {filters.needsReview && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">Needs Review</span>}
                       {filters.exportStatus === 'exported' && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">📤 Exported</span>}
                       {filters.exportStatus === 'not-exported' && <span className="ml-2 px-2 py-0.5 border border-[var(--divider)] bg-white text-xs">⚠️ Not Exported</span>}
                     </div>
                     <button
-                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' })}
+                      onClick={() => setFilters({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all' })}
                       className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium"
                     >
                       Clear All
@@ -1490,11 +1232,6 @@ export default function CompliancePage() {
                             {submission.reviewed_for_permit && (
                               <span className="text-[10px] px-1.5 py-0.5 bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/35">
                                 Reviewed
-                              </span>
-                            )}
-                            {submission.has_fee_exemption && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-800 border border-green-300 font-bold">
-                                FEE EXEMPT
                               </span>
                             )}
                             <button
@@ -1646,21 +1383,6 @@ export default function CompliancePage() {
                               </button>
                             </div>
                           )}
-                          {submission.vehicle_addendum_file && (
-                            <div className="flex items-center gap-2 text-sm mt-2">
-                              <button
-                                onClick={() => setDocumentViewer({
-                                  isOpen: true,
-                                  documentPath: submission.vehicle_addendum_file || null,
-                                  documentType: 'addendum',
-                                  title: 'Vehicle Addendum Document'
-                                })}
-                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
-                              >
-                                View Addendum Document
-                              </button>
-                            </div>
-                          )}
                           {!submission.vehicle_signature && (
                             <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                           )}
@@ -1722,47 +1444,10 @@ export default function CompliancePage() {
                       {/* Pet Section */}
                       {submission.has_pets && (
                         <div className="mb-5 p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-serif text-[var(--primary)]">Pet Information</h4>
-                            {submission.exemption_status && (
-                              <ExemptionStatusBadge 
-                                status={submission.exemption_status} 
-                                reason={submission.exemption_reason}
-                                compact
-                              />
-                            )}
-                          </div>
+                          <h4 className="font-serif text-[var(--primary)] mb-3">Pet Information</h4>
                           {submission.pets && Array.isArray(submission.pets) && submission.pets.map((pet: any, idx: number) => (
-                            <div key={idx} className="text-sm mb-3 p-2 bg-white border border-[var(--divider)]">
-                              <div className="font-medium mb-1">{pet.pet_name} ({pet.pet_type}) - {pet.pet_breed}, {pet.pet_weight} lbs</div>
-                              {pet.pet_photo_file && (
-                                <button
-                                  onClick={() => setDocumentViewer({
-                                    isOpen: true,
-                                    documentPath: pet.pet_photo_file,
-                                    documentType: 'photo',
-                                    title: `${pet.pet_name} - Pet Photo`
-                                  })}
-                                  className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
-                                >
-                                  View Photo
-                                </button>
-                              )}
-                              {pet.pet_vaccination_file && (
-                                <span className="ml-3">
-                                  <button
-                                    onClick={() => setDocumentViewer({
-                                      isOpen: true,
-                                      documentPath: pet.pet_vaccination_file,
-                                      documentType: 'addendum',
-                                      title: `${pet.pet_name} - Vaccination Record`
-                                    })}
-                                    className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
-                                  >
-                                    View Vaccination
-                                  </button>
-                                </span>
-                              )}
+                            <div key={idx} className="text-sm mb-2">
+                              <span className="font-medium">{pet.pet_name}</span> ({pet.pet_type}) - {pet.pet_breed}, {pet.pet_weight} lbs
                             </div>
                           ))}
                           {submission.pet_signature && (
@@ -1779,91 +1464,8 @@ export default function CompliancePage() {
                               </button>
                             </div>
                           )}
-                          {submission.pet_addendum_file && (
-                            <div className="flex items-center gap-2 text-sm mt-2">
-                              <button
-                                onClick={() => setDocumentViewer({
-                                  isOpen: true,
-                                  documentPath: submission.pet_addendum_file || null,
-                                  documentType: 'addendum',
-                                  title: 'Pet Addendum Document'
-                                })}
-                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
-                              >
-                                View Addendum Document
-                              </button>
-                            </div>
-                          )}
                           {!submission.pet_signature && (
                             <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
-                          )}
-                          
-                          {/* Exemption Documents */}
-                          {submission.exemption_status && submission.exemption_documents && submission.exemption_documents.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-[var(--divider)]">
-                              <h5 className="text-sm font-semibold text-[var(--primary)] mb-2">Exemption Documents</h5>
-                              <div className="space-y-2">
-                                {submission.exemption_documents.map((docUrl, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => setDocumentViewer({
-                                      isOpen: true,
-                                      documentPath: docUrl,
-                                      documentType: 'addendum',
-                                      title: `Exemption Document ${idx + 1}`
-                                    })}
-                                    className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-sm block"
-                                  >
-                                    View Document {idx + 1}
-                                  </button>
-                                ))}
-                              </div>
-                              {submission.exemption_reviewed_at && (
-                                <div className="text-xs text-[var(--muted)] mt-2">
-                                  Reviewed by {submission.exemption_reviewed_by} on {new Date(submission.exemption_reviewed_at).toLocaleDateString()}
-                                  {submission.exemption_notes && (
-                                    <div className="mt-1 text-[var(--ink)]">Notes: {submission.exemption_notes}</div>
-                                  )}
-                                </div>
-                              )}
-                              
-                              {/* Review Actions */}
-                              {submission.exemption_status === 'pending' && (
-                                <div className="mt-3 pt-3 border-t border-[var(--divider)] flex gap-2">
-                                  <button
-                                    onClick={() => {
-                                      const notes = prompt('Enter approval notes (optional):');
-                                      handleExemptionReview(submission.id, 'approve', notes || undefined);
-                                    }}
-                                    className="px-3 py-1 bg-[var(--success)] text-white border border-[var(--success)] rounded-none text-xs font-medium hover:bg-[var(--success)]/90"
-                                  >
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const notes = prompt('Enter denial reason (required):');
-                                      if (notes) {
-                                        handleExemptionReview(submission.id, 'deny', notes);
-                                      }
-                                    }}
-                                    className="px-3 py-1 bg-[var(--error)] text-white border border-[var(--error)] rounded-none text-xs font-medium hover:bg-[var(--error)]/90"
-                                  >
-                                    Deny
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const notes = prompt('Enter information request details:');
-                                      if (notes) {
-                                        handleExemptionReview(submission.id, 'request_more_info', notes);
-                                      }
-                                    }}
-                                    className="px-3 py-1 bg-[var(--warning)] text-white border border-[var(--warning)] rounded-none text-xs font-medium hover:bg-[var(--warning)]/90"
-                                  >
-                                    Request More Info
-                                  </button>
-                                </div>
-                              )}
-                            </div>
                           )}
                         </div>
                       )}
@@ -1877,99 +1479,6 @@ export default function CompliancePage() {
                             {submission.insurance_policy_number && (
                               <span className="ml-3"><span className="text-[var(--muted)]">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></span>
                             )}
-                            {submission.insurance_file && (
-                              <div className="mt-2">
-                                <button
-                                  onClick={() => setDocumentViewer({
-                                    isOpen: true,
-                                    documentPath: submission.insurance_file || null,
-                                    documentType: 'insurance',
-                                    title: 'Insurance Document'
-                                  })}
-                                  className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-sm"
-                                >
-                                  View Insurance Document
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* AppFolio Documents Section - Show when ready for permit (all verified) or permit issued */}
-                      {(submission.permit_issued || (submission.vehicle_verified && submission.pet_verified && submission.insurance_verified)) && (
-                        <div className="mt-5 p-4 bg-white border-2 border-[var(--primary)]/20">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-serif text-[var(--primary)]">AppFolio Documents</h4>
-                            <div className="text-xs text-[var(--muted)]">
-                              {submission.pet_addendum_uploaded_to_appfolio && submission.vehicle_addendum_uploaded_to_appfolio && submission.insurance_uploaded_to_appfolio ? (
-                                <span className="text-[var(--success)] font-medium">✓ All Uploaded</span>
-                              ) : (
-                                <span>Ready for upload</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="space-y-0">
-                            <AppFolioDocumentRow
-                              documentType="Pet Addendum"
-                              documentPath={submission.pet_addendum_file}
-                              uploadedToAppfolio={submission.pet_addendum_uploaded_to_appfolio || false}
-                              uploadedAt={submission.pet_addendum_uploaded_to_appfolio_at}
-                              uploadedBy={submission.pet_addendum_uploaded_to_appfolio_by}
-                              uploadNote={submission.pet_addendum_upload_note}
-                              onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'pet_addendum', note)}
-                            />
-
-                            {submission.has_vehicle && (
-                              <AppFolioDocumentRow
-                                documentType="Vehicle Addendum"
-                                documentPath={submission.vehicle_addendum_file}
-                                uploadedToAppfolio={submission.vehicle_addendum_uploaded_to_appfolio || false}
-                                uploadedAt={submission.vehicle_addendum_uploaded_to_appfolio_at}
-                                uploadedBy={submission.vehicle_addendum_uploaded_to_appfolio_by}
-                                uploadNote={submission.vehicle_addendum_upload_note}
-                                onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'vehicle_addendum', note)}
-                              />
-                            )}
-
-                            <AppFolioDocumentRow
-                              documentType="Insurance"
-                              documentPath={submission.insurance_file}
-                              uploadedToAppfolio={submission.insurance_uploaded_to_appfolio || false}
-                              uploadedAt={submission.insurance_uploaded_to_appfolio_at}
-                              uploadedBy={submission.insurance_uploaded_to_appfolio_by}
-                              uploadNote={submission.insurance_upload_note}
-                              onMarkUploaded={(note) => handleMarkDocumentUploaded(submission.id, 'insurance', note)}
-                            />
-                          </div>
-
-                          {/* Fees Section */}
-                          <div className="mt-4 pt-4 border-t border-[var(--divider)]">
-                            <h5 className="text-sm font-medium text-[var(--ink)] mb-2">Fees Added to AppFolio</h5>
-                            <div className="space-y-0">
-                              {submission.has_pets && !submission.has_fee_exemption && (
-                                <AppFolioFeeRow
-                                  feeType="Pet Rent"
-                                  feeAdded={submission.pet_fee_added_to_appfolio || false}
-                                  amount={submission.pet_fee_amount}
-                                  addedAt={submission.pet_fee_added_to_appfolio_at}
-                                  addedBy={submission.pet_fee_added_to_appfolio_by}
-                                  onMarkAdded={(amount) => handleMarkFeeAdded(submission.id, 'pet_rent', amount)}
-                                />
-                              )}
-
-                              {submission.has_vehicle && (
-                                <AppFolioFeeRow
-                                  feeType="Permit Fee"
-                                  feeAdded={submission.permit_fee_added_to_appfolio || false}
-                                  amount={submission.permit_fee_amount}
-                                  addedAt={submission.permit_fee_added_to_appfolio_at}
-                                  addedBy={submission.permit_fee_added_to_appfolio_by}
-                                  onMarkAdded={(amount) => handleMarkFeeAdded(submission.id, 'permit_fee', amount)}
-                                />
-                              )}
-                            </div>
                           </div>
                         </div>
                       )}
@@ -1985,6 +1494,42 @@ export default function CompliancePage() {
         </div>
       </div>
 
+      {/* Signature Modal */}
+      {viewingSignature && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-8"
+          onClick={() => setViewingSignature(null)}
+        >
+          <div
+            className="bg-white border border-[var(--border)] p-6 max-w-2xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-lg ${ui.title}`}>{viewingSignature.type} Signature</h3>
+              <button
+                onClick={() => setViewingSignature(null)}
+                className="text-[var(--muted)] hover:text-[var(--ink)]"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {viewingSignature.date && (
+              <div className="text-sm text-[var(--muted)] mb-4">
+                Signed: {new Date(viewingSignature.date).toLocaleString()}
+              </div>
+            )}
+            <div className="border border-[var(--divider)] p-4 bg-[var(--bg-section)]">
+              <img
+                src={getSignatureUrl(viewingSignature.path)}
+                alt={`${viewingSignature.type} Signature`}
+                className="w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Review Modal */}
       {reviewingSubmission && (
@@ -2077,10 +1622,22 @@ export default function CompliancePage() {
               </div>
             )}
 
-            {/* Reviewer Info */}
+            {/* Admin Selection */}
             <div className="mb-6">
-              <div className="text-sm text-[var(--muted)]">Reviewing as</div>
-              <div className="text-base font-medium text-[var(--primary)]">{adminName}</div>
+              <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+                Reviewed by:
+              </label>
+              <select
+                value={reviewAdmin}
+                onChange={(e) => setReviewAdmin(e.target.value)}
+                className="w-full px-3 py-2 border border-[var(--border)] rounded-none bg-[var(--bg-input)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20"
+              >
+                <option value="">Select admin...</option>
+                <option value="Alex">Alex</option>
+                <option value="Dean">Dean</option>
+                <option value="Dan">Dan</option>
+                <option value="Tiff">Tiff</option>
+              </select>
             </div>
 
             {/* Action Buttons */}
@@ -2088,6 +1645,7 @@ export default function CompliancePage() {
               <button
                 onClick={() => {
                   setReviewingSubmission(null);
+                  setReviewAdmin('');
                 }}
                 className="flex-1 px-4 py-2 border border-[var(--border)] text-[var(--primary)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
               >
@@ -2095,7 +1653,8 @@ export default function CompliancePage() {
               </button>
               <button
                 onClick={approveForPermit}
-                className="flex-1 px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+                disabled={!reviewAdmin}
+                className="flex-1 px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-[var(--muted)] disabled:border-[var(--muted)] disabled:cursor-not-allowed"
               >
                 Approve for Permit
               </button>
@@ -2132,26 +1691,6 @@ export default function CompliancePage() {
         onSuccess={() => fetchData()}
         prefilledBuilding={selectedBuilding}
       />
-
-      {/* Document Viewer Modal */}
-      <DocumentViewerModal
-        isOpen={documentViewer.isOpen}
-        onClose={() => setDocumentViewer({ isOpen: false, documentPath: null, documentType: 'insurance' })}
-        documentPath={documentViewer.documentPath}
-        documentType={documentViewer.documentType}
-        title={documentViewer.title}
-        date={documentViewer.date}
-      />
-
-      {/* Dialogs */}
-      <AlertDialog
-        isOpen={alertDialog.isOpen}
-        title={alertDialog.title}
-        message={alertDialog.message}
-        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
-        variant={alertDialog.variant}
-      />
     </div>
-    </>
   );
 }

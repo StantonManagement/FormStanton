@@ -169,3 +169,120 @@ export function debounce<T extends (...args: any[]) => any>(
     timeout = setTimeout(() => func(...args), wait);
   };
 }
+
+/**
+ * Converts markdown-style form content to HTML with enhanced print formatting
+ * 
+ * Supports:
+ * - Headers (## H2, ### H3)
+ * - Bold text (**text**)
+ * - Horizontal rules (---)
+ * - Checkboxes (- [ ] item)
+ * - Tables (markdown table syntax)
+ * - Blockquotes (> text)
+ * - Field lines (Label: _______)
+ * - Signature lines (**Label Signature:** __________ Date: _____)
+ * - Office use sections (*For office use...*)
+ * 
+ * @param content - Markdown-style content string
+ * @returns HTML string with print-optimized classes
+ */
+export function formatFormContent(content: string): string {
+  let html = content;
+
+  // Escape HTML entities first
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Headers with print-optimized classes
+  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-6 mb-3 avoid-break">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-gray-900 mt-8 mb-4 avoid-break">$1</h2>');
+
+  // Bold text - company name and field labels
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Horizontal rules - section dividers
+  html = html.replace(/^---$/gm, '<hr class="my-6 border-gray-300" />');
+
+  // Checkboxes with better spacing for print
+  html = html.replace(/- \[ \] (.+)$/gm, '<div class="flex items-start gap-2 my-3 avoid-break"><input type="checkbox" class="mt-1" /><span>$1</span></div>');
+
+  // Process markdown tables with enhanced print styling
+  const tableRegex = /\|(.+)\|\n\|[-\s|]+\|\n((\|.+\|\n?)+)/gm;
+  html = html.replace(tableRegex, (match, headerRow, bodyRows) => {
+    // Parse header
+    const headers = headerRow.split('|').filter((cell: string) => cell.trim()).map((cell: string) => cell.trim());
+    
+    // Parse body rows
+    const rows = bodyRows.trim().split('\n').map((row: string) => {
+      return row.split('|').filter((cell: string) => cell.trim()).map((cell: string) => cell.trim());
+    });
+
+    // Build table HTML
+    let tableHtml = '<table class="w-full border-collapse my-4 avoid-break">';
+    
+    // Add header
+    if (headers.length > 0) {
+      tableHtml += '<thead><tr>';
+      headers.forEach((header: string) => {
+        tableHtml += `<th class="border border-gray-400 px-3 py-2 bg-gray-100 text-left font-semibold">${header}</th>`;
+      });
+      tableHtml += '</tr></thead>';
+    }
+    
+    // Add body
+    tableHtml += '<tbody>';
+    rows.forEach((row: string[]) => {
+      if (row.length > 0) {
+        tableHtml += '<tr>';
+        row.forEach((cell: string) => {
+          tableHtml += `<td class="border border-gray-400 px-3 py-2">${cell || '&nbsp;'}</td>`;
+        });
+        tableHtml += '</tr>';
+      }
+    });
+    tableHtml += '</tbody></table>';
+    
+    return tableHtml;
+  });
+
+  // Blockquotes - important instructions
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-gray-400 pl-4 italic text-gray-700 my-4 bg-gray-50 py-2 avoid-break">$1</blockquote>');
+
+  // Format field lines (e.g., "Tenant Name: _______________")
+  html = html.replace(/([A-Z][^:]+):\s*_{5,}/g, (match, label) => {
+    return `<div class="my-3"><strong>${label}:</strong> <span class="inline-block border-b border-gray-800 min-w-[300px] pb-1">&nbsp;</span></div>`;
+  });
+
+  // Signature lines - special formatting
+  html = html.replace(/\*\*([^*]+Signature[^*]*):\*\*\s*_{10,}\s*Date:\s*_{5,}/g, (match, label) => {
+    return `<div class="mt-6 mb-4 avoid-break">
+      <div class="flex gap-8 items-end">
+        <div class="flex-1">
+          <div class="border-b-2 border-gray-800 pb-1 mb-1">&nbsp;</div>
+          <div class="text-sm font-semibold">${label}</div>
+        </div>
+        <div class="w-32">
+          <div class="border-b-2 border-gray-800 pb-1 mb-1">&nbsp;</div>
+          <div class="text-sm font-semibold">Date</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  // Office use sections
+  html = html.replace(/\*For office use[^*]*\*/gi, (match) => {
+    return `<div class="mt-6 pt-4 border-t-2 border-dashed border-gray-400 text-sm text-gray-600 italic">${match.replace(/\*/g, '')}</div>`;
+  });
+
+  // Convert line breaks - preserve double breaks for paragraphs
+  html = html.replace(/\n\n/g, '</p><p class="my-3">');
+  html = html.replace(/\n/g, '<br />');
+  
+  // Wrap in paragraph tags
+  html = '<p class="my-3">' + html + '</p>';
+  
+  // Clean up empty paragraphs
+  html = html.replace(/<p class="my-3">\s*<\/p>/g, '');
+
+  return html;
+}

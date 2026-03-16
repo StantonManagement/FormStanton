@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAdminAuth } from '@/lib/adminAuthContext';
 import SubmissionEditModal from './SubmissionEditModal';
 
 interface TenantSubmission {
@@ -36,6 +35,7 @@ interface TenantSubmission {
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
+  insurance_expiration_date?: string;
   insurance_file?: string;
   insurance_type?: 'renters' | 'car' | 'other';
   insurance_upload_pending: boolean;
@@ -47,6 +47,9 @@ interface TenantSubmission {
   vehicle_addendum_received?: boolean;
   vehicle_addendum_received_at?: string;
   vehicle_addendum_received_by?: string;
+  vehicle_notes?: string;
+  pet_notes?: string;
+  insurance_notes?: string;
   admin_notes?: string;
   last_reviewed_at?: string;
   created_at: string;
@@ -61,19 +64,86 @@ interface TenantComplianceCardProps {
   onRefresh?: () => void;
 }
 
+const ADMIN_USERS = ['Alex', 'Dean', 'Dan', 'Tiff'];
+
 export default function TenantComplianceCard({ submission, onVerify, onUpdateNotes, onIssuePermit, onMarkPickedUp, onRefresh }: TenantComplianceCardProps) {
-  const { user } = useAdminAuth();
-  const adminName = user?.displayName || 'Admin';
   const [expanded, setExpanded] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(submission.admin_notes || '');
+  const [editingVehicleNotes, setEditingVehicleNotes] = useState(false);
+  const [vehicleNotes, setVehicleNotes] = useState(submission.vehicle_notes || '');
+  const [editingPetNotes, setEditingPetNotes] = useState(false);
+  const [petNotes, setPetNotes] = useState(submission.pet_notes || '');
+  const [editingInsuranceNotes, setEditingInsuranceNotes] = useState(false);
+  const [insuranceNotes, setInsuranceNotes] = useState(submission.insurance_notes || '');
   const [showPermitModal, setShowPermitModal] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [isTogglingExport, setIsTogglingExport] = useState(false);
 
   const handleSaveNotes = () => {
     onUpdateNotes(submission.id, notes);
     setEditingNotes(false);
+  };
+
+  const handleSaveVehicleNotes = async () => {
+    try {
+      const response = await fetch('/api/admin/compliance/building-summary', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: submission.id,
+          itemType: 'vehicle',
+          vehicleNotes: vehicleNotes,
+        }),
+      });
+      if (response.ok && onRefresh) {
+        onRefresh();
+      }
+      setEditingVehicleNotes(false);
+    } catch (error) {
+      console.error('Error saving vehicle notes:', error);
+    }
+  };
+
+  const handleSavePetNotes = async () => {
+    try {
+      const response = await fetch('/api/admin/compliance/building-summary', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: submission.id,
+          itemType: 'pet',
+          petNotes: petNotes,
+        }),
+      });
+      if (response.ok && onRefresh) {
+        onRefresh();
+      }
+      setEditingPetNotes(false);
+    } catch (error) {
+      console.error('Error saving pet notes:', error);
+    }
+  };
+
+  const handleSaveInsuranceNotes = async () => {
+    try {
+      const response = await fetch('/api/admin/compliance/building-summary', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: submission.id,
+          itemType: 'insurance',
+          insuranceNotes: insuranceNotes,
+        }),
+      });
+      if (response.ok && onRefresh) {
+        onRefresh();
+      }
+      setEditingInsuranceNotes(false);
+    } catch (error) {
+      console.error('Error saving insurance notes:', error);
+    }
   };
 
   const handleToggleExport = async () => {
@@ -85,7 +155,7 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
         body: JSON.stringify({
           submissionId: submission.id,
           exported: !submission.vehicle_exported,
-          adminName: adminName
+          adminName: selectedAdmin || 'Admin'
         }),
       });
 
@@ -105,6 +175,23 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
     if (submission.insurance_upload_pending) return 'Pending';
     if (submission.add_insurance_to_rent) return 'Added to Rent';
     return 'N/A';
+  };
+
+  const isInsuranceExpired = () => {
+    if (!submission.insurance_expiration_date) return false;
+    const expirationDate = new Date(submission.insurance_expiration_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return expirationDate < today;
+  };
+
+  const isInsuranceExpiringSoon = () => {
+    if (!submission.insurance_expiration_date) return false;
+    const expirationDate = new Date(submission.insurance_expiration_date);
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(today);
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    return expirationDate >= today && expirationDate <= thirtyDaysFromNow;
   };
 
   const getPetCount = () => {
@@ -304,20 +391,6 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                 </div>
               )}
               
-              {/* Physical Addendum Received */}
-              {submission.vehicle_addendum_received && (
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className="text-xs text-green-600">
-                    ✓ Physical form received by {submission.vehicle_addendum_received_by}
-                    {submission.vehicle_addendum_received_at && (
-                      <span className="text-gray-500 ml-1">
-                        ({new Date(submission.vehicle_addendum_received_at).toLocaleDateString()})
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-              
               {/* Permit Status */}
               {submission.permit_issued && (
                 <div className="mt-2 pt-2 border-t border-gray-200">
@@ -374,6 +447,61 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   </div>
                 </div>
               )}
+              
+              {/* Vehicle Notes */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="text-xs font-medium text-gray-700">Vehicle Notes</h5>
+                  {!editingVehicleNotes && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingVehicleNotes(true);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      {vehicleNotes ? 'Edit' : 'Add Note'}
+                    </button>
+                  )}
+                </div>
+                {editingVehicleNotes ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={vehicleNotes}
+                      onChange={(e) => setVehicleNotes(e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      rows={2}
+                      placeholder="Add notes about vehicle compliance..."
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveVehicleNotes();
+                        }}
+                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setVehicleNotes(submission.vehicle_notes || '');
+                          setEditingVehicleNotes(false);
+                        }}
+                        className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">
+                    {vehicleNotes || 'No notes'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
           
@@ -388,8 +516,19 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   <p className="text-sm text-gray-600">Plate: <span className="font-mono font-medium">{submission.vehicle_plate}</span></p>
                 </div>
                 <div className="mb-4">
-                  <div className="text-sm text-[var(--muted)]">Issuing as</div>
-                  <div className="text-base font-medium text-[var(--primary)]">{adminName}</div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Issued by:
+                  </label>
+                  <select
+                    value={selectedAdmin}
+                    onChange={(e) => setSelectedAdmin(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select admin...</option>
+                    {ADMIN_USERS.map(admin => (
+                      <option key={admin} value={admin}>{admin}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -400,12 +539,14 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   </button>
                   <button
                     onClick={() => {
-                      if (onIssuePermit) {
-                        onIssuePermit(submission.id, adminName);
+                      if (selectedAdmin && onIssuePermit) {
+                        onIssuePermit(submission.id, selectedAdmin);
                         setShowPermitModal(false);
+                        setSelectedAdmin('');
                       }
                     }}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    disabled={!selectedAdmin}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
                     Issue Permit
                   </button>
@@ -441,16 +582,61 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   </div>
                 </div>
               ))}
-              {submission.pet_addendum_received && (
-                <div className="text-xs text-green-600 mt-2 pt-2 border-t border-gray-100">
-                  ✓ Physical form received by {submission.pet_addendum_received_by}
-                  {submission.pet_addendum_received_at && (
-                    <span className="text-gray-500 ml-1">
-                      ({new Date(submission.pet_addendum_received_at).toLocaleDateString()})
-                    </span>
+              
+              {/* Pet Notes */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="text-xs font-medium text-gray-700">Pet Notes</h5>
+                  {!editingPetNotes && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingPetNotes(true);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      {petNotes ? 'Edit' : 'Add Note'}
+                    </button>
                   )}
                 </div>
-              )}
+                {editingPetNotes ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={petNotes}
+                      onChange={(e) => setPetNotes(e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      rows={2}
+                      placeholder="Add notes about pet compliance..."
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSavePetNotes();
+                        }}
+                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPetNotes(submission.pet_notes || '');
+                          setEditingPetNotes(false);
+                        }}
+                        className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">
+                    {petNotes || 'No notes'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -476,20 +662,71 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
               <div className="text-sm space-y-1">
                 <div><span className="text-gray-500">Provider:</span> <span className="ml-1">{submission.insurance_provider}</span></div>
                 <div><span className="text-gray-500">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></div>
-                <div><span className="text-gray-500">Status:</span> <span className="ml-1">{getInsuranceStatus()}</span></div>
-                {submission.insurance_type && (
-                  <div className="pt-1">
-                    <span className="text-gray-500">Type:</span>
-                    <span className={`ml-1 ${
-                      submission.insurance_type === 'renters' 
-                        ? 'text-green-600 font-medium' 
-                        : 'text-amber-600'
-                    }`}>
-                      {submission.insurance_type === 'renters' ? '✓ Renters' : 
-                       submission.insurance_type === 'car' ? '⚠ Car Insurance' : 
-                       '⚠ Other'}
+                {submission.insurance_expiration_date && (
+                  <div>
+                    <span className="text-gray-500">Expires:</span> 
+                    <span className={`ml-1 ${isInsuranceExpired() ? 'text-red-600 font-medium' : isInsuranceExpiringSoon() ? 'text-yellow-600 font-medium' : ''}`}>
+                      {new Date(submission.insurance_expiration_date).toLocaleDateString()}
+                      {isInsuranceExpired() && ' ⚠️ EXPIRED'}
+                      {!isInsuranceExpired() && isInsuranceExpiringSoon() && ' ⚠️ Expiring Soon'}
                     </span>
                   </div>
+                )}
+                <div><span className="text-gray-500">Status:</span> <span className="ml-1">{getInsuranceStatus()}</span></div>
+              </div>
+              
+              {/* Insurance Notes */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="text-xs font-medium text-gray-700">Insurance Notes</h5>
+                  {!editingInsuranceNotes && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingInsuranceNotes(true);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      {insuranceNotes ? 'Edit' : 'Add Note'}
+                    </button>
+                  )}
+                </div>
+                {editingInsuranceNotes ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={insuranceNotes}
+                      onChange={(e) => setInsuranceNotes(e.target.value)}
+                      className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      rows={2}
+                      placeholder="Add notes about insurance compliance..."
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveInsuranceNotes();
+                        }}
+                        className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInsuranceNotes(submission.insurance_notes || '');
+                          setEditingInsuranceNotes(false);
+                        }}
+                        className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 italic">
+                    {insuranceNotes || 'No notes'}
+                  </p>
                 )}
               </div>
             </div>

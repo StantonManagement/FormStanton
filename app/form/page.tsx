@@ -101,6 +101,7 @@ function FormContent() {
     hasInsurance: null as boolean | null,
     insuranceProvider: '',
     insurancePolicyNumber: '',
+    insuranceExpirationDate: '',
     insuranceUploadPending: false,
     addInsuranceToRent: false,
     hasVehicle: null as boolean | null,
@@ -1068,6 +1069,17 @@ function FormContent() {
                         required
                         value={formData.insurancePolicyNumber}
                         onChange={(e) => handleInputChange('insurancePolicyNumber', e.target.value)}
+                        className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-[var(--ink)]">{t.insuranceExpirationDate} <span className="text-[var(--error)]">*</span></span>
+                      <input
+                        type="date"
+                        required
+                        value={formData.insuranceExpirationDate}
+                        onChange={(e) => handleInputChange('insuranceExpirationDate', e.target.value)}
                         className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                       />
                     </label>

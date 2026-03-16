@@ -18,15 +18,16 @@ import {
   LanguageLanding,
   SuccessScreen,
   FormPhotoUpload,
-  FormPhoneInput,
+  PrintableForm,
 } from '@/components/form';
+import { getFormById } from '@/lib/formsData';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
-import { validateEmail, validatePhone, formatPhone } from '@/lib/formUtils';
+import { validateEmail, validatePhone, sanitizePhone } from '@/lib/formUtils';
 import { useFormSection, useFormSubmit, useFieldValidation, useFormData } from '@/lib/formHooks';
 
 interface PetData {
@@ -80,6 +81,7 @@ function PetApprovalFormContent() {
   
   const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
   const [showForm, setShowForm] = useState(hasLangParam);
+  const [showPrintable, setShowPrintable] = useState(false);
   
   const MAX_PETS = 5;
   
@@ -228,15 +230,27 @@ function PetApprovalFormContent() {
   };
   
   const tabs = [
-    { id: 1, label: t.tabTenantInfo },
-    { id: 2, label: t.tabPetDetails },
-    { id: 3, label: t.tabPhotos },
-    { id: 4, label: t.tabReview },
+    { id: 1, label: t.tenantInfoTitle },
+    { id: 2, label: t.petInfoTitle },
+    { id: 3, label: t.photosTitle },
+    { id: 4, label: t.reviewTitle },
   ];
+  
+  const formTemplate = getFormById(12); // Pet Approval Request Form
   
   return (
     <>
       <Header language={language} onLanguageChange={setLanguage} />
+      
+      {showPrintable && formTemplate?.content && (
+        <PrintableForm
+          content={formTemplate.content}
+          formTitle={formTemplate.title}
+          formId={formTemplate.id}
+          onClose={() => setShowPrintable(false)}
+          showPrintButton
+        />
+      )}
       
       <FormLayout>
         <TabNavigation
@@ -248,8 +262,22 @@ function PetApprovalFormContent() {
         <form onSubmit={handleSubmit} className="p-6 sm:p-8">
           <div className="mb-8">
             <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
-              <h1 className="font-serif text-xl text-[var(--primary)] mb-2">{t.formTitle}</h1>
-              <p className="text-sm text-[var(--ink)] leading-relaxed">{t.formIntro}</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h1 className="font-serif text-xl text-[var(--primary)] mb-2">{t.formTitle}</h1>
+                  <p className="text-sm text-[var(--ink)] leading-relaxed">{t.formIntro}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintable(true)}
+                  className="px-3 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print Blank
+                </button>
+              </div>
             </div>
           </div>
           
@@ -282,12 +310,13 @@ function PetApprovalFormContent() {
                   </FormField>
                   
                   <FormField label={t.phone} required error={errors.phone}>
-                    <FormPhoneInput
+                    <FormInput
+                      type="tel"
                       value={formData.phone}
-                      onChange={(digits) => updateField('phone', digits)}
+                      onChange={(e) => updateField('phone', sanitizePhone(e.target.value))}
                       placeholder={t.phonePlaceholder}
+                      maxLength={10}
                       error={!!errors.phone}
-                      errorMessage={errors.phone}
                       required
                     />
                   </FormField>
@@ -569,7 +598,7 @@ function PetApprovalFormContent() {
                       <div className="text-[var(--muted)]">{t.unit}:</div>
                       <div className="font-medium">{formData.unitNumber}</div>
                       <div className="text-[var(--muted)]">{t.phone}:</div>
-                      <div className="font-medium">{formatPhone(formData.phone)}</div>
+                      <div className="font-medium">{formData.phone}</div>
                       {formData.email && (
                         <>
                           <div className="text-[var(--muted)]">{t.email}:</div>

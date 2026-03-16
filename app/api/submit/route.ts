@@ -142,6 +142,7 @@ export async function POST(request: NextRequest) {
         has_insurance: formDataJson.hasInsurance,
         insurance_provider: formDataJson.insuranceProvider || null,
         insurance_policy_number: formDataJson.insurancePolicyNumber || null,
+        insurance_expiration_date: formDataJson.insuranceExpirationDate || null,
         insurance_file: insuranceProofPath,
         insurance_upload_pending: formDataJson.insuranceUploadPending || false,
         add_insurance_to_rent: formDataJson.addInsuranceToRent,

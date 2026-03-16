@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generateGenericFormPdf } from '@/lib/documentGenerator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -98,8 +99,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate PDF with all collected data
+    let pdfPath = null;
+    try {
+      const formPdf = await generateGenericFormPdf(
+        'tenant_assessment',
+        'Tenant Assessment',
+        payload,
+        undefined
+      );
+      
+      const pdfFileName = `${submission.id}_tenant_assessment.pdf`;
+      const { data: pdfUpload, error: pdfUploadError } = await supabase.storage
+        .from('form-photos')
+        .upload(`tenant-assessment/${pdfFileName}`, formPdf, {
+          contentType: 'application/pdf',
+        });
+      
+      if (!pdfUploadError && pdfUpload) {
+        const { data: pdfUrlData } = supabase.storage
+          .from('form-photos')
+          .getPublicUrl(pdfUpload.path);
+        
+        pdfPath = pdfUrlData.publicUrl;
+        
+        await supabase
+          .from('form_submissions')
+          .update({ pdf_url: pdfPath })
+          .eq('id', submission.id);
+      }
+    } catch (pdfError) {
+      console.error('PDF generation failed:', pdfError);
+    }
+
     return NextResponse.json(
-      { message: 'Tenant assessment submitted successfully', id: submission.id },
+      { message: 'Tenant assessment submitted successfully', id: submission.id, pdfGenerated: !!pdfPath },
       { status: 200 }
     );
   } catch (error: any) {

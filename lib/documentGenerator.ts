@@ -15,7 +15,7 @@ export async function generatePetAddendumPdf(
   const contentWidth = 512;
   let y = 742;
 
-  const tenantName = formData.fullName || formData.full_name || '';
+  const tenantName = formData.fullName || formData.full_name || formData.tenantName || formData.tenant_name || '';
   const building = formData.buildingAddress || formData.building_address || '';
   const unit = formData.unitNumber || formData.unit_number || '';
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -111,7 +111,7 @@ export async function generateNoPetsAddendumPdf(
   const contentWidth = 512;
   let y = 742;
 
-  const tenantName = formData.fullName || formData.full_name || '';
+  const tenantName = formData.fullName || formData.full_name || formData.tenantName || formData.tenant_name || '';
   const building = formData.buildingAddress || formData.building_address || '';
   const unit = formData.unitNumber || formData.unit_number || '';
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -166,7 +166,7 @@ export async function generateVehicleAddendumPdf(
   const contentWidth = 512;
   let y = 742;
 
-  const tenantName = formData.fullName || formData.full_name || '';
+  const tenantName = formData.fullName || formData.full_name || formData.tenantName || formData.tenant_name || '';
   const building = formData.buildingAddress || formData.building_address || '';
   const unit = formData.unitNumber || formData.unit_number || '';
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -233,6 +233,108 @@ export async function generateVehicleAddendumPdf(
 
   if (signatureBase64) {
     if (y < 100) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawText('Signature:', { x: margin, y, size: 10, font: fontBold });
+    y -= 5;
+    try {
+      const sigData = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
+      const sigImage = await pdfDoc.embedPng(Buffer.from(sigData, 'base64'));
+      const sigDims = sigImage.scale(0.4);
+      y -= sigDims.height;
+      if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742 - sigDims.height; }
+      page.drawImage(sigImage, { x: margin, y, width: sigDims.width, height: sigDims.height });
+      y -= 15;
+    } catch (e) {
+      console.error('Failed to embed signature image:', e);
+    }
+    page.drawText(`Date: ${dateStr}`, { x: margin, y, size: 10, font: fontRegular });
+  }
+
+  return pdfDoc.save();
+}
+
+export async function generateGenericFormPdf(
+  formType: string,
+  formTitle: string,
+  formData: any,
+  signatureBase64?: string,
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const margin = 50;
+  const contentWidth = 512;
+  let y = 742;
+
+  const tenantName = formData.fullName || formData.full_name || formData.tenantName || formData.tenant_name || '';
+  const building = formData.buildingAddress || formData.building_address || '';
+  const unit = formData.unitNumber || formData.unit_number || '';
+  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Header
+  page.drawText('STANTON MANAGEMENT LLC', { x: margin, y, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+  y -= 12;
+  page.drawText('421 Park Street, Hartford, CT 06106 | (860) 993-3401', { x: margin, y, size: 8, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+  y -= 24;
+
+  // Title
+  page.drawText(formTitle.toUpperCase(), { x: margin, y, size: 16, font: fontBold, color: rgb(0.1, 0.1, 0.2) });
+  y -= 28;
+
+  // Tenant info
+  page.drawText(`Tenant: ${tenantName}`, { x: margin, y, size: 10, font: fontRegular });
+  y -= 14;
+  page.drawText(`Building: ${building}  |  Unit: ${unit}  |  Date: ${dateStr}`, { x: margin, y, size: 10, font: fontRegular });
+  y -= 24;
+
+  // Draw horizontal line
+  page.drawLine({ start: { x: margin, y }, end: { x: 612 - margin, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+  y -= 20;
+
+  // Form data fields
+  const excludeFields = ['buildingAddress', 'building_address', 'unitNumber', 'unit_number', 'tenantName', 'tenant_name', 'fullName', 'full_name', 'dateSubmitted', 'date_submitted', 'finalConfirm', 'final_confirm'];
+  
+  for (const [key, value] of Object.entries(formData)) {
+    if (excludeFields.includes(key) || value === null || value === undefined || value === '') continue;
+    
+    if (y < 80) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    
+    // Format field name
+    const fieldLabel = key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
+    
+    // Handle different value types
+    let displayValue = '';
+    if (typeof value === 'boolean') {
+      displayValue = value ? 'Yes' : 'No';
+    } else if (typeof value === 'object' && !Array.isArray(value)) {
+      displayValue = JSON.stringify(value, null, 2);
+    } else if (Array.isArray(value)) {
+      displayValue = `${value.length} item(s)`;
+    } else {
+      displayValue = String(value);
+    }
+    
+    // Draw field
+    page.drawText(`${fieldLabel}:`, { x: margin, y, size: 9, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+    y -= 14;
+    
+    const valueLines = wrapText(displayValue, fontRegular, 9, contentWidth - 20);
+    for (const line of valueLines) {
+      if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+      page.drawText(line, { x: margin + 10, y, size: 9, font: fontRegular, color: rgb(0.1, 0.1, 0.1) });
+      y -= 12;
+    }
+    y -= 6;
+  }
+
+  // Signature
+  if (signatureBase64) {
+    if (y < 100) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    y -= 10;
     page.drawText('Signature:', { x: margin, y, size: 10, font: fontBold });
     y -= 5;
     try {

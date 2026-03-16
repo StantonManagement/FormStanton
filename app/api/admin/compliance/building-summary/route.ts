@@ -109,7 +109,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId, itemType, verified, notes } = body;
+    const { submissionId, itemType, verified, notes, vehicleNotes, petNotes, insuranceNotes, insuranceExpirationDate } = body;
 
     if (!submissionId || !itemType) {
       return NextResponse.json(
@@ -124,10 +124,22 @@ export async function PUT(request: NextRequest) {
 
     if (itemType === 'vehicle') {
       updateData.vehicle_verified = verified;
+      if (vehicleNotes !== undefined) {
+        updateData.vehicle_notes = vehicleNotes;
+      }
     } else if (itemType === 'pet') {
       updateData.pet_verified = verified;
+      if (petNotes !== undefined) {
+        updateData.pet_notes = petNotes;
+      }
     } else if (itemType === 'insurance') {
       updateData.insurance_verified = verified;
+      if (insuranceNotes !== undefined) {
+        updateData.insurance_notes = insuranceNotes;
+      }
+      if (insuranceExpirationDate !== undefined) {
+        updateData.insurance_expiration_date = insuranceExpirationDate;
+      }
     }
 
     if (notes !== undefined) {

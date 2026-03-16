@@ -30,10 +30,14 @@ interface TenantSubmission {
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
+  insurance_expiration_date?: string;
   insurance_file?: string;
   insurance_upload_pending: boolean;
   add_insurance_to_rent?: boolean;
   insurance_verified: boolean;
+  vehicle_notes?: string;
+  pet_notes?: string;
+  insurance_notes?: string;
   admin_notes?: string;
   last_reviewed_at?: string;
   created_at: string;

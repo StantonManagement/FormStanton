@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generatePetAddendumPdf } from '@/lib/documentGenerator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,11 +92,56 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Generate PDF with all collected data
+    let pdfPath = null;
+    try {
+      // Transform pets data to match expected format
+      const petsArray = data.pets.map((pet: any) => ({
+        pet_type: pet.petType,
+        pet_name: pet.petName,
+        pet_breed: pet.petBreed,
+        pet_weight: pet.petWeight,
+        pet_color: pet.petColor,
+        pet_spayed: pet.petSpayed,
+        pet_vaccinations_current: pet.petVaccinations,
+      }));
+      
+      const petPdf = await generatePetAddendumPdf(data, petsArray, signature);
+      
+      const pdfFileName = `${submission.id}_pet_addendum.pdf`;
+      const { data: pdfUpload, error: pdfUploadError } = await supabase.storage
+        .from('form-photos')
+        .upload(`pet-approval/${pdfFileName}`, petPdf, {
+          contentType: 'application/pdf',
+        });
+      
+      if (!pdfUploadError && pdfUpload) {
+        const { data: pdfUrlData } = supabase.storage
+          .from('form-photos')
+          .getPublicUrl(pdfUpload.path);
+        
+        pdfPath = pdfUrlData.publicUrl;
+        
+        // Update submission with PDF URL
+        await supabase
+          .from('form_submissions')
+          .update({ pdf_url: pdfPath })
+          .eq('id', submission.id);
+      }
+    } catch (pdfError) {
+      console.error('PDF generation failed:', pdfError);
+      // Continue even if PDF generation fails
+    }
+    
     // Send email notification (placeholder - implement with your email service)
     // await sendEmailNotification(data, photoUrls);
     
     return NextResponse.json(
-      { message: 'Pet approval request submitted successfully', id: submission.id },
+      { 
+        message: 'Pet approval request submitted successfully', 
+        id: submission.id,
+        pdfGenerated: !!pdfPath 
+      },
       { status: 200 }
     );
   } catch (error: any) {

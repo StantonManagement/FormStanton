@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generateGenericFormPdf } from '@/lib/documentGenerator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -88,8 +89,41 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Generate PDF with all collected data
+    let pdfPath = null;
+    try {
+      const formPdf = await generateGenericFormPdf(
+        'common_area_violation',
+        'Common Area Violation Warning',
+        data,
+        signature
+      );
+      
+      const pdfFileName = `${submission.id}_common_area_violation.pdf`;
+      const { data: pdfUpload, error: pdfUploadError } = await supabase.storage
+        .from('form-photos')
+        .upload(`common-area-violation/${pdfFileName}`, formPdf, {
+          contentType: 'application/pdf',
+        });
+      
+      if (!pdfUploadError && pdfUpload) {
+        const { data: pdfUrlData } = supabase.storage
+          .from('form-photos')
+          .getPublicUrl(pdfUpload.path);
+        
+        pdfPath = pdfUrlData.publicUrl;
+        
+        await supabase
+          .from('form_submissions')
+          .update({ pdf_url: pdfPath })
+          .eq('id', submission.id);
+      }
+    } catch (pdfError) {
+      console.error('PDF generation failed:', pdfError);
+    }
+    
     return NextResponse.json(
-      { message: 'Common area violation acknowledgment submitted successfully', id: submission.id },
+      { message: 'Common area violation acknowledgment submitted successfully', id: submission.id, pdfGenerated: !!pdfPath },
       { status: 200 }
     );
   } catch (error: any) {
