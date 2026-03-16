@@ -79,6 +79,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get session user for metadata tracking
+    const sessionUser = await getSessionUser();
+
     // Update submission record
     const updateData: any = {
       [columnToUpdate]: uploadData.path,
@@ -87,6 +90,12 @@ export async function POST(request: NextRequest) {
     // If insurance file, also clear upload_pending flag
     if (documentType === 'insurance') {
       updateData.insurance_upload_pending = false;
+    }
+
+    // If vehicle addendum, capture upload metadata
+    if (documentType === 'vehicle_addendum') {
+      updateData.vehicle_addendum_file_uploaded_at = new Date().toISOString();
+      updateData.vehicle_addendum_file_uploaded_by = sessionUser?.displayName || 'Admin';
     }
 
     const { data: submission, error: updateError } = await supabaseAdmin
@@ -103,8 +112,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    const sessionUser = await getSessionUser();
     await logAudit(sessionUser, 'document.attach', 'submission', submissionId, {
       documentType, fileName: file.name,
     }, getClientIp(request));

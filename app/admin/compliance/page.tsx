@@ -28,6 +28,9 @@ interface TenantSubmission {
   vehicle_verified: boolean;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
+  vehicle_addendum_file?: string;
+  vehicle_addendum_file_uploaded_at?: string;
+  vehicle_addendum_file_uploaded_by?: string;
   vehicle_submitted_by_phone?: boolean;
   vehicle_phone_submission_date?: string;
   vehicle_phone_submission_by?: string;

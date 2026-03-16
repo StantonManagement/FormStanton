@@ -52,6 +52,8 @@ interface TenantSubmission {
   vehicle_signature?: string;
   vehicle_signature_date?: string;
   vehicle_addendum_file?: string;
+  vehicle_addendum_file_uploaded_at?: string;
+  vehicle_addendum_file_uploaded_by?: string;
   vehicle_verified: boolean;
   vehicle_addendum_received: boolean;
   vehicle_addendum_received_at?: string;
@@ -1331,8 +1333,18 @@ export default function LobbyPage() {
                     )}
 
                     {sub.vehicle_addendum_file && (
-                      <div className="text-sm text-[var(--success)]">
-                        ✅ File on record
+                      <div className="text-sm">
+                        <span className="text-[var(--success)]">✅ File uploaded</span>
+                        {sub.vehicle_addendum_file_uploaded_by && (
+                          <span className="text-[var(--muted)] ml-2">
+                            by {sub.vehicle_addendum_file_uploaded_by}
+                          </span>
+                        )}
+                        {sub.vehicle_addendum_file_uploaded_at && (
+                          <span className="text-[var(--muted)] ml-2">
+                            ({new Date(sub.vehicle_addendum_file_uploaded_at).toLocaleDateString()})
+                          </span>
+                        )}
                         <button
                           onClick={() => setDocumentViewer({
                             isOpen: true,
