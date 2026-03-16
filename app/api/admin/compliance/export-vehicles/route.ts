@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
       : (data || []);
 
     // Mark all exported submissions
+    const submissionIds = submissions.map(s => s.id);
     if (submissions.length > 0) {
-      const submissionIds = submissions.map(s => s.id);
       const now = new Date().toISOString();
       
       const { error: updateError } = await supabase
@@ -81,10 +81,7 @@ export async function GET(request: NextRequest) {
 
       if (updateError) {
         console.error('Error marking submissions as exported:', updateError);
-        return NextResponse.json(
-          { success: false, message: 'Failed to mark exported vehicles' },
-          { status: 500 }
-        );
+        // Continue with export — don't block CSV download for a tracking failure
       }
     }
 
@@ -181,6 +178,26 @@ export async function GET(request: NextRequest) {
       filename = `vehicles_${buildingAddress.replace(/[^a-z0-9]/gi, '_')}_${dateStr}.csv`;
     } else {
       filename = `vehicles_all_buildings_${dateStr}.csv`;
+    }
+
+    // Collect unique building addresses for the log
+    const exportedBuildings = [...new Set(submissions.map(s => s.building_address).filter(Boolean))];
+
+    // Insert export log entry
+    const { error: logInsertError } = await supabase
+      .from('vehicle_export_logs')
+      .insert({
+        exported_by: adminName,
+        building_addresses: exportedBuildings,
+        submission_ids: submissionIds,
+        submission_count: submissions.length,
+        filename,
+        created_by: adminName,
+      });
+
+    if (logInsertError) {
+      console.error('Error inserting export log:', logInsertError);
+      // Non-blocking — don't fail the CSV download for a log failure
     }
 
     await logAudit(sessionUser, 'export.vehicles', 'submission', undefined, {

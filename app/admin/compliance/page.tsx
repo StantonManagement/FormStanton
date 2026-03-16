@@ -1254,17 +1254,25 @@ export default function CompliancePage() {
                     </button>
                     <button
                       onClick={async () => {
-                        const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
-                        fetchData();
+                        try {
+                          const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
+                          if (!response.ok) {
+                            const errData = await response.json().catch(() => null);
+                            throw new Error(errData?.message || 'Export failed');
+                          }
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `vehicles_${selectedBuilding.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          fetchData();
+                        } catch (err: any) {
+                          setAlertDialog({ isOpen: true, title: 'Export Error', message: err.message || 'Failed to export vehicles', variant: 'error' });
+                        }
                       }}
                       className="px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out text-sm font-medium"
                     >

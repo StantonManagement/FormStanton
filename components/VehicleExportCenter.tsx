@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAdminAuth } from '@/lib/adminAuthContext';
 import { buildingToAssetId } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
@@ -39,6 +39,15 @@ interface BuildingExportInfo {
   lastExportedBy: string | null;
 }
 
+interface ExportLogEntry {
+  id: string;
+  exported_at: string;
+  exported_by: string;
+  building_addresses: string[];
+  submission_count: number;
+  filename: string | null;
+}
+
 export default function VehicleExportCenter({
   allSubmissions,
   buildings,
@@ -50,6 +59,22 @@ export default function VehicleExportCenter({
   const [selectedBuildings, setSelectedBuildings] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [exportLogs, setExportLogs] = useState<ExportLogEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const fetchExportLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/compliance/export-logs?limit=15');
+      const data = await res.json();
+      if (data.success) setExportLogs(data.data);
+    } catch (e) {
+      console.error('Failed to fetch export logs:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExportLogs();
+  }, [fetchExportLogs]);
 
   const buildingInfos = useMemo(() => {
     const infos: BuildingExportInfo[] = [];
@@ -171,6 +196,7 @@ export default function VehicleExportCenter({
       });
 
       onExportComplete();
+      fetchExportLogs();
     } catch (error: any) {
       setExportResult({
         success: false,
@@ -325,6 +351,51 @@ export default function VehicleExportCenter({
             {exportResult.success ? '✓' : '✕'} {exportResult.message}
           </div>
         )}
+
+        {/* Export History */}
+        <div className="border-t border-gray-200">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="w-full px-6 py-2.5 flex items-center justify-between text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <span>Export History ({exportLogs.length})</span>
+            <span>{showHistory ? '▲' : '▼'}</span>
+          </button>
+          {showHistory && (
+            <div className="px-6 pb-3 max-h-48 overflow-y-auto">
+              {exportLogs.length === 0 ? (
+                <p className="text-xs text-gray-400 py-2">No exports recorded yet</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b border-gray-100">
+                      <th className="pb-1 font-medium">Date</th>
+                      <th className="pb-1 font-medium">By</th>
+                      <th className="pb-1 font-medium text-right">Buildings</th>
+                      <th className="pb-1 font-medium text-right">Vehicles</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exportLogs.map(log => (
+                      <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="py-1.5 text-gray-700">
+                          {new Date(log.exported_at).toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="py-1.5 text-gray-600">{log.exported_by}</td>
+                        <td className="py-1.5 text-right text-gray-600">
+                          {Array.isArray(log.building_addresses) ? log.building_addresses.length : '—'}
+                        </td>
+                        <td className="py-1.5 text-right text-gray-600">{log.submission_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between flex-shrink-0 bg-gray-50">

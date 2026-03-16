@@ -19,7 +19,6 @@ const navSections: NavSection[] = [
   {
     title: 'Forms & Submissions',
     items: [
-      { label: 'Send Form Links', href: '/admin/send-links' },
       { label: 'Form Submissions', href: '/admin/form-submissions' },
       { label: 'Onboarding Submissions', href: '/admin/onboarding' },
       { label: 'Reimbursement Requests', href: '/admin/reimbursements' },

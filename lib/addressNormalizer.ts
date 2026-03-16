@@ -9,8 +9,15 @@ export function normalizeAddress(address: string): string {
   
   let normalized = address.trim();
   
-  // Normalize "Street" to "St"
+  // Strip city, state, zip (e.g., "Hartford, CT 06120" or "Hartford, CT 06114")
+  normalized = normalized.replace(/\s+Hartford,?\s+CT\s+\d{5}$/i, '');
+  
+  // Normalize dash spacing in number ranges: "1721 - 1739" -> "1721-1739"
+  normalized = normalized.replace(/(\d+)\s*-\s*(\d+)/, '$1-$2');
+  
+  // Normalize common abbreviations
   normalized = normalized.replace(/\sStreet$/i, ' St');
+  normalized = normalized.replace(/\sAvenue$/i, ' Ave');
   
   // Fix backwards format "Affleck St 192" -> "192 Affleck St"
   const backwardsMatch = normalized.match(/^([A-Za-z\s-]+)\s+(\d+[-\d]*)$/);
@@ -18,8 +25,8 @@ export function normalizeAddress(address: string): string {
     normalized = `${backwardsMatch[2]} ${backwardsMatch[1]}`;
   }
   
-  // Add missing "St" suffix for known Seymour addresses
-  if (/^\d+\s+Seymour$/i.test(normalized)) {
+  // Add missing "St" suffix for known street names without suffix
+  if (/^\d+[-\d]*\s+(Affleck|Seymour|Buckingham|Whitmore|Wooster|Martin|Westland|Chestnut|Edwards|Park|Ward|Broad)$/i.test(normalized)) {
     normalized = normalized + ' St';
   }
   
@@ -31,6 +38,27 @@ export function normalizeAddress(address: string): string {
   // Handle bare numbers that should be Affleck St addresses
   if (/^(144|178|179|182|190|192|195)$/.test(normalized)) {
     normalized = normalized + ' Affleck St';
+  }
+  
+  // Handle building variations (99/100/101 Maple all normalize to base range)
+  // 97-103 Maple, 99 Maple, 100 Maple, 101 Maple -> all become "97-103 Maple Ave"
+  if (/^(97-103|99|100|101)\s+Maple/i.test(normalized)) {
+    normalized = '97-103 Maple Ave';
+  }
+  
+  // Handle 93-95 Maple range variations
+  if (/^(93-95|93|94|95)\s+Maple/i.test(normalized)) {
+    normalized = '93-95 Maple Ave';
+  }
+  
+  // Handle 228-230 Maple -> canonical "228 Maple Ave"
+  if (/^(228-230|228)\s+Maple/i.test(normalized)) {
+    normalized = '228 Maple Ave';
+  }
+  
+  // Handle 222-224 Maple range
+  if (/^(222-224|222|224)\s+Maple/i.test(normalized)) {
+    normalized = '222-224 Maple Ave';
   }
   
   return normalized;

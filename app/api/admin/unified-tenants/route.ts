@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isAuthenticated } from '@/lib/auth';
+import { normalizeAddress } from '@/lib/addressNormalizer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,6 +63,17 @@ function normalizeForMatching(str: string | null | undefined): string {
   return (str || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
+function normalizeNameForKey(name: string | null | undefined): string {
+  return (name || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[,.']/g, '')
+    .split(/\s+/)
+    .filter(p => p.length > 0)
+    .sort()
+    .join(' ');
+}
+
 function tenantsMatch(
   building1: string,
   unit1: string,
@@ -70,9 +82,14 @@ function tenantsMatch(
   unit2: string,
   name2: string
 ): boolean {
-  const buildingMatch = normalizeForMatching(building1) === normalizeForMatching(building2);
+  // Use enhanced address normalization to handle city/state/zip variations and building aliases
+  const normalizedBuilding1 = normalizeAddress(building1).toLowerCase();
+  const normalizedBuilding2 = normalizeAddress(building2).toLowerCase();
+  const buildingMatch = normalizedBuilding1 === normalizedBuilding2;
+  
   const unitMatch = normalizeForMatching(unit1) === normalizeForMatching(unit2);
-  const nameMatch = normalizeForMatching(name1) === normalizeForMatching(name2);
+  const nameMatch = normalizeForMatching(name1) === normalizeForMatching(name2) ||
+                    normalizeNameForKey(name1) === normalizeNameForKey(name2);
   
   return buildingMatch && unitMatch && nameMatch;
 }
@@ -120,9 +137,11 @@ export async function GET(request: NextRequest) {
       .filter(t => t.name !== 'Occupied Unit');
     const submissions = (submissionsData || []) as Submission[];
 
-    const unifiedTenants: UnifiedTenant[] = [];
+    // Use a Map to deduplicate tenants with matching normalized keys
+    const tenantMap = new Map<string, UnifiedTenant>();
     const processedSubmissions = new Set<string>();
 
+    // Process tenant_lookup records
     for (const tenant of tenantLookup) {
       const matchingSubmission = submissions.find(sub => 
         tenantsMatch(
@@ -139,9 +158,18 @@ export async function GET(request: NextRequest) {
         processedSubmissions.add(matchingSubmission.id);
       }
 
-      const key = `${normalizeForMatching(tenant.building_address)}_${normalizeForMatching(tenant.unit_number)}_${normalizeForMatching(tenant.name)}`;
+      // Use normalized address in key to merge duplicates
+      const normalizedAddr = normalizeAddress(tenant.building_address).toLowerCase();
+      const key = `${normalizedAddr}_${normalizeForMatching(tenant.unit_number)}_${normalizeNameForKey(tenant.name)}`;
 
-      unifiedTenants.push({
+      // If this key already exists, prefer the record with a submission
+      const existing = tenantMap.get(key);
+      if (existing && !matchingSubmission && existing.hasSubmission) {
+        // Skip this duplicate - keep the one with submission
+        continue;
+      }
+
+      tenantMap.set(key, {
         key,
         name: tenant.name,
         unit_number: tenant.unit_number,
@@ -156,25 +184,32 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Process unmatched submissions
     for (const submission of submissions) {
       if (!processedSubmissions.has(submission.id)) {
-        const key = `${normalizeForMatching(submission.building_address)}_${normalizeForMatching(submission.unit_number)}_${normalizeForMatching(submission.full_name)}`;
+        const normalizedAddr = normalizeAddress(submission.building_address).toLowerCase();
+        const key = `${normalizedAddr}_${normalizeForMatching(submission.unit_number)}_${normalizeNameForKey(submission.full_name)}`;
 
-        unifiedTenants.push({
-          key,
-          name: submission.full_name,
-          unit_number: submission.unit_number,
-          building_address: submission.building_address,
-          phone: submission.phone,
-          email: submission.email,
-          hasSubmission: true,
-          submissionData: submission,
-          tenantLookupId: null,
-          move_in: null,
-          is_current: true,
-        });
+        // Check if this submission matches an existing tenant (edge case)
+        if (!tenantMap.has(key)) {
+          tenantMap.set(key, {
+            key,
+            name: submission.full_name,
+            unit_number: submission.unit_number,
+            building_address: submission.building_address,
+            phone: submission.phone,
+            email: submission.email,
+            hasSubmission: true,
+            submissionData: submission,
+            tenantLookupId: null,
+            move_in: null,
+            is_current: true,
+          });
+        }
       }
     }
+
+    const unifiedTenants = Array.from(tenantMap.values());
 
     return NextResponse.json({
       success: true,

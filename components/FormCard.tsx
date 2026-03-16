@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { TenantForm } from '@/lib/formsData';
 
 interface FormCardProps {
@@ -8,6 +9,17 @@ interface FormCardProps {
 
 export default function FormCard({ form, onView, onEdit }: FormCardProps) {
   const hasTemplate = Boolean(form.content);
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = () => {
+    if (!form.path) return;
+    const url = form.path.startsWith('http')
+      ? form.path
+      : `${window.location.origin}${form.path}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
@@ -29,12 +41,26 @@ export default function FormCard({ form, onView, onEdit }: FormCardProps) {
       
       <div className="mt-4 flex gap-2">
         {form.path && (
-          <a
-            href={form.path}
-            className="flex-1 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+          <button
+            onClick={copyLink}
+            className={`flex-1 px-4 py-2 rounded-none font-medium text-sm flex items-center justify-center gap-2 transition-colors duration-200 ease-out ${
+              copied
+                ? 'bg-green-50 border border-green-300 text-green-700'
+                : 'bg-white border border-gray-300 text-gray-800 hover:bg-gray-100'
+            }`}
           >
-            Open Form
-          </a>
+            {copied ? (
+              <>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                Copied!
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                Copy Link
+              </>
+            )}
+          </button>
         )}
 
         <button
