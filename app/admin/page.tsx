@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
       const data = await response.json();
       
       if (data.isAuthenticated) {
-        router.push('/admin/send-links');
+        router.push('/admin/lobby');
       } else {
         setIsAuthenticated(false);
       }
@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        router.push('/admin/send-links');
+        router.push('/admin/lobby');
       } else {
         setPassword('');
         setUsername('');
