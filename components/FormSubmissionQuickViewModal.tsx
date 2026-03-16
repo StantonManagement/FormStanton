@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import Link from 'next/link';
 import {
   FormSubmissionStatus,
@@ -33,8 +34,10 @@ export default function FormSubmissionQuickViewModal({
   submission,
   onClose,
   onUpdate,
-  currentUser,
+  currentUser: currentUserProp,
 }: Props) {
+  const { user } = useAdminAuth();
+  const currentUser = user?.displayName || currentUserProp || 'Admin';
   const [isUpdating, setIsUpdating] = useState(false);
 
   if (!submission) return null;
@@ -49,7 +52,6 @@ export default function FormSubmissionQuickViewModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
-          changed_by: currentUser || 'Unknown',
         }),
       });
 
@@ -65,8 +67,6 @@ export default function FormSubmissionQuickViewModal({
   };
 
   const handleAssignToMe = async () => {
-    if (!currentUser) return;
-
     setIsUpdating(true);
     try {
       const response = await fetch(`/api/admin/form-submissions/${submission.id}`, {
@@ -74,7 +74,6 @@ export default function FormSubmissionQuickViewModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assigned_to: currentUser,
-          changed_by: currentUser,
         }),
       });
 

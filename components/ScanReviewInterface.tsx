@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ConfirmDialog from '@/components/kit/ConfirmDialog';
+import AlertDialog from '@/components/kit/AlertDialog';
 import { FormPhoneInput } from '@/components/form';
 import { createClient } from '@supabase/supabase-js';
 
@@ -49,6 +51,20 @@ export default function ScanReviewInterface({ batchId, onClose, onImportComplete
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
   const [imageUrl, setImageUrl] = useState('');
   const [formData, setFormData] = useState<any>(null);
   const [tenantVerification, setTenantVerification] = useState<TenantVerification | null>(null);
@@ -184,8 +200,16 @@ export default function ScanReviewInterface({ batchId, onClose, onImportComplete
   };
 
   const handleImportAll = async () => {
-    if (!confirm('Import all reviewed submissions to the database?')) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Import Submissions',
+      message: 'Import all reviewed submissions to the database?',
+      onConfirm: executeImportAll
+    });
+  };
 
+  const executeImportAll = async () => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     setImporting(true);
     try {
       const response = await fetch('/api/admin/import-scans', {
@@ -196,14 +220,29 @@ export default function ScanReviewInterface({ batchId, onClose, onImportComplete
 
       const result = await response.json();
       if (result.success) {
-        alert(`Successfully imported ${result.imported} submission(s)!`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Import Successful',
+          message: `Successfully imported ${result.imported} submission(s)!`,
+          variant: 'success'
+        });
         onImportComplete();
       } else {
-        alert(`Import failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Import Failed',
+          message: `Import failed: ${result.message}`,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Import failed:', error);
-      alert('Import failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Import Failed',
+        message: 'Import failed',
+        variant: 'error'
+      });
     } finally {
       setImporting(false);
     }
@@ -541,6 +580,22 @@ export default function ScanReviewInterface({ batchId, onClose, onImportComplete
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

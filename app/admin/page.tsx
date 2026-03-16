@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +41,7 @@ export default function AdminLoginPage() {
       const response = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
@@ -49,6 +50,7 @@ export default function AdminLoginPage() {
         router.push('/admin/send-links');
       } else {
         setPassword('');
+        setUsername('');
         setAuthError(data.message || 'Invalid password');
         setShake(true);
         setTimeout(() => setShake(false), 500);
@@ -86,6 +88,24 @@ export default function AdminLoginPage() {
         <h1 className="text-xl font-serif text-[var(--primary)] mb-6 text-center">Admin Portal</h1>
         <form onSubmit={handleLogin}>
           <div className="mb-5">
+            <label htmlFor="username" className="block text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-2">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setAuthError(''); }}
+              className={`w-full px-4 py-2.5 border rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-colors duration-200 ${
+                authError ? 'border-red-400 bg-red-50/30' : 'border-[var(--border)]'
+              }`}
+              placeholder="Enter username"
+              autoFocus
+              autoComplete="username"
+              required
+            />
+          </div>
+          <div className="mb-5">
             <label htmlFor="password" className="block text-xs font-medium text-[var(--muted)] uppercase tracking-wide mb-2">
               Password
             </label>
@@ -97,8 +117,8 @@ export default function AdminLoginPage() {
               className={`w-full px-4 py-2.5 border rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-colors duration-200 ${
                 authError ? 'border-red-400 bg-red-50/30' : 'border-[var(--border)]'
               }`}
-              placeholder="Enter admin password"
-              autoFocus
+              placeholder="Enter password"
+              autoComplete="current-password"
               required
             />
           </div>

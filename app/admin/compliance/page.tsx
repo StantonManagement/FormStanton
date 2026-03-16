@@ -13,10 +13,12 @@ import VehicleExportCenter from '@/components/VehicleExportCenter';
 import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
 import AppFolioDocumentRow from '@/components/AppFolioDocumentRow';
 import AppFolioFeeRow from '@/components/AppFolioFeeRow';
 import AppFolioStatusFilter from '@/components/AppFolioStatusFilter';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface TenantSubmission {
   id: string;
@@ -169,7 +171,8 @@ export default function CompliancePage() {
     date?: string;
   }>({ isOpen: false, documentPath: null, documentType: 'insurance' });
   const [reviewingSubmission, setReviewingSubmission] = useState<TenantSubmission | null>(null);
-  const [reviewAdmin, setReviewAdmin] = useState<string>('');
+  const { user: authUser } = useAdminAuth();
+  const adminName = authUser?.displayName || 'Admin';
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [filters, setFilters] = useState<{
     hasVehicle: boolean;
@@ -180,10 +183,16 @@ export default function CompliancePage() {
     hasFeeExemption: boolean;
     appfolioStatus: 'all' | 'ready' | 'partial' | 'complete';
   }>({ hasVehicle: false, hasPets: false, hasInsurance: false, needsReview: false, exportStatus: 'all', hasFeeExemption: false, appfolioStatus: 'all' });
-  const [adminName, setAdminName] = useState<string>('');
   const [showDuplicatesGrouped, setShowDuplicatesGrouped] = useState(true);
   const [showOnlyDuplicates, setShowOnlyDuplicates] = useState(false);
   const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
   const [similarityThreshold, setSimilarityThreshold] = useState(85);
   const [showExportCenter, setShowExportCenter] = useState(false);
   const [showAddTenant, setShowAddTenant] = useState(false);
@@ -432,7 +441,7 @@ export default function CompliancePage() {
         // AppFolio status filter
         let matchesAppfolioStatus = true;
         if (filters.appfolioStatus !== 'all') {
-          const allVerified = sub.vehicle_verified && sub.pet_verified && sub.insurance_verified && sub.permit_issued;
+          const allVerified = sub.vehicle_verified && sub.pet_verified && sub.insurance_verified;
           const docsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) && (sub.vehicle_addendum_uploaded_to_appfolio === true) && (sub.insurance_uploaded_to_appfolio === true);
           const feesAdded = (!sub.has_pets || sub.pet_fee_added_to_appfolio === true) && (!sub.has_vehicle || sub.permit_fee_added_to_appfolio === true);
           const someDocsUploaded = (sub.pet_addendum_uploaded_to_appfolio === true) || (sub.vehicle_addendum_uploaded_to_appfolio === true) || (sub.insurance_uploaded_to_appfolio === true);
@@ -510,7 +519,7 @@ export default function CompliancePage() {
   };
 
   const approveForPermit = async () => {
-    if (!reviewingSubmission || !reviewAdmin) return;
+    if (!reviewingSubmission) return;
 
     try {
       const response = await fetch('/api/admin/compliance/building-summary', {
@@ -519,12 +528,12 @@ export default function CompliancePage() {
         body: JSON.stringify({
           submissionId: reviewingSubmission.id,
           itemType: 'vehicle',
-          notes: `Reviewed by ${reviewAdmin}`
+          notes: `Reviewed by ${adminName}`
         }),
       });
 
       if (response.ok) {
-        const updatedData = { reviewed_for_permit: true, reviewed_by: reviewAdmin, reviewed_at: new Date().toISOString() };
+        const updatedData = { reviewed_for_permit: true, reviewed_by: adminName, reviewed_at: new Date().toISOString() };
         // Update local submissions state
         setSubmissions(prev => prev.map(sub => 
           sub.id === reviewingSubmission.id 
@@ -538,7 +547,6 @@ export default function CompliancePage() {
             : sub
         ));
         setReviewingSubmission(null);
-        setReviewAdmin('');
       }
     } catch (error) {
       console.error('Failed to approve for permit:', error);
@@ -568,14 +576,28 @@ export default function CompliancePage() {
           return sub;
         }));
         await fetchData();
-        alert('Permit issued successfully!');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Permit Issued',
+          message: 'Permit issued successfully!',
+          variant: 'success'
+        });
       } else {
-        // Show validation error message
-        alert(data.message || 'Failed to issue permit');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Failed',
+          message: data.message || 'Failed to issue permit',
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Failed to issue permit:', error);
-      alert('Failed to issue permit. Please try again.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to issue permit. Please try again.',
+        variant: 'error'
+      });
     }
   };
 
@@ -600,7 +622,12 @@ export default function CompliancePage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`Successfully merged ${duplicateIds.length} submission(s)`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Merge Successful',
+          message: `Successfully merged ${duplicateIds.length} submission(s)`,
+          variant: 'success'
+        });
         await fetchData();
       } else {
         throw new Error(data.message || 'Failed to merge submissions');
@@ -654,8 +681,7 @@ export default function CompliancePage() {
   };
 
   const handleExemptionReview = async (submissionId: string, action: 'approve' | 'deny' | 'request_more_info', notes?: string) => {
-    const reviewerName = prompt('Enter your name for the audit trail:') || 'Admin';
-    if (!reviewerName) return;
+    const reviewerName = adminName;
 
     try {
       const response = await fetch('/api/admin/compliance/exemption-review', {
@@ -673,25 +699,28 @@ export default function CompliancePage() {
 
       if (response.ok) {
         await fetchData();
-        alert(`Exemption ${action}d successfully`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Exemption Updated',
+          message: `Exemption ${action}d successfully`,
+          variant: 'success'
+        });
       } else {
         throw new Error(data.message || 'Failed to update exemption');
       }
     } catch (error) {
       console.error('Failed to update exemption:', error);
-      alert('Failed to update exemption. Please try again.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to update exemption. Please try again.',
+        variant: 'error'
+      });
     }
   };
 
   const handleMarkDocumentUploaded = async (submissionId: string, documentType: 'pet_addendum' | 'vehicle_addendum' | 'insurance', note: string) => {
-    if (!adminName) {
-      const name = prompt('Enter your name:');
-      if (!name) return;
-      setAdminName(name);
-    }
-
-    const uploaderName = adminName || prompt('Enter your name:');
-    if (!uploaderName) return;
+    const uploaderName = adminName;
 
     try {
       const response = await fetch('/api/admin/compliance/mark-appfolio-upload', {
@@ -714,19 +743,17 @@ export default function CompliancePage() {
       }
     } catch (error) {
       console.error('Failed to mark document uploaded:', error);
-      alert('Failed to mark document uploaded');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to mark document uploaded',
+        variant: 'error'
+      });
     }
   };
 
   const handleMarkFeeAdded = async (submissionId: string, feeType: 'pet_rent' | 'permit_fee', amount: number) => {
-    if (!adminName) {
-      const name = prompt('Enter your name:');
-      if (!name) return;
-      setAdminName(name);
-    }
-
-    const adderName = adminName || prompt('Enter your name:');
-    if (!adderName) return;
+    const adderName = adminName;
 
     try {
       const response = await fetch('/api/admin/compliance/mark-fee-added', {
@@ -749,7 +776,12 @@ export default function CompliancePage() {
       }
     } catch (error) {
       console.error('Failed to mark fee added:', error);
-      alert('Failed to mark fee added');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to mark fee added',
+        variant: 'error'
+      });
     }
   };
 
@@ -1222,7 +1254,6 @@ export default function CompliancePage() {
                     </button>
                     <button
                       onClick={async () => {
-                        const adminName = prompt('Enter your name:') || 'Admin';
                         const response = await fetch(`/api/admin/compliance/export-vehicles?building=${encodeURIComponent(selectedBuilding)}&admin=${encodeURIComponent(adminName)}`);
                         const blob = await response.blob();
                         const url = window.URL.createObjectURL(blob);
@@ -1857,8 +1888,8 @@ export default function CompliancePage() {
                         </div>
                       )}
 
-                      {/* AppFolio Documents Section - Only show when permit issued */}
-                      {submission.permit_issued && (
+                      {/* AppFolio Documents Section - Show when ready for permit (all verified) or permit issued */}
+                      {(submission.permit_issued || (submission.vehicle_verified && submission.pet_verified && submission.insurance_verified)) && (
                         <div className="mt-5 p-4 bg-white border-2 border-[var(--primary)]/20">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-serif text-[var(--primary)]">AppFolio Documents</h4>
@@ -2038,22 +2069,10 @@ export default function CompliancePage() {
               </div>
             )}
 
-            {/* Admin Selection */}
+            {/* Reviewer Info */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-[var(--ink)] mb-2">
-                Reviewed by:
-              </label>
-              <select
-                value={reviewAdmin}
-                onChange={(e) => setReviewAdmin(e.target.value)}
-                className="w-full px-3 py-2 border border-[var(--border)] rounded-none bg-[var(--bg-input)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20"
-              >
-                <option value="">Select admin...</option>
-                <option value="Alex">Alex</option>
-                <option value="Dean">Dean</option>
-                <option value="Dan">Dan</option>
-                <option value="Tiff">Tiff</option>
-              </select>
+              <div className="text-sm text-[var(--muted)]">Reviewing as</div>
+              <div className="text-base font-medium text-[var(--primary)]">{adminName}</div>
             </div>
 
             {/* Action Buttons */}
@@ -2061,7 +2080,6 @@ export default function CompliancePage() {
               <button
                 onClick={() => {
                   setReviewingSubmission(null);
-                  setReviewAdmin('');
                 }}
                 className="flex-1 px-4 py-2 border border-[var(--border)] text-[var(--primary)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
               >
@@ -2069,8 +2087,7 @@ export default function CompliancePage() {
               </button>
               <button
                 onClick={approveForPermit}
-                disabled={!reviewAdmin}
-                className="flex-1 px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-[var(--muted)] disabled:border-[var(--muted)] disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-[var(--primary)] text-white border border-[var(--primary)] rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
               >
                 Approve for Permit
               </button>
@@ -2116,6 +2133,15 @@ export default function CompliancePage() {
         documentType={documentViewer.documentType}
         title={documentViewer.title}
         date={documentViewer.date}
+      />
+
+      {/* Dialogs */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
       />
     </div>
     </>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { submissionId, exported, adminName } = await request.json();
+    const body = await request.json();
+    const { submissionId, exported } = body;
+
+    const sessionUser = await getSessionUser();
+    const adminName = sessionUser?.displayName || body.adminName || 'Admin';
 
     if (!submissionId) {
       return NextResponse.json(
@@ -45,6 +50,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit(sessionUser, 'export.toggle', 'submission', submissionId, { exported }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

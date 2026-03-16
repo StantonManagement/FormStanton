@@ -6,6 +6,8 @@ import { buildings } from '@/lib/buildings';
 import DocumentViewerModal from '@/components/DocumentViewerModal';
 import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
 import LobbyIntakePanel from '@/components/LobbyIntakePanel';
+import { useAdminAuth } from '@/lib/adminAuthContext';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface TenantSubmission {
   id: string;
@@ -79,14 +81,13 @@ interface UnifiedTenant {
   is_current: boolean;
 }
 
-const ADMIN_USERS = ['Alex', 'Dean', 'Dan', 'Tiff'];
-
 export default function LobbyPage() {
+  const { user } = useAdminAuth();
+  const adminName = user?.displayName || 'Admin';
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [adminName, setAdminName] = useState('');
   const [sessionStarted, setSessionStarted] = useState(false);
   const [allTenants, setAllTenants] = useState<UnifiedTenant[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,6 +96,13 @@ export default function LobbyPage() {
 
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [updatingField, setUpdatingField] = useState<string | null>(null);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
   const [documentViewer, setDocumentViewer] = useState<{
     isOpen: boolean;
     documentPath: string | null;
@@ -141,18 +149,21 @@ export default function LobbyPage() {
       
       const results = allTenants.filter((t) => {
         // Standard substring matching (existing behavior)
+        const name = t.name || '';
+        const unit = t.unit_number || '';
+        const building = t.building_address || '';
         const substringMatch = 
-          t.name.toLowerCase().includes(query) ||
-          t.unit_number.toLowerCase().includes(query) ||
-          t.building_address.toLowerCase().includes(query) ||
+          name.toLowerCase().includes(query) ||
+          unit.toLowerCase().includes(query) ||
+          building.toLowerCase().includes(query) ||
           (t.phone && t.phone.includes(query)) ||
           (t.email && t.email.toLowerCase().includes(query));
         
         // Initials/word-start matching (new feature)
         const initialsMatch = queryParts.length > 1 && (
-          matchesInitials(t.name, queryParts) ||
-          matchesInitials(t.building_address, queryParts) ||
-          matchesInitials(`${t.unit_number} ${t.building_address}`, queryParts)
+          matchesInitials(name, queryParts) ||
+          matchesInitials(building, queryParts) ||
+          matchesInitials(`${unit} ${building}`, queryParts)
         );
         
         return substringMatch || initialsMatch;
@@ -229,11 +240,6 @@ export default function LobbyPage() {
   };
 
   const handleStartSession = async () => {
-    if (!adminName) {
-      alert('Please enter your name');
-      return;
-    }
-
     try {
       const response = await fetch('/api/admin/unified-tenants');
       const result = await response.json();
@@ -244,7 +250,12 @@ export default function LobbyPage() {
       }
     } catch (error) {
       console.error('Failed to load tenants:', error);
-      alert('Failed to load tenants');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to load tenants',
+        variant: 'error'
+      });
     }
   };
 
@@ -257,9 +268,9 @@ export default function LobbyPage() {
     const query = searchQuery.toLowerCase();
     const results = allTenants.filter(
       (t) =>
-        t.name.toLowerCase().includes(query) ||
-        t.unit_number.toLowerCase().includes(query) ||
-        t.building_address.toLowerCase().includes(query)
+        (t.name || '').toLowerCase().includes(query) ||
+        (t.unit_number || '').toLowerCase().includes(query) ||
+        (t.building_address || '').toLowerCase().includes(query)
     );
 
     if (results.length === 1) {
@@ -313,11 +324,21 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
-        alert(`Upload failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: 'Upload failed',
+        variant: 'error'
+      });
     } finally {
       setUploadingDoc(null);
     }
@@ -355,18 +376,28 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
-        alert(`Update failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Update Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('Update failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Update Failed',
+        message: 'Update failed',
+        variant: 'error'
+      });
     } finally {
       setUpdatingField(null);
     }
   };
 
   const handleMarkReceived = async (type: 'pet' | 'vehicle') => {
-    if (!activeTenant || !adminName || !activeTenant.submissionData) return;
+    if (!activeTenant || !activeTenant.submissionData) return;
 
     const endpoint = type === 'pet' ? 'pet-receipt' : 'vehicle-receipt';
     setUpdatingField(`${type}_receipt`);
@@ -377,7 +408,7 @@ export default function LobbyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submissionId: activeTenant.submissionData.id,
-          receivedBy: adminName,
+          receivedBy: adminName, // from session
         }),
       });
 
@@ -398,11 +429,21 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
-        alert(`Update failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Update Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('Update failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Update Failed',
+        message: 'Update failed',
+        variant: 'error'
+      });
     } finally {
       setUpdatingField(null);
     }
@@ -442,18 +483,28 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
-        alert(`Update failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Update Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('Update failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Update Failed',
+        message: 'Update failed',
+        variant: 'error'
+      });
     } finally {
       setUpdatingField(null);
     }
   };
 
   const handleIssuePermit = async () => {
-    if (!activeTenant || !adminName || !activeTenant.submissionData) return;
+    if (!activeTenant || !activeTenant.submissionData) return;
 
     setUpdatingField('permit_issue');
 
@@ -484,11 +535,21 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
-        alert(`Failed to issue permit: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Failed to Issue Permit',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Issue permit error:', error);
-      alert('Failed to issue permit');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Failed to Issue Permit',
+        message: 'Failed to issue permit',
+        variant: 'error'
+      });
     } finally {
       setUpdatingField(null);
     }
@@ -498,7 +559,12 @@ export default function LobbyPage() {
     if (!activeTenant || !activeTenant.submissionData) return;
 
     if (!pickupIdFile) {
-      alert('Please take a photo of the tenant\'s ID before marking as picked up.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'ID Photo Required',
+        message: 'Please take a photo of the tenant\'s ID before marking as picked up.',
+        variant: 'error'
+      });
       return;
     }
 
@@ -518,7 +584,12 @@ export default function LobbyPage() {
 
       const uploadResult = await uploadResponse.json();
       if (!uploadResult.success) {
-        alert(`ID photo upload failed: ${uploadResult.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: `ID photo upload failed: ${uploadResult.message}`,
+          variant: 'error'
+        });
         setUpdatingField(null);
         return;
       }
@@ -551,11 +622,21 @@ export default function LobbyPage() {
         setPickupIdFile(null);
         setPickupIdPreview(null);
       } else {
-        alert(`Update failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Update Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('Update failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Update Failed',
+        message: 'Update failed',
+        variant: 'error'
+      });
     } finally {
       setUpdatingField(null);
     }
@@ -704,27 +785,13 @@ export default function LobbyPage() {
           <h1 className="text-2xl font-serif text-[var(--primary)] mb-6">Start Lobby Session</h1>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[var(--primary)] mb-2">
-              Your Name
-            </label>
-            <select
-              value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
-              className="w-full px-4 py-2 border border-[var(--border)] rounded-none focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-            >
-              <option value="">Select your name...</option>
-              {ADMIN_USERS.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <div className="text-sm text-[var(--muted)]">Logged in as</div>
+            <div className="text-lg font-medium text-[var(--primary)]">{adminName}</div>
           </div>
 
           <button
             onClick={handleStartSession}
-            disabled={!adminName}
-            className="w-full bg-[var(--primary)] text-white px-4 py-2 rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
+            className="w-full bg-[var(--primary)] text-white px-4 py-2 rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
           >
             Start Session
           </button>
@@ -1468,8 +1535,8 @@ export default function LobbyPage() {
     />
     {/* Lobby Intake Panel */}
     {showIntakePanel && activeTenant && (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-12 px-4" onClick={() => setShowIntakePanel(false)}>
-        <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-12 px-4">
+        <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto">
           <LobbyIntakePanel
             tenant={{
               name: activeTenant.name,
@@ -1478,12 +1545,39 @@ export default function LobbyPage() {
               phone: activeTenant.phone || undefined,
               email: activeTenant.email || undefined,
             }}
+            submissionData={activeTenant.submissionData}
             staffName={adminName}
             onClose={() => setShowIntakePanel(false)}
+            onSubmissionUpdated={(submissionData) => {
+              setActiveTenant({
+                ...activeTenant,
+                hasSubmission: true,
+                submissionData,
+              });
+              const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+              if (index !== -1) {
+                const updated = [...allTenants];
+                updated[index] = {
+                  ...updated[index],
+                  hasSubmission: true,
+                  submissionData,
+                };
+                setAllTenants(updated);
+              }
+            }}
           />
         </div>
       </div>
     )}
+
+    {/* Dialogs */}
+    <AlertDialog
+      isOpen={alertDialog.isOpen}
+      title={alertDialog.title}
+      message={alertDialog.message}
+      onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+      variant={alertDialog.variant}
+    />
   </>
 );
 }

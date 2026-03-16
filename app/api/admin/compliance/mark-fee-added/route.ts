@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +14,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId, feeType, amount, addedBy } = body;
+    const { submissionId, feeType, amount } = body;
 
-    if (!submissionId || !feeType || !amount || !addedBy) {
+    const sessionUser = await getSessionUser();
+    const addedBy = sessionUser?.displayName || body.addedBy || 'Admin';
+
+    if (!submissionId || !feeType || !amount) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
@@ -65,6 +69,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit(sessionUser, 'appfolio.fee_added', 'submission', submissionId, {
+      feeType, amount: parsedAmount, addedBy,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

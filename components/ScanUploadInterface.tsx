@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface ScanBatch {
   id: string;
@@ -22,6 +23,13 @@ export default function ScanUploadInterface({ onBatchCreated, batches, onRefresh
   const [uploading, setUploading] = useState(false);
   const [extracting, setExtracting] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState('');
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,11 +60,21 @@ export default function ScanUploadInterface({ onBatchCreated, batches, onRefresh
           handleExtract(result.batchId);
         }, 1000);
       } else {
-        alert(`Upload failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Upload Failed',
+        message: 'Upload failed',
+        variant: 'error'
+      });
     } finally {
       setUploading(false);
       e.target.value = ''; // Reset input
@@ -86,11 +104,21 @@ export default function ScanUploadInterface({ onBatchCreated, batches, onRefresh
           setUploadProgress('');
         }, 2000);
       } else {
-        alert(`Extraction failed: ${result.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Extraction Failed',
+          message: result.message,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Extraction error:', error);
-      alert('Extraction failed');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Extraction Failed',
+        message: 'Extraction failed',
+        variant: 'error'
+      });
     } finally {
       setExtracting(null);
     }
@@ -226,6 +254,15 @@ export default function ScanUploadInterface({ onBatchCreated, batches, onRefresh
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

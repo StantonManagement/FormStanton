@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -13,9 +14,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId, receivedBy } = body;
+    const { submissionId } = body;
 
-    if (!submissionId || !receivedBy) {
+    const sessionUser = await getSessionUser();
+    const receivedBy = sessionUser?.displayName || body.receivedBy || 'Admin';
+
+    if (!submissionId) {
       return NextResponse.json(
         { success: false, message: 'Submission ID and receivedBy required' },
         { status: 400 }
@@ -40,6 +44,8 @@ export async function PATCH(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit(sessionUser, 'receipt.pet_addendum', 'submission', submissionId, { receivedBy }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

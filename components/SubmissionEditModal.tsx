@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import { FormPhoneInput } from '@/components/form';
 
 interface TenantSubmission {
@@ -31,6 +32,7 @@ interface SubmissionEditModalProps {
 }
 
 export default function SubmissionEditModal({ submission, onClose, onSuccess }: SubmissionEditModalProps) {
+  const { user } = useAdminAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -52,7 +54,6 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
     policyNumber: submission.insurance_policy_number || '',
   });
 
-  const [staffName, setStaffName] = useState('');
   const [petDocFile, setPetDocFile] = useState<File | null>(null);
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
   const [petDocPreview, setPetDocPreview] = useState<string | null>(null);
@@ -148,18 +149,11 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
           setIsSubmitting(false);
           return;
         }
-        if (!staffName) {
-          setInvalidFields(new Set(['staffName']));
-          setError('Staff name is required when adding vehicle information');
-          setIsSubmitting(false);
-          return;
-        }
         formData.append('vehicleMake', vehicleData.make);
         formData.append('vehicleModel', vehicleData.model);
         formData.append('vehicleYear', vehicleData.year);
         formData.append('vehicleColor', vehicleData.color);
         formData.append('vehiclePlate', vehicleData.plate);
-        formData.append('staffName', staffName);
       }
 
       // Insurance data
@@ -357,26 +351,8 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Staff Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={staffName}
-                  onChange={(e) => {
-                    setStaffName(e.target.value);
-                    setInvalidFields(prev => {
-                      const next = new Set(prev);
-                      next.delete('staffName');
-                      return next;
-                    });
-                    setError('');
-                  }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    invalidFields.has('staffName') ? 'border-red-500 animate-pulse' : 'border-gray-300'
-                  }`}
-                  placeholder="Your name"
-                />
+                <div className="text-sm text-[var(--muted)]">Editing as</div>
+                <div className="text-base font-medium text-[var(--primary)]">{user?.displayName || 'Admin'}</div>
               </div>
             </div>
           </section>

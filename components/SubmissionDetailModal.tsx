@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DocumentViewerModal from './DocumentViewerModal';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface SubmissionPet {
   pet_type: string;
@@ -158,8 +159,16 @@ function EditablePetField({ label, value, petIndex, petKey, edits, setEdits, pet
 
 export default function SubmissionDetailModal({ submission, onClose, onUpdate }: SubmissionDetailModalProps) {
   const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
-  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [edits, setEdits] = useState<Partial<Submission>>({});
   const [saving, setSaving] = useState(false);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
+
   const [documentViewer, setDocumentViewer] = useState<{
     isOpen: boolean;
     documentPath: string | null;
@@ -218,13 +227,28 @@ export default function SubmissionDetailModal({ submission, onClose, onUpdate }:
         const updated = { ...submission, ...edits } as Submission;
         onUpdate?.(updated);
         setEdits({});
-        alert('Saved.');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Saved',
+          message: 'Saved.',
+          variant: 'success'
+        });
       } else {
-        alert(data.message || 'Failed to save.');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to save.',
+          variant: 'error'
+        });
       }
     } catch (e) {
       console.error('Save failed:', e);
-      alert('Failed to save.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save.',
+        variant: 'error'
+      });
     } finally {
       setSaving(false);
     }
@@ -537,6 +561,14 @@ export default function SubmissionDetailModal({ submission, onClose, onUpdate }:
         documentType={documentViewer.documentType}
         title={documentViewer.title}
         date={documentViewer.date}
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
       />
     </div>
   );

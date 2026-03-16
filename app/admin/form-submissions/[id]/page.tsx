@@ -115,7 +115,7 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
         assigned_to: selectedAssignee || null,
         priority: selectedPriority,
         admin_notes: notes,
-        changed_by: 'Admin',
+        // changed_by is now set server-side from session
         status_change_notes: statusChangeNotes || null,
       };
 

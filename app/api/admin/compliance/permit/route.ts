@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 // Issue permit
 export async function POST(request: NextRequest) {
@@ -14,11 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId, admin } = body;
+    const { submissionId } = body;
 
-    if (!submissionId || !admin) {
+    const sessionUser = await getSessionUser();
+    const admin = sessionUser?.displayName || body.admin || 'Admin';
+
+    if (!submissionId) {
       return NextResponse.json(
-        { success: false, message: 'Submission ID and admin required' },
+        { success: false, message: 'Submission ID required' },
         { status: 400 }
       );
     }
@@ -82,6 +86,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await logAudit(sessionUser, 'permit.issue', 'submission', submissionId, { admin }, getClientIp(request));
+
     return NextResponse.json({
       success: true,
       data,
@@ -141,6 +147,9 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const sessionUser2 = await getSessionUser();
+    await logAudit(sessionUser2, 'permit.pickup', 'submission', submissionId, { hasIdPhoto: !!idPhotoPath }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

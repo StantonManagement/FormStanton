@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { canApproveAdditionalPermit } from '@/lib/parkingAnalytics';
+import { getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 function getSupabase() {
   return createClient(
@@ -15,11 +17,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { submissionId, admin } = body;
+    const { submissionId } = body;
 
-    if (!submissionId || !admin) {
+    const sessionUser = await getSessionUser();
+    const admin = sessionUser?.displayName || body.admin || 'Admin';
+
+    if (!submissionId) {
       return NextResponse.json(
-        { success: false, message: 'Submission ID and admin required' },
+        { success: false, message: 'Submission ID required' },
         { status: 400 }
       );
     }
@@ -93,6 +98,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit(sessionUser, 'vehicle.approve_additional', 'submission', submissionId, { admin }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

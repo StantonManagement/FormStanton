@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import TenantComplianceCard from './TenantComplianceCard';
 import { sortBuildingsByAssetId, buildingToAssetId } from '@/lib/buildingAssetIds';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface TenantSubmission {
   id: string;
@@ -63,6 +64,13 @@ export default function ComplianceDashboard() {
   const [submissions, setSubmissions] = useState<TenantSubmission[]>([]);
   const [filter, setFilter] = useState<'all' | 'has_vehicle' | 'missing_vehicle' | 'has_pets' | 'missing_insurance'>('all');
   const [exporting, setExporting] = useState(false);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     fetchBuildings();
@@ -259,7 +267,12 @@ export default function ComplianceDashboard() {
       }
     } catch (error) {
       console.error('Failed to issue permit:', error);
-      alert('Failed to issue permit');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to issue permit',
+        variant: 'error'
+      });
     }
   };
 
@@ -293,7 +306,12 @@ export default function ComplianceDashboard() {
       }
     } catch (error) {
       console.error('Failed to mark as picked up:', error);
-      alert('Failed to mark as picked up');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to mark as picked up',
+        variant: 'error'
+      });
     }
   };
 
@@ -312,7 +330,12 @@ export default function ComplianceDashboard() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Failed to export vehicles:', error);
-      alert('Failed to export vehicle data');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Export Failed',
+        message: 'Failed to export vehicle data',
+        variant: 'error'
+      });
     } finally {
       setExporting(false);
     }
@@ -604,6 +627,14 @@ export default function ComplianceDashboard() {
           ))
         )}
       </div>
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

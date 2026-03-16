@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { SubmissionGroup, getSimilarityConfidence, getDuplicateReasons, TenantSubmission } from '@/lib/duplicateDetection';
+import ConfirmDialog from '@/components/kit/ConfirmDialog';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface DuplicateSubmissionAccordionProps {
   group: SubmissionGroup;
@@ -22,11 +24,31 @@ export default function DuplicateSubmissionAccordion({
   const [merging, setMerging] = useState(false);
   const [viewingDiff, setViewingDiff] = useState<string | null>(null);
 
-  const handleMergeAll = async () => {
-    if (!confirm(`Merge ${group.duplicates.length} duplicate submission(s) into the primary record?`)) {
-      return;
-    }
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
 
+  const handleMergeAll = async () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Merge Duplicates',
+      message: `Merge ${group.duplicates.length} duplicate submission(s) into the primary record?`,
+      onConfirm: executeMergeAll
+    });
+  };
+
+  const executeMergeAll = async () => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     setMerging(true);
     try {
       await onMerge(
@@ -35,35 +57,62 @@ export default function DuplicateSubmissionAccordion({
       );
     } catch (error) {
       console.error('Failed to merge:', error);
-      alert('Failed to merge submissions');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to merge submissions',
+        variant: 'error'
+      });
     } finally {
       setMerging(false);
     }
   };
 
   const handleMarkPrimary = async (submissionId: string) => {
-    if (!confirm('Mark this submission as the primary record?')) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Mark as Primary',
+      message: 'Mark this submission as the primary record?',
+      onConfirm: () => executeMarkPrimary(submissionId)
+    });
+  };
 
+  const executeMarkPrimary = async (submissionId: string) => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     try {
       await onMarkPrimary(submissionId, group.id);
     } catch (error) {
       console.error('Failed to mark as primary:', error);
-      alert('Failed to mark as primary');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to mark as primary',
+        variant: 'error'
+      });
     }
   };
 
   const handleDismiss = async (duplicateId: string) => {
-    if (!confirm('Mark this as not a duplicate? It will no longer appear in this group.')) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Dismiss Duplicate',
+      message: 'Mark this as not a duplicate? It will no longer appear in this group.',
+      onConfirm: () => executeDismiss(duplicateId)
+    });
+  };
 
+  const executeDismiss = async (duplicateId: string) => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
     try {
       await onDismiss(group.id, duplicateId);
     } catch (error) {
       console.error('Failed to dismiss:', error);
-      alert('Failed to dismiss duplicate');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to dismiss duplicate',
+        variant: 'error'
+      });
     }
   };
 
@@ -284,6 +333,22 @@ export default function DuplicateSubmissionAccordion({
           </div>
         </div>
       )}
+
+      {/* Dialogs */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

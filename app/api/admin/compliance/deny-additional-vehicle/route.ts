@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +43,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'vehicle.deny_additional', 'submission', submissionId, { reason }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

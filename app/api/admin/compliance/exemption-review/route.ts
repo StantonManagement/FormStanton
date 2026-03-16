@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -9,9 +10,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { submissionId, action, notes, reviewerName } = await request.json();
+    const body = await request.json();
+    const { submissionId, action, notes } = body;
 
-    if (!submissionId || !action || !reviewerName) {
+    // Get identity from session instead of request body
+    const sessionUser = await getSessionUser();
+    const reviewerName = sessionUser?.displayName || body.reviewerName || 'Unknown';
+
+    if (!submissionId || !action) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
@@ -77,6 +83,10 @@ export async function PUT(request: NextRequest) {
 
     // TODO: Send email notification to tenant about the decision
     // await sendExemptionDecisionEmail(formSubmission, action, notes);
+
+    await logAudit(sessionUser, 'exemption.review', 'form_submission', submissionId, {
+      action, reviewerName, notes: notes || '',
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

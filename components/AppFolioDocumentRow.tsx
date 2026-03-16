@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AlertDialog from '@/components/kit/AlertDialog';
 import DocumentDownloadButton from './DocumentDownloadButton';
 
 interface AppFolioDocumentRowProps {
@@ -28,6 +29,13 @@ export default function AppFolioDocumentRow({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
+
   const handleMarkUploaded = async () => {
     setIsSubmitting(true);
     try {
@@ -36,7 +44,12 @@ export default function AppFolioDocumentRow({
       setNote('');
     } catch (error) {
       console.error('Failed to mark uploaded:', error);
-      alert('Failed to mark document as uploaded');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to mark document as uploaded',
+        variant: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -123,6 +136,13 @@ export default function AppFolioDocumentRow({
           )}
         </div>
       )}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

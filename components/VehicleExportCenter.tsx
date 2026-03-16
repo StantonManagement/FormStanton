@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import { buildingToAssetId } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
 import { normalizeAddress, filterByBuilding } from '@/lib/addressNormalizer';
@@ -26,8 +27,6 @@ interface VehicleExportCenterProps {
   onExportComplete: () => void;
 }
 
-const ADMIN_NAMES = ['Alex', 'Dean', 'Dan', 'Tiff'];
-
 interface BuildingExportInfo {
   address: string;
   assetId: string;
@@ -46,8 +45,9 @@ export default function VehicleExportCenter({
   onClose,
   onExportComplete,
 }: VehicleExportCenterProps) {
+  const { user } = useAdminAuth();
+  const adminName = user?.displayName || 'Admin';
   const [selectedBuildings, setSelectedBuildings] = useState<Set<string>>(new Set());
-  const [adminName, setAdminName] = useState<string>(ADMIN_NAMES[0]);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -211,16 +211,8 @@ export default function VehicleExportCenter({
         {/* Controls */}
         <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0 bg-gray-50">
           <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-gray-700">Admin:</label>
-            <select
-              value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
-              className="text-sm border border-gray-300 px-2 py-1 rounded-none bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {ADMIN_NAMES.map(name => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
+            <span className="text-xs font-medium text-gray-700">Exporting as:</span>
+            <span className="text-sm font-medium text-[var(--primary)]">{adminName}</span>
           </div>
           <div className="flex items-center gap-2">
             <button

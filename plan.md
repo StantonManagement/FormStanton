@@ -30,6 +30,15 @@ FormsStanton is a production tenant onboarding and compliance platform for Stant
 - **Effort:** medium
 - **Priority:** P1
 
+### Multi-user authentication and audit system
+- **Status:** active
+- **Description:** Role-based admin authentication (Admin/Staff) with iron-session, per-user passwords stored in admin_users table, full audit trail on all mutations. User identity derived from session — no free-text name entry anywhere. Admin-only user management page. Audit log viewer visible to all authenticated users.
+- **Blockers:** none
+- **Dependencies:** Supabase backend
+- **Unlocks:** Accountability, role-based access control, audit compliance.
+- **Effort:** large
+- **Priority:** P1
+
 ### Supabase backend integration
 - **Status:** active
 - **Description:** Form records, signatures, and photos persist in Supabase PostgreSQL and Storage.

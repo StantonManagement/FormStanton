@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import { FormPhoneInput } from '@/components/form';
 import BuildingAutocomplete from './BuildingAutocomplete';
 import TenantAutocomplete from './TenantAutocomplete';
@@ -18,6 +19,7 @@ interface Tenant {
 }
 
 export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFormProps) {
+  const { user } = useAdminAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -29,7 +31,6 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
     vehicleYear: '',
     vehicleColor: '',
     vehiclePlate: '',
-    staffName: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -175,7 +176,6 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
           vehicleYear: '',
           vehicleColor: '',
           vehiclePlate: '',
-          staffName: formData.staffName, // Keep staff name for next entry
         });
         if (onSuccess) onSuccess();
       } else {
@@ -200,7 +200,6 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
       vehicleYear: '',
       vehicleColor: '',
       vehiclePlate: '',
-      staffName: formData.staffName,
     });
     setSubmitError('');
     setSubmitSuccess('');
@@ -428,20 +427,8 @@ export default function PhoneVehicleEntryForm({ onSuccess }: PhoneVehicleEntryFo
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Staff Information</h3>
             <div className="max-w-md">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.staffName}
-                onChange={(e) => handleInputChange('staffName', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Staff Member Name"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Your name will be recorded with this submission
-              </p>
+              <div className="text-sm text-[var(--muted)]">Submitting as</div>
+              <div className="text-base font-medium text-[var(--primary)]">{user?.displayName || 'Admin'}</div>
             </div>
           </div>
 

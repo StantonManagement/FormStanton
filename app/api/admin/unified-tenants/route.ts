@@ -58,8 +58,8 @@ interface UnifiedTenant {
   is_current: boolean;
 }
 
-function normalizeForMatching(str: string): string {
-  return str.toLowerCase().trim().replace(/\s+/g, ' ');
+function normalizeForMatching(str: string | null | undefined): string {
+  return (str || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
 function tenantsMatch(

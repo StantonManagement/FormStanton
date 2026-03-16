@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import SubmissionEditModal from './SubmissionEditModal';
 
 interface TenantSubmission {
@@ -60,14 +61,13 @@ interface TenantComplianceCardProps {
   onRefresh?: () => void;
 }
 
-const ADMIN_USERS = ['Alex', 'Dean', 'Dan', 'Tiff'];
-
 export default function TenantComplianceCard({ submission, onVerify, onUpdateNotes, onIssuePermit, onMarkPickedUp, onRefresh }: TenantComplianceCardProps) {
+  const { user } = useAdminAuth();
+  const adminName = user?.displayName || 'Admin';
   const [expanded, setExpanded] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(submission.admin_notes || '');
   const [showPermitModal, setShowPermitModal] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [isTogglingExport, setIsTogglingExport] = useState(false);
 
@@ -85,7 +85,7 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
         body: JSON.stringify({
           submissionId: submission.id,
           exported: !submission.vehicle_exported,
-          adminName: selectedAdmin || 'Admin'
+          adminName: adminName
         }),
       });
 
@@ -388,19 +388,8 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   <p className="text-sm text-gray-600">Plate: <span className="font-mono font-medium">{submission.vehicle_plate}</span></p>
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Issued by:
-                  </label>
-                  <select
-                    value={selectedAdmin}
-                    onChange={(e) => setSelectedAdmin(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select admin...</option>
-                    {ADMIN_USERS.map(admin => (
-                      <option key={admin} value={admin}>{admin}</option>
-                    ))}
-                  </select>
+                  <div className="text-sm text-[var(--muted)]">Issuing as</div>
+                  <div className="text-base font-medium text-[var(--primary)]">{adminName}</div>
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -411,14 +400,12 @@ export default function TenantComplianceCard({ submission, onVerify, onUpdateNot
                   </button>
                   <button
                     onClick={() => {
-                      if (selectedAdmin && onIssuePermit) {
-                        onIssuePermit(submission.id, selectedAdmin);
+                      if (onIssuePermit) {
+                        onIssuePermit(submission.id, adminName);
                         setShowPermitModal(false);
-                        setSelectedAdmin('');
                       }
                     }}
-                    disabled={!selectedAdmin}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Issue Permit
                   </button>

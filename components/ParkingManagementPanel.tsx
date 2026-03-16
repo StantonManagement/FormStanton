@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import { ParkingAvailability, AdditionalVehicleRequest, getParkingStatusIndicator } from '@/lib/parkingAnalytics';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface ParkingManagementPanelProps {
   buildingAddress: string;
@@ -9,13 +11,21 @@ interface ParkingManagementPanelProps {
 }
 
 export default function ParkingManagementPanel({ buildingAddress, onRefresh }: ParkingManagementPanelProps) {
+  const { user } = useAdminAuth();
+  const adminName = user?.displayName || 'Admin';
   const [availability, setAvailability] = useState<ParkingAvailability | null>(null);
   const [requests, setRequests] = useState<AdditionalVehicleRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
-  const [adminName, setAdminName] = useState('');
   const [denialReason, setDenialReason] = useState('');
   const [denyingId, setDenyingId] = useState<string | null>(null);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
 
   useEffect(() => {
     if (buildingAddress) {
@@ -41,11 +51,6 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
   };
 
   const handleApprove = async (submissionId: string) => {
-    if (!adminName.trim()) {
-      alert('Please enter your name before approving');
-      return;
-    }
-
     setProcessing(submissionId);
     try {
       const response = await fetch('/api/admin/compliance/approve-additional-vehicle', {
@@ -57,15 +62,30 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
       const data = await response.json();
 
       if (data.success) {
-        alert('Additional vehicle approved successfully!');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Vehicle Approved',
+          message: 'Additional vehicle approved successfully!',
+          variant: 'success'
+        });
         await fetchParkingData();
         if (onRefresh) onRefresh();
       } else {
-        alert(`Failed to approve: ${data.message}${data.detail ? '\n\nDetail: ' + data.detail : ''}${data.code ? '\nCode: ' + data.code : ''}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Approval Failed',
+          message: `Failed to approve: ${data.message}${data.detail ? '\n\nDetail: ' + data.detail : ''}${data.code ? '\nCode: ' + data.code : ''}`,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Approval error:', error);
-      alert('Failed to approve additional vehicle');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to approve additional vehicle',
+        variant: 'error'
+      });
     } finally {
       setProcessing(null);
     }
@@ -73,7 +93,12 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
 
   const handleDeny = async (submissionId: string) => {
     if (!denialReason.trim()) {
-      alert('Please enter a reason for denial');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Reason Required',
+        message: 'Please enter a reason for denial',
+        variant: 'error'
+      });
       return;
     }
 
@@ -88,17 +113,32 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
       const data = await response.json();
 
       if (data.success) {
-        alert('Additional vehicle request denied');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Request Denied',
+          message: 'Additional vehicle request denied',
+          variant: 'success'
+        });
         setDenyingId(null);
         setDenialReason('');
         await fetchParkingData();
         if (onRefresh) onRefresh();
       } else {
-        alert(`Failed to deny: ${data.message}`);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Denial Failed',
+          message: `Failed to deny: ${data.message}`,
+          variant: 'error'
+        });
       }
     } catch (error) {
       console.error('Denial error:', error);
-      alert('Failed to deny additional vehicle');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to deny additional vehicle',
+        variant: 'error'
+      });
     } finally {
       setProcessing(null);
     }
@@ -176,19 +216,11 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
         )}
       </div>
 
-      {/* Admin Name Input */}
+      {/* Admin Info */}
       {pendingRequests.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Admin Name (for approvals)
-          </label>
-          <input
-            type="text"
-            value={adminName}
-            onChange={(e) => setAdminName(e.target.value)}
-            placeholder="Enter your name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          />
+          <div className="text-sm text-[var(--muted)]">Approving as</div>
+          <div className="text-base font-medium text-[var(--primary)]">{adminName}</div>
         </div>
       )}
 
@@ -354,6 +386,15 @@ export default function ParkingManagementPanel({ buildingAddress, onRefresh }: P
           <div className="text-gray-600">No additional vehicle requests for this building</div>
         </div>
       )}
+
+      {/* Dialogs */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

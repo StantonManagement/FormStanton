@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface DocumentDownloadButtonProps {
   documentPath: string | null | undefined;
@@ -16,6 +17,13 @@ export default function DocumentDownloadButton({
   variant = 'full'
 }: DocumentDownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
 
   const handleDownload = async () => {
     if (!documentPath) return;
@@ -38,7 +46,12 @@ export default function DocumentDownloadButton({
       document.body.removeChild(link);
     } catch (error) {
       console.error('Download error:', error);
-      alert('Failed to download document');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Download Failed',
+        message: 'Failed to download document',
+        variant: 'error'
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -89,7 +102,8 @@ export default function DocumentDownloadButton({
   }
 
   return (
-    <button
+    <>
+      <button
       onClick={handleDownload}
       disabled={isDownloading}
       className={`
@@ -116,5 +130,14 @@ export default function DocumentDownloadButton({
         </>
       )}
     </button>
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
+    </>
   );
 }

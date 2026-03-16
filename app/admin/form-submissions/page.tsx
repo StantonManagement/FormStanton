@@ -135,7 +135,6 @@ export default function FormSubmissionsPage() {
           action: 'assign',
           submissionIds: Array.from(selectedIds),
           value: assignee,
-          changed_by: 'Admin',
         }),
       });
 
@@ -162,7 +161,6 @@ export default function FormSubmissionsPage() {
         body: JSON.stringify({
           action: 'mark_sent_to_appfolio',
           submissionIds: Array.from(selectedIds),
-          changed_by: 'Admin',
         }),
       });
 

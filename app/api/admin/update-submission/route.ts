@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { sanitizePlate } from '@/lib/plateSanitizer';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,7 +66,9 @@ export async function POST(request: NextRequest) {
     const vehicleYear = formData.get('vehicleYear') as string | null;
     const vehicleColor = formData.get('vehicleColor') as string | null;
     const vehiclePlate = formData.get('vehiclePlate') as string | null;
-    const staffName = formData.get('staffName') as string | null;
+    // Get identity from session instead of FormData
+    const sessionUser = await getSessionUser();
+    const staffName = sessionUser?.displayName || formData.get('staffName') as string || 'Unknown';
 
     if (vehicleMake || vehicleModel || vehicleYear || vehicleColor || vehiclePlate) {
       updateData.has_vehicle = true;
@@ -172,6 +175,10 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    await logAudit(sessionUser, 'submission.edit', 'submission', submissionId, {
+      updatedFields: Object.keys(updateData),
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

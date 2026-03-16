@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSessionUser } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,7 +37,12 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { extractionId, finalData, reviewed, reviewedBy } = await request.json();
+    const body = await request.json();
+    const { extractionId, finalData, reviewed } = body;
+
+    // Get identity from session instead of request body
+    const sessionUser = await getSessionUser();
+    const reviewedBy = sessionUser?.displayName || body.reviewedBy || 'Unknown';
 
     if (!extractionId) {
       return NextResponse.json({ success: false, message: 'Extraction ID required' }, { status: 400 });
@@ -51,9 +58,7 @@ export async function PUT(request: NextRequest) {
       updateData.reviewed = reviewed;
       if (reviewed) {
         updateData.reviewed_at = new Date().toISOString();
-        if (reviewedBy) {
-          updateData.reviewed_by = reviewedBy;
-        }
+        updateData.reviewed_by = reviewedBy;
       }
     }
 
@@ -65,6 +70,8 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    await logAudit(sessionUser, 'scan.review', 'scan_extraction', extractionId, { reviewed });
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

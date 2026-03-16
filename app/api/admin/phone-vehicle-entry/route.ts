@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { sanitizePlate } from '@/lib/plateSanitizer';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,8 +26,11 @@ export async function POST(request: NextRequest) {
       vehicleYear,
       vehicleColor,
       vehiclePlate,
-      staffName,
     } = body;
+
+    // Get identity from session instead of request body
+    const sessionUser = await getSessionUser();
+    const staffName = sessionUser?.displayName || body.staffName || 'Unknown';
 
     // Validate required fields
     if (!fullName || !buildingAddress || !unitNumber) {
@@ -39,13 +43,6 @@ export async function POST(request: NextRequest) {
     if (!vehicleMake || !vehicleModel || !vehicleYear || !vehicleColor || !vehiclePlate) {
       return NextResponse.json(
         { success: false, message: 'All vehicle fields are required' },
-        { status: 400 }
-      );
-    }
-
-    if (!staffName) {
-      return NextResponse.json(
-        { success: false, message: 'Staff name is required' },
         { status: 400 }
       );
     }
@@ -121,6 +118,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      await logAudit(sessionUser, 'vehicle.phone_entry', 'submission', existingSubmission.id, {
+        fullName, buildingAddress, unitNumber, vehiclePlate: body.vehiclePlate, updated: true,
+      }, getClientIp(request));
+
       return NextResponse.json({
         success: true,
         message: 'Vehicle information added to existing submission',
@@ -150,6 +151,10 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+
+      await logAudit(sessionUser, 'vehicle.phone_entry', 'submission', data.id, {
+        fullName, buildingAddress, unitNumber, vehiclePlate: body.vehiclePlate, created: true,
+      }, getClientIp(request));
 
       return NextResponse.json({
         success: true,

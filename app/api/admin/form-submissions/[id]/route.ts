@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authenticated = await isAuthenticated();
@@ -16,7 +17,7 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     const { data: submission, error } = await supabaseAdmin
       .from('form_submissions')
@@ -57,7 +58,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authenticated = await isAuthenticated();
@@ -69,8 +70,12 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
+
+    // Get identity from session instead of request body
+    const sessionUser = await getSessionUser();
+    const actorName = sessionUser?.displayName || body.changed_by || 'Unknown';
 
     const {
       status,
@@ -79,7 +84,6 @@ export async function PATCH(
       admin_notes,
       denial_reason,
       revision_notes,
-      changed_by,
     } = body;
 
     const { data: currentSubmission } = await supabaseAdmin
@@ -95,7 +99,7 @@ export async function PATCH(
 
       if (status === 'sent_to_appfolio' && !currentSubmission?.sent_to_appfolio_at) {
         updates.sent_to_appfolio_at = new Date().toISOString();
-        updates.sent_to_appfolio_by = changed_by;
+        updates.sent_to_appfolio_by = actorName;
       }
 
       const statusHistory = currentSubmission?.status_history || [];
@@ -103,7 +107,7 @@ export async function PATCH(
         ...statusHistory,
         {
           status,
-          changed_by: changed_by || 'Unknown',
+          changed_by: actorName,
           changed_at: new Date().toISOString(),
           notes: body.status_change_notes || null,
         },
@@ -138,6 +142,10 @@ export async function PATCH(
       .single();
 
     if (error) throw error;
+
+    await logAudit(sessionUser, 'submission.update', 'form_submission', id, {
+      status, assigned_to, priority, admin_notes: !!admin_notes, denial_reason: !!denial_reason,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

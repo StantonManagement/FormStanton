@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, submissionIds, value, changed_by } = body;
+    const { action, submissionIds, value } = body;
+
+    // Get identity from session instead of request body
+    const sessionUser = await getSessionUser();
+    const actorName = sessionUser?.displayName || body.changed_by || 'Unknown';
 
     if (!action || !submissionIds || !Array.isArray(submissionIds)) {
       return NextResponse.json(
@@ -44,14 +49,14 @@ export async function POST(request: NextRequest) {
             if (current && !current.sent_to_appfolio_at) {
               updates.status = 'sent_to_appfolio';
               updates.sent_to_appfolio_at = new Date().toISOString();
-              updates.sent_to_appfolio_by = changed_by || 'Unknown';
+              updates.sent_to_appfolio_by = actorName;
 
               const statusHistory = current.status_history || [];
               updates.status_history = [
                 ...statusHistory,
                 {
                   status: 'sent_to_appfolio',
-                  changed_by: changed_by || 'Unknown',
+                  changed_by: actorName,
                   changed_at: new Date().toISOString(),
                   notes: 'Bulk marked as sent to Appfolio',
                 },
@@ -88,6 +93,10 @@ export async function POST(request: NextRequest) {
 
     const successCount = results.filter((r) => r.success).length;
     const failureCount = results.filter((r) => !r.success).length;
+
+    await logAudit(sessionUser, 'submission.bulk_action', 'form_submission', undefined, {
+      action, count: submissionIds.length, successCount, failureCount,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

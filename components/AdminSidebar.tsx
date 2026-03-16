@@ -40,6 +40,13 @@ const navSections: NavSection[] = [
       { label: 'Compliance Dashboard', href: '/admin/compliance' },
     ],
   },
+  {
+    title: 'Administration',
+    items: [
+      { label: 'Audit Log', href: '/admin/audit-log' },
+      { label: 'User Management', href: '/admin/users' },
+    ],
+  },
 ];
 
 export default function AdminSidebar() {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,6 +103,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'document.attach', 'submission', submissionId, {
+      documentType, fileName: file.name,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

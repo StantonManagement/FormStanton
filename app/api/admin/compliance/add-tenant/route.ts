@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -96,6 +97,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'tenant.add', 'tenant_lookup', data?.id, {
+      fullName, buildingAddress, unitNumber,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

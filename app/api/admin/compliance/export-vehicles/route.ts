@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
+import { logAudit, getClientIp } from '@/lib/audit';
 import { buildingToAssetId } from '@/lib/buildingAssetIds';
 import { normalizeAddress } from '@/lib/addressNormalizer';
 
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
     const buildingsParam = searchParams.get('buildings'); // comma-separated list
     const verifiedOnly = searchParams.get('verifiedOnly') === 'true';
     const grouped = searchParams.get('grouped') === 'true';
-    const adminName = searchParams.get('admin') || 'Admin';
+    const sessionUser = await getSessionUser();
+    const adminName = sessionUser?.displayName || searchParams.get('admin') || 'Admin';
 
     let query = supabase
       .from('submissions')
@@ -180,6 +182,11 @@ export async function GET(request: NextRequest) {
     } else {
       filename = `vehicles_all_buildings_${dateStr}.csv`;
     }
+
+    await logAudit(sessionUser, 'export.vehicles', 'submission', undefined, {
+      buildingCount: buildingsParam ? buildingsParam.split(',').filter(Boolean).length : 1,
+      vehicleCount: submissions.length,
+    }, getClientIp(request));
 
     return new NextResponse(csvContent, {
       status: 200,

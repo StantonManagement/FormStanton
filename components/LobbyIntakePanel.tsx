@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 import { PARKING_FEES } from '@/lib/policyContent';
 import {
   renderVehicleAddendum,
@@ -9,6 +10,8 @@ import {
   renderAdditionalInsuredInstructions,
   openPrintWindow,
 } from '@/lib/formPrintRenderer';
+import ConfirmDialog from '@/components/kit/ConfirmDialog';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface TenantInfo {
   name: string;
@@ -43,8 +46,10 @@ interface InsurancePolicy {
 
 interface LobbyIntakePanelProps {
   tenant: TenantInfo;
-  staffName: string;
+  submissionData?: any | null;
+  staffName?: string;
   onClose: () => void;
+  onSubmissionUpdated?: (submissionData: any) => void;
 }
 
 type Tab = 'vehicle' | 'pet' | 'insurance' | 'history';
@@ -76,22 +81,42 @@ const ACTION_LABELS: Record<string, string> = {
   general_note: 'Note',
 };
 
-export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIntakePanelProps) {
+export default function LobbyIntakePanel({ tenant, submissionData, staffName: staffNameProp, onClose, onSubmissionUpdated }: LobbyIntakePanelProps) {
+  const { user } = useAdminAuth();
+  const staffName = user?.displayName || staffNameProp || 'Admin';
   const [activeTab, setActiveTab] = useState<Tab>('vehicle');
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [saving, setSaving] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Vehicle state
+  // Dialog states
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
+
+  // Vehicle state - pre-fill from submissionData if exists
   const [vehicleType, setVehicleType] = useState(1);
-  const [vehicleMake, setVehicleMake] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('');
-  const [vehicleYear, setVehicleYear] = useState('');
-  const [vehicleColor, setVehicleColor] = useState('');
-  const [vehiclePlate, setVehiclePlate] = useState('');
+  const [vehicleMake, setVehicleMake] = useState(submissionData?.vehicle_make || '');
+  const [vehicleModel, setVehicleModel] = useState(submissionData?.vehicle_model || '');
+  const [vehicleYear, setVehicleYear] = useState(submissionData?.vehicle_year ? String(submissionData.vehicle_year) : '');
+  const [vehicleColor, setVehicleColor] = useState(submissionData?.vehicle_color || '');
+  const [vehiclePlate, setVehiclePlate] = useState(submissionData?.vehicle_plate || '');
 
   // Pet state
+  const [registeredPets, setRegisteredPets] = useState<any[]>([]);
+  const [editingPetIndex, setEditingPetIndex] = useState<number | null>(null);
   const [petType, setPetType] = useState('Dog');
   const [petBreed, setPetBreed] = useState('');
   const [petName, setPetName] = useState('');
@@ -128,6 +153,7 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
     }
   }, [tenant.buildingAddress, tenant.unitNumber]);
 
+
   const fetchInsurancePolicy = useCallback(async () => {
     setLoadingPolicy(true);
     try {
@@ -154,10 +180,45 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
     }
   }, [tenant.buildingAddress, tenant.unitNumber]);
 
+  // Fetch fresh submission data on mount
+  const fetchFreshSubmission = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/unified-tenants');
+      const data = await res.json();
+      if (data.success) {
+        const match = data.data.find((t: any) => 
+          t.building_address === tenant.buildingAddress &&
+          t.unit_number === tenant.unitNumber &&
+          t.name === tenant.name
+        );
+        if (match?.submissionData) {
+          const sub = match.submissionData;
+          // Update vehicle fields
+          if (sub.has_vehicle) {
+            setVehicleMake(sub.vehicle_make || '');
+            setVehicleModel(sub.vehicle_model || '');
+            setVehicleYear(sub.vehicle_year ? String(sub.vehicle_year) : '');
+            setVehicleColor(sub.vehicle_color || '');
+            setVehiclePlate(sub.vehicle_plate || '');
+          }
+          // Update registered pets list
+          if (sub.pets?.length > 0) {
+            setRegisteredPets(sub.pets);
+          } else {
+            setRegisteredPets([]);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch fresh submission:', e);
+    }
+  }, [tenant.buildingAddress, tenant.unitNumber, tenant.name]);
+
   useEffect(() => {
+    fetchFreshSubmission();
     fetchHistory();
     fetchInsurancePolicy();
-  }, [fetchHistory, fetchInsurancePolicy]);
+  }, [fetchFreshSubmission, fetchHistory, fetchInsurancePolicy]);
 
   const saveInteraction = async (actionType: string, actionData: any, notes?: string) => {
     setSaving(true);
@@ -180,11 +241,20 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
         await fetchHistory();
         return true;
       } else {
-        alert(data.message || 'Failed to save');
-        return false;
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to save',
+          variant: 'error'
+        });
       }
     } catch (e) {
-      alert('Failed to save interaction');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save interaction',
+        variant: 'error'
+      });
       return false;
     } finally {
       setSaving(false);
@@ -204,7 +274,12 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
 
   const handleSaveVehicle = async () => {
     if (!vehicleMake || !vehicleModel || !vehiclePlate) {
-      alert('Please fill in make, model, and license plate.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please fill in make, model, and license plate.',
+        variant: 'error'
+      });
       return;
     }
     const vt = VEHICLE_TYPES[vehicleType];
@@ -217,13 +292,60 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
       plate: vehiclePlate.toUpperCase(),
       monthly_fee: vt.fee,
     };
-    const saved = await saveInteraction(
-      'vehicle_registration',
-      actionData,
-      `${vehicleMake} ${vehicleModel} ${vehicleYear} - ${vehiclePlate.toUpperCase()} - $${vt.fee}/mo`
-    );
-    if (saved) {
-      alert('Vehicle registered successfully.');
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          action_type: 'vehicle_registration',
+          action_data: actionData,
+          notes: `${vehicleMake} ${vehicleModel} ${vehicleYear} - ${vehiclePlate.toUpperCase()} - $${vt.fee}/mo`,
+          performed_by: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchHistory();
+        if (data.submissionData && onSubmissionUpdated) {
+          onSubmissionUpdated(data.submissionData);
+        }
+        const wasUpdate = submissionData?.has_vehicle;
+        if (wasUpdate) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Vehicle Updated',
+            message: 'Vehicle updated successfully.\n\nREMINDER: Print new addendum for tenant to sign.',
+            variant: 'success'
+          });
+        } else {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Vehicle Registered',
+            message: 'Vehicle registered successfully.',
+            variant: 'success'
+          });
+        }
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to save',
+          variant: 'error'
+        });
+      }
+    } catch (e) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save vehicle',
+        variant: 'error'
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -243,9 +365,100 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
 
   // -- Pet handlers --
 
+  const clearPetForm = () => {
+    setPetType('Dog');
+    setPetBreed('');
+    setPetName('');
+    setPetWeight('');
+    setPetAge('');
+    setPetSpayed('Yes');
+    setPetVaccines('Yes');
+    setPetFeeIndex(1);
+    setEditingPetIndex(null);
+  };
+
+  const handleEditPet = (index: number) => {
+    const pet = registeredPets[index];
+    setPetType(pet.pet_type || 'Dog');
+    setPetBreed(pet.pet_breed || '');
+    setPetName(pet.pet_name || '');
+    setPetWeight(pet.pet_weight ? String(pet.pet_weight) : '');
+    setPetSpayed(pet.pet_spayed || 'Yes');
+    setPetVaccines(pet.pet_vaccinations_current || 'Yes');
+    setEditingPetIndex(index);
+  };
+
+  const handleRemovePet = async (index: number) => {
+    const pet = registeredPets[index];
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Pet',
+      message: `Remove ${pet.pet_name} (${pet.pet_breed})?`,
+      variant: 'danger',
+      onConfirm: () => executeRemovePet(index)
+    });
+  };
+
+  const executeRemovePet = async (index: number) => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+    const pet = registeredPets[index];
+    
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          action_type: 'pet_removal',
+          action_data: { pet_index: index },
+          notes: `Removed pet: ${pet.pet_name}`,
+          performed_by: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchFreshSubmission();
+        await fetchHistory();
+        if (data.submissionData && onSubmissionUpdated) {
+          onSubmissionUpdated(data.submissionData);
+        }
+        setAlertDialog({
+          isOpen: true,
+          title: 'Pet Removed',
+          message: 'Pet removed successfully.',
+          variant: 'success'
+        });
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to remove pet',
+          variant: 'error'
+        });
+      }
+    } catch (e) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to remove pet',
+        variant: 'error'
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSavePet = async () => {
     if (!petBreed || !petName) {
-      alert('Please fill in breed and name.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please fill in breed and name.',
+        variant: 'error'
+      });
       return;
     }
     const fee = PET_FEES[petFeeIndex];
@@ -259,16 +472,65 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
         spayed_neutered: petSpayed,
         vaccines: petVaccines,
       }],
+      pet_index: editingPetIndex,
       monthly_fee: fee.monthly,
       deposit: fee.deposit,
     };
-    const saved = await saveInteraction(
-      'pet_registration',
-      actionData,
-      `${petType} - ${petBreed} "${petName}" ${petWeight}lbs - $${fee.monthly}/mo + $${fee.deposit} deposit`
-    );
-    if (saved) {
-      alert('Pet registered successfully.');
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          action_type: editingPetIndex !== null ? 'pet_update' : 'pet_registration',
+          action_data: actionData,
+          notes: `${editingPetIndex !== null ? 'Updated' : 'Added'} pet: ${petType} - ${petBreed} "${petName}" ${petWeight}lbs - $${fee.monthly}/mo + $${fee.deposit} deposit`,
+          performed_by: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchFreshSubmission();
+        await fetchHistory();
+        if (data.submissionData && onSubmissionUpdated) {
+          onSubmissionUpdated(data.submissionData);
+        }
+        clearPetForm();
+        if (editingPetIndex !== null) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Pet Updated',
+            message: 'Pet updated successfully.\n\nREMINDER: Print new addendum for tenant to sign.',
+            variant: 'success'
+          });
+        } else {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Pet Added',
+            message: 'Pet added successfully.\n\nREMINDER: Print new addendum for all pets for tenant to sign.',
+            variant: 'success'
+          });
+        }
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to save',
+          variant: 'error'
+        });
+      }
+    } catch (e) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save pet',
+        variant: 'error'
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -314,7 +576,12 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.message || 'Failed to save insurance');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: data.message || 'Failed to save insurance',
+          variant: 'error'
+        });
         setSaving(false);
         return;
       }
@@ -338,9 +605,19 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
         },
         label
       );
-      alert('Insurance policy saved.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Insurance Saved',
+        message: 'Insurance policy saved.',
+        variant: 'success'
+      });
     } catch (e) {
-      alert('Failed to save insurance');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to save insurance',
+        variant: 'error'
+      });
     } finally {
       setSaving(false);
     }
@@ -465,7 +742,7 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={handleSaveVehicle} disabled={saving} className={btnPrimary}>
-                {saving ? 'Saving...' : 'Save Vehicle'}
+                {saving ? 'Saving...' : (submissionData?.has_vehicle ? 'Update Vehicle' : 'Save Vehicle')}
               </button>
               <button onClick={handlePrintVehicle} className={btnSecondary}>
                 Print Addendum
@@ -477,6 +754,32 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
         {/* -- PET TAB -- */}
         {activeTab === 'pet' && (
           <div className="space-y-4">
+            {/* Registered Pets List */}
+            {registeredPets.length > 0 && (
+              <div className="bg-[#f8f7f5] p-4 rounded" style={{ borderLeftWidth: '3px', borderLeftColor: '#8b7355' }}>
+                <h3 className="font-serif text-base mb-3">Registered Pets</h3>
+                <div className="space-y-2">
+                  {registeredPets.map((pet, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded text-sm">
+                      <div>
+                        <strong>{pet.pet_name}</strong> ({pet.pet_type}, {pet.pet_breed}, {pet.pet_weight}lbs)
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditPet(index)} className="text-xs px-3 py-1 bg-[#8b7355] text-white rounded hover:bg-[#6d5a43] transition-colors">
+                          Edit
+                        </button>
+                        <button onClick={() => handleRemovePet(index)} className="text-xs px-3 py-1 border border-[#8b7355] text-[#8b7355] rounded hover:bg-[#f8f7f5] transition-colors">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Add/Edit Pet Form */}
+            <h3 className="font-serif text-base">{editingPetIndex !== null ? 'Edit Pet' : 'Add New Pet'}</h3>
             <div>
               <label className={labelClass}>Pet Fee Category</label>
               <select value={petFeeIndex} onChange={e => setPetFeeIndex(Number(e.target.value))} className={selectClass}>
@@ -534,8 +837,13 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={handleSavePet} disabled={saving} className={btnPrimary}>
-                {saving ? 'Saving...' : 'Save Pet'}
+                {saving ? 'Saving...' : (editingPetIndex !== null ? 'Update Pet' : 'Save Pet')}
               </button>
+              {editingPetIndex !== null && (
+                <button onClick={clearPetForm} className={btnSecondary}>
+                  Cancel
+                </button>
+              )}
               <button onClick={handlePrintPet} className={btnSecondary}>
                 Print Addendum
               </button>
@@ -717,23 +1025,43 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
                     </div>
                     <button
                       onClick={async () => {
-                        if (!confirm('Remove this entry?')) return;
-                        setDeletingId(ix.id);
-                        try {
-                          const res = await fetch('/api/admin/tenant-interactions', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ id: ix.id }),
-                          });
-                          const data = await res.json();
-                          if (data.success) {
-                            setInteractions(prev => prev.filter(i => i.id !== ix.id));
+                        setConfirmDialog({
+                          isOpen: true,
+                          title: 'Remove Entry',
+                          message: 'Remove this entry?',
+                          variant: 'danger',
+                          onConfirm: async () => {
+                            setConfirmDialog({ ...confirmDialog, isOpen: false });
+                            setDeletingId(ix.id);
+                            try {
+                              const res = await fetch('/api/admin/tenant-interactions', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ id: ix.id }),
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                setInteractions(prev => prev.filter(i => i.id !== ix.id));
+                              } else {
+                                setAlertDialog({
+                                  isOpen: true,
+                                  title: 'Error',
+                                  message: data.message || 'Failed to delete interaction',
+                                  variant: 'error'
+                                });
+                              }
+                            } catch (e) {
+                              setAlertDialog({
+                                isOpen: true,
+                                title: 'Error',
+                                message: 'Failed to delete interaction',
+                                variant: 'error'
+                              });
+                            } finally {
+                              setDeletingId(null);
+                            }
                           }
-                        } catch (e) {
-                          console.error('Failed to delete interaction', e);
-                        } finally {
-                          setDeletingId(null);
-                        }
+                        });
                       }}
                       disabled={deletingId === ix.id}
                       className="flex-shrink-0 text-gray-300 hover:text-red-500 transition-colors duration-200 p-1"
@@ -748,6 +1076,23 @@ export default function LobbyIntakePanel({ tenant, staffName, onClose }: LobbyIn
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        variant={confirmDialog.variant}
+      />
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

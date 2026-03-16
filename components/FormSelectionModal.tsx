@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Department, departmentLabels, TenantForm, tenantForms, getFormById } from '@/lib/formsData';
+import AlertDialog from '@/components/kit/AlertDialog';
 
 interface FormSelectionModalProps {
   isOpen: boolean;
@@ -41,6 +42,13 @@ export default function FormSelectionModal({
   const [activeCategory, setActiveCategory] = useState<string>('onboarding');
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant?: 'success' | 'error' | 'info';
+  }>({ isOpen: false, title: '', message: '' });
+
   if (!isOpen) return null;
 
   const handleFormToggle = (formId: number) => {
@@ -70,7 +78,12 @@ export default function FormSelectionModal({
 
   const handleGenerate = async () => {
     if (selectedForms.length === 0) {
-      alert('Please select at least one form');
+      setAlertDialog({
+        isOpen: true,
+        title: 'No Forms Selected',
+        message: 'Please select at least one form',
+        variant: 'error'
+      });
       return;
     }
 
@@ -192,6 +205,14 @@ export default function FormSelectionModal({
           </div>
         </div>
       </div>
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }
