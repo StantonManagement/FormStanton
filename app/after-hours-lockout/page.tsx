@@ -8,6 +8,7 @@ import { buildings, buildingUnits } from '@/lib/buildings';
 import {
   FormField,
   FormInput,
+  FormSelect,
   FormCheckbox,
   FormButton,
   FormSection,
@@ -17,6 +18,7 @@ import {
 } from '@/components/form';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
@@ -70,7 +72,7 @@ function AfterHoursLockoutFormContent() {
   const { formData, updateField } = useFormData(initialFormData);
   const [signature, setSignature] = useState('');
   
-  const { currentSection, nextSection, prevSection, goToSection } = useFormSection(2);
+  const { currentSection, nextSection, previousSection, goToSection } = useFormSection(2);
   const { errors, setFieldError, clearAllErrors } = useFieldValidation<AfterHoursLockoutFormData>();
   const { submit, isSubmitting, submitError, submitSuccess } = useFormSubmit(async (data) => {
     const response = await fetch('/api/forms/after-hours-lockout', {
@@ -203,7 +205,16 @@ function AfterHoursLockoutFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="After-Hours Lockout Acknowledgment"
+        description="Acknowledge tenant responsibility for after-hours lockouts"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -211,7 +222,8 @@ function AfterHoursLockoutFormContent() {
       <SuccessScreen
         title="Lockout Acknowledgment Submitted"
         message="Your after-hours lockout acknowledgment has been recorded. Please contact the office on the next business day if you lost your key."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }
@@ -225,226 +237,241 @@ function AfterHoursLockoutFormContent() {
 
   const allAcknowledgmentsChecked = Object.values(formData.acknowledgments).every(v => v);
 
+  const tabs = [
+    { id: 1, label: 'Lockout Information' },
+    { id: 2, label: 'Acknowledgments' },
+  ];
+
   return (
     <>
-      <Header />
-      <SectionHeader
-        title="After-Hours Lockout Acknowledgment"
-        subtitle="Acknowledge tenant responsibility for after-hours lockouts"
-      />
+      <Header language={language} onLanguageChange={setLanguage} />
       
       <FormLayout>
         <TabNavigation
-          tabs={['Lockout Information', 'Acknowledgments']}
-          currentTab={currentSection}
-          onTabChange={goToSection}
+          tabs={tabs}
+          activeTab={currentSection}
+          onTabClick={goToSection}
         />
 
-        <AnimatePresence mode="wait">
-          {currentSection === 0 && (
-            <motion.div
-              key="section1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <FormSection title="Lockout Information">
-                <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-400 text-sm text-red-800">
-                  <strong>Emergency Contact:</strong> If you're locked out during business hours, call (860) 993-3401 and press 2. For after-hours lockouts, you must contact a licensed locksmith at your own expense.
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Tenant Name" error={errors.tenantName}>
-                    <FormInput
-                      value={formData.tenantName}
-                      onChange={(value) => updateField('tenantName', value)}
-                      placeholder="Enter tenant name"
-                    />
-                  </FormField>
-
-                  <FormField label="Date of Lockout" error={errors.dateOfLockout}>
-                    <FormInput
-                      type="date"
-                      value={formData.dateOfLockout}
-                      onChange={(value) => updateField('dateOfLockout', value)}
-                    />
-                  </FormField>
-                </div>
-
-                <FormField label="Building Address" error={errors.buildingAddress}>
-                  <BuildingAutocomplete
-                    value={formData.buildingAddress}
-                    onChange={(value) => {
-                      updateField('buildingAddress', value);
-                      updateField('unitNumber', '');
-                    }}
-                  />
-                </FormField>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Unit Number" error={errors.unitNumber}>
-                    <FormSelect
-                      value={formData.unitNumber}
-                      onChange={(value) => updateField('unitNumber', value)}
-                      disabled={!formData.buildingAddress}
-                      placeholder="Select unit"
-                    >
-                      {formData.buildingAddress && buildingUnits[formData.buildingAddress]?.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </FormField>
-
-                  <FormField label="Time of Lockout" error={errors.timeOfLockout}>
-                    <FormInput
-                      type="time"
-                      value={formData.timeOfLockout}
-                      onChange={(value) => updateField('timeOfLockout', value)}
-                    />
-                  </FormField>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Locksmith used (if known)">
-                    <FormInput
-                      value={formData.locksmithUsed}
-                      onChange={(value) => updateField('locksmithUsed', value)}
-                      placeholder="Locksmith company name"
-                    />
-                  </FormField>
-
-                  <FormField label="Estimated cost">
-                    <FormInput
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.estimatedCost}
-                      onChange={(value) => updateField('estimatedCost', value)}
-                      placeholder="0.00"
-                    />
-                  </FormField>
-                </div>
-              </FormSection>
-            </motion.div>
-          )}
-
-          {currentSection === 1 && (
-            <motion.div
-              key="section2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <FormSection title="Acknowledgment">
-                <p className="mb-4 text-sm text-gray-700">I understand the following:</p>
-
-                <div className="space-y-3">
-                  <FormField>
-                    <div className="flex items-start gap-3">
-                      <FormCheckbox
-                        checked={formData.acknowledgments.tenantResponsibility}
-                        onChange={(checked) => updateAcknowledgment('tenantResponsibility', checked)}
-                        label="After-hours lockouts are my responsibility to resolve"
-                      />
-                    </div>
-                  </FormField>
-
-                  <FormField>
-                    <div className="flex items-start gap-3">
-                      <FormCheckbox
-                        checked={formData.acknowledgments.hireLocksmith}
-                        onChange={(checked) => updateAcknowledgment('hireLocksmith', checked)}
-                        label="I must hire a licensed locksmith at my own expense"
-                      />
-                    </div>
-                  </FormField>
-
-                  <FormField>
-                    <div className="flex items-start gap-3">
-                      <FormCheckbox
-                        checked={formData.acknowledgments.notResponsible}
-                        onChange={(checked) => updateAcknowledgment('notResponsible', checked)}
-                        label="Stanton Management is not responsible for after-hours lockout costs"
-                      />
-                    </div>
-                  </FormField>
-
-                  <FormField>
-                    <div className="flex items-start gap-3">
-                      <FormCheckbox
-                        checked={formData.acknowledgments.reportToOffice}
-                        onChange={(checked) => updateAcknowledgment('reportToOffice', checked)}
-                        label="If I lose my key, I must report it to the office on the next business day"
-                      />
-                    </div>
-                  </FormField>
-
-                  <FormField>
-                    <div className="flex items-start gap-3">
-                      <FormCheckbox
-                        checked={formData.acknowledgments.securityConcern}
-                        onChange={(checked) => updateAcknowledgment('securityConcern', checked)}
-                        label="If a security concern exists, a lock change may be required at my expense"
-                      />
-                    </div>
-                  </FormField>
-                </div>
-              </FormSection>
-
-              <FormSection title="Signature">
-                <FormField label="Tenant Signature" error={errors.tenantSignature}>
-                  <SignatureCanvasComponent
-                    value={signature}
-                    onChange={setSignature}
-                    label="Draw your signature to acknowledge"
-                  />
-                </FormField>
-              </FormSection>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {submitError && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700 rounded-lg">
-            {submitError}
-          </div>
-        )}
-
-        <div className="flex justify-between mt-6">
-          <FormButton
-            variant="outline"
-            onClick={prevSection}
-            disabled={currentSection === 0}
-          >
-            Previous
-          </FormButton>
-
-          <div className="flex gap-3">
-            <FormButton
-              variant="outline"
-              onClick={handlePrint}
-              disabled={!formData.tenantName}
-            >
-              Print Form
-            </FormButton>
-
-            {currentSection < 1 ? (
-              <FormButton onClick={nextSection}>
-                Next
-              </FormButton>
-            ) : (
-              <FormButton
-                onClick={() => submit(formData)}
-                disabled={isSubmitting || !signature || !allAcknowledgmentsChecked}
+        <div className="p-6 sm:p-8">
+          <AnimatePresence mode="wait">
+            {currentSection === 1 && (
+              <motion.div
+                key="section1"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Acknowledgment'}
-              </FormButton>
+                <FormSection>
+                  <SectionHeader
+                    title="Lockout Information"
+                    sectionNumber={1}
+                    totalSections={2}
+                  />
+
+                  <div className="mb-4 p-3 border-l-4 border-red-400 bg-red-50 text-sm text-red-800">
+                    <strong>Emergency Contact:</strong> If you are locked out during business hours, call (860) 993-3401 and press 2. For after-hours lockouts, you must contact a licensed locksmith at your own expense.
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Tenant Name" error={errors.tenantName}>
+                      <FormInput
+                        type="text"
+                        value={formData.tenantName}
+                        onChange={(e) => updateField('tenantName', e.target.value)}
+                        placeholder="Enter tenant name"
+                        error={!!errors.tenantName}
+                      />
+                    </FormField>
+
+                    <FormField label="Date of Lockout" error={errors.dateOfLockout}>
+                      <FormInput
+                        type="date"
+                        value={formData.dateOfLockout}
+                        onChange={(e) => updateField('dateOfLockout', e.target.value)}
+                        error={!!errors.dateOfLockout}
+                      />
+                    </FormField>
+                  </div>
+
+                  <FormField label="Building Address" error={errors.buildingAddress}>
+                    <BuildingAutocomplete
+                      value={formData.buildingAddress}
+                      onChange={(value) => {
+                        updateField('buildingAddress', value);
+                        updateField('unitNumber', '');
+                      }}
+                      buildings={buildings}
+                    />
+                  </FormField>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Unit Number" error={errors.unitNumber}>
+                      {formData.buildingAddress && buildingUnits[formData.buildingAddress] ? (
+                        <FormSelect
+                          value={formData.unitNumber}
+                          onChange={(e) => updateField('unitNumber', e.target.value)}
+                          disabled={!formData.buildingAddress}
+                          error={!!errors.unitNumber}
+                        >
+                          <option value="">Select unit</option>
+                          {buildingUnits[formData.buildingAddress].map((unit) => (
+                            <option key={unit} value={unit}>
+                              {unit}
+                            </option>
+                          ))}
+                        </FormSelect>
+                      ) : (
+                        <FormInput
+                          type="text"
+                          value={formData.unitNumber}
+                          onChange={(e) => updateField('unitNumber', e.target.value)}
+                          placeholder="Enter unit number"
+                          error={!!errors.unitNumber}
+                        />
+                      )}
+                    </FormField>
+
+                    <FormField label="Time of Lockout" error={errors.timeOfLockout}>
+                      <FormInput
+                        type="time"
+                        value={formData.timeOfLockout}
+                        onChange={(e) => updateField('timeOfLockout', e.target.value)}
+                        error={!!errors.timeOfLockout}
+                      />
+                    </FormField>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Locksmith used (if known)">
+                      <FormInput
+                        type="text"
+                        value={formData.locksmithUsed}
+                        onChange={(e) => updateField('locksmithUsed', e.target.value)}
+                        placeholder="Locksmith company name"
+                      />
+                    </FormField>
+
+                    <FormField label="Estimated cost">
+                      <FormInput
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.estimatedCost}
+                        onChange={(e) => updateField('estimatedCost', e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </FormField>
+                  </div>
+
+                  <FormButton
+                    type="button"
+                    onClick={nextSection}
+                    fullWidth
+                  >
+                    Continue
+                  </FormButton>
+                </FormSection>
+              </motion.div>
             )}
-          </div>
+
+            {currentSection === 2 && (
+              <motion.div
+                key="section2"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+                <FormSection>
+                  <SectionHeader
+                    title="Acknowledgment"
+                    sectionNumber={2}
+                    totalSections={2}
+                  />
+
+                  <p className="mb-4 text-sm text-[var(--muted)]">I understand the following:</p>
+
+                  <div className="space-y-3">
+                    <FormCheckbox
+                      checked={formData.acknowledgments.tenantResponsibility}
+                      onChange={(e) => updateAcknowledgment('tenantResponsibility', e.target.checked)}
+                      label="After-hours lockouts are my responsibility to resolve"
+                    />
+
+                    <FormCheckbox
+                      checked={formData.acknowledgments.hireLocksmith}
+                      onChange={(e) => updateAcknowledgment('hireLocksmith', e.target.checked)}
+                      label="I must hire a licensed locksmith at my own expense"
+                    />
+
+                    <FormCheckbox
+                      checked={formData.acknowledgments.notResponsible}
+                      onChange={(e) => updateAcknowledgment('notResponsible', e.target.checked)}
+                      label="Stanton Management is not responsible for after-hours lockout costs"
+                    />
+
+                    <FormCheckbox
+                      checked={formData.acknowledgments.reportToOffice}
+                      onChange={(e) => updateAcknowledgment('reportToOffice', e.target.checked)}
+                      label="If I lose my key, I must report it to the office on the next business day"
+                    />
+
+                    <FormCheckbox
+                      checked={formData.acknowledgments.securityConcern}
+                      onChange={(e) => updateAcknowledgment('securityConcern', e.target.checked)}
+                      label="If a security concern exists, a lock change may be required at my expense"
+                    />
+                  </div>
+                </FormSection>
+
+                <FormSection className="mt-6">
+                  <FormField label="Tenant Signature" error={errors.tenantSignature}>
+                    <SignatureCanvasComponent
+                      value={signature}
+                      onSave={setSignature}
+                      label="Draw your signature to acknowledge"
+                    />
+                  </FormField>
+                </FormSection>
+
+                {submitError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
+
+                <div className="flex justify-between mt-6">
+                  <FormButton
+                    variant="secondary"
+                    onClick={previousSection}
+                  >
+                    Previous
+                  </FormButton>
+
+                  <div className="flex gap-3">
+                    <FormButton
+                      variant="ghost"
+                      onClick={handlePrint}
+                      disabled={!formData.tenantName}
+                    >
+                      Print Form
+                    </FormButton>
+
+                    <FormButton
+                      variant="success"
+                      onClick={() => submit(formData)}
+                      disabled={isSubmitting || !signature || !allAcknowledgmentsChecked}
+                      loading={isSubmitting}
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Submit Acknowledgment'}
+                    </FormButton>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </FormLayout>
       
@@ -455,7 +482,11 @@ function AfterHoursLockoutFormContent() {
 
 export default function AfterHoursLockoutPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+        <p className="text-[var(--muted)]">Loading...</p>
+      </div>
+    }>
       <AfterHoursLockoutFormContent />
     </Suspense>
   );

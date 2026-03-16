@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     const safeUnit = submission.unit_number?.replace(/[^a-zA-Z0-9]/g, '_') || 'NoUnit';
     const filename = `${safeName}_Unit${safeUnit}_Documents.zip`;
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(zipBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
