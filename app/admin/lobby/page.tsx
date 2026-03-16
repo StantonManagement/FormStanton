@@ -8,6 +8,7 @@ import ExemptionStatusBadge from '@/components/ExemptionStatusBadge';
 import LobbyIntakePanel from '@/components/LobbyIntakePanel';
 import { useAdminAuth } from '@/lib/adminAuthContext';
 import AlertDialog from '@/components/kit/AlertDialog';
+import ConfirmDialog from '@/components/kit/ConfirmDialog';
 
 interface TenantSubmission {
   id: string;
@@ -113,6 +114,13 @@ export default function LobbyPage() {
     date?: string;
   }>({ isOpen: false, documentPath: null, documentType: 'signature' });
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
   const [showIntakePanel, setShowIntakePanel] = useState(false);
   const [pickupIdFile, setPickupIdFile] = useState<File | null>(null);
   const [pickupIdPreview, setPickupIdPreview] = useState<string | null>(null);
@@ -343,6 +351,66 @@ export default function LobbyPage() {
       });
     } finally {
       setUploadingDoc(null);
+    }
+  };
+
+  const handleDeleteDocument = async (
+    documentType: 'pet_addendum' | 'insurance' | 'vehicle_addendum'
+  ) => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+
+    setDeletingDoc(documentType);
+
+    try {
+      const response = await fetch('/api/admin/compliance/delete-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: activeTenant.submissionData.id,
+          documentType,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setActiveTenant({
+          ...activeTenant,
+          submissionData: result.data,
+        });
+        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+        if (index !== -1) {
+          const updated = [...allTenants];
+          updated[index] = {
+            ...updated[index],
+            submissionData: result.data,
+          };
+          setAllTenants(updated);
+        }
+        setAlertDialog({
+          isOpen: true,
+          title: 'Document Deleted',
+          message: 'The document has been removed.',
+          variant: 'success'
+        });
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Delete Failed',
+          message: result.message,
+          variant: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Delete Failed',
+        message: 'Failed to delete document',
+        variant: 'error'
+      });
+    } finally {
+      setDeletingDoc(null);
     }
   };
 
@@ -1064,6 +1132,21 @@ export default function LobbyPage() {
                     >
                       View Document
                     </button>
+                    <button
+                      onClick={() => setConfirmDialog({
+                        isOpen: true,
+                        title: 'Delete Pet Addendum',
+                        message: 'Are you sure you want to delete this pet addendum document? This cannot be undone.',
+                        onConfirm: () => {
+                          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                          handleDeleteDocument('pet_addendum');
+                        },
+                      })}
+                      disabled={deletingDoc === 'pet_addendum'}
+                      className="ml-2 text-red-600 hover:underline text-sm"
+                    >
+                      {deletingDoc === 'pet_addendum' ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
                 )}
 
@@ -1233,6 +1316,21 @@ export default function LobbyPage() {
                       >
                         View Document
                       </button>
+                      <button
+                        onClick={() => setConfirmDialog({
+                          isOpen: true,
+                          title: 'Delete Insurance Document',
+                          message: 'Are you sure you want to delete this insurance document? This cannot be undone.',
+                          onConfirm: () => {
+                            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                            handleDeleteDocument('insurance');
+                          },
+                        })}
+                        disabled={deletingDoc === 'insurance'}
+                        className="ml-2 text-red-600 hover:underline text-sm"
+                      >
+                        {deletingDoc === 'insurance' ? 'Deleting...' : 'Delete'}
+                      </button>
                     </div>
                   )}
 
@@ -1355,6 +1453,21 @@ export default function LobbyPage() {
                           className="ml-2 text-blue-600 hover:underline text-sm"
                         >
                           View Document
+                        </button>
+                        <button
+                          onClick={() => setConfirmDialog({
+                            isOpen: true,
+                            title: 'Delete Vehicle Addendum',
+                            message: 'Are you sure you want to delete this vehicle addendum document? This cannot be undone.',
+                            onConfirm: () => {
+                              setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                              handleDeleteDocument('vehicle_addendum');
+                            },
+                          })}
+                          disabled={deletingDoc === 'vehicle_addendum'}
+                          className="ml-2 text-red-600 hover:underline text-sm"
+                        >
+                          {deletingDoc === 'vehicle_addendum' ? 'Deleting...' : 'Delete'}
                         </button>
                       </div>
                     )}
@@ -1589,6 +1702,15 @@ export default function LobbyPage() {
       message={alertDialog.message}
       onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
       variant={alertDialog.variant}
+    />
+    <ConfirmDialog
+      isOpen={confirmDialog.isOpen}
+      title={confirmDialog.title}
+      message={confirmDialog.message}
+      confirmText="Delete"
+      variant="danger"
+      onConfirm={confirmDialog.onConfirm}
+      onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
     />
   </>
 );
