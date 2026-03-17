@@ -226,6 +226,31 @@ export function renderPetAddendum(data: PrintData, pets: PetData[]): string {
   </body></html>`;
 }
 
+// ── No Pets Acknowledgment ──
+
+export function renderNoPetsAcknowledgment(data: PrintData): string {
+  const date = data.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>No Pets Acknowledgment</title><style>${printStyles()}</style></head><body>
+    ${companyHeader()}
+    <div class="form-title">No Pets Acknowledgment</div>
+    ${field('Tenant Name(s)', data.tenantName)}
+    ${field('Unit Address', `${data.buildingAddress} - Unit ${data.unitNumber}`)}
+    ${field('Date', date)}
+    <hr>
+    <h2>Acknowledgment</h2>
+    <p>I, <strong>${data.tenantName}</strong>, hereby confirm that I do not currently have any pets (including dogs, cats, birds, reptiles, fish, or any other animals) residing in or regularly visiting my rental unit at <strong>${data.buildingAddress}, Unit ${data.unitNumber}</strong>.</p>
+    <h2>Terms</h2>
+    <ul>
+      <li>If I acquire a pet in the future, I agree to notify management <strong>before</strong> the pet enters the premises and complete a Pet Approval Request.</li>
+      <li>Unauthorized pets are a lease violation and may result in fees, fines, or further action.</li>
+      <li>Pet fees and deposits apply as outlined in the Pet Addendum — they are <strong>not</strong> waived by prior absence of pets.</li>
+    </ul>
+    <hr>
+    ${signatureBlock(['Tenant Signature', 'Received by (Stanton Management)'])}
+    ${footer(date)}
+  </body></html>`;
+}
+
 // ── Insurance Authorization ──
 
 export function renderInsuranceAuth(data: PrintData, choice: 'own' | 'appfolio'): string {

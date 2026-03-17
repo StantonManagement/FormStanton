@@ -6,6 +6,7 @@ import { PARKING_FEES } from '@/lib/policyContent';
 import {
   renderVehicleAddendum,
   renderPetAddendum,
+  renderNoPetsAcknowledgment,
   renderInsuranceAuth,
   renderAdditionalInsuredInstructions,
   openPrintWindow,
@@ -71,6 +72,10 @@ const PET_FEES: { label: string; weight: string; monthly: number; deposit: numbe
 const ACTION_LABELS: Record<string, string> = {
   vehicle_registration: 'Vehicle Registered',
   pet_registration: 'Pet Registered',
+  pet_update: 'Pet Updated',
+  pet_removal: 'Pet Removed',
+  esa_document_received: 'ESA / Service Animal Doc Received',
+  no_pets_acknowledgment: 'No Pets Acknowledgment Printed',
   insurance_choice_own: 'Insurance: Getting Own',
   insurance_choice_appfolio: 'Insurance: Appfolio Enrollment',
   insurance_policy_recorded: 'Insurance Policy Recorded',
@@ -80,6 +85,13 @@ const ACTION_LABELS: Record<string, string> = {
   printed_forms: 'Printed Forms',
   general_note: 'Note',
 };
+
+const EXEMPTION_REASONS = [
+  { value: 'emotional_support', label: 'Emotional Support Animal (ESA)' },
+  { value: 'service_animal', label: 'Service Animal (ADA)' },
+  { value: 'medical_necessity', label: 'Medical Necessity' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function LobbyIntakePanel({ tenant, submissionData, staffName: staffNameProp, onClose, onSubmissionUpdated }: LobbyIntakePanelProps) {
   const { user } = useAdminAuth();
@@ -125,6 +137,17 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   const [petSpayed, setPetSpayed] = useState('Yes');
   const [petVaccines, setPetVaccines] = useState('Yes');
   const [petFeeIndex, setPetFeeIndex] = useState(1);
+
+  // Quick note state
+  const [quickNote, setQuickNote] = useState('');
+
+  // ESA / Exemption state
+  const [esaReason, setEsaReason] = useState('emotional_support');
+  const [esaFile, setEsaFile] = useState<File | null>(null);
+  const [uploadingEsa, setUploadingEsa] = useState(false);
+
+  // Document upload state
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
 
   // Insurance state
   const [insuranceChoice, setInsuranceChoice] = useState<'own_policy' | 'appfolio'>('own_policy');
@@ -641,6 +664,118 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     }
   };
 
+  // -- Quick note handler --
+
+  const handleSaveNote = async () => {
+    if (!quickNote.trim()) return;
+    const saved = await saveInteraction('general_note', {}, quickNote.trim());
+    if (saved) {
+      setQuickNote('');
+      setAlertDialog({ isOpen: true, title: 'Note Saved', message: 'Note recorded.', variant: 'success' });
+    }
+  };
+
+  // -- ESA / Exemption handler --
+
+  const handleSaveEsa = async () => {
+    setSaving(true);
+    try {
+      // 1. Log ESA interaction & set exemption_status on submission
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          action_type: 'esa_document_received',
+          action_data: { reason: esaReason },
+          notes: `ESA/Service Animal doc received — ${EXEMPTION_REASONS.find(r => r.value === esaReason)?.label || esaReason}`,
+          performed_by: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setAlertDialog({ isOpen: true, title: 'Error', message: data.message || 'Failed to save', variant: 'error' });
+        setSaving(false);
+        return;
+      }
+
+      // 2. If a file was selected and there's a submission ID, upload it
+      if (esaFile && data.submissionData?.id) {
+        setUploadingEsa(true);
+        const formData = new FormData();
+        formData.append('submissionId', data.submissionData.id);
+        formData.append('documentType', 'exemption_document');
+        formData.append('file', esaFile);
+
+        const uploadRes = await fetch('/api/admin/compliance/attach-document', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.success && onSubmissionUpdated) {
+          onSubmissionUpdated(uploadData.data);
+        }
+        setUploadingEsa(false);
+      } else if (data.submissionData && onSubmissionUpdated) {
+        onSubmissionUpdated(data.submissionData);
+      }
+
+      await fetchHistory();
+      setEsaFile(null);
+      setAlertDialog({
+        isOpen: true,
+        title: 'ESA Document Recorded',
+        message: 'Exemption request logged. Status set to PENDING for admin review.',
+        variant: 'success',
+      });
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to save ESA document', variant: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // -- No Pets Acknowledgment --
+
+  const handlePrintNoPets = async () => {
+    const html = renderNoPetsAcknowledgment(printData);
+    openPrintWindow(html);
+    await saveInteraction('no_pets_acknowledgment', {}, 'Printed No Pets Acknowledgment form');
+  };
+
+  // -- Document upload handler (inside intake panel) --
+
+  const handleUploadDoc = async (docType: 'pet_addendum' | 'insurance' | 'vehicle_addendum', file: File) => {
+    const subId = submissionData?.id;
+    if (!subId) {
+      setAlertDialog({ isOpen: true, title: 'No Submission', message: 'This tenant has no submission record yet. Register a vehicle or pet first.', variant: 'error' });
+      return;
+    }
+    setUploadingDocType(docType);
+    try {
+      const formData = new FormData();
+      formData.append('submissionId', subId);
+      formData.append('documentType', docType);
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/compliance/attach-document', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.success) {
+        if (onSubmissionUpdated) onSubmissionUpdated(data.data);
+        const labels: Record<string, string> = { pet_addendum: 'Pet Addendum', insurance: 'Insurance Proof', vehicle_addendum: 'Vehicle Addendum' };
+        setAlertDialog({ isOpen: true, title: 'Uploaded', message: `${labels[docType]} uploaded successfully.`, variant: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Upload Failed', message: data.message || 'Upload failed', variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Upload Failed', message: 'Upload failed', variant: 'error' });
+    } finally {
+      setUploadingDocType(null);
+    }
+  };
+
   // -- Helpers --
 
   const isExpiringSoon = (dateStr: string | null): boolean => {
@@ -740,13 +875,27 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
             <div className="bg-[#f8f7f5] p-3 text-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#8b7355' }}>
               <strong>Monthly Fee:</strong> ${VEHICLE_TYPES[vehicleType].fee}/month
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button onClick={handleSaveVehicle} disabled={saving} className={btnPrimary}>
                 {saving ? 'Saving...' : (submissionData?.has_vehicle ? 'Update Vehicle' : 'Save Vehicle')}
               </button>
               <button onClick={handlePrintVehicle} className={btnSecondary}>
                 Print Addendum
               </button>
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'vehicle_addendum' ? 'Uploading...' : 'Upload Signed Addendum'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadDoc('vehicle_addendum', file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'vehicle_addendum'}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
         )}
@@ -835,7 +984,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               <p><strong>Pet Deposit:</strong> ${PET_FEES[petFeeIndex].deposit}</p>
               <p className="mt-2 text-xs text-red-700"><strong>Reminder:</strong> Pet owners need $300,000 liability insurance (not $100,000). Check Insurance tab.</p>
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button onClick={handleSavePet} disabled={saving} className={btnPrimary}>
                 {saving ? 'Saving...' : (editingPetIndex !== null ? 'Update Pet' : 'Save Pet')}
               </button>
@@ -847,6 +996,84 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               <button onClick={handlePrintPet} className={btnSecondary}>
                 Print Addendum
               </button>
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'pet_addendum' ? 'Uploading...' : 'Upload Signed Addendum'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadDoc('pet_addendum', file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'pet_addendum'}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* No Pets Section */}
+            {registeredPets.length === 0 && !editingPetIndex && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="font-serif text-base mb-2">No Pets?</h3>
+                <p className="text-xs text-gray-600 mb-3">If this tenant has no pets, print the No Pets Acknowledgment form for them to sign.</p>
+                <button onClick={handlePrintNoPets} disabled={saving} className={btnGold}>
+                  {saving ? 'Saving...' : 'Print No Pets Acknowledgment'}
+                </button>
+              </div>
+            )}
+
+            {/* ESA / Service Animal Section */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h3 className="font-serif text-base mb-2">ESA / Service Animal Documentation</h3>
+              <p className="text-xs text-gray-600 mb-3">
+                If the tenant has an Emotional Support Animal letter, Service Animal documentation, or other fee exemption paperwork, record it here. This flags the tenant for admin review.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className={labelClass}>Exemption Reason</label>
+                  <select value={esaReason} onChange={e => setEsaReason(e.target.value)} className={selectClass}>
+                    {EXEMPTION_REASONS.map(r => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Upload Document (optional)</label>
+                  <div className="flex items-center gap-3">
+                    <label className={`${btnSecondary} cursor-pointer text-xs`}>
+                      {esaFile ? `Selected: ${esaFile.name.slice(0, 30)}` : 'Choose File'}
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setEsaFile(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {esaFile && (
+                      <button onClick={() => setEsaFile(null)} className="text-xs text-gray-500 hover:text-gray-700 underline">
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <button onClick={handleSaveEsa} disabled={saving || uploadingEsa} className={btnPrimary}>
+                  {saving || uploadingEsa ? 'Saving...' : 'Record ESA / Exemption Document'}
+                </button>
+              </div>
+              {submissionData?.exemption_status && (
+                <div className={`mt-3 p-2 text-xs font-medium ${
+                  submissionData.exemption_status === 'approved' ? 'bg-green-50 text-green-800 border border-green-200' :
+                  submissionData.exemption_status === 'denied' ? 'bg-red-50 text-red-800 border border-red-200' :
+                  'bg-yellow-50 text-yellow-800 border border-yellow-200'
+                }`}>
+                  Current exemption status: {submissionData.exemption_status.toUpperCase()}
+                  {submissionData.exemption_reason && ` — ${submissionData.exemption_reason}`}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -975,13 +1202,27 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap gap-3 pt-2">
               <button onClick={handleSaveInsurance} disabled={saving} className={btnPrimary}>
                 {saving ? 'Saving...' : 'Save Insurance Policy'}
               </button>
               <button onClick={handlePrintInsurance} className={btnSecondary}>
                 Print Authorization
               </button>
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadDoc('insurance', file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'insurance'}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             <hr className="my-4 border-gray-200" />
@@ -1000,6 +1241,25 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         {/* -- HISTORY TAB -- */}
         {activeTab === 'history' && (
           <div>
+            {/* Quick Note */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <label className={labelClass}>Add a Note</label>
+              <textarea
+                value={quickNote}
+                onChange={e => setQuickNote(e.target.value)}
+                className={`${inputClass} resize-none`}
+                rows={2}
+                placeholder="e.g. Tenant said they'll bring insurance tomorrow..."
+              />
+              <button
+                onClick={handleSaveNote}
+                disabled={saving || !quickNote.trim()}
+                className={`${btnPrimary} mt-2`}
+              >
+                {saving ? 'Saving...' : 'Save Note'}
+              </button>
+            </div>
+
             {loadingHistory ? (
               <p className="text-sm text-gray-500">Loading history...</p>
             ) : interactions.length === 0 ? (

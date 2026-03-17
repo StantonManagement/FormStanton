@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['pet_addendum', 'insurance', 'vehicle_addendum', 'pickup_id_photo'].includes(documentType)) {
+    if (!['pet_addendum', 'insurance', 'vehicle_addendum', 'pickup_id_photo', 'exemption_document'].includes(documentType)) {
       return NextResponse.json(
         { success: false, message: 'Invalid document type' },
         { status: 400 }
@@ -55,6 +55,10 @@ export async function POST(request: NextRequest) {
         storagePath = `id_photos/${submissionId}_pickup_id_${timestamp}.${fileExt}`;
         columnToUpdate = 'pickup_id_photo';
         break;
+      case 'exemption_document':
+        storagePath = `exemptions/${submissionId}_exemption_${timestamp}.${fileExt}`;
+        columnToUpdate = '__exemption_array__';
+        break;
       default:
         return NextResponse.json(
           { success: false, message: 'Invalid document type' },
@@ -83,27 +87,58 @@ export async function POST(request: NextRequest) {
     const sessionUser = await getSessionUser();
 
     // Update submission record
-    const updateData: any = {
-      [columnToUpdate]: uploadData.path,
-    };
+    let submission;
+    let updateError;
 
-    // If insurance file, also clear upload_pending flag
-    if (documentType === 'insurance') {
-      updateData.insurance_upload_pending = false;
+    if (columnToUpdate === '__exemption_array__') {
+      // Exemption documents: append to array and set status to pending
+      const { data: existing } = await supabaseAdmin
+        .from('submissions')
+        .select('exemption_documents')
+        .eq('id', submissionId)
+        .single();
+
+      const existingDocs = Array.isArray(existing?.exemption_documents) ? existing.exemption_documents : [];
+      const updatedDocs = [...existingDocs, uploadData.path];
+
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .update({
+          exemption_documents: updatedDocs,
+          exemption_status: existing?.exemption_documents?.length ? undefined : 'pending',
+        })
+        .eq('id', submissionId)
+        .select()
+        .single();
+
+      submission = data;
+      updateError = error;
+    } else {
+      const updateData: any = {
+        [columnToUpdate]: uploadData.path,
+      };
+
+      // If insurance file, also clear upload_pending flag
+      if (documentType === 'insurance') {
+        updateData.insurance_upload_pending = false;
+      }
+
+      // If vehicle addendum, capture upload metadata
+      if (documentType === 'vehicle_addendum') {
+        updateData.vehicle_addendum_file_uploaded_at = new Date().toISOString();
+        updateData.vehicle_addendum_file_uploaded_by = sessionUser?.displayName || 'Admin';
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .update(updateData)
+        .eq('id', submissionId)
+        .select()
+        .single();
+
+      submission = data;
+      updateError = error;
     }
-
-    // If vehicle addendum, capture upload metadata
-    if (documentType === 'vehicle_addendum') {
-      updateData.vehicle_addendum_file_uploaded_at = new Date().toISOString();
-      updateData.vehicle_addendum_file_uploaded_by = sessionUser?.displayName || 'Admin';
-    }
-
-    const { data: submission, error: updateError } = await supabaseAdmin
-      .from('submissions')
-      .update(updateData)
-      .eq('id', submissionId)
-      .select()
-      .single();
 
     if (updateError) {
       console.error('Submission update error:', updateError);

@@ -53,6 +53,54 @@ export async function POST(request: NextRequest) {
     // 2. Upsert submissions table so compliance pipeline sees the data
     let submissionData = null;
 
+    if (action_type === 'esa_document_received') {
+      // Find existing submission
+      const { data: existing } = await supabaseAdmin
+        .from('submissions')
+        .select('*')
+        .ilike('building_address', building_address.trim())
+        .ilike('unit_number', unit_number.trim())
+        .ilike('full_name', tenant_name.trim())
+        .is('merged_into', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const { data: updated, error: updateErr } = await supabaseAdmin
+          .from('submissions')
+          .update({
+            exemption_status: existing.exemption_status || 'pending',
+            exemption_reason: action_data.reason || existing.exemption_reason || 'emotional_support',
+          })
+          .eq('id', existing.id)
+          .select('*')
+          .single();
+
+        if (!updateErr) submissionData = updated;
+      } else {
+        const { data: created, error: createErr } = await supabaseAdmin
+          .from('submissions')
+          .insert({
+            full_name: tenant_name,
+            building_address,
+            unit_number,
+            has_pets: true,
+            has_vehicle: false,
+            has_insurance: false,
+            add_insurance_to_rent: false,
+            insurance_upload_pending: false,
+            language: 'en',
+            exemption_status: 'pending',
+            exemption_reason: action_data.reason || 'emotional_support',
+          })
+          .select('*')
+          .single();
+
+        if (!createErr) submissionData = created;
+      }
+    }
+
     if (action_type === 'pet_registration' || action_type === 'pet_update' || action_type === 'pet_removal' || action_type === 'vehicle_registration') {
       // Find existing submission by building + unit + name
       const { data: existing, error: lookupError } = await supabaseAdmin
