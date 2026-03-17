@@ -493,7 +493,7 @@ export default function LobbyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submissionId: activeTenant.submissionData.id,
-          receivedBy: adminName, // from session
+          receivedBy: selectedStaffName,
         }),
       });
 
@@ -599,7 +599,7 @@ export default function LobbyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           submissionId: activeTenant.submissionData.id,
-          admin: adminName,
+          admin: selectedStaffName,
         }),
       });
 
@@ -934,8 +934,20 @@ export default function LobbyPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl font-serif text-[var(--primary)]">Lobby — Permit Distribution</h1>
-              <div className="text-sm text-[var(--muted)] mt-1">
-                All Buildings • {adminName} • Press Ctrl+K to search
+              <div className="flex items-center gap-2 text-sm text-[var(--muted)] mt-1">
+                <span>All Buildings •</span>
+                <select
+                  value={selectedStaffName}
+                  onChange={(e) => setSelectedStaffName(e.target.value)}
+                  className="bg-transparent border-b border-[var(--border)] text-[var(--primary)] font-medium text-sm py-0 px-1 focus:outline-none focus:border-[var(--primary)] cursor-pointer"
+                >
+                  {availableUsers.map((u) => (
+                    <option key={u.id} value={u.display_name}>
+                      {u.display_name}
+                    </option>
+                  ))}
+                </select>
+                <span>• Press Ctrl+K to search</span>
               </div>
             </div>
             {activeTenant && (
