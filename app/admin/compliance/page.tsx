@@ -11,6 +11,7 @@ import { groupDuplicateSubmissions, SubmissionGroup } from '@/lib/duplicateDetec
 import VehicleExportCenter from '@/components/VehicleExportCenter';
 import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
+import DocumentViewerModal from '@/components/DocumentViewerModal';
 
 interface TenantSubmission {
   id: string;
@@ -48,13 +49,24 @@ interface TenantSubmission {
   pet_signature?: string;
   pet_signature_date?: string;
   pet_addendum_file?: string;
+  pet_addendum_received?: boolean;
+  pet_addendum_received_by?: string;
+  vehicle_addendum_received?: boolean;
+  vehicle_addendum_received_by?: string;
+  exemption_status?: string;
+  exemption_reason?: string;
+  exemption_documents?: string[];
+  pickup_id_photo?: string;
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
   insurance_expiration_date?: string;
   insurance_file?: string;
+  insurance_type?: string;
   insurance_upload_pending: boolean;
   insurance_verified: boolean;
+  insurance_authorization_signature?: string;
+  add_insurance_to_rent?: boolean;
   vehicle_notes?: string;
   pet_notes?: string;
   insurance_notes?: string;
@@ -126,6 +138,7 @@ export default function CompliancePage() {
   const [tenantData, setTenantData] = useState<BuildingTenantData[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingSignature, setViewingSignature] = useState<{ path: string; type: string; date?: string } | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<{ path: string; type: 'signature' | 'insurance' | 'addendum' | 'photo'; title: string; date?: string } | null>(null);
   const [reviewingSubmission, setReviewingSubmission] = useState<TenantSubmission | null>(null);
   const [reviewAdmin, setReviewAdmin] = useState<string>('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1389,6 +1402,26 @@ export default function CompliancePage() {
                           {!submission.vehicle_signature && (
                             <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                           )}
+
+                          {/* Documents On File */}
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            {submission.vehicle_addendum_file && (
+                              <button
+                                onClick={() => setViewingDocument({ path: submission.vehicle_addendum_file!, type: 'addendum', title: 'Vehicle Addendum', date: submission.vehicle_addendum_file_uploaded_at })}
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                              >
+                                View Addendum
+                              </button>
+                            )}
+                            {!submission.vehicle_addendum_file && (
+                              <span className="text-[var(--muted)] text-xs">No addendum uploaded</span>
+                            )}
+                            {submission.vehicle_addendum_received && (
+                              <span className="text-xs px-2 py-0.5 bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30">
+                                Physical form received{submission.vehicle_addendum_received_by ? ` by ${submission.vehicle_addendum_received_by}` : ''}
+                              </span>
+                            )}
+                          </div>
                           
                           {/* Review Workflow Buttons */}
                           <div className="mt-3 pt-3 border-t border-[var(--divider)] flex gap-2">
@@ -1470,6 +1503,82 @@ export default function CompliancePage() {
                           {!submission.pet_signature && (
                             <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                           )}
+
+                          {/* Documents On File */}
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            {submission.pet_addendum_file && (
+                              <button
+                                onClick={() => setViewingDocument({ path: submission.pet_addendum_file!, type: 'addendum', title: 'Pet Addendum' })}
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                              >
+                                View Addendum
+                              </button>
+                            )}
+                            {!submission.pet_addendum_file && (
+                              <span className="text-[var(--muted)] text-xs">No addendum uploaded</span>
+                            )}
+                            {submission.pet_addendum_received && (
+                              <span className="text-xs px-2 py-0.5 bg-[var(--success)]/10 text-[var(--success)] border border-[var(--success)]/30">
+                                Physical form received{submission.pet_addendum_received_by ? ` by ${submission.pet_addendum_received_by}` : ''}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Per-pet photos */}
+                          {submission.pets && Array.isArray(submission.pets) && submission.pets.some((p: any) => p.pet_photo_file || p.pet_vaccination_file) && (
+                            <div className="mt-2 space-y-1">
+                              {submission.pets.map((pet: any, idx: number) => (
+                                (pet.pet_photo_file || pet.pet_vaccination_file) && (
+                                  <div key={idx} className="flex items-center gap-3 text-sm">
+                                    <span className="text-[var(--muted)] text-xs font-medium">{pet.pet_name}:</span>
+                                    {pet.pet_photo_file && (
+                                      <button
+                                        onClick={() => setViewingDocument({ path: pet.pet_photo_file, type: 'photo', title: `${pet.pet_name} — Photo` })}
+                                        className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
+                                      >
+                                        View Photo
+                                      </button>
+                                    )}
+                                    {pet.pet_vaccination_file && (
+                                      <button
+                                        onClick={() => setViewingDocument({ path: pet.pet_vaccination_file, type: 'photo', title: `${pet.pet_name} — Vaccination Record` })}
+                                        className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
+                                      >
+                                        View Vaccination
+                                      </button>
+                                    )}
+                                  </div>
+                                )
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Exemption Status */}
+                          {submission.exemption_status && (
+                            <div className="mt-2 pt-2 border-t border-[var(--divider)]">
+                              <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <span className={`text-xs px-2 py-0.5 font-medium border ${
+                                  submission.exemption_status === 'approved' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30' :
+                                  submission.exemption_status === 'denied' ? 'bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30' :
+                                  'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30'
+                                }`}>
+                                  Exemption: {submission.exemption_status.toUpperCase()}
+                                </span>
+                                {submission.exemption_reason && (
+                                  <span className="text-xs text-[var(--muted)]">({submission.exemption_reason})</span>
+                                )}
+                                {submission.exemption_documents && submission.exemption_documents.length > 0 && submission.exemption_documents.map((doc, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => setViewingDocument({ path: doc, type: 'addendum', title: `Exemption Document ${idx + 1}` })}
+                                    className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
+                                  >
+                                    View Exemption Doc {submission.exemption_documents!.length > 1 ? `#${idx + 1}` : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1481,6 +1590,36 @@ export default function CompliancePage() {
                             <span className="text-[var(--muted)]">Provider:</span> <span className="ml-1">{submission.insurance_provider}</span>
                             {submission.insurance_policy_number && (
                               <span className="ml-3"><span className="text-[var(--muted)]">Policy:</span> <span className="ml-1">{submission.insurance_policy_number}</span></span>
+                            )}
+                            {submission.insurance_expiration_date && (
+                              <span className="ml-3"><span className="text-[var(--muted)]">Expires:</span> <span className="ml-1">{new Date(submission.insurance_expiration_date).toLocaleDateString()}</span></span>
+                            )}
+                          </div>
+                          {submission.insurance_type && (
+                            <div className="text-xs text-[var(--muted)] mt-1">
+                              Type: {submission.insurance_type === 'renters' ? 'Renters Insurance' : submission.insurance_type === 'car' ? 'Car Insurance' : submission.insurance_type}
+                              {submission.add_insurance_to_rent && ' • Added to Rent'}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                            {submission.insurance_file && (
+                              <button
+                                onClick={() => setViewingDocument({ path: submission.insurance_file!, type: 'insurance', title: 'Insurance Document' })}
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                              >
+                                View Insurance Doc
+                              </button>
+                            )}
+                            {!submission.insurance_file && (
+                              <span className="text-[var(--muted)] text-xs">No insurance doc uploaded</span>
+                            )}
+                            {submission.insurance_authorization_signature && (
+                              <button
+                                onClick={() => viewSignature(submission.insurance_authorization_signature!, 'Insurance Authorization', undefined)}
+                                className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                              >
+                                View Auth Signature
+                              </button>
                             )}
                           </div>
                         </div>
@@ -1593,6 +1732,19 @@ export default function CompliancePage() {
                 ) : (
                   <div className="text-sm text-[var(--error)]">❌ No signature captured</div>
                 )}
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                  {reviewingSubmission.vehicle_addendum_file && (
+                    <button
+                      onClick={() => setViewingDocument({ path: reviewingSubmission.vehicle_addendum_file!, type: 'addendum', title: 'Vehicle Addendum', date: reviewingSubmission.vehicle_addendum_file_uploaded_at })}
+                      className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                    >
+                      View Addendum
+                    </button>
+                  )}
+                  {!reviewingSubmission.vehicle_addendum_file && (
+                    <span className="text-[var(--muted)] text-xs">No addendum uploaded</span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1620,6 +1772,42 @@ export default function CompliancePage() {
                     >
                       View Signature
                     </button>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
+                  {reviewingSubmission.pet_addendum_file && (
+                    <button
+                      onClick={() => setViewingDocument({ path: reviewingSubmission.pet_addendum_file!, type: 'addendum', title: 'Pet Addendum' })}
+                      className="text-[var(--primary)] hover:text-[var(--primary-light)] underline"
+                    >
+                      View Addendum
+                    </button>
+                  )}
+                  {!reviewingSubmission.pet_addendum_file && (
+                    <span className="text-[var(--muted)] text-xs">No addendum uploaded</span>
+                  )}
+                </div>
+                {reviewingSubmission.exemption_status && (
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-sm">
+                    <span className={`text-xs px-2 py-0.5 font-medium border ${
+                      reviewingSubmission.exemption_status === 'approved' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30' :
+                      reviewingSubmission.exemption_status === 'denied' ? 'bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30' :
+                      'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30'
+                    }`}>
+                      Exemption: {reviewingSubmission.exemption_status.toUpperCase()}
+                    </span>
+                    {reviewingSubmission.exemption_reason && (
+                      <span className="text-xs text-[var(--muted)]">({reviewingSubmission.exemption_reason})</span>
+                    )}
+                    {reviewingSubmission.exemption_documents && reviewingSubmission.exemption_documents.map((doc, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setViewingDocument({ path: doc, type: 'addendum', title: `Exemption Document ${idx + 1}` })}
+                        className="text-[var(--primary)] hover:text-[var(--primary-light)] underline text-xs"
+                      >
+                        View Exemption Doc {reviewingSubmission.exemption_documents!.length > 1 ? `#${idx + 1}` : ''}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1693,6 +1881,16 @@ export default function CompliancePage() {
         onClose={() => setShowAddTenant(false)}
         onSuccess={() => fetchData()}
         prefilledBuilding={selectedBuilding}
+      />
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        isOpen={!!viewingDocument}
+        onClose={() => setViewingDocument(null)}
+        documentPath={viewingDocument?.path || null}
+        documentType={viewingDocument?.type || 'addendum'}
+        title={viewingDocument?.title}
+        date={viewingDocument?.date}
       />
     </div>
   );
