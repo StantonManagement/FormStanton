@@ -83,7 +83,7 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default function LobbyIntakePanel({ tenant, submissionData, staffName: staffNameProp, onClose, onSubmissionUpdated }: LobbyIntakePanelProps) {
   const { user } = useAdminAuth();
-  const staffName = user?.displayName || staffNameProp || 'Admin';
+  const staffName = staffNameProp || user?.displayName || 'Admin';
   const [activeTab, setActiveTab] = useState<Tab>('vehicle');
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [saving, setSaving] = useState(false);

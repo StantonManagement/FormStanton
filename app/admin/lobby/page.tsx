@@ -9,6 +9,8 @@ import LobbyIntakePanel from '@/components/LobbyIntakePanel';
 import { useAdminAuth } from '@/lib/adminAuthContext';
 import AlertDialog from '@/components/kit/AlertDialog';
 import ConfirmDialog from '@/components/kit/ConfirmDialog';
+import InfoCallout from '@/components/kit/InfoCallout';
+import WarningHint from '@/components/kit/WarningHint';
 
 interface TenantSubmission {
   id: string;
@@ -84,6 +86,38 @@ interface UnifiedTenant {
   is_current: boolean;
 }
 
+// Noise words stripped from search queries — users type "unit 1s" but data stores just "1S"
+const SEARCH_NOISE_WORDS = new Set(['unit', 'apt', 'apartment', 'building', 'bldg', 'st', 'street', 'ave', 'avenue']);
+
+function searchTenants(query: string, tenants: UnifiedTenant[]): UnifiedTenant[] {
+  const raw = query.toLowerCase().trim();
+  if (!raw) return [];
+
+  // Tokenize and strip noise words
+  const tokens = raw.split(/\s+/).filter(t => t.length > 0 && !SEARCH_NOISE_WORDS.has(t));
+  if (tokens.length === 0) return [];
+
+  return tenants.filter((t) => {
+    const fields = [
+      (t.name || '').toLowerCase(),
+      (t.unit_number || '').toLowerCase(),
+      (t.building_address || '').toLowerCase(),
+      (t.phone || '').toLowerCase(),
+      (t.email || '').toLowerCase(),
+    ];
+
+    // Single-token: substring match against any field (preserves current behavior)
+    if (tokens.length === 1) {
+      return fields.some(f => f.includes(tokens[0]));
+    }
+
+    // Multi-token: every token must match at least one field as a substring
+    return tokens.every(token =>
+      fields.some(field => field.includes(token))
+    );
+  });
+}
+
 export default function LobbyPage() {
   const { user } = useAdminAuth();
   const adminName = user?.displayName || 'Admin';
@@ -96,6 +130,8 @@ export default function LobbyPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UnifiedTenant[]>([]);
   const [activeTenant, setActiveTenant] = useState<UnifiedTenant | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [selectedStaffName, setSelectedStaffName] = useState(adminName);
 
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [updatingField, setUpdatingField] = useState<string | null>(null);
@@ -129,6 +165,30 @@ export default function LobbyPage() {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAvailableUsers();
+    }
+  }, [isAuthenticated]);
+
+  const fetchAvailableUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (data.success) {
+        const activeUsers = data.data.filter((u: any) => u.is_active);
+        setAvailableUsers(activeUsers);
+        // Set default to current user if available, otherwise first user
+        if (activeUsers.length > 0) {
+          const currentUserMatch = activeUsers.find((u: any) => u.display_name === adminName);
+          setSelectedStaffName(currentUserMatch?.display_name || activeUsers[0].display_name);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch users:', e);
+    }
+  };
+
   // Keyboard shortcuts
   // Live search with debouncing
   useEffect(() => {
@@ -138,46 +198,7 @@ export default function LobbyPage() {
     }
 
     const debounceTimer = setTimeout(() => {
-      const query = searchQuery.toLowerCase().trim();
-      
-      // Helper function to check if text matches initials pattern
-      const matchesInitials = (text: string, searchParts: string[]): boolean => {
-        const words = text.toLowerCase().split(/\s+/);
-        let partIndex = 0;
-        
-        for (const word of words) {
-          if (partIndex < searchParts.length && word.startsWith(searchParts[partIndex])) {
-            partIndex++;
-          }
-        }
-        
-        return partIndex === searchParts.length;
-      };
-      
-      // Split query into parts for initials matching
-      const queryParts = query.split(/\s+/).filter(p => p.length > 0);
-      
-      const results = allTenants.filter((t) => {
-        // Standard substring matching (existing behavior)
-        const name = t.name || '';
-        const unit = t.unit_number || '';
-        const building = t.building_address || '';
-        const substringMatch = 
-          name.toLowerCase().includes(query) ||
-          unit.toLowerCase().includes(query) ||
-          building.toLowerCase().includes(query) ||
-          (t.phone && t.phone.includes(query)) ||
-          (t.email && t.email.toLowerCase().includes(query));
-        
-        // Initials/word-start matching (new feature)
-        const initialsMatch = queryParts.length > 1 && (
-          matchesInitials(name, queryParts) ||
-          matchesInitials(building, queryParts) ||
-          matchesInitials(`${unit} ${building}`, queryParts)
-        );
-        
-        return substringMatch || initialsMatch;
-      });
+      const results = searchTenants(searchQuery, allTenants);
 
       if (results.length === 1) {
         setActiveTenant(results[0]);
@@ -275,13 +296,7 @@ export default function LobbyPage() {
       return;
     }
 
-    const query = searchQuery.toLowerCase();
-    const results = allTenants.filter(
-      (t) =>
-        (t.name || '').toLowerCase().includes(query) ||
-        (t.unit_number || '').toLowerCase().includes(query) ||
-        (t.building_address || '').toLowerCase().includes(query)
-    );
+    const results = searchTenants(searchQuery, allTenants);
 
     if (results.length === 1) {
       setActiveTenant(results[0]);
@@ -737,13 +752,13 @@ export default function LobbyPage() {
         };
       }
       if (!hasForm) {
-        return { canVerify: false, reason: 'No pet addendum on file — receive physical copy or have tenant submit online' };
+        return { canVerify: false, reason: 'No pet addendum on file — open Lobby Intake to print' };
       }
       return { canVerify: true, reason: '' };
     } else {
       // No dogs/cats or exemption
       if (!hasForm) {
-        return { canVerify: false, reason: 'No "no pets" form on file — receive physical copy or have tenant submit online' };
+        return { canVerify: false, reason: 'No "no pets" form on file — open Lobby Intake to print' };
       }
       return { canVerify: true, reason: '' };
     }
@@ -759,7 +774,7 @@ export default function LobbyPage() {
     }
 
     if (!sub.insurance_file) {
-      return { canVerify: false, reason: 'No insurance document on file' };
+      return { canVerify: false, reason: 'No insurance document on file — open Lobby Intake to print' };
     }
 
     if (!sub.insurance_type) {
@@ -789,7 +804,7 @@ export default function LobbyPage() {
     }
 
     if (!hasForm) {
-      return { canVerify: false, reason: 'No vehicle addendum on file — receive physical copy or have tenant submit online' };
+      return { canVerify: false, reason: 'No vehicle addendum on file — open Lobby Intake to print' };
     }
 
     return { canVerify: true, reason: '' };
@@ -857,6 +872,23 @@ export default function LobbyPage() {
           <div className="mb-6">
             <div className="text-sm text-[var(--muted)]">Logged in as</div>
             <div className="text-lg font-medium text-[var(--primary)]">{adminName}</div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+              Who is performing intake?
+            </label>
+            <select
+              value={selectedStaffName}
+              onChange={(e) => setSelectedStaffName(e.target.value)}
+              className="w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            >
+              {availableUsers.map((u) => (
+                <option key={u.id} value={u.display_name}>
+                  {u.display_name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button
@@ -979,9 +1011,13 @@ export default function LobbyPage() {
                 {activeTenant.phone || 'No phone'} • {activeTenant.email || 'No email'}
               </div>
               {!activeTenant.hasSubmission && (
-                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200">
-                  <div className="text-sm font-medium text-yellow-800">⚠️ No Form Submission</div>
-                  <div className="text-xs text-yellow-700 mt-1">This tenant has not submitted the online form yet. Contact info shown from tenant directory.</div>
+                <div className="mt-3">
+                  <InfoCallout
+                    variant="warning"
+                    title="No Form Submission"
+                    message="This tenant has not submitted the online form yet. Click Lobby Intake below to register details and print forms."
+                    compact
+                  />
                 </div>
               )}
               {isComplete && (
@@ -998,15 +1034,14 @@ export default function LobbyPage() {
 
             {/* Show submission sections only if tenant has submitted */}
             {!activeTenant.hasSubmission ? (
-              <div className="text-center py-8 text-[var(--muted)]">
-                <p className="mb-4">Tenant has not completed the online form.</p>
-                <p className="text-sm mb-4">They can be contacted at the phone/email above to complete their submission.</p>
-                <button
-                  onClick={() => setShowIntakePanel(true)}
-                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
-                >
-                  Lobby Intake
-                </button>
+              <div className="py-6">
+                <InfoCallout
+                  variant="warning"
+                  title="No Online Submission"
+                  message="This tenant hasn't submitted the online form yet. Use Lobby Intake to register their information and print forms."
+                  actionLabel="Open Lobby Intake"
+                  onAction={() => setShowIntakePanel(true)}
+                />
               </div>
             ) : (
             <>
@@ -1226,9 +1261,11 @@ export default function LobbyPage() {
               </button>
 
               {!petStatus.canVerify && (
-                <div className="text-xs text-[var(--error)] mt-2">
-                  ⚠️ {petStatus.reason}
-                </div>
+                <WarningHint
+                  message={petStatus.reason}
+                  actionText="Lobby Intake"
+                  onAction={() => setShowIntakePanel(true)}
+                />
               )}
             </div>
 
@@ -1368,9 +1405,11 @@ export default function LobbyPage() {
               </button>
 
               {!insuranceStatus.canVerify && (
-                <div className="text-xs text-[var(--error)] mt-2">
-                  ⚠️ {insuranceStatus.reason}
-                </div>
+                <WarningHint
+                  message={insuranceStatus.reason}
+                  actionText="Lobby Intake"
+                  onAction={() => setShowIntakePanel(true)}
+                />
               )}
             </div>
 
@@ -1517,9 +1556,11 @@ export default function LobbyPage() {
                   </button>
 
                   {!vehicleStatus.canVerify && (
-                    <div className="text-xs text-[var(--error)] mt-2">
-                      ⚠️ {vehicleStatus.reason}
-                    </div>
+                    <WarningHint
+                      message={vehicleStatus.reason}
+                      actionText="Lobby Intake"
+                      onAction={() => setShowIntakePanel(true)}
+                    />
                   )}
                 </div>
 
@@ -1671,7 +1712,7 @@ export default function LobbyPage() {
               email: activeTenant.email || undefined,
             }}
             submissionData={activeTenant.submissionData}
-            staffName={adminName}
+            staffName={selectedStaffName}
             onClose={() => setShowIntakePanel(false)}
             onSubmissionUpdated={(submissionData) => {
               setActiveTenant({

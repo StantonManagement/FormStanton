@@ -2,7 +2,7 @@
 // Order: 90 Park, South End Portf., Hartford 1, North End Portf., Park Portfolio
 
 export const buildingToPortfolio: Record<string, string> = {
-  "90 Park Street": "90 Park",
+  "90-100 Park St": "90 Park",
   "97-103 Maple Ave": "South End Portf.",
   "222-224 Maple Ave": "South End Portf.",
   "43-45 Franklin Ave": "South End Portf.",
@@ -11,7 +11,7 @@ export const buildingToPortfolio: Record<string, string> = {
   "36 Whitmore Street": "South End Portf.",
   "38-40 Whitmore Street": "South End Portf.",
   "236 Maple Ave": "South End Portf.",
-  "228 Maple Ave": "Hartford 1",
+  "228-230 Maple Ave": "Hartford 1",
   "93-95 Maple Ave": "Hartford 1",
   "110 Martin St": "North End Portf.",
   "120 Martin St": "North End Portf.",
@@ -24,13 +24,13 @@ export const buildingToPortfolio: Record<string, string> = {
   "31-33 Park St": "Park Portfolio",
   "67-73 Park St": "Park Portfolio",
   "83-91 Park St": "Park Portfolio",
-  "57 Park St": "Park Portfolio",
+  "57-59 Park St": "Park Portfolio",
   "10 Wolcott St": "Park Portfolio",
   "179 Affleck St": "Park Portfolio",
   "144-146 Affleck St": "Park Portfolio",
   "178 Affleck St": "Park Portfolio",
-  "182 Affleck St": "Park Portfolio",
-  "190 Affleck St": "Park Portfolio",
+  "182-184 Affleck St": "Park Portfolio",
+  "190-192 Affleck St": "Park Portfolio",
   "195 Affleck St": "Park Portfolio",
   "88-90 Ward St": "Park Portfolio",
   "865 Broad St": "Park Portfolio",
@@ -54,7 +54,7 @@ export const portfolioOrder = [
 ];
 
 export const portfolioBuildings: Record<string, string[]> = {
-  "90 Park": ["90 Park Street"],
+  "90 Park": ["90-100 Park St"],
   "South End Portf.": [
     "97-103 Maple Ave",
     "222-224 Maple Ave",
@@ -65,7 +65,7 @@ export const portfolioBuildings: Record<string, string[]> = {
     "38-40 Whitmore Street",
     "236 Maple Ave",
   ],
-  "Hartford 1": ["228 Maple Ave", "93-95 Maple Ave"],
+  "Hartford 1": ["228-230 Maple Ave", "93-95 Maple Ave"],
   "North End Portf.": [
     "110 Martin St",
     "120 Martin St",
@@ -80,13 +80,13 @@ export const portfolioBuildings: Record<string, string[]> = {
     "31-33 Park St",
     "67-73 Park St",
     "83-91 Park St",
-    "57 Park St",
+    "57-59 Park St",
     "10 Wolcott St",
     "179 Affleck St",
     "144-146 Affleck St",
     "178 Affleck St",
-    "182 Affleck St",
-    "190 Affleck St",
+    "182-184 Affleck St",
+    "190-192 Affleck St",
     "195 Affleck St",
     "88-90 Ward St",
     "865 Broad St",

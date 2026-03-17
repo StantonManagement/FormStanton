@@ -242,14 +242,14 @@ export const petRentTable = [
 
 // LLC table data (English only - proper nouns)
 export const llcTable = [
-  ["90 Park Street", "Stanton Rep 90 Park Street Hartford LLC c/o Stanton Management LLC"],
+  ["90-100 Park St", "Stanton Rep 90 Park Street Hartford LLC c/o Stanton Management LLC"],
   ["31-33 Park St", "SREP Park 1 LLC c/o Stanton Management LLC"],
-  ["57 Park St", "SREP Park 4 LLC c/o Stanton Management LLC"],
+  ["57-59 Park St", "SREP Park 4 LLC c/o Stanton Management LLC"],
   ["67-73 Park St", "SREP Park 2 LLC c/o Stanton Management LLC"],
   ["83-91 Park St", "SREP Park 3 LLC c/o Stanton Management LLC"],
   ["10 Wolcott St", "SREP Park 5 LLC c/o Stanton Management LLC"],
   ["179 Affleck St", "SREP Park 6 LLC c/o Stanton Management LLC"],
-  ["144-146, 178, 182, 190 Affleck St", "SREP Park 7 LLC c/o Stanton Management LLC"],
+  ["144-146, 178, 182-184, 190-192 Affleck St", "SREP Park 7 LLC c/o Stanton Management LLC"],
   ["195 Affleck St", "SREP Park 8 LLC c/o Stanton Management LLC"],
   ["88-90 Ward St, 865 Broad St", "SREP Park 9 LLC c/o Stanton Management LLC"],
   ["142, 158, 164, 167, 169, 170, 180 Seymour St", "SREP Park 10 LLC c/o Stanton Management LLC"],
@@ -259,7 +259,7 @@ export const llcTable = [
   ["222-224 Maple Ave, 43-45 Franklin Ave", "SREP Southend 2 LLC c/o Stanton Management LLC"],
   ["47 Franklin Ave, 15-17/36/38-40 Whitmore St", "SREP Southend 3 LLC c/o Stanton Management LLC"],
   ["236 Maple Ave", "SREP Southend LLC c/o Stanton Management LLC"],
-  ["228 Maple Ave, 93-95 Maple Ave", "SREP Hartford 1 LLC c/o Stanton Management LLC"],
+  ["228-230 Maple Ave, 93-95 Maple Ave", "SREP Hartford 1 LLC c/o Stanton Management LLC"],
   ["110/120 Martin, 152-154/160 Wooster, 165 Westland, 1721-1739 Main, 69-73 Chestnut, 91 Edwards", "SREP Northend LLC c/o Stanton Management LLC"],
 ];
 

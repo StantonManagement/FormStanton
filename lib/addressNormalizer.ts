@@ -42,7 +42,7 @@ export function normalizeAddress(address: string): string {
   }
   
   // Handle bare numbers that should be Affleck St addresses
-  if (/^(144|178|179|182|190|192|195)$/.test(normalized)) {
+  if (/^(144|178|179|182|184|190|192|195)$/.test(normalized)) {
     normalized = normalized + ' Affleck St';
   }
   
@@ -57,9 +57,9 @@ export function normalizeAddress(address: string): string {
     normalized = '93-95 Maple Ave';
   }
   
-  // Handle 228-230 Maple -> canonical "228 Maple Ave"
-  if (/^(228-230|228)\s+Maple/i.test(normalized)) {
-    normalized = '228 Maple Ave';
+  // Handle 228-230 Maple -> canonical "228-230 Maple Ave"
+  if (/^(228-230|228|230)\s+Maple/i.test(normalized)) {
+    normalized = '228-230 Maple Ave';
   }
   
   // Handle 222-224 Maple range
@@ -67,24 +67,24 @@ export function normalizeAddress(address: string): string {
     normalized = '222-224 Maple Ave';
   }
   
-  // Handle 90-100 Park -> canonical "90 Park Street"
-  if (/^(90-100|90)\s+Park/i.test(normalized)) {
-    normalized = '90 Park Street';
+  // Handle 90-100 Park -> canonical "90-100 Park St"
+  if (/^(90-100|90|100)\s+Park/i.test(normalized)) {
+    normalized = '90-100 Park St';
   }
   
-  // Handle 57-59 Park -> canonical "57 Park St"
-  if (/^(57-59|57)\s+Park/i.test(normalized)) {
-    normalized = '57 Park St';
+  // Handle 57-59 Park -> canonical "57-59 Park St"
+  if (/^(57-59|57|59)\s+Park/i.test(normalized)) {
+    normalized = '57-59 Park St';
   }
   
-  // Handle 182-184 Affleck -> canonical "182 Affleck St"
-  if (/^(182-184|182)\s+Affleck/i.test(normalized)) {
-    normalized = '182 Affleck St';
+  // Handle 182-184 Affleck -> canonical "182-184 Affleck St"
+  if (/^(182-184|182|184)\s+Affleck/i.test(normalized)) {
+    normalized = '182-184 Affleck St';
   }
   
-  // Handle 190-192 Affleck -> canonical "190 Affleck St"
-  if (/^(190-192|190)\s+Affleck/i.test(normalized)) {
-    normalized = '190 Affleck St';
+  // Handle 190-192 Affleck -> canonical "190-192 Affleck St"
+  if (/^(190-192|190|192)\s+Affleck/i.test(normalized)) {
+    normalized = '190-192 Affleck St';
   }
   
   // Handle 71-73 Chestnut -> canonical "69-73 Chestnut St"

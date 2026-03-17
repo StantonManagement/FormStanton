@@ -41,7 +41,7 @@ const propertyNameToAddress: Record<string, string> = {
   "S0006 - 15 Whitmore": "15-17 Whitmore Street",
   "S0007 - 36 Whit": "36 Whitmore Street",
   "S0008 - 38 Whit": "38-40 Whitmore Street",
-  "S0010 - 228 Maple": "228 Maple Ave",
+  "S0010 - 228 Maple": "228-230 Maple Ave",
   "S0011 - 110 Martin": "110 Martin St",
   "S0012 - 120 Martin": "120 Martin St",
   "S0013 - 152 Wooster": "152-154 Wooster St",
@@ -49,20 +49,20 @@ const propertyNameToAddress: Record<string, string> = {
   "S0015 - 165 Westland": "165 Westland St",
   "S0016 - 1721 Main": "1721-1739 Main St",
   "S0017 - 69 Chestnut": "69-73 Chestnut St",
-  "S0018 - 90 Edwards": "90 Edwards St Hartford, CT 06120",
+  "S0018 - 90 Edwards": "90-92 Edwards St Hartford, CT 06120",
   "S0019 - 93 Maple": "93-95 Maple Ave",
   "S0020 - 31 Park": "31-33 Park St",
   "S0021 - 67 Park": "67-73 Park St Hartford, CT 06106",
   "S0021 - 69 Park": "67-73 Park St Hartford, CT 06106",
   "S0022 - 83 Park": "83-91 Park St",
   "S0022 - 87 Park": "83-91 Park St",
-  "S0023 - 57 Park": "57 Park St",
-  "S0023 - 57-59 Park": "57 Park St",
+  "S0023 - 57 Park": "57-59 Park St",
+  "S0023 - 57-59 Park": "57-59 Park St",
 };
 
 // Property name → canonical building address (matches lib/buildings.ts, stored in submissions)
 const propertyNameToCanonical: Record<string, string> = {
-  "S0001 - 90 Park St": "90 Park Street",
+  "S0001 - 90 Park St": "90-100 Park St",
   "S0002 - 101 Maple": "97-103 Maple Ave",
   "S0003 - 222 Maple": "222-224 Maple Ave",
   "S0004 - 43 Frank": "43-45 Franklin Ave",
@@ -71,7 +71,7 @@ const propertyNameToCanonical: Record<string, string> = {
   "S0006 - 15 Whitmore": "15-17 Whitmore Street",
   "S0007 - 36 Whit": "36 Whitmore Street",
   "S0008 - 38 Whit": "38-40 Whitmore Street",
-  "S0010 - 228 Maple": "228 Maple Ave",
+  "S0010 - 228 Maple": "228-230 Maple Ave",
   "S0011 - 110 Martin": "110 Martin St",
   "S0012 - 120 Martin": "120 Martin St",
   "S0013 - 152 Wooster": "152-154 Wooster St",
@@ -86,8 +86,8 @@ const propertyNameToCanonical: Record<string, string> = {
   "S0021 - 69 Park": "67-73 Park St",
   "S0022 - 83 Park": "83-91 Park St",
   "S0022 - 87 Park": "83-91 Park St",
-  "S0023 - 57 Park": "57 Park St",
-  "S0023 - 57-59 Park": "57 Park St",
+  "S0023 - 57 Park": "57-59 Park St",
+  "S0023 - 57-59 Park": "57-59 Park St",
 };
 
 // Normalize address for matching
