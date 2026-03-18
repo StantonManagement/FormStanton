@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { normalizeAddress } from '@/lib/addressNormalizer';
+
+function normalizeNameForMatch(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[,.']/g, '')
+    .split(/\s+/)
+    .filter(p => p.length > 0)
+    .sort()
+    .join(' ');
+}
+
+async function findSubmission(building: string, unit: string, name: string) {
+  const normalizedAddr = normalizeAddress(building).toLowerCase();
+  const { data: candidates } = await supabaseAdmin
+    .from('submissions')
+    .select('*')
+    .ilike('unit_number', unit.trim())
+    .is('merged_into', null)
+    .order('created_at', { ascending: false });
+
+  if (!candidates || candidates.length === 0) return null;
+
+  const normalizedName = normalizeNameForMatch(name);
+  return candidates.find(sub => {
+    const addrMatch = normalizeAddress(sub.building_address).toLowerCase() === normalizedAddr;
+    const nameMatch = normalizeNameForMatch(sub.full_name) === normalizedName;
+    return addrMatch && nameMatch;
+  }) || null;
+}
 
 /**
  * Lobby Intake API — upserts submissions table AND logs to tenant_interactions.
@@ -55,16 +86,7 @@ export async function POST(request: NextRequest) {
 
     if (action_type === 'esa_document_received') {
       // Find existing submission
-      const { data: existing } = await supabaseAdmin
-        .from('submissions')
-        .select('*')
-        .ilike('building_address', building_address.trim())
-        .ilike('unit_number', unit_number.trim())
-        .ilike('full_name', tenant_name.trim())
-        .is('merged_into', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const existing = await findSubmission(building_address, unit_number, tenant_name);
 
       if (existing) {
         const { data: updated, error: updateErr } = await supabaseAdmin
@@ -102,21 +124,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (action_type === 'pet_registration' || action_type === 'pet_update' || action_type === 'pet_removal' || action_type === 'vehicle_registration' || action_type === 'vehicle_update' || action_type === 'vehicle_removal') {
-      // Find existing submission by building + unit + name
-      const { data: existing, error: lookupError } = await supabaseAdmin
-        .from('submissions')
-        .select('*')
-        .ilike('building_address', building_address.trim())
-        .ilike('unit_number', unit_number.trim())
-        .ilike('full_name', tenant_name.trim())
-        .is('merged_into', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (lookupError) {
-        console.error('Error looking up submission:', lookupError);
-      }
+      // Find existing submission by building + unit + normalized name
+      const existing = await findSubmission(building_address, unit_number, tenant_name);
 
       if (action_type === 'pet_registration') {
         const petObj = action_data.pets?.[0] || {};
