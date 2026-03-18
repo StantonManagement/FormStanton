@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export type ComplianceTab = 'tenants' | 'parking' | 'duplicates' | 'missing';
+export type ComplianceTab = 'tenants' | 'duplicates' | 'missing';
 
 interface ComplianceTabsProps {
   activeTab: ComplianceTab;
@@ -15,7 +15,6 @@ interface ComplianceTabsProps {
 export default function ComplianceTabs({ activeTab, onTabChange, actionCount, missingCount, duplicateCount }: ComplianceTabsProps) {
   const tabs: Array<{ id: ComplianceTab; label: string; badge?: number }> = [
     { id: 'tenants', label: 'Tenants', badge: actionCount > 0 ? actionCount : undefined },
-    { id: 'parking', label: 'Parking' },
     { id: 'duplicates', label: 'Duplicates', badge: duplicateCount > 0 ? duplicateCount : undefined },
     { id: 'missing', label: 'Missing', badge: missingCount > 0 ? missingCount : undefined },
   ];

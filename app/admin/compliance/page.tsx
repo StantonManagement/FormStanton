@@ -152,6 +152,8 @@ export default function CompliancePage() {
   const [sidePanelSubmission, setSidePanelSubmission] = useState<any | null>(null);
   const [duplicateGroups, setDuplicateGroups] = useState<SubmissionGroup[]>([]);
   const [similarityThreshold] = useState(85);
+  const [pendingParkingRequests, setPendingParkingRequests] = useState(0);
+  const [parkingExpanded, setParkingExpanded] = useState(false);
 
   // Phase 3 state — bulk selection + filters
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -243,10 +245,22 @@ export default function CompliancePage() {
   const fetchMatrix = async () => {
     if (!selectedBuilding) return;
     setMatrixLoading(true);
+    setParkingExpanded(false);
     try {
-      const res = await fetch(`/api/admin/compliance/building-matrix?building=${encodeURIComponent(selectedBuilding)}`);
-      const data: BuildingMatrixResponse = await res.json();
+      const [matrixRes, parkingRes] = await Promise.all([
+        fetch(`/api/admin/compliance/building-matrix?building=${encodeURIComponent(selectedBuilding)}`),
+        fetch(`/api/admin/compliance/parking-availability?building=${encodeURIComponent(selectedBuilding)}`).catch(() => null),
+      ]);
+      const data: BuildingMatrixResponse = await matrixRes.json();
       if (data.success) { setMatrixRows(data.rows); setMatrixStats(data.stats); }
+
+      if (parkingRes) {
+        const parkingData = await parkingRes.json();
+        const pending = parkingData.success ? (parkingData.requests || []).filter((r: any) => !r.approved && !r.denied).length : 0;
+        setPendingParkingRequests(pending);
+      } else {
+        setPendingParkingRequests(0);
+      }
     } catch (error) {
       console.error('Failed to fetch building matrix:', error);
     } finally {
@@ -624,6 +638,23 @@ export default function CompliancePage() {
 
               {activeTab === 'tenants' && (
                 <div className="space-y-3">
+                  {pendingParkingRequests > 0 && (
+                    <div className="border border-[var(--warning)]/35 bg-[var(--warning)]/5">
+                      <button
+                        onClick={() => setParkingExpanded(prev => !prev)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-[var(--warning)] hover:bg-[var(--warning)]/10 transition-colors duration-200 ease-out"
+                      >
+                        <span>{pendingParkingRequests} additional vehicle request{pendingParkingRequests !== 1 ? 's' : ''} pending review</span>
+                        <span className="text-[10px]">{parkingExpanded ? '▲ Collapse' : '▼ Expand'}</span>
+                      </button>
+                      {parkingExpanded && (
+                        <div className="px-4 pb-4">
+                          <ParkingManagementPanel buildingAddress={selectedBuilding} onRefresh={handleRefreshAll} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <BulkActionsBar
                     selectedIds={selectedIds}
                     rows={matrixRows}
@@ -650,10 +681,6 @@ export default function CompliancePage() {
                     </div>
                   )}
                 </div>
-              )}
-
-              {activeTab === 'parking' && (
-                <ParkingManagementPanel buildingAddress={selectedBuilding} onRefresh={handleRefreshAll} />
               )}
 
               {activeTab === 'duplicates' && (
