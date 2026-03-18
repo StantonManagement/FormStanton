@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 
 interface FeeEntryPopoverProps {
   submissionId: string;
-  feeType: 'pet_rent' | 'permit_fee';
+  feeType: string;
   label: string;
   onSuccess: () => void;
   onClose: () => void;

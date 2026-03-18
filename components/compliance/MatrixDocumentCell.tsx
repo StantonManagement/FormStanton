@@ -56,7 +56,7 @@ interface MatrixDocumentCellProps {
   /** submission ID for upload/mark actions */
   submissionId: string | null;
   /** e.g. 'vehicle_addendum', 'pet_addendum', 'insurance' */
-  documentType: 'vehicle_addendum' | 'pet_addendum' | 'insurance';
+  documentType: string;
   /** Whether this row is a missing-submission row */
   missing: boolean;
   /** Called after a successful action to refresh data */

@@ -6,6 +6,9 @@ import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
 import { buildingUnits } from '@/lib/buildings';
 import { normalizeAddress, filterByBuilding, unitsMatch } from '@/lib/addressNormalizer';
 import { groupDuplicateSubmissions, SubmissionGroup } from '@/lib/duplicateDetection';
+import { computeColumnStats, computeCompletionScore } from '@/lib/complianceColumns';
+import type { ComplianceRecord } from '@/lib/complianceColumns';
+import { getBuildingRequirements } from '@/lib/buildingRequirements';
 import ParkingManagementPanel from '@/components/ParkingManagementPanel';
 import DuplicateSubmissionAccordion from '@/components/DuplicateSubmissionAccordion';
 import VehicleExportCenter from '@/components/VehicleExportCenter';
@@ -93,6 +96,11 @@ interface TenantSubmission {
   }>;
   additional_vehicle_approved?: boolean;
   additional_vehicle_denied?: boolean;
+  vehicle_addendum_uploaded_to_appfolio?: boolean;
+  pet_addendum_uploaded_to_appfolio?: boolean;
+  insurance_uploaded_to_appfolio?: boolean;
+  pet_fee_added_to_appfolio?: boolean;
+  permit_fee_added_to_appfolio?: boolean;
 }
 
 interface BuildingTenantData {
@@ -354,30 +362,28 @@ export default function CompliancePage() {
       const subs = filterByBuilding(allSubmissions, building).filter(s => !s.merged_into);
       const stats = buildingStats[building];
       const occupied = stats?.occupiedUnits || 0;
+      const reqs = getBuildingRequirements(building);
 
-      const withVehicle = subs.filter(s => s.has_vehicle);
-      const withPets = subs.filter(s => s.has_pets);
-      const withInsurance = subs.filter(s => s.has_insurance);
+      // Map raw submissions to ComplianceRecord for the shared helper
+      const records: ComplianceRecord[] = subs.map(s => ({
+        has_vehicle: s.has_vehicle,
+        has_pets: s.has_pets,
+        has_insurance: s.has_insurance || reqs.requires_renters_insurance,
+        requires_parking_permit: reqs.requires_parking_permit && s.has_vehicle,
+        vehicle_addendum_file: s.vehicle_addendum_file ?? null,
+        vehicle_addendum_uploaded_to_appfolio: s.vehicle_addendum_uploaded_to_appfolio ?? false,
+        pet_addendum_file: s.pet_addendum_file ?? null,
+        pet_addendum_uploaded_to_appfolio: s.pet_addendum_uploaded_to_appfolio ?? false,
+        insurance_file: s.insurance_file ?? null,
+        insurance_uploaded_to_appfolio: s.insurance_uploaded_to_appfolio ?? false,
+        pet_fee_added_to_appfolio: s.pet_fee_added_to_appfolio ?? false,
+        permit_fee_added_to_appfolio: s.permit_fee_added_to_appfolio ?? false,
+        permit_issued: s.permit_issued,
+        calculated_pet_fee: null,
+        calculated_permit_fee: null,
+      }));
 
-      const vehicleDocsUploaded = subs.filter((s: any) => s.has_vehicle && s.vehicle_addendum_uploaded_to_appfolio).length;
-      const petDocsUploaded = subs.filter((s: any) => s.has_pets && s.pet_addendum_uploaded_to_appfolio).length;
-      const insuranceUploaded = subs.filter((s: any) => s.has_insurance && s.insurance_uploaded_to_appfolio).length;
-      const petFeesLoaded = subs.filter((s: any) => s.has_pets && s.pet_fee_added_to_appfolio).length;
-      const permitFeesLoaded = subs.filter((s: any) => s.has_vehicle && s.permit_fee_added_to_appfolio).length;
-      const permitsIssued = subs.filter(s => s.has_vehicle && s.permit_issued).length;
-
-      // Compute overall completion score (average of all applicable fractions)
-      const fractions: number[] = [];
-      if (occupied > 0) fractions.push(subs.length / occupied);
-      if (withVehicle.length > 0) fractions.push(vehicleDocsUploaded / withVehicle.length);
-      if (withPets.length > 0) fractions.push(petDocsUploaded / withPets.length);
-      if (withInsurance.length > 0) fractions.push(insuranceUploaded / withInsurance.length);
-      if (withPets.length > 0) fractions.push(petFeesLoaded / withPets.length);
-      if (withVehicle.length > 0) fractions.push(permitFeesLoaded / withVehicle.length);
-      if (withVehicle.length > 0) fractions.push(permitsIssued / withVehicle.length);
-      const completionScore = fractions.length > 0
-        ? Math.round((fractions.reduce((a, b) => a + b, 0) / fractions.length) * 100)
-        : 0;
+      const columns = computeColumnStats(records);
 
       return {
         building_address: building,
@@ -386,19 +392,8 @@ export default function CompliancePage() {
         total_units: stats?.totalUnits || 0,
         occupied_units: occupied,
         submissions: subs.length,
-        vehicle_docs_uploaded: vehicleDocsUploaded,
-        vehicle_docs_total: withVehicle.length,
-        pet_docs_uploaded: petDocsUploaded,
-        pet_docs_total: withPets.length,
-        insurance_uploaded: insuranceUploaded,
-        insurance_total: withInsurance.length,
-        pet_fees_loaded: petFeesLoaded,
-        pet_fees_total: withPets.length,
-        permit_fees_loaded: permitFeesLoaded,
-        permit_fees_total: withVehicle.length,
-        permits_issued: permitsIssued,
-        permits_total: withVehicle.length,
-        completion_score: completionScore,
+        columns,
+        completion_score: computeCompletionScore({ num: subs.length, den: occupied }, columns),
       };
     });
   }, [buildings, allSubmissions, buildingStats]);

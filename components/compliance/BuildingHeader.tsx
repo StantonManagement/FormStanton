@@ -3,6 +3,7 @@
 import type { BuildingMatrixStats } from '@/types/compliance';
 import { buildingToAssetId, buildingParkingSpots } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio } from '@/lib/portfolios';
+import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
 
 interface BuildingHeaderProps {
   buildingAddress: string;
@@ -20,36 +21,32 @@ export default function BuildingHeader({ buildingAddress, stats, onAddTenant }: 
     ? Math.round((stats.submissions / stats.occupied_units) * 100)
     : 0;
 
-  const pills: Array<{ label: string; value: string; tone: 'good' | 'attention' | 'critical' | 'neutral' }> = [
+  type Tone = 'good' | 'attention' | 'critical' | 'neutral';
+  type Pill = { label: string; value: string; tone: Tone };
+
+  const pills: Pill[] = [
     {
       label: 'Submissions',
       value: `${stats.submissions}/${stats.occupied_units}`,
       tone: submissionPct >= 90 ? 'good' : submissionPct >= 50 ? 'attention' : 'critical',
     },
-    ...(stats.vehicle_docs_total > 0 ? [{
-      label: 'Vehicle Docs',
-      value: `${stats.vehicle_docs_uploaded}/${stats.vehicle_docs_total}`,
-      tone: (stats.vehicle_docs_uploaded === stats.vehicle_docs_total ? 'good'
-        : stats.vehicle_docs_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
-    }] : []),
-    ...(stats.pet_docs_total > 0 ? [{
-      label: 'Pet Docs',
-      value: `${stats.pet_docs_uploaded}/${stats.pet_docs_total}`,
-      tone: (stats.pet_docs_uploaded === stats.pet_docs_total ? 'good'
-        : stats.pet_docs_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
-    }] : []),
-    ...(stats.insurance_total > 0 ? [{
-      label: 'Insurance',
-      value: `${stats.insurance_uploaded}/${stats.insurance_total}`,
-      tone: (stats.insurance_uploaded === stats.insurance_total ? 'good'
-        : stats.insurance_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
-    }] : []),
-    {
-      label: 'Missing',
-      value: `${stats.missing_submissions}`,
-      tone: stats.missing_submissions === 0 ? 'good' : 'critical',
-    },
   ];
+
+  for (const col of COMPLIANCE_COLUMNS) {
+    const s = stats.columns[col.id];
+    if (!s || s.total === 0) continue;
+    pills.push({
+      label: col.label,
+      value: `${s.complete}/${s.total}`,
+      tone: s.complete === s.total ? 'good' : s.complete > 0 ? 'attention' : 'critical',
+    });
+  }
+
+  pills.push({
+    label: 'Missing',
+    value: `${stats.missing_submissions}`,
+    tone: stats.missing_submissions === 0 ? 'good' : 'critical',
+  });
 
   const toneClasses: Record<string, string> = {
     good: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/35',
