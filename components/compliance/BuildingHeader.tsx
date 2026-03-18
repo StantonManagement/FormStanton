@@ -29,20 +29,20 @@ export default function BuildingHeader({ buildingAddress, stats, onAddTenant }: 
     ...(stats.vehicle_docs_total > 0 ? [{
       label: 'Vehicle Docs',
       value: `${stats.vehicle_docs_uploaded}/${stats.vehicle_docs_total}`,
-      tone: stats.vehicle_docs_uploaded === stats.vehicle_docs_total ? 'good'
-        : stats.vehicle_docs_uploaded > 0 ? 'attention' : 'critical',
+      tone: (stats.vehicle_docs_uploaded === stats.vehicle_docs_total ? 'good'
+        : stats.vehicle_docs_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
     }] : []),
     ...(stats.pet_docs_total > 0 ? [{
       label: 'Pet Docs',
       value: `${stats.pet_docs_uploaded}/${stats.pet_docs_total}`,
-      tone: stats.pet_docs_uploaded === stats.pet_docs_total ? 'good'
-        : stats.pet_docs_uploaded > 0 ? 'attention' : 'critical',
+      tone: (stats.pet_docs_uploaded === stats.pet_docs_total ? 'good'
+        : stats.pet_docs_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
     }] : []),
     ...(stats.insurance_total > 0 ? [{
       label: 'Insurance',
       value: `${stats.insurance_uploaded}/${stats.insurance_total}`,
-      tone: stats.insurance_uploaded === stats.insurance_total ? 'good'
-        : stats.insurance_uploaded > 0 ? 'attention' : 'critical',
+      tone: (stats.insurance_uploaded === stats.insurance_total ? 'good'
+        : stats.insurance_uploaded > 0 ? 'attention' : 'critical') as 'good' | 'attention' | 'critical',
     }] : []),
     {
       label: 'Missing',
