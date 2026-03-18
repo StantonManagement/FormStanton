@@ -186,7 +186,15 @@ function UtilityTransferFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Utility Transfer Confirmation"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -194,7 +202,8 @@ function UtilityTransferFormContent() {
       <SuccessScreen
         title="Utility Transfer Confirmation Submitted"
         message="Your utility transfer confirmation has been submitted successfully. Keys will be released once all required utilities are confirmed."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

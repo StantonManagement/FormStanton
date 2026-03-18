@@ -259,13 +259,24 @@ function Section8RecertificationFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Section 8 Recertification Checklist"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
     return (
       <SuccessScreen
+        title="Recertification Checklist Submitted"
         message="Your Section 8 recertification checklist has been submitted to Stanton Management."
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

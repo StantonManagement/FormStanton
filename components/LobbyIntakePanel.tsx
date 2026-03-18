@@ -11,6 +11,7 @@ import {
   renderAdditionalInsuredInstructions,
   openPrintWindow,
 } from '@/lib/formPrintRenderer';
+import type { PrintLang } from '@/lib/insurancePrintTranslations';
 import ConfirmDialog from '@/components/kit/ConfirmDialog';
 import AlertDialog from '@/components/kit/AlertDialog';
 
@@ -160,6 +161,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   const [insHasPets, setInsHasPets] = useState(false);
   const [currentPolicy, setCurrentPolicy] = useState<InsurancePolicy | null>(null);
   const [loadingPolicy, setLoadingPolicy] = useState(true);
+  const [printLang, setPrintLang] = useState<PrintLang>('en');
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -648,7 +650,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   const handlePrintInsurance = () => {
     const choice = insuranceChoice === 'appfolio' ? 'appfolio' : 'own';
-    const html = renderInsuranceAuth(printData, choice);
+    const html = renderInsuranceAuth(printData, choice, printLang);
     openPrintWindow(html);
   };
 
@@ -659,7 +661,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       'Gave Additional Insured phone instructions'
     );
     if (saved) {
-      const html = renderAdditionalInsuredInstructions(printData);
+      const html = renderAdditionalInsuredInstructions(printData, printLang);
       openPrintWindow(html);
     }
   };
@@ -1202,6 +1204,23 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               </div>
             )}
 
+            <div className="flex items-center gap-2 pt-2 mb-2">
+              <span className="text-xs font-medium text-[var(--primary)]">Print Language:</span>
+              {(['en', 'es', 'pt'] as PrintLang[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setPrintLang(l)}
+                  className={`px-2 py-0.5 text-xs font-medium border rounded-none transition-colors duration-200 ease-out ${
+                    printLang === l
+                      ? 'bg-[#1a2744] text-white border-[#1a2744]'
+                      : 'bg-white text-[#1a2744] border-[var(--border)] hover:bg-gray-50'
+                  }`}
+                >
+                  {l === 'en' ? 'English' : l === 'es' ? 'Español' : 'Português'}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-wrap gap-3 pt-2">
               <button onClick={handleSaveInsurance} disabled={saving} className={btnPrimary}>
                 {saving ? 'Saving...' : 'Save Insurance Policy'}
@@ -1230,7 +1249,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
             <h3 className="text-sm font-semibold text-[#1a2744]">Additional Insured Instructions</h3>
             <p className="text-xs text-gray-600">
               If tenant chose Option A, give them instructions on how to call their insurance company and add the LLC.
-              This will print the instruction sheet and record that you gave it to them.
+              This will print the full renters insurance info + phone instructions in the selected language.
             </p>
             <button onClick={handleGaveInstructions} disabled={saving} className={btnGold}>
               {saving ? 'Saving...' : 'Print Additional Insured Instructions'}

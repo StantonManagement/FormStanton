@@ -11,4 +11,10 @@ export { default as MatrixStatusCell } from './MatrixStatusCell';
 export { default as PortfolioTable } from './PortfolioTable';
 export { default as TenantSidePanel } from './TenantSidePanel';
 export type { ComplianceTab } from './ComplianceTabs';
+export { default as DashboardHeader } from './DashboardHeader';
+export { default as ComplianceSidebar } from './ComplianceSidebar';
+export { default as BuildingDetailView } from './BuildingDetailView';
+export { default as MissingSubmissionsGrid } from './MissingSubmissionsGrid';
+export { default as ProjectMatrixCell } from './ProjectMatrixCell';
+export { default as ComplianceClient } from './ComplianceClient';
 

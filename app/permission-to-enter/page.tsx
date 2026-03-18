@@ -189,7 +189,15 @@ function PermissionToEnterFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Permission to Enter / Entry Restriction"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -197,7 +205,8 @@ function PermissionToEnterFormContent() {
       <SuccessScreen
         title="Permission to Enter Submitted"
         message="Your entry preference has been recorded and submitted to Stanton Management."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

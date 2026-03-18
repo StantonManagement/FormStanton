@@ -12,6 +12,7 @@ import {
   DoorOpen,
   Car,
   LayoutGrid,
+  FolderKanban,
   History,
   Users,
   LogOut,
@@ -34,6 +35,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Lobby (Permit Distribution)': DoorOpen,
   'Phone Vehicle Entry': Car,
   'Compliance Dashboard': LayoutGrid,
+  'Projects': FolderKanban,
   'Audit Log': History,
   'User Management': Users,
 };
@@ -65,6 +67,7 @@ const navSections: NavSection[] = [
     title: 'Compliance & Reports',
     items: [
       { label: 'Compliance Dashboard', href: '/admin/compliance' },
+      { label: 'Projects', href: '/admin/projects' },
     ],
   },
   {

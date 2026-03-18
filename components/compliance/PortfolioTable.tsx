@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { PortfolioBuildingStats } from '@/types/compliance';
+import type { PortfolioBuildingStats, DynamicColumn, ProjectBuildingStats } from '@/types/compliance';
 import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
 
 interface PortfolioTableProps {
   rows: PortfolioBuildingStats[];
   selectedPortfolio: string;
   onSelectBuilding: (address: string) => void;
+  // Project mode (optional — defaults to legacy)
+  mode?: 'legacy' | 'project';
+  projectColumns?: DynamicColumn[];
+  projectBuildingStats?: ProjectBuildingStats[];
 }
 
 type SortKey = 'needs_attention' | 'asset_id' | 'submissions' | 'building';
@@ -38,7 +42,7 @@ function FractionCell({ num, den }: { num: number; den: number }) {
   );
 }
 
-export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuilding }: PortfolioTableProps) {
+export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuilding, mode = 'legacy', projectColumns, projectBuildingStats }: PortfolioTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('needs_attention');
 
   const filtered = useMemo(() => {
@@ -70,6 +74,72 @@ export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuildi
   const thClass = 'px-2 py-2 text-[10px] uppercase tracking-wide text-[var(--muted)] font-semibold text-center border border-[var(--divider)] bg-[var(--bg-section)] whitespace-nowrap cursor-pointer hover:text-[var(--ink)] transition-colors duration-200 ease-out';
   const thLeft = thClass.replace('text-center', 'text-left');
 
+  // -----------------------------------------------------------------------
+  // Project mode rendering
+  // -----------------------------------------------------------------------
+  if (mode === 'project' && projectColumns && projectBuildingStats) {
+    const sortedPBS = [...projectBuildingStats].sort((a, b) => {
+      const aPct = a.total_units > 0 ? a.complete_units / a.total_units : 0;
+      const bPct = b.total_units > 0 ? b.complete_units / b.total_units : 0;
+      return aPct - bPct;
+    });
+
+    return (
+      <div className="space-y-3">
+        <div className="overflow-x-auto border border-[var(--border)]">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className={thLeft}>Building</th>
+                <th className={thClass}>Units</th>
+                <th className={thClass}>Complete</th>
+                {projectColumns.map(col => (
+                  <th key={col.id} className={thClass}>{col.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedPBS.length === 0 && (
+                <tr>
+                  <td colSpan={3 + projectColumns.length} className="px-4 py-8 text-center text-[var(--muted)] border border-[var(--divider)]">
+                    No buildings to display.
+                  </td>
+                </tr>
+              )}
+              {sortedPBS.map((row) => (
+                <tr
+                  key={row.building}
+                  onClick={() => onSelectBuilding(row.building)}
+                  className="bg-white hover:bg-[var(--bg-section)] cursor-pointer transition-colors duration-200 ease-out"
+                >
+                  <td className="px-2 py-2 text-xs font-medium text-[var(--primary)] border border-[var(--divider)] hover:underline whitespace-nowrap">
+                    {row.building}
+                  </td>
+                  <td className="px-2 py-2 text-center text-xs text-[var(--muted)] border border-[var(--divider)]">
+                    {row.total_units}
+                  </td>
+                  <FractionCell num={row.complete_units} den={row.total_units} />
+                  {projectColumns.map(col => {
+                    const s = row.columns[col.id];
+                    return s ? <FractionCell key={col.id} num={s.complete} den={s.total} /> : (
+                      <td key={col.id} className="px-2 py-2 text-center text-xs text-[var(--muted)] border border-[var(--divider)]">—</td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="text-xs text-[var(--muted)]">
+          {sortedPBS.length} building{sortedPBS.length !== 1 ? 's' : ''} shown. Click a row to open the building view.
+        </div>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Legacy mode rendering (unchanged)
+  // -----------------------------------------------------------------------
   return (
     <div className="space-y-3">
       {/* Sort controls */}

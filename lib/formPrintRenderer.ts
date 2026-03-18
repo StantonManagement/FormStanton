@@ -1,5 +1,7 @@
-import { llcTable } from './policyContent';
 import { PARKING_FEES } from './policyContent';
+import { buildingToLLC } from './buildings';
+import { normalizeAddress } from './addressNormalizer';
+import { getInsuranceTranslations, PrintLang } from './insurancePrintTranslations';
 
 interface PrintData {
   tenantName: string;
@@ -12,9 +14,9 @@ interface PrintData {
 }
 
 function findLLCForAddress(address: string): string {
-  const lower = address.toLowerCase();
-  const entry = llcTable.find(([building]) => lower.includes(building.toLowerCase()));
-  return entry ? entry[1] : 'Stanton Management LLC';
+  const normalized = normalizeAddress(address);
+  const llc = buildingToLLC[normalized];
+  return llc ? `${llc} c/o Stanton Management LLC` : 'Stanton Management LLC';
 }
 
 function printStyles(): string {
@@ -253,91 +255,109 @@ export function renderNoPetsAcknowledgment(data: PrintData): string {
 
 // ── Insurance Authorization ──
 
-export function renderInsuranceAuth(data: PrintData, choice: 'own' | 'appfolio'): string {
+export function renderInsuranceAuth(data: PrintData, choice: 'own' | 'appfolio', lang: PrintLang = 'en'): string {
+  const t = getInsuranceTranslations(lang);
   const date = data.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const llcName = findLLCForAddress(data.buildingAddress);
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Renters Insurance Authorization</title><style>${printStyles()}</style></head><body>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${t.authTitle}</title><style>${printStyles()}</style></head><body>
     ${companyHeader()}
-    <div class="form-title">Renters Insurance Requirement</div>
-    ${field('Tenant Name(s)', data.tenantName)}
-    ${field('Unit Address', `${data.buildingAddress} - Unit ${data.unitNumber}`)}
-    ${field('Date', date)}
+    <div class="form-title">${t.authTitle}</div>
+    ${field(t.tenantName, data.tenantName)}
+    ${field(t.unitAddress, `${data.buildingAddress} - Unit ${data.unitNumber}`)}
+    ${field(t.date, date)}
     <hr>
-    <h2>Insurance Requirements</h2>
-    <p>All tenants are required to maintain renters insurance. Your policy must include:</p>
+    <h2>${t.authRequirementsHeading}</h2>
+    <p>${t.authRequirementsIntro}</p>
     <ul>
-      <li><strong>Minimum Liability Coverage:</strong> $100,000 ($300,000 if you have pets)</li>
-      <li><strong>Your unit address</strong> listed on the policy</li>
-      <li><strong>Additional Insured:</strong> Your building's LLC (see below)</li>
+      <li><strong>${t.authMinCoverage}</strong></li>
+      <li><strong>${t.authUnitAddress}</strong></li>
+      <li><strong>${t.authAdditionalInsured}</strong></li>
     </ul>
     <hr>
-    <h2>Your Building's Additional Insured</h2>
+    <h2>${t.authAdditionalInsuredHeading}</h2>
     <div class="callout">
-      <p><strong>Additional Insured Name:</strong></p>
+      <p><strong>${t.authAdditionalInsuredName}</strong></p>
       <p class="prefilled" style="margin-bottom: 10px;">${llcName}</p>
-      <p><strong>Additional Insured Address:</strong></p>
+      <p><strong>${t.authAdditionalInsuredAddress}</strong></p>
       <p class="prefilled">421 Park St, Hartford CT 06106</p>
     </div>
     <hr>
-    <h2>Select One Option</h2>
+    <h2>${t.authSelectOption}</h2>
     <div class="checkbox-row">
       <div class="checkbox ${choice === 'own' ? 'checked' : ''}"></div>
       <div>
-        <strong>Option A -- I will get my own insurance</strong><br>
-        I will purchase renters insurance from a provider of my choice and provide proof of coverage to the office. My policy will meet all requirements listed above, including naming the Additional Insured.
+        <strong>${t.authOptionATitle}</strong><br>
+        ${t.authOptionABody}
       </div>
     </div>
     <div class="checkbox-row" style="margin-top: 16px;">
       <div class="checkbox ${choice === 'appfolio' ? 'checked' : ''}"></div>
       <div>
-        <strong>Option B -- Enroll me through Stanton Management</strong><br>
-        I authorize Stanton Management to enroll me in renters insurance through Appfolio. The cost ($10-25/month) will be added to my rent. I understand coverage will begin upon enrollment and I do not need to take any further action.
+        <strong>${t.authOptionBTitle}</strong><br>
+        ${t.authOptionBBody}
       </div>
     </div>
     <hr>
-    ${signatureBlock(['Tenant Signature', 'Received by (Stanton Management)'])}
+    ${signatureBlock([t.authTenantSignature, t.authReceivedBy])}
     ${footer(date)}
   </body></html>`;
 }
 
-// ── Additional Insured Instructions (phone-based) ──
+// ── Additional Insured Instructions (full renters insurance info + phone instructions) ──
 
-export function renderAdditionalInsuredInstructions(data: PrintData): string {
+export function renderAdditionalInsuredInstructions(data: PrintData, lang: PrintLang = 'en'): string {
+  const t = getInsuranceTranslations(lang);
   const date = data.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const llcName = findLLCForAddress(data.buildingAddress);
 
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>How to Add Additional Insured</title><style>${printStyles()}</style></head><body>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${t.instrTitle}</title><style>${printStyles()}</style></head><body>
     ${companyHeader()}
-    <div class="form-title">How to Add Additional Insured</div>
-    ${field('Tenant Name(s)', data.tenantName)}
-    ${field('Unit Address', `${data.buildingAddress} - Unit ${data.unitNumber}`)}
-    ${field('Date', date)}
+    <div class="form-title">${t.instrTitle}</div>
+    ${field(t.tenantName, data.tenantName)}
+    ${field(t.unitAddress, `${data.buildingAddress} - Unit ${data.unitNumber}`)}
+    ${field(t.date, date)}
     <hr>
-    <h2>What You Need to Do</h2>
-    <p><strong>Call the phone number on your insurance card</strong> and tell them:</p>
-    <div class="callout" style="font-size: 13px; line-height: 1.8;">
-      <p><em>"I need to add an Additional Insured to my renters insurance policy."</em></p>
+    <h2>${t.instrWhatIsHeading}</h2>
+    <p>${t.instrWhatIsBody}</p>
+    <hr>
+    <h2>${t.instrRequirementsHeading}</h2>
+    <p>${t.instrRequirementsIntro}</p>
+    <ul>
+      <li><strong>${t.instrReqCoverage}</strong></li>
+      <li><strong>${t.instrReqUnitAddress}</strong></li>
+      <li><strong>${t.instrReqAdditionalInsured}</strong></li>
+    </ul>
+    <hr>
+    <h2>${t.instrYourLLCHeading}</h2>
+    <div class="callout">
+      <p><strong>${t.instrAdditionalInsuredName}</strong></p>
+      <p class="prefilled" style="margin-bottom: 10px;">${llcName}</p>
+      <p><strong>${t.instrAdditionalInsuredAddress}</strong></p>
+      <p class="prefilled">421 Park St, Hartford CT 06106</p>
     </div>
-    <p>They will ask you for the following information:</p>
     <hr>
-    <h2>Give Them This Information</h2>
+    <h2>${t.instrHowToAddHeading}</h2>
+    <p><strong>${t.instrCallIntro}</strong></p>
+    <div class="callout" style="font-size: 13px; line-height: 1.8;">
+      <p><em>${t.instrCallScript}</em></p>
+    </div>
     <table>
-      <tr><th style="width: 180px;">They Will Ask</th><th>You Say</th></tr>
-      <tr><td><strong>Additional Insured Name</strong></td><td class="prefilled">${llcName}</td></tr>
-      <tr><td><strong>Address</strong></td><td class="prefilled">421 Park St, Hartford CT 06106</td></tr>
-      <tr><td><strong>Relationship</strong></td><td>Landlord</td></tr>
+      <tr><th style="width: 180px;">${t.instrTheyAsk}</th><th>${t.instrYouSay}</th></tr>
+      <tr><td><strong>${t.instrAIName}</strong></td><td class="prefilled">${llcName}</td></tr>
+      <tr><td><strong>${t.instrAIAddress}</strong></td><td class="prefilled">421 Park St, Hartford CT 06106</td></tr>
+      <tr><td><strong>${t.instrRelationship}</strong></td><td>${t.instrRelationshipAnswer}</td></tr>
     </table>
     <hr>
-    <h2>After the Call</h2>
+    <h2>${t.instrAfterCallHeading}</h2>
     <ol>
-      <li style="margin-bottom: 8px;">Ask them to <strong>email or mail you updated proof of insurance</strong> showing the Additional Insured</li>
-      <li style="margin-bottom: 8px;"><strong>Bring the proof to the office</strong> or email it to: info@stantonmgmt.com</li>
+      <li style="margin-bottom: 8px;"><strong>${t.instrAfterCall1}</strong></li>
+      <li style="margin-bottom: 8px;"><strong>${t.instrAfterCall2}</strong></li>
     </ol>
     <hr>
-    <h2>Need Help?</h2>
-    <p>Bring your phone to the office and we can help you make the call.</p>
-    <p>Or call us at <strong>(860) 993-3401</strong>, Mon-Fri 9 AM - 5 PM.</p>
+    <h2>${t.instrNeedHelpHeading}</h2>
+    <p>${t.instrNeedHelp1}</p>
+    <p>${t.instrNeedHelp2}</p>
     <hr>
     ${footer(date)}
   </body></html>`;

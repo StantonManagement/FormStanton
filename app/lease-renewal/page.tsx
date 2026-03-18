@@ -221,7 +221,15 @@ function LeaseRenewalFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Lease Renewal / Non-Renewal Notice"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -232,7 +240,8 @@ function LeaseRenewalFormContent() {
           ? "Your lease renewal request has been submitted. We will contact you with renewal terms."
           : "Your non-renewal notice has been submitted. Thank you for letting us know."
         }
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

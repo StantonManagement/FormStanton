@@ -156,13 +156,24 @@ function PaySlipRequestFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="PaySlip Request"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
     return (
       <SuccessScreen
+        title="PaySlip Request Submitted"
         message="Your PaySlip request has been submitted. The office will generate your barcode and contact you with delivery instructions."
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

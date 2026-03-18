@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import type { MatrixRow } from '@/types/compliance';
+import type { MatrixRow, DynamicColumn, ProjectMatrixRow } from '@/types/compliance';
 import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
 import type { FeeColumnDef } from '@/lib/complianceColumns';
 import MatrixDocumentCell from './MatrixDocumentCell';
 import MatrixFeeCell from './MatrixFeeCell';
 import MatrixStatusCell from './MatrixStatusCell';
 import FeeEntryPopover from './FeeEntryPopover';
+import ProjectMatrixCell from './ProjectMatrixCell';
 
 interface RowAction {
   text: string;
@@ -56,6 +57,11 @@ interface BuildingMatrixTableProps {
   selectedIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   onToast?: (message: string, onUndo?: () => void) => void;
+  // Project mode (optional — defaults to legacy)
+  mode?: 'legacy' | 'project';
+  projectColumns?: DynamicColumn[];
+  projectRows?: ProjectMatrixRow[];
+  onStaffComplete?: (unitId: string, taskId: string) => Promise<void>;
 }
 
 interface PopoverState {
@@ -68,7 +74,7 @@ interface PopoverState {
   defaultAmount: number | null;
 }
 
-export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, selectedIds, onSelectionChange, onToast }: BuildingMatrixTableProps) {
+export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, selectedIds, onSelectionChange, onToast, mode = 'legacy', projectColumns, projectRows, onStaffComplete }: BuildingMatrixTableProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
 
   const selectableRows = useMemo(() => rows.filter(r => !r.missing && r.submission_id), [rows]);
@@ -117,6 +123,102 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
 
   const thClass = 'px-2 py-2 text-[10px] uppercase tracking-wide text-[var(--muted)] font-semibold text-left border border-[var(--divider)] bg-[var(--bg-section)] whitespace-nowrap';
 
+  // -----------------------------------------------------------------------
+  // Project mode rendering
+  // -----------------------------------------------------------------------
+  if (mode === 'project' && projectColumns && projectRows) {
+    const sortedProjectRows = [...projectRows].sort((a, b) => {
+      const aNum = parseInt(a.unit_number.match(/\d+/)?.[0] || '999');
+      const bNum = parseInt(b.unit_number.match(/\d+/)?.[0] || '999');
+      return aNum - bNum;
+    });
+
+    return (
+      <div className="overflow-x-auto border border-[var(--border)]">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className={thClass}>Unit</th>
+              <th className={thClass}>Tenant</th>
+              <th className={`${thClass} text-center`}>Status</th>
+              {projectColumns.map(col => (
+                <th key={col.id} className={`${thClass} text-center`}>
+                  <div>{col.label}</div>
+                  <div className={`text-[9px] font-normal mt-0.5 ${
+                    col.assignee === 'staff' ? 'text-[var(--warning)]' : 'text-[var(--muted)]'
+                  }`}>
+                    {col.assignee}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedProjectRows.length === 0 && (
+              <tr>
+                <td colSpan={3 + projectColumns.length} className="px-4 py-8 text-center text-[var(--muted)] border border-[var(--divider)]">
+                  No units to display.
+                </td>
+              </tr>
+            )}
+            {sortedProjectRows.map((row) => {
+              const allDone = projectColumns.every(col => {
+                const s = row.completions[col.id]?.status;
+                return s === 'complete' || s === 'waived' || !col.required;
+              });
+              const rowBg = allDone
+                ? 'bg-[var(--bg-section)]/50'
+                : row.overall_status === 'in_progress'
+                  ? 'bg-white hover:bg-[var(--bg-section)]'
+                  : 'bg-[var(--error)]/5';
+
+              return (
+                <tr key={row.unit_id} className={`${rowBg} transition-colors duration-200 ease-out`}>
+                  <td className="px-2 py-1.5 text-xs font-medium text-[var(--ink)] border border-[var(--divider)] whitespace-nowrap">
+                    {row.unit_number}
+                  </td>
+                  <td className="px-2 py-1.5 text-xs text-[var(--ink)] border border-[var(--divider)]">
+                    {row.tenant_name || <span className="text-[var(--muted)]">—</span>}
+                  </td>
+                  <td className={`px-2 py-1.5 text-center text-xs font-medium border border-[var(--divider)] ${
+                    row.overall_status === 'complete' ? 'text-[var(--success)]' :
+                    row.overall_status === 'in_progress' ? 'text-[var(--warning)]' :
+                    'text-[var(--error)]'
+                  }`}>
+                    {row.overall_status === 'complete' ? '✓ Complete' :
+                     row.overall_status === 'in_progress' ? 'In Progress' :
+                     'Not Started'}
+                  </td>
+                  {projectColumns.map(col => {
+                    const comp = row.completions[col.id];
+                    const status = comp?.status || 'pending';
+                    return (
+                      <ProjectMatrixCell
+                        key={col.id}
+                        status={status}
+                        column={col}
+                        completedAt={comp?.completed_at || null}
+                        completedBy={comp?.completed_by || null}
+                        onStaffComplete={
+                          col.assignee === 'staff' && onStaffComplete
+                            ? () => onStaffComplete(row.unit_id, col.id)
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Legacy mode rendering (unchanged)
+  // -----------------------------------------------------------------------
   return (
     <>
       <div className="overflow-x-auto border border-[var(--border)]">
@@ -290,7 +392,7 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
         </table>
       </div>
 
-      {/* Fee entry popover */}
+      {/* Fee entry popover (legacy only) */}
       {popover && (
         <FeeEntryPopover
           submissionId={popover.submissionId}

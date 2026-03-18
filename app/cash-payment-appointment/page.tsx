@@ -162,7 +162,15 @@ function CashPaymentAppointmentFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Cash Payment Appointment"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -170,7 +178,8 @@ function CashPaymentAppointmentFormContent() {
       <SuccessScreen
         title="Appointment Request Submitted"
         message="Your cash payment appointment request has been submitted. The office will contact you to confirm the appointment time."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

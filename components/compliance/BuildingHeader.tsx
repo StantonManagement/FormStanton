@@ -1,6 +1,6 @@
 'use client';
 
-import type { BuildingMatrixStats } from '@/types/compliance';
+import type { BuildingMatrixStats, DynamicColumn, ProjectBuildingStats } from '@/types/compliance';
 import { buildingToAssetId, buildingParkingSpots } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio } from '@/lib/portfolios';
 import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
@@ -9,9 +9,13 @@ interface BuildingHeaderProps {
   buildingAddress: string;
   stats: BuildingMatrixStats;
   onAddTenant: () => void;
+  // Project mode (optional — defaults to legacy)
+  mode?: 'legacy' | 'project';
+  projectColumns?: DynamicColumn[];
+  projectBuildingStats?: ProjectBuildingStats;
 }
 
-export default function BuildingHeader({ buildingAddress, stats, onAddTenant }: BuildingHeaderProps) {
+export default function BuildingHeader({ buildingAddress, stats, onAddTenant, mode = 'legacy', projectColumns, projectBuildingStats }: BuildingHeaderProps) {
   const assetId = buildingToAssetId[buildingAddress] || '—';
   const portfolio = buildingToPortfolio[buildingAddress] || '—';
   const parking = buildingParkingSpots[buildingAddress];
@@ -24,29 +28,47 @@ export default function BuildingHeader({ buildingAddress, stats, onAddTenant }: 
   type Tone = 'good' | 'attention' | 'critical' | 'neutral';
   type Pill = { label: string; value: string; tone: Tone };
 
-  const pills: Pill[] = [
-    {
+  const pills: Pill[] = [];
+
+  if (mode === 'project' && projectColumns && projectBuildingStats) {
+    pills.push({
+      label: 'Units Complete',
+      value: `${projectBuildingStats.complete_units}/${projectBuildingStats.total_units}`,
+      tone: projectBuildingStats.complete_units === projectBuildingStats.total_units ? 'good'
+        : projectBuildingStats.complete_units > 0 ? 'attention' : 'critical',
+    });
+    for (const col of projectColumns) {
+      const s = projectBuildingStats.columns[col.id];
+      if (!s || s.total === 0) continue;
+      pills.push({
+        label: col.label,
+        value: `${s.complete}/${s.total}`,
+        tone: s.complete === s.total ? 'good' : s.complete > 0 ? 'attention' : 'critical',
+      });
+    }
+  } else {
+    pills.push({
       label: 'Submissions',
       value: `${stats.submissions}/${stats.occupied_units}`,
       tone: submissionPct >= 90 ? 'good' : submissionPct >= 50 ? 'attention' : 'critical',
-    },
-  ];
+    });
 
-  for (const col of COMPLIANCE_COLUMNS) {
-    const s = stats.columns[col.id];
-    if (!s || s.total === 0) continue;
+    for (const col of COMPLIANCE_COLUMNS) {
+      const s = stats.columns[col.id];
+      if (!s || s.total === 0) continue;
+      pills.push({
+        label: col.label,
+        value: `${s.complete}/${s.total}`,
+        tone: s.complete === s.total ? 'good' : s.complete > 0 ? 'attention' : 'critical',
+      });
+    }
+
     pills.push({
-      label: col.label,
-      value: `${s.complete}/${s.total}`,
-      tone: s.complete === s.total ? 'good' : s.complete > 0 ? 'attention' : 'critical',
+      label: 'Missing',
+      value: `${stats.missing_submissions}`,
+      tone: stats.missing_submissions === 0 ? 'good' : 'critical',
     });
   }
-
-  pills.push({
-    label: 'Missing',
-    value: `${stats.missing_submissions}`,
-    tone: stats.missing_submissions === 0 ? 'good' : 'critical',
-  });
 
   const toneClasses: Record<string, string> = {
     good: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/35',

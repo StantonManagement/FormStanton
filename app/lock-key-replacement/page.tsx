@@ -231,7 +231,15 @@ function LockKeyReplacementFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Lock / Key Replacement Authorization"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -239,7 +247,8 @@ function LockKeyReplacementFormContent() {
       <SuccessScreen
         title="Lock / Key Replacement Authorized"
         message="Your authorization has been submitted. Stanton Management will contact you with the total cost and replacement timeline."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

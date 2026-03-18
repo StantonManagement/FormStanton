@@ -248,7 +248,15 @@ function MoveOutNoticeFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="30-Day Move-Out Notice"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -256,7 +264,8 @@ function MoveOutNoticeFormContent() {
       <SuccessScreen
         title="Move-Out Notice Submitted"
         message="Your 30-day move-out notice has been submitted. Please schedule a move-out walkthrough with the office."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }

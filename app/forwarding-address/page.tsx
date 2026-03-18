@@ -175,7 +175,15 @@ function ForwardingAddressFormContent() {
   };
 
   if (!showForm) {
-    return <LanguageLanding language={language} setLanguage={setLanguage} onLanguageSelect={() => setShowForm(true)} />;
+    return (
+      <LanguageLanding
+        title="Forwarding Address"
+        onSelect={(lang) => {
+          setLanguage(lang);
+          setShowForm(true);
+        }}
+      />
+    );
   }
 
   if (submitSuccess) {
@@ -183,7 +191,8 @@ function ForwardingAddressFormContent() {
       <SuccessScreen
         title="Forwarding Address Submitted"
         message="Your forwarding address has been submitted. This is required for security deposit return."
-        onPrint={handlePrint}
+        language={language}
+        onLanguageChange={setLanguage}
       />
     );
   }
