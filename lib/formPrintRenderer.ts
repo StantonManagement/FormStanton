@@ -106,8 +106,23 @@ interface VehicleData {
   monthlyFee: number;
 }
 
-export function renderVehicleAddendum(data: PrintData, vehicle: VehicleData): string {
+export function renderVehicleAddendum(data: PrintData, vehicleOrVehicles: VehicleData | VehicleData[]): string {
+  const vehicles = Array.isArray(vehicleOrVehicles) ? vehicleOrVehicles : [vehicleOrVehicles];
+  const totalMonthly = vehicles.reduce((s, v) => s + v.monthlyFee, 0);
   const date = data.date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const vehicleRows = vehicles.map((v, i) => `
+    <tr>
+      <td class="prefilled">${i + 1}</td>
+      <td class="prefilled">${v.make}</td>
+      <td class="prefilled">${v.model}</td>
+      <td class="prefilled">${v.year}</td>
+      <td class="prefilled">${v.color}</td>
+      <td class="prefilled">${v.plate}</td>
+      <td class="prefilled">$${v.monthlyFee}/mo</td>
+    </tr>
+  `).join('');
+
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Vehicle & Parking Addendum</title><style>${printStyles()}</style></head><body>
     ${companyHeader()}
     <div class="form-title">Vehicle & Parking Addendum to Rental Agreement</div>
@@ -126,7 +141,7 @@ export function renderVehicleAddendum(data: PrintData, vehicle: VehicleData): st
     <hr>
     <p>You understand that parking is not included with this Lease and that we may or may NOT allow you to park your vehicles on the property. We reserve the right to restrict, condition, or revoke any prior authorization given at any time.</p>
     <p>You also acknowledge that if we allow you to park on the property, you must register your vehicle with us and pay parking fees as follows:</p>
-    <p><strong>PARKING FEES:</strong> <span class="prefilled">$${vehicle.monthlyFee} per vehicle per month</span></p>
+    <p><strong>TOTAL MONTHLY PARKING FEES:</strong> <span class="prefilled">$${totalMonthly}/month (${vehicles.length} vehicle${vehicles.length > 1 ? 's' : ''})</span></p>
     <p><strong>PERMIT LIMIT:</strong> Each tenant is limited to one (1) parking permit. Additional permits may be available on a first-come, first-served basis after all tenants in the building have had the opportunity to obtain their first permit. Not all buildings allow a second permit. Contact the office for availability.</p>
     <hr>
     <h2>Terms and Conditions</h2>
@@ -143,8 +158,10 @@ export function renderVehicleAddendum(data: PrintData, vehicle: VehicleData): st
     <p><strong>The parking permit must be displayed on the upper driver's side of the windshield at all times.</strong></p>
     <hr>
     <h2>Vehicle Information</h2>
-    <p><strong>Make:</strong> <span class="prefilled">${vehicle.make}</span> &nbsp;&nbsp; <strong>Model:</strong> <span class="prefilled">${vehicle.model}</span> &nbsp;&nbsp; <strong>Year:</strong> <span class="prefilled">${vehicle.year}</span></p>
-    <p><strong>Color:</strong> <span class="prefilled">${vehicle.color}</span> &nbsp;&nbsp; <strong>License Plate:</strong> <span class="prefilled">${vehicle.plate}</span></p>
+    <table>
+      <tr><th>#</th><th>Make</th><th>Model</th><th>Year</th><th>Color</th><th>License Plate</th><th>Fee</th></tr>
+      ${vehicleRows}
+    </table>
     <hr>
     ${signatureBlock(['Tenant Signature', 'Stanton Management -- Approved / Denied'])}
     <p style="margin-top: 16px;"><strong>Notes:</strong> _______________________________________________</p>

@@ -462,16 +462,63 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   };
 
   const handlePrintVehicle = () => {
-    const vt = VEHICLE_TYPES[vehicleType];
-    const html = renderVehicleAddendum(printData, {
-      type: vt.label,
-      make: vehicleMake,
-      model: vehicleModel,
-      year: vehicleYear,
-      color: vehicleColor,
-      plate: vehiclePlate.toUpperCase(),
-      monthlyFee: vt.fee,
+    // Build full list of all registered vehicles
+    const allVehicles = registeredVehicles.map(v => {
+      const vtMatch = VEHICLE_TYPES.find(vt => vt.key === (v.vehicle_type || 'standard'));
+      return {
+        type: vtMatch?.label || 'Standard',
+        make: v.vehicle_make || '',
+        model: v.vehicle_model || '',
+        year: v.vehicle_year ? String(v.vehicle_year) : '',
+        color: v.vehicle_color || '',
+        plate: v.vehicle_plate || '',
+        monthlyFee: vtMatch?.fee ?? PARKING_FEES.standard,
+      };
     });
+
+    // If form has a vehicle being added (not yet saved), include it
+    if (vehicleMake && vehiclePlate && editingVehicleIndex === null) {
+      const vt = VEHICLE_TYPES[vehicleType];
+      allVehicles.push({
+        type: vt.label,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: vehicleYear,
+        color: vehicleColor,
+        plate: vehiclePlate.toUpperCase(),
+        monthlyFee: vt.fee,
+      });
+    }
+
+    // If editing an existing vehicle, replace it with form values
+    if (editingVehicleIndex !== null && editingVehicleIndex < allVehicles.length) {
+      const vt = VEHICLE_TYPES[vehicleType];
+      allVehicles[editingVehicleIndex] = {
+        type: vt.label,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: vehicleYear,
+        color: vehicleColor,
+        plate: vehiclePlate.toUpperCase(),
+        monthlyFee: vt.fee,
+      };
+    }
+
+    // Fallback: if no vehicles at all, use the current form fields
+    if (allVehicles.length === 0) {
+      const vt = VEHICLE_TYPES[vehicleType];
+      allVehicles.push({
+        type: vt.label,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: vehicleYear,
+        color: vehicleColor,
+        plate: vehiclePlate.toUpperCase(),
+        monthlyFee: vt.fee,
+      });
+    }
+
+    const html = renderVehicleAddendum(printData, allVehicles);
     openPrintWindow(html);
   };
 
@@ -647,18 +694,77 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   };
 
   const handlePrintPet = () => {
-    const fee = PET_FEES[petFeeIndex];
-    const html = renderPetAddendum(printData, [{
-      type: petType,
-      breed: petBreed,
-      name: petName,
-      weight: petWeight,
-      age: petAge,
-      spayedNeutered: petSpayed,
-      vaccinesUpToDate: petVaccines,
-      monthlyFee: fee.monthly,
-      deposit: fee.deposit,
-    }]);
+    // Build full list of all registered pets mapped to PetData format
+    const allPets = registeredPets.map(pet => {
+      const type = (pet.pet_type || '').toLowerCase();
+      const weight = typeof pet.pet_weight === 'number' ? pet.pet_weight : parseFloat(String(pet.pet_weight)) || 0;
+      let monthly = 25, deposit = 200;
+      if (type === 'cat') { monthly = 25; deposit = 150; }
+      else if (weight > 50) { monthly = 45; deposit = 300; }
+      else if (weight >= 25) { monthly = 35; deposit = 250; }
+      else { monthly = 25; deposit = 200; }
+      return {
+        type: pet.pet_type || 'Unknown',
+        breed: pet.pet_breed || '',
+        name: pet.pet_name || '',
+        weight: pet.pet_weight ? String(pet.pet_weight) : '',
+        age: '',
+        spayedNeutered: pet.pet_spayed || 'Unknown',
+        vaccinesUpToDate: pet.pet_vaccinations_current || 'Unknown',
+        monthlyFee: monthly,
+        deposit,
+      };
+    });
+
+    // If form has a pet being added (not yet saved), include it too
+    if (petName && petBreed && editingPetIndex === null) {
+      const fee = PET_FEES[petFeeIndex];
+      allPets.push({
+        type: petType,
+        breed: petBreed,
+        name: petName,
+        weight: petWeight,
+        age: petAge,
+        spayedNeutered: petSpayed,
+        vaccinesUpToDate: petVaccines,
+        monthlyFee: fee.monthly,
+        deposit: fee.deposit,
+      });
+    }
+
+    // If editing an existing pet, replace it with form values
+    if (editingPetIndex !== null && editingPetIndex < allPets.length) {
+      const fee = PET_FEES[petFeeIndex];
+      allPets[editingPetIndex] = {
+        type: petType,
+        breed: petBreed,
+        name: petName,
+        weight: petWeight,
+        age: petAge,
+        spayedNeutered: petSpayed,
+        vaccinesUpToDate: petVaccines,
+        monthlyFee: fee.monthly,
+        deposit: fee.deposit,
+      };
+    }
+
+    // Fallback: if no pets at all, use the current form fields
+    if (allPets.length === 0) {
+      const fee = PET_FEES[petFeeIndex];
+      allPets.push({
+        type: petType,
+        breed: petBreed,
+        name: petName,
+        weight: petWeight,
+        age: petAge,
+        spayedNeutered: petSpayed,
+        vaccinesUpToDate: petVaccines,
+        monthlyFee: fee.monthly,
+        deposit: fee.deposit,
+      });
+    }
+
+    const html = renderPetAddendum(printData, allPets);
     openPrintWindow(html);
   };
 
