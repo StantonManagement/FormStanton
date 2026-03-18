@@ -132,6 +132,7 @@ export interface TenantSubmission {
   vehicle_year?: number;
   vehicle_color?: string;
   vehicle_plate?: string;
+  vehicle_type?: string;
   vehicle_verified: boolean;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
@@ -191,6 +192,7 @@ export interface TenantSubmission {
     vehicle_year: number | string;
     vehicle_color: string;
     vehicle_plate: string;
+    vehicle_type?: string;
     requested_at?: string;
   }>;
   additional_vehicle_approved?: boolean;

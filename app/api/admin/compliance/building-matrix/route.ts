@@ -34,10 +34,28 @@ function calculatePetFee(sub: any): number | null {
   return total;
 }
 
-/** Calculate monthly parking permit fee from a submission */
+/** Calculate monthly parking permit fee from a submission (primary + additional vehicles) */
 function calculatePermitFee(sub: any): number | null {
   if (!sub?.has_vehicle) return null;
-  return PARKING_FEES.standard;
+
+  const feeMap: Record<string, number> = {
+    moped: PARKING_FEES.moped,
+    standard: PARKING_FEES.standard,
+    oversized: PARKING_FEES.oversized,
+    boat: PARKING_FEES.boats,
+  };
+
+  // Primary vehicle fee
+  let total = feeMap[sub.vehicle_type] ?? PARKING_FEES.standard;
+
+  // Additional vehicles
+  if (Array.isArray(sub.additional_vehicles)) {
+    for (const v of sub.additional_vehicles) {
+      total += feeMap[v.vehicle_type] ?? PARKING_FEES.standard;
+    }
+  }
+
+  return total;
 }
 
 export async function GET(request: NextRequest) {

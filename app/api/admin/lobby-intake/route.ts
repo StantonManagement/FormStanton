@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (action_type === 'pet_registration' || action_type === 'pet_update' || action_type === 'pet_removal' || action_type === 'vehicle_registration') {
+    if (action_type === 'pet_registration' || action_type === 'pet_update' || action_type === 'pet_removal' || action_type === 'vehicle_registration' || action_type === 'vehicle_update' || action_type === 'vehicle_removal') {
       // Find existing submission by building + unit + name
       const { data: existing, error: lookupError } = await supabaseAdmin
         .from('submissions')
@@ -250,19 +250,45 @@ export async function POST(request: NextRequest) {
       }
 
       if (action_type === 'vehicle_registration') {
-        const vehicleData = {
-          has_vehicle: true,
+        const newVehicle = {
           vehicle_make: action_data.make || null,
           vehicle_model: action_data.model || null,
           vehicle_year: action_data.year ? parseInt(action_data.year) : null,
           vehicle_color: action_data.color || null,
-          vehicle_plate: action_data.plate || null,
+          vehicle_plate: (action_data.plate || '').toUpperCase() || null,
+          vehicle_type: action_data.vehicle_type || 'standard',
         };
 
-        if (existing) {
+        if (existing && existing.has_vehicle && existing.vehicle_make) {
+          // Primary vehicle already exists — append to additional_vehicles
+          const existingAdditional = Array.isArray(existing.additional_vehicles) ? existing.additional_vehicles : [];
+          const updatedAdditional = [...existingAdditional, newVehicle];
+
           const { data: updated, error: updateErr } = await supabaseAdmin
             .from('submissions')
-            .update(vehicleData)
+            .update({ additional_vehicles: updatedAdditional })
+            .eq('id', existing.id)
+            .select('*')
+            .single();
+
+          if (updateErr) {
+            console.error('Error appending additional vehicle:', updateErr);
+          } else {
+            submissionData = updated;
+          }
+        } else if (existing) {
+          // Submission exists but no primary vehicle — set flat fields
+          const { data: updated, error: updateErr } = await supabaseAdmin
+            .from('submissions')
+            .update({
+              has_vehicle: true,
+              vehicle_make: newVehicle.vehicle_make,
+              vehicle_model: newVehicle.vehicle_model,
+              vehicle_year: newVehicle.vehicle_year,
+              vehicle_color: newVehicle.vehicle_color,
+              vehicle_plate: newVehicle.vehicle_plate,
+              vehicle_type: newVehicle.vehicle_type,
+            })
             .eq('id', existing.id)
             .select('*')
             .single();
@@ -279,7 +305,13 @@ export async function POST(request: NextRequest) {
               full_name: tenant_name,
               building_address,
               unit_number,
-              ...vehicleData,
+              has_vehicle: true,
+              vehicle_make: newVehicle.vehicle_make,
+              vehicle_model: newVehicle.vehicle_model,
+              vehicle_year: newVehicle.vehicle_year,
+              vehicle_color: newVehicle.vehicle_color,
+              vehicle_plate: newVehicle.vehicle_plate,
+              vehicle_type: newVehicle.vehicle_type,
               has_pets: false,
               has_insurance: false,
               add_insurance_to_rent: false,
@@ -293,6 +325,151 @@ export async function POST(request: NextRequest) {
             console.error('Error creating submission for vehicle:', createErr);
           } else {
             submissionData = created;
+          }
+        }
+      }
+
+      if (action_type === 'vehicle_update') {
+        if (!existing) {
+          return NextResponse.json(
+            { success: false, message: 'No submission found to update' },
+            { status: 404 }
+          );
+        }
+
+        const vehicleIndex = action_data.vehicle_index;
+        const updatedVehicle = {
+          vehicle_make: action_data.make || null,
+          vehicle_model: action_data.model || null,
+          vehicle_year: action_data.year ? parseInt(action_data.year) : null,
+          vehicle_color: action_data.color || null,
+          vehicle_plate: (action_data.plate || '').toUpperCase() || null,
+          vehicle_type: action_data.vehicle_type || 'standard',
+        };
+
+        if (vehicleIndex === 0) {
+          // Update primary vehicle (flat fields)
+          const { data: updated, error: updateErr } = await supabaseAdmin
+            .from('submissions')
+            .update({
+              vehicle_make: updatedVehicle.vehicle_make,
+              vehicle_model: updatedVehicle.vehicle_model,
+              vehicle_year: updatedVehicle.vehicle_year,
+              vehicle_color: updatedVehicle.vehicle_color,
+              vehicle_plate: updatedVehicle.vehicle_plate,
+              vehicle_type: updatedVehicle.vehicle_type,
+            })
+            .eq('id', existing.id)
+            .select('*')
+            .single();
+
+          if (updateErr) {
+            console.error('Error updating primary vehicle:', updateErr);
+          } else {
+            submissionData = updated;
+          }
+        } else {
+          // Update entry in additional_vehicles
+          const additionalVehicles = Array.isArray(existing.additional_vehicles) ? [...existing.additional_vehicles] : [];
+          const arrIndex = vehicleIndex - 1;
+          if (arrIndex >= 0 && arrIndex < additionalVehicles.length) {
+            additionalVehicles[arrIndex] = updatedVehicle;
+
+            const { data: updated, error: updateErr } = await supabaseAdmin
+              .from('submissions')
+              .update({ additional_vehicles: additionalVehicles })
+              .eq('id', existing.id)
+              .select('*')
+              .single();
+
+            if (updateErr) {
+              console.error('Error updating additional vehicle:', updateErr);
+            } else {
+              submissionData = updated;
+            }
+          }
+        }
+      }
+
+      if (action_type === 'vehicle_removal') {
+        if (!existing) {
+          return NextResponse.json(
+            { success: false, message: 'No submission found' },
+            { status: 404 }
+          );
+        }
+
+        const vehicleIndex = action_data.vehicle_index;
+        const additionalVehicles = Array.isArray(existing.additional_vehicles) ? [...existing.additional_vehicles] : [];
+
+        if (vehicleIndex === 0) {
+          // Removing primary vehicle — promote first additional if available
+          if (additionalVehicles.length > 0) {
+            const promoted = additionalVehicles.shift();
+            const { data: updated, error: updateErr } = await supabaseAdmin
+              .from('submissions')
+              .update({
+                vehicle_make: promoted.vehicle_make || null,
+                vehicle_model: promoted.vehicle_model || null,
+                vehicle_year: promoted.vehicle_year || null,
+                vehicle_color: promoted.vehicle_color || null,
+                vehicle_plate: promoted.vehicle_plate || null,
+                vehicle_type: promoted.vehicle_type || 'standard',
+                additional_vehicles: additionalVehicles.length > 0 ? additionalVehicles : null,
+              })
+              .eq('id', existing.id)
+              .select('*')
+              .single();
+
+            if (updateErr) {
+              console.error('Error promoting vehicle:', updateErr);
+            } else {
+              submissionData = updated;
+            }
+          } else {
+            // No additional vehicles — clear vehicle entirely
+            const { data: updated, error: updateErr } = await supabaseAdmin
+              .from('submissions')
+              .update({
+                has_vehicle: false,
+                vehicle_make: null,
+                vehicle_model: null,
+                vehicle_year: null,
+                vehicle_color: null,
+                vehicle_plate: null,
+                vehicle_type: null,
+                additional_vehicles: null,
+              })
+              .eq('id', existing.id)
+              .select('*')
+              .single();
+
+            if (updateErr) {
+              console.error('Error clearing vehicle:', updateErr);
+            } else {
+              submissionData = updated;
+            }
+          }
+        } else {
+          // Removing from additional_vehicles array
+          const arrIndex = vehicleIndex - 1;
+          if (arrIndex >= 0 && arrIndex < additionalVehicles.length) {
+            additionalVehicles.splice(arrIndex, 1);
+
+            const { data: updated, error: updateErr } = await supabaseAdmin
+              .from('submissions')
+              .update({
+                additional_vehicles: additionalVehicles.length > 0 ? additionalVehicles : null,
+              })
+              .eq('id', existing.id)
+              .select('*')
+              .single();
+
+            if (updateErr) {
+              console.error('Error removing additional vehicle:', updateErr);
+            } else {
+              submissionData = updated;
+            }
           }
         }
       }

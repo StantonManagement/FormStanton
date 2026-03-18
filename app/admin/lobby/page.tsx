@@ -52,6 +52,15 @@ interface TenantSubmission {
   vehicle_year?: number;
   vehicle_color?: string;
   vehicle_plate?: string;
+  vehicle_type?: string;
+  additional_vehicles?: Array<{
+    vehicle_make: string;
+    vehicle_model: string;
+    vehicle_year: number | string;
+    vehicle_color: string;
+    vehicle_plate: string;
+    vehicle_type?: string;
+  }>;
   vehicle_signature?: string;
   vehicle_signature_date?: string;
   vehicle_addendum_file?: string;
@@ -1439,10 +1448,26 @@ export default function LobbyPage() {
                         </div>
                         <div className="text-[var(--muted)]">
                           {sub.vehicle_color} • Plate: {sub.vehicle_plate}
+                          {sub.vehicle_type && sub.vehicle_type !== 'standard' && (
+                            <span className="ml-2">• {sub.vehicle_type}</span>
+                          )}
                         </div>
                       </div>
                     ) : (
                       <div className="text-[var(--error)]">Vehicle details incomplete</div>
+                    )}
+                    {Array.isArray(sub.additional_vehicles) && sub.additional_vehicles.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-[var(--divider)]">
+                        <div className="text-xs font-medium text-[var(--primary)] mb-1">Additional Vehicles:</div>
+                        {sub.additional_vehicles.map((av: any, idx: number) => (
+                          <div key={idx} className="text-[var(--muted)] ml-2 mb-1">
+                            • {av.vehicle_year} {av.vehicle_make} {av.vehicle_model} — {av.vehicle_color} · {av.vehicle_plate}
+                            {av.vehicle_type && av.vehicle_type !== 'standard' && (
+                              <span className="ml-1">({av.vehicle_type})</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
 

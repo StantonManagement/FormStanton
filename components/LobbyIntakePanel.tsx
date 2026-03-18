@@ -56,11 +56,11 @@ interface LobbyIntakePanelProps {
 
 type Tab = 'vehicle' | 'pet' | 'insurance' | 'history';
 
-const VEHICLE_TYPES: { label: string; fee: number }[] = [
-  { label: 'Moped, motorcycle, ATV, scooter', fee: PARKING_FEES.moped },
-  { label: 'Sedan, SUV, Pickup (under 20 ft)', fee: PARKING_FEES.standard },
-  { label: 'Oversized vehicle (over 20 ft)', fee: PARKING_FEES.oversized },
-  { label: 'Boat, trailer, equipment', fee: PARKING_FEES.boats },
+const VEHICLE_TYPES: { label: string; fee: number; key: string }[] = [
+  { label: 'Moped, motorcycle, ATV, scooter', fee: PARKING_FEES.moped, key: 'moped' },
+  { label: 'Sedan, SUV, Pickup (under 20 ft)', fee: PARKING_FEES.standard, key: 'standard' },
+  { label: 'Oversized vehicle (over 20 ft)', fee: PARKING_FEES.oversized, key: 'oversized' },
+  { label: 'Boat, trailer, equipment', fee: PARKING_FEES.boats, key: 'boat' },
 ];
 
 const PET_FEES: { label: string; weight: string; monthly: number; deposit: number }[] = [
@@ -72,6 +72,8 @@ const PET_FEES: { label: string; weight: string; monthly: number; deposit: numbe
 
 const ACTION_LABELS: Record<string, string> = {
   vehicle_registration: 'Vehicle Registered',
+  vehicle_update: 'Vehicle Updated',
+  vehicle_removal: 'Vehicle Removed',
   pet_registration: 'Pet Registered',
   pet_update: 'Pet Updated',
   pet_removal: 'Pet Removed',
@@ -119,13 +121,15 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     variant?: 'success' | 'error' | 'info';
   }>({ isOpen: false, title: '', message: '' });
 
-  // Vehicle state - pre-fill from submissionData if exists
+  // Vehicle state
+  const [registeredVehicles, setRegisteredVehicles] = useState<any[]>([]);
+  const [editingVehicleIndex, setEditingVehicleIndex] = useState<number | null>(null);
   const [vehicleType, setVehicleType] = useState(1);
-  const [vehicleMake, setVehicleMake] = useState(submissionData?.vehicle_make || '');
-  const [vehicleModel, setVehicleModel] = useState(submissionData?.vehicle_model || '');
-  const [vehicleYear, setVehicleYear] = useState(submissionData?.vehicle_year ? String(submissionData.vehicle_year) : '');
-  const [vehicleColor, setVehicleColor] = useState(submissionData?.vehicle_color || '');
-  const [vehiclePlate, setVehiclePlate] = useState(submissionData?.vehicle_plate || '');
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehicleYear, setVehicleYear] = useState('');
+  const [vehicleColor, setVehicleColor] = useState('');
+  const [vehiclePlate, setVehiclePlate] = useState('');
 
   // Pet state
   const [registeredPets, setRegisteredPets] = useState<any[]>([]);
@@ -218,14 +222,22 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         );
         if (match?.submissionData) {
           const sub = match.submissionData;
-          // Update vehicle fields
-          if (sub.has_vehicle) {
-            setVehicleMake(sub.vehicle_make || '');
-            setVehicleModel(sub.vehicle_model || '');
-            setVehicleYear(sub.vehicle_year ? String(sub.vehicle_year) : '');
-            setVehicleColor(sub.vehicle_color || '');
-            setVehiclePlate(sub.vehicle_plate || '');
+          // Build registered vehicles list from flat fields + additional_vehicles
+          const vehicles: any[] = [];
+          if (sub.has_vehicle && sub.vehicle_make) {
+            vehicles.push({
+              vehicle_make: sub.vehicle_make,
+              vehicle_model: sub.vehicle_model,
+              vehicle_year: sub.vehicle_year,
+              vehicle_color: sub.vehicle_color,
+              vehicle_plate: sub.vehicle_plate,
+              vehicle_type: sub.vehicle_type || 'standard',
+            });
           }
+          if (Array.isArray(sub.additional_vehicles)) {
+            vehicles.push(...sub.additional_vehicles);
+          }
+          setRegisteredVehicles(vehicles);
           // Update registered pets list
           if (sub.pets?.length > 0) {
             setRegisteredPets(sub.pets);
@@ -297,6 +309,77 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   // -- Vehicle handlers --
 
+  const clearVehicleForm = () => {
+    setVehicleType(1);
+    setVehicleMake('');
+    setVehicleModel('');
+    setVehicleYear('');
+    setVehicleColor('');
+    setVehiclePlate('');
+    setEditingVehicleIndex(null);
+  };
+
+  const handleEditVehicle = (index: number) => {
+    const v = registeredVehicles[index];
+    const typeIdx = VEHICLE_TYPES.findIndex(vt => vt.key === (v.vehicle_type || 'standard'));
+    setVehicleType(typeIdx >= 0 ? typeIdx : 1);
+    setVehicleMake(v.vehicle_make || '');
+    setVehicleModel(v.vehicle_model || '');
+    setVehicleYear(v.vehicle_year ? String(v.vehicle_year) : '');
+    setVehicleColor(v.vehicle_color || '');
+    setVehiclePlate(v.vehicle_plate || '');
+    setEditingVehicleIndex(index);
+  };
+
+  const handleRemoveVehicle = async (index: number) => {
+    const v = registeredVehicles[index];
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Vehicle',
+      message: `Remove ${v.vehicle_year || ''} ${v.vehicle_make} ${v.vehicle_model} (${v.vehicle_plate})?`,
+      variant: 'danger',
+      onConfirm: () => executeRemoveVehicle(index),
+    });
+  };
+
+  const executeRemoveVehicle = async (index: number) => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+    const v = registeredVehicles[index];
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          action_type: 'vehicle_removal',
+          action_data: { vehicle_index: index },
+          notes: `Removed vehicle: ${v.vehicle_make} ${v.vehicle_model} (${v.vehicle_plate})`,
+          performed_by: staffName,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await fetchFreshSubmission();
+        await fetchHistory();
+        if (data.submissionData && onSubmissionUpdated) {
+          onSubmissionUpdated(data.submissionData);
+        }
+        clearVehicleForm();
+        setAlertDialog({ isOpen: true, title: 'Vehicle Removed', message: 'Vehicle removed successfully.', variant: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Error', message: data.message || 'Failed to remove vehicle', variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to remove vehicle', variant: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveVehicle = async () => {
     if (!vehicleMake || !vehicleModel || !vehiclePlate) {
       setAlertDialog({
@@ -308,6 +391,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       return;
     }
     const vt = VEHICLE_TYPES[vehicleType];
+    const isEditing = editingVehicleIndex !== null;
     const actionData = {
       type: vt.label,
       make: vehicleMake,
@@ -316,6 +400,8 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       color: vehicleColor,
       plate: vehiclePlate.toUpperCase(),
       monthly_fee: vt.fee,
+      vehicle_type: vt.key,
+      vehicle_index: editingVehicleIndex,
     };
     setSaving(true);
     try {
@@ -326,20 +412,21 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
           tenant_name: tenant.name,
           building_address: tenant.buildingAddress,
           unit_number: tenant.unitNumber,
-          action_type: 'vehicle_registration',
+          action_type: isEditing ? 'vehicle_update' : 'vehicle_registration',
           action_data: actionData,
-          notes: `${vehicleMake} ${vehicleModel} ${vehicleYear} - ${vehiclePlate.toUpperCase()} - $${vt.fee}/mo`,
+          notes: `${isEditing ? 'Updated' : 'Added'} vehicle: ${vehicleMake} ${vehicleModel} ${vehicleYear} - ${vehiclePlate.toUpperCase()} - $${vt.fee}/mo`,
           performed_by: staffName,
         }),
       });
       const data = await res.json();
       if (data.success) {
+        await fetchFreshSubmission();
         await fetchHistory();
         if (data.submissionData && onSubmissionUpdated) {
           onSubmissionUpdated(data.submissionData);
         }
-        const wasUpdate = submissionData?.has_vehicle;
-        if (wasUpdate) {
+        clearVehicleForm();
+        if (isEditing) {
           setAlertDialog({
             isOpen: true,
             title: 'Vehicle Updated',
@@ -844,6 +931,37 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         {/* -- VEHICLE TAB -- */}
         {activeTab === 'vehicle' && (
           <div className="space-y-4">
+            {/* Registered Vehicles List */}
+            {registeredVehicles.length > 0 && (
+              <div className="bg-[#f8f7f5] p-4 rounded" style={{ borderLeftWidth: '3px', borderLeftColor: '#8b7355' }}>
+                <h3 className="font-serif text-base mb-3">Registered Vehicles</h3>
+                <div className="space-y-2">
+                  {registeredVehicles.map((v, index) => {
+                    const vtMatch = VEHICLE_TYPES.find(vt => vt.key === (v.vehicle_type || 'standard'));
+                    const fee = vtMatch?.fee ?? PARKING_FEES.standard;
+                    return (
+                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded text-sm">
+                        <div>
+                          <strong>{v.vehicle_year} {v.vehicle_make} {v.vehicle_model}</strong> — {v.vehicle_color} · {v.vehicle_plate}
+                          <span className="text-[var(--muted)] ml-2">(${fee}/mo)</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEditVehicle(index)} className="text-xs px-3 py-1 bg-[#8b7355] text-white rounded hover:bg-[#6d5a43] transition-colors">
+                            Edit
+                          </button>
+                          <button onClick={() => handleRemoveVehicle(index)} className="text-xs px-3 py-1 border border-[#8b7355] text-[#8b7355] rounded hover:bg-[#f8f7f5] transition-colors">
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Add/Edit Vehicle Form */}
+            <h3 className="font-serif text-base">{editingVehicleIndex !== null ? 'Edit Vehicle' : 'Add New Vehicle'}</h3>
             <div>
               <label className={labelClass}>Vehicle Type</label>
               <select value={vehicleType} onChange={e => setVehicleType(Number(e.target.value))} className={selectClass}>
@@ -879,8 +997,13 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
             </div>
             <div className="flex flex-wrap gap-3 pt-2">
               <button onClick={handleSaveVehicle} disabled={saving} className={btnPrimary}>
-                {saving ? 'Saving...' : (submissionData?.has_vehicle ? 'Update Vehicle' : 'Save Vehicle')}
+                {saving ? 'Saving...' : (editingVehicleIndex !== null ? 'Update Vehicle' : 'Save Vehicle')}
               </button>
+              {editingVehicleIndex !== null && (
+                <button onClick={clearVehicleForm} className={btnSecondary}>
+                  Cancel
+                </button>
+              )}
               <button onClick={handlePrintVehicle} className={btnSecondary}>
                 Print Addendum
               </button>
