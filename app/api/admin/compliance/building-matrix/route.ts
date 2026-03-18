@@ -5,6 +5,7 @@ import { normalizeAddress, unitsMatch } from '@/lib/addressNormalizer';
 import { buildingUnits } from '@/lib/buildings';
 import { PARKING_FEES } from '@/lib/policyContent';
 import { getBuildingRequirements } from '@/lib/buildingRequirements';
+import { computeColumnStats } from '@/lib/complianceColumns';
 import type { MatrixRow, BuildingMatrixStats, BuildingMatrixResponse } from '@/types/compliance';
 
 /** Calculate total monthly pet rent from a submission's pets array */
@@ -247,25 +248,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Compute aggregate stats
+    // Compute aggregate stats via column registry
     const withSub = rows.filter(r => !r.missing);
     const stats: BuildingMatrixStats = {
       total_units: knownUnits.length,
       occupied_units: buildingTenants.length,
       submissions: withSub.length,
       missing_submissions: rows.filter(r => r.missing).length,
-      vehicle_docs_uploaded: withSub.filter(r => r.has_vehicle && r.vehicle_addendum_uploaded_to_appfolio).length,
-      vehicle_docs_total: withSub.filter(r => r.has_vehicle).length,
-      pet_docs_uploaded: withSub.filter(r => r.has_pets && r.pet_addendum_uploaded_to_appfolio).length,
-      pet_docs_total: withSub.filter(r => r.has_pets).length,
-      insurance_uploaded: withSub.filter(r => r.has_insurance && r.insurance_uploaded_to_appfolio).length,
-      insurance_total: withSub.filter(r => r.has_insurance).length,
-      pet_fees_loaded: withSub.filter(r => r.has_pets && r.pet_fee_added_to_appfolio).length,
-      pet_fees_total: withSub.filter(r => r.has_pets).length,
-      permit_fees_loaded: withSub.filter(r => r.requires_parking_permit && r.permit_fee_added_to_appfolio).length,
-      permit_fees_total: withSub.filter(r => r.requires_parking_permit).length,
-      permits_issued: withSub.filter(r => r.requires_parking_permit && r.permit_issued).length,
-      permits_total: withSub.filter(r => r.requires_parking_permit).length,
+      columns: computeColumnStats(withSub),
     };
 
     const response: BuildingMatrixResponse = {

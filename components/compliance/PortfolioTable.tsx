@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import type { PortfolioBuildingStats } from '@/types/compliance';
+import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
 
 interface PortfolioTableProps {
   rows: PortfolioBuildingStats[];
@@ -101,18 +102,15 @@ export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuildi
               <th className={thLeft} onClick={() => setSortKey('building')}>Building</th>
               <th className={thClass} onClick={() => setSortKey('asset_id')}>Asset ID</th>
               <th className={thClass} onClick={() => setSortKey('submissions')}>Submissions</th>
-              <th className={thClass}>Vehicle Docs</th>
-              <th className={thClass}>Pet Docs</th>
-              <th className={thClass}>Insurance</th>
-              <th className={thClass}>Pet Fees</th>
-              <th className={thClass}>Permit Fees</th>
-              <th className={thClass}>Permits</th>
+              {COMPLIANCE_COLUMNS.map(col => (
+                <th key={col.id} className={thClass}>{col.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-[var(--muted)] border border-[var(--divider)]">
+                <td colSpan={3 + COMPLIANCE_COLUMNS.length} className="px-4 py-8 text-center text-[var(--muted)] border border-[var(--divider)]">
                   No buildings to display.
                 </td>
               </tr>
@@ -130,12 +128,12 @@ export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuildi
                   {row.asset_id}
                 </td>
                 <FractionCell num={row.submissions} den={row.occupied_units} />
-                <FractionCell num={row.vehicle_docs_uploaded} den={row.vehicle_docs_total} />
-                <FractionCell num={row.pet_docs_uploaded} den={row.pet_docs_total} />
-                <FractionCell num={row.insurance_uploaded} den={row.insurance_total} />
-                <FractionCell num={row.pet_fees_loaded} den={row.pet_fees_total} />
-                <FractionCell num={row.permit_fees_loaded} den={row.permit_fees_total} />
-                <FractionCell num={row.permits_issued} den={row.permits_total} />
+                {COMPLIANCE_COLUMNS.map(col => {
+                  const s = row.columns[col.id];
+                  return s ? <FractionCell key={col.id} num={s.complete} den={s.total} /> : (
+                    <td key={col.id} className="px-2 py-2 text-center text-xs text-[var(--muted)] border border-[var(--divider)]">—</td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

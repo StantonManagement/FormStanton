@@ -86,18 +86,7 @@ export interface BuildingMatrixStats {
   occupied_units: number;
   submissions: number;
   missing_submissions: number;
-  vehicle_docs_uploaded: number;
-  vehicle_docs_total: number;
-  pet_docs_uploaded: number;
-  pet_docs_total: number;
-  insurance_uploaded: number;
-  insurance_total: number;
-  pet_fees_loaded: number;
-  pet_fees_total: number;
-  permit_fees_loaded: number;
-  permit_fees_total: number;
-  permits_issued: number;
-  permits_total: number;
+  columns: Record<string, import('@/lib/complianceColumns').ColumnStat>;
 }
 
 /** One row per building in the portfolio table */
@@ -108,18 +97,7 @@ export interface PortfolioBuildingStats {
   total_units: number;
   occupied_units: number;
   submissions: number;
-  vehicle_docs_uploaded: number;
-  vehicle_docs_total: number;
-  pet_docs_uploaded: number;
-  pet_docs_total: number;
-  insurance_uploaded: number;
-  insurance_total: number;
-  pet_fees_loaded: number;
-  pet_fees_total: number;
-  permit_fees_loaded: number;
-  permit_fees_total: number;
-  permits_issued: number;
-  permits_total: number;
+  columns: Record<string, import('@/lib/complianceColumns').ColumnStat>;
   /** Overall completion score 0–100 for sorting (average of all applicable column percentages) */
   completion_score: number;
 }

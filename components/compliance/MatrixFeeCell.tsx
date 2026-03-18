@@ -22,7 +22,7 @@ interface MatrixFeeCellProps {
   /** submission ID for undo actions */
   submissionId: string | null;
   /** 'pet_rent' | 'permit_fee' */
-  feeType: 'pet_rent' | 'permit_fee';
+  feeType: string;
   /** Tenant name for confirmation messages */
   tenantName: string;
   /** Unit number for confirmation messages */

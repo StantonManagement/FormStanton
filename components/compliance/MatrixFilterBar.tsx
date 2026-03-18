@@ -1,15 +1,9 @@
 'use client';
 
 import type { MatrixRow } from '@/types/compliance';
+import { COMPLIANCE_COLUMNS } from '@/lib/complianceColumns';
 
-export type MatrixFilter =
-  | 'vehicle_doc_incomplete'
-  | 'pet_doc_incomplete'
-  | 'insurance_incomplete'
-  | 'pet_fee_not_loaded'
-  | 'permit_fee_not_loaded'
-  | 'permit_not_issued'
-  | 'missing_submission';
+export type MatrixFilter = string;
 
 interface MatrixFilterBarProps {
   activeFilters: Set<MatrixFilter>;
@@ -18,73 +12,31 @@ interface MatrixFilterBarProps {
   rows: MatrixRow[];
 }
 
-const FILTER_DEFS: Array<{ id: MatrixFilter; label: string; countFn: (rows: MatrixRow[]) => number }> = [
-  {
-    id: 'vehicle_doc_incomplete',
-    label: 'Vehicle Doc',
-    countFn: (rows) => rows.filter(r => r.has_vehicle && !r.vehicle_addendum_uploaded_to_appfolio && !r.missing).length,
-  },
-  {
-    id: 'pet_doc_incomplete',
-    label: 'Pet Doc',
-    countFn: (rows) => rows.filter(r => r.has_pets && !r.pet_addendum_uploaded_to_appfolio && !r.missing).length,
-  },
-  {
-    id: 'insurance_incomplete',
-    label: 'Insurance',
-    countFn: (rows) => rows.filter(r => r.has_insurance && !r.insurance_uploaded_to_appfolio && !r.missing).length,
-  },
-  {
-    id: 'pet_fee_not_loaded',
-    label: 'Pet Fee',
-    countFn: (rows) => rows.filter(r => r.has_pets && !r.pet_fee_added_to_appfolio && !r.missing).length,
-  },
-  {
-    id: 'permit_fee_not_loaded',
-    label: 'Permit Fee',
-    countFn: (rows) => rows.filter(r => r.has_vehicle && !r.permit_fee_added_to_appfolio && !r.missing).length,
-  },
-  {
-    id: 'permit_not_issued',
-    label: 'Permit',
-    countFn: (rows) => rows.filter(r => r.has_vehicle && !r.permit_issued && !r.missing).length,
-  },
+const FILTER_DEFS: Array<{ id: string; label: string; countFn: (rows: MatrixRow[]) => number }> = [
+  ...COMPLIANCE_COLUMNS.map(col => ({
+    id: col.id,
+    label: col.label,
+    countFn: (rows: MatrixRow[]) => rows.filter(r => col.isApplicable(r) && !col.isComplete(r) && !r.missing).length,
+  })),
   {
     id: 'missing_submission',
     label: 'Missing',
-    countFn: (rows) => rows.filter(r => r.missing).length,
+    countFn: (rows: MatrixRow[]) => rows.filter(r => r.missing).length,
   },
 ];
 
-/** Apply active filters to rows (OR logic — show row if any active filter matches) */
+/** Apply active filters to rows (OR logic - show row if any active filter matches) */
 export function applyMatrixFilters(rows: MatrixRow[], activeFilters: Set<MatrixFilter>): MatrixRow[] {
   if (activeFilters.size === 0) return rows;
 
   return rows.filter(row => {
-    for (const f of activeFilters) {
-      switch (f) {
-        case 'vehicle_doc_incomplete':
-          if (row.has_vehicle && !row.vehicle_addendum_uploaded_to_appfolio && !row.missing) return true;
-          break;
-        case 'pet_doc_incomplete':
-          if (row.has_pets && !row.pet_addendum_uploaded_to_appfolio && !row.missing) return true;
-          break;
-        case 'insurance_incomplete':
-          if (row.has_insurance && !row.insurance_uploaded_to_appfolio && !row.missing) return true;
-          break;
-        case 'pet_fee_not_loaded':
-          if (row.has_pets && !row.pet_fee_added_to_appfolio && !row.missing) return true;
-          break;
-        case 'permit_fee_not_loaded':
-          if (row.has_vehicle && !row.permit_fee_added_to_appfolio && !row.missing) return true;
-          break;
-        case 'permit_not_issued':
-          if (row.has_vehicle && !row.permit_issued && !row.missing) return true;
-          break;
-        case 'missing_submission':
-          if (row.missing) return true;
-          break;
+    for (const fId of activeFilters) {
+      if (fId === 'missing_submission') {
+        if (row.missing) return true;
+        continue;
       }
+      const col = COMPLIANCE_COLUMNS.find(c => c.id === fId);
+      if (col && col.isApplicable(row) && !col.isComplete(row) && !row.missing) return true;
     }
     return false;
   });
