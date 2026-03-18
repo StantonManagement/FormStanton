@@ -120,6 +120,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sync add_insurance_to_rent on the submissions table
+    const isAppfolio = insurance_type === 'appfolio';
+    const { data: submissions } = await supabaseAdmin
+      .from('submissions')
+      .select('id')
+      .ilike('building_address', building_address)
+      .ilike('unit_number', unit_number)
+      .is('merged_into', null)
+      .limit(1);
+
+    if (submissions && submissions.length > 0) {
+      await supabaseAdmin
+        .from('submissions')
+        .update({ add_insurance_to_rent: isAppfolio })
+        .eq('id', submissions[0].id);
+    }
+
     return NextResponse.json({ success: true, policy: data });
   } catch (error: any) {
     console.error('Insurance POST error:', error);

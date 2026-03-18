@@ -85,6 +85,7 @@ const ACTION_LABELS: Record<string, string> = {
   insurance_proof_received: 'Insurance Proof Received',
   insurance_expiration_warning: 'Insurance Expiration Warning',
   gave_additional_insured_instructions: 'Gave Additional Insured Instructions',
+  id_photo_upload: 'Tenant ID Photo Uploaded',
   printed_forms: 'Printed Forms',
   general_note: 'Note',
 };
@@ -153,6 +154,11 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   // Document upload state
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+
+  // ID photo state
+  const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
+  const [idPhotoPreview, setIdPhotoPreview] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState(false);
 
   // Insurance state
   const [insuranceChoice, setInsuranceChoice] = useState<'own_policy' | 'appfolio'>('own_policy');
@@ -823,6 +829,24 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         },
         label
       );
+      // Refresh submission so parent sees updated add_insurance_to_rent
+      await fetchFreshSubmission();
+      if (onSubmissionUpdated && submissionData) {
+        // Re-fetch to get the updated submission with synced flag
+        const freshRes = await fetch('/api/admin/unified-tenants');
+        const freshData = await freshRes.json();
+        if (freshData.success) {
+          const match = freshData.data.find((t: any) =>
+            t.building_address === tenant.buildingAddress &&
+            t.unit_number === tenant.unitNumber &&
+            t.name === tenant.name
+          );
+          if (match?.submissionData) {
+            onSubmissionUpdated(match.submissionData);
+          }
+        }
+      }
+
       setAlertDialog({
         isOpen: true,
         title: 'Insurance Saved',
@@ -971,6 +995,66 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     }
   };
 
+  // -- ID photo upload handler --
+
+  const handleUploadId = async () => {
+    if (!idPhotoFile) return;
+    setUploadingId(true);
+    try {
+      // Ensure a submission record exists
+      let subId = submissionData?.id;
+      if (!subId) {
+        const res = await fetch('/api/admin/lobby-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_name: tenant.name,
+            building_address: tenant.buildingAddress,
+            unit_number: tenant.unitNumber,
+            action_type: 'id_photo_upload',
+            action_data: {},
+            notes: 'Tenant ID photo uploaded',
+            performed_by: staffName,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success || !data.submissionData?.id) {
+          setAlertDialog({ isOpen: true, title: 'Error', message: data.message || 'Failed to create submission for ID upload', variant: 'error' });
+          setUploadingId(false);
+          return;
+        }
+        subId = data.submissionData.id;
+        if (onSubmissionUpdated) onSubmissionUpdated(data.submissionData);
+      }
+
+      // Upload the file
+      const formData = new FormData();
+      formData.append('submissionId', subId);
+      formData.append('documentType', 'pickup_id_photo');
+      formData.append('file', idPhotoFile);
+
+      const uploadRes = await fetch('/api/admin/compliance/attach-document', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (uploadData.success) {
+        if (onSubmissionUpdated) onSubmissionUpdated(uploadData.data);
+        // Log interaction if we didn't already (submission already existed)
+        if (submissionData?.id) {
+          await saveInteraction('id_photo_upload', {}, 'Tenant ID photo uploaded');
+        }
+        setIdPhotoFile(null);
+        setIdPhotoPreview(null);
+        await fetchHistory();
+        setAlertDialog({ isOpen: true, title: 'ID Uploaded', message: 'Tenant ID photo saved.', variant: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Upload Failed', message: uploadData.message || 'Failed to upload ID photo', variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Upload Failed', message: 'Failed to upload ID photo', variant: 'error' });
+    } finally {
+      setUploadingId(false);
+    }
+  };
+
   // -- Helpers --
 
   const isExpiringSoon = (dateStr: string | null): boolean => {
@@ -1013,6 +1097,55 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
           <p className="text-xs text-gray-500 mt-0.5">{tenant.name} &mdash; {tenant.buildingAddress}, Unit {tenant.unitNumber}</p>
         </div>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      {/* ID Photo Upload — always visible above tabs */}
+      <div className="px-5 py-3 border-b border-gray-200 bg-[#fdfcfa]">
+        <div className="flex items-center justify-between">
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Tenant ID Photo</label>
+          {submissionData?.pickup_id_photo && !idPhotoFile && (
+            <span className="text-xs text-green-700 font-medium">&#10003; On file</span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-1.5">
+          <label className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
+            {uploadingId ? 'Uploading...' : idPhotoFile ? `\u2713 ${idPhotoFile.name.slice(0, 25)}` : '\uD83D\uDCF7 Take / Upload ID Photo'}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setIdPhotoFile(file);
+                  setIdPhotoPreview(URL.createObjectURL(file));
+                }
+                e.target.value = '';
+              }}
+              disabled={uploadingId}
+              className="hidden"
+            />
+          </label>
+          {idPhotoFile && !uploadingId && (
+            <>
+              <button
+                onClick={handleUploadId}
+                className="px-3 py-1.5 text-sm bg-[#1a2744] text-white rounded-none hover:bg-[#2d3f5f] transition-colors duration-200"
+              >
+                Upload
+              </button>
+              <button
+                onClick={() => { setIdPhotoFile(null); setIdPhotoPreview(null); }}
+                className="text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Remove
+              </button>
+            </>
+          )}
+        </div>
+        {idPhotoPreview && (
+          <img src={idPhotoPreview} alt="ID Preview" className="mt-2 max-h-24 border border-gray-200" />
+        )}
       </div>
 
       {/* Tabs */}
@@ -1457,20 +1590,22 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               <button onClick={handlePrintInsurance} className={btnSecondary}>
                 Print Authorization
               </button>
-              <label className={`${btnSecondary} cursor-pointer`}>
-                {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleUploadDoc('insurance', file);
-                    e.target.value = '';
-                  }}
-                  disabled={uploadingDocType === 'insurance'}
-                  className="hidden"
-                />
-              </label>
+              {insuranceChoice === 'own_policy' && (
+                <label className={`${btnSecondary} cursor-pointer`}>
+                  {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadDoc('insurance', file);
+                      e.target.value = '';
+                    }}
+                    disabled={uploadingDocType === 'insurance'}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
 
             <hr className="my-4 border-gray-200" />

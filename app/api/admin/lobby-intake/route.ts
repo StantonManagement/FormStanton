@@ -84,6 +84,36 @@ export async function POST(request: NextRequest) {
     // 2. Upsert submissions table so compliance pipeline sees the data
     let submissionData = null;
 
+    if (action_type === 'id_photo_upload') {
+      const existing = await findSubmission(building_address, unit_number, tenant_name);
+
+      if (existing) {
+        submissionData = existing;
+      } else {
+        const { data: created, error: createErr } = await supabaseAdmin
+          .from('submissions')
+          .insert({
+            full_name: tenant_name,
+            building_address,
+            unit_number,
+            has_pets: false,
+            has_vehicle: false,
+            has_insurance: false,
+            add_insurance_to_rent: false,
+            insurance_upload_pending: false,
+            language: 'en',
+          })
+          .select('*')
+          .single();
+
+        if (createErr) {
+          console.error('Error creating submission for ID photo:', createErr);
+        } else {
+          submissionData = created;
+        }
+      }
+    }
+
     if (action_type === 'esa_document_received') {
       // Find existing submission
       const existing = await findSubmission(building_address, unit_number, tenant_name);
