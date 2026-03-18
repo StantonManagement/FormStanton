@@ -41,13 +41,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updateData: Record<string, any> = {
-      [baseColumn]: true,
-      [`${baseColumn}_at`]: new Date().toISOString(),
-      [`${baseColumn}_by`]: uploadedBy,
-    };
+    const isUndo = body.undo === true;
 
-    if (note) {
+    const updateData: Record<string, any> = isUndo
+      ? {
+          [baseColumn]: false,
+          [`${baseColumn}_at`]: null,
+          [`${baseColumn}_by`]: null,
+        }
+      : {
+          [baseColumn]: true,
+          [`${baseColumn}_at`]: new Date().toISOString(),
+          [`${baseColumn}_by`]: uploadedBy,
+        };
+
+    if (!isUndo && note) {
       updateData[`${documentType}_upload_note`] = note;
     }
 
@@ -66,8 +74,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await logAudit(sessionUser, 'appfolio.document_upload', 'submission', submissionId, {
-      documentType, uploadedBy,
+    await logAudit(sessionUser, isUndo ? 'appfolio.document_upload_undo' : 'appfolio.document_upload', 'submission', submissionId, {
+      documentType, uploadedBy, undo: isUndo,
     }, getClientIp(request));
 
     return NextResponse.json({

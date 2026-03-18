@@ -22,6 +22,7 @@ interface TenantSubmission {
   has_insurance: boolean;
   insurance_provider?: string;
   insurance_policy_number?: string;
+  insurance_expiration_date?: string;
   insurance_file?: string;
 }
 
@@ -52,6 +53,7 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
   const [insuranceData, setInsuranceData] = useState({
     provider: submission.insurance_provider || '',
     policyNumber: submission.insurance_policy_number || '',
+    expirationDate: submission.insurance_expiration_date || '',
   });
 
   const [petDocFile, setPetDocFile] = useState<File | null>(null);
@@ -157,9 +159,10 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
       }
 
       // Insurance data
-      if (insuranceData.provider || insuranceData.policyNumber || insuranceFile) {
+      if (insuranceData.provider || insuranceData.policyNumber || insuranceData.expirationDate || insuranceFile) {
         if (insuranceData.provider) formData.append('insuranceProvider', insuranceData.provider);
         if (insuranceData.policyNumber) formData.append('insurancePolicyNumber', insuranceData.policyNumber);
+        if (insuranceData.expirationDate) formData.append('insuranceExpirationDate', insuranceData.expirationDate);
       }
 
       // Files
@@ -438,6 +441,18 @@ export default function SubmissionEditModal({ submission, onClose, onSuccess }: 
                   onChange={(e) => handleInsuranceChange('policyNumber', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Policy number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expiration Date
+                </label>
+                <input
+                  type="date"
+                  value={insuranceData.expirationDate}
+                  onChange={(e) => handleInsuranceChange('expirationDate', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>

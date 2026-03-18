@@ -3,12 +3,40 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  FileText,
+  ClipboardList,
+  Receipt,
+  ScanLine,
+  FolderOpen,
+  DoorOpen,
+  Car,
+  LayoutGrid,
+  History,
+  Users,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface NavItem {
   label: string;
   href: string;
-  icon?: string;
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  'Form Submissions': FileText,
+  'Onboarding Submissions': ClipboardList,
+  'Reimbursement Requests': Receipt,
+  'Scan Import': ScanLine,
+  'Forms Library': FolderOpen,
+  'Lobby (Permit Distribution)': DoorOpen,
+  'Phone Vehicle Entry': Car,
+  'Compliance Dashboard': LayoutGrid,
+  'Audit Log': History,
+  'User Management': Users,
+};
 
 interface NavSection {
   title: string;
@@ -83,11 +111,11 @@ export default function AdminSidebar() {
   return (
     <div
       className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-out ${
-        isCollapsed ? 'w-16' : 'w-64'
+        isCollapsed ? 'w-[48px]' : 'w-64'
       }`}
     >
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        {!isCollapsed && (
+      <div className={`p-4 border-b border-gray-200 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        {!isCollapsed ? (
           <div className="flex items-center gap-2">
             <img
               src="/Stanton-logo.PNG"
@@ -99,41 +127,45 @@ export default function AdminSidebar() {
             />
             <h1 className="text-lg font-serif text-gray-900">Admin Portal</h1>
           </div>
+        ) : (
+          <img
+            src="/Stanton-logo.PNG"
+            alt="Stanton Management"
+            className="h-6 w-auto"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
         )}
-        <button
-          onClick={toggleCollapse}
-          className="p-2 hover:bg-gray-100 rounded-none transition-colors duration-200 ease-out"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <svg
-            className="w-5 h-5 text-gray-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {!isCollapsed && (
+          <button
+            onClick={toggleCollapse}
+            className="p-2 hover:bg-gray-100 rounded-none transition-colors duration-200 ease-out"
+            title="Collapse sidebar"
           >
-            {isCollapsed ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 5l7 7-7 7M5 5l7 7-7 7"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
-            )}
-          </svg>
-        </button>
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4">
+      {isCollapsed && (
+        <div className="flex justify-center py-2">
+          <button
+            onClick={toggleCollapse}
+            className="p-2 hover:bg-gray-100 rounded-none transition-colors duration-200 ease-out"
+            title="Expand sidebar"
+          >
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      )}
+
+      <nav className="flex-1 overflow-y-auto p-2">
         {navSections.map((section, sectionIdx) => (
-          <div key={sectionIdx} className="mb-6">
-            {!isCollapsed && (
+          <div key={sectionIdx} className={isCollapsed ? 'mb-2' : 'mb-6'}>
+            {isCollapsed ? (
+              sectionIdx > 0 && <hr className="border-[var(--divider)] my-2 mx-1" />
+            ) : (
               <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 px-2">
                 {section.title}
               </h2>
@@ -141,19 +173,28 @@ export default function AdminSidebar() {
             <ul className="space-y-1">
               {section.items.map((item) => {
                 const isActive = pathname === item.href;
+                const Icon = iconMap[item.label];
                 return (
-                  <li key={item.href}>
+                  <li key={item.href} className={isCollapsed ? 'group relative' : ''}>
                     <Link
                       href={item.href}
-                      className={`block px-3 py-2 rounded-none text-sm transition-colors duration-200 ease-out ${
+                      className={`block rounded-none text-sm transition-colors duration-200 ease-out ${
                         isActive
                           ? 'bg-gray-900 text-white'
                           : 'text-gray-700 hover:bg-gray-100'
-                      } ${isCollapsed ? 'text-center' : ''}`}
-                      title={isCollapsed ? item.label : undefined}
+                      } ${isCollapsed ? 'flex items-center justify-center py-2' : 'px-3 py-2'}`}
                     >
-                      {isCollapsed ? item.label.charAt(0) : item.label}
+                      {isCollapsed && Icon ? (
+                        <Icon size={20} />
+                      ) : (
+                        item.label
+                      )}
                     </Link>
+                    {isCollapsed && (
+                      <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-[var(--ink)] text-[var(--paper)] text-xs whitespace-nowrap rounded-none opacity-0 group-hover:opacity-100 transition-opacity duration-100 delay-150 pointer-events-none z-50">
+                        {item.label}
+                      </span>
+                    )}
                   </li>
                 );
               })}
@@ -162,17 +203,27 @@ export default function AdminSidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-200">
-        <button
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className={`w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-none transition-colors duration-200 ease-out ${
-            isCollapsed ? 'text-center' : ''
-          } disabled:opacity-50`}
-          title={isCollapsed ? 'Logout' : undefined}
-        >
-          {isCollapsed ? '⎋' : isLoggingOut ? 'Logging out...' : 'Logout'}
-        </button>
+      <div className={`border-t border-gray-200 ${isCollapsed ? 'p-2' : 'p-4'}`}>
+        <div className={isCollapsed ? 'group relative' : ''}>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className={`w-full py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-none transition-colors duration-200 ease-out disabled:opacity-50 ${
+              isCollapsed ? 'flex items-center justify-center' : 'px-3'
+            }`}
+          >
+            {isCollapsed ? (
+              <LogOut size={20} />
+            ) : (
+              isLoggingOut ? 'Logging out...' : 'Logout'
+            )}
+          </button>
+          {isCollapsed && (
+            <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-[var(--ink)] text-[var(--paper)] text-xs whitespace-nowrap rounded-none opacity-0 group-hover:opacity-100 transition-opacity duration-100 delay-150 pointer-events-none z-50">
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -100,6 +100,13 @@ export async function POST(request: NextRequest) {
       hasUpdates = true;
     }
 
+    const insuranceExpirationDate = formData.get('insuranceExpirationDate') as string | null;
+    if (insuranceExpirationDate) {
+      updateData.insurance_expiration_date = insuranceExpirationDate;
+      updateData.has_insurance = true;
+      hasUpdates = true;
+    }
+
     // Pet document upload
     const petDocFile = formData.get('petDocument') as File | null;
     if (petDocFile) {

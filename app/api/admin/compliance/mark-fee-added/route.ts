@@ -19,19 +19,30 @@ export async function POST(request: NextRequest) {
     const sessionUser = await getSessionUser();
     const addedBy = sessionUser?.displayName || body.addedBy || 'Admin';
 
-    if (!submissionId || !feeType || !amount) {
+    const isUndo = body.undo === true;
+
+    if (!submissionId || !feeType) {
       return NextResponse.json(
         { success: false, message: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid amount' },
-        { status: 400 }
-      );
+    let parsedAmount = 0;
+    if (!isUndo) {
+      if (amount === undefined || amount === null || amount === '') {
+        return NextResponse.json(
+          { success: false, message: 'Missing required fields' },
+          { status: 400 }
+        );
+      }
+      parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount < 0) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid amount' },
+          { status: 400 }
+        );
+      }
     }
 
     // Map fee type to column names
@@ -48,12 +59,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const updateData: Record<string, any> = {
-      [`${baseColumn}_added_to_appfolio`]: true,
-      [`${baseColumn}_added_to_appfolio_at`]: new Date().toISOString(),
-      [`${baseColumn}_added_to_appfolio_by`]: addedBy,
-      [`${baseColumn}_amount`]: parsedAmount,
-    };
+    const updateData: Record<string, any> = isUndo
+      ? {
+          [`${baseColumn}_added_to_appfolio`]: false,
+          [`${baseColumn}_added_to_appfolio_at`]: null,
+          [`${baseColumn}_added_to_appfolio_by`]: null,
+          [`${baseColumn}_amount`]: null,
+        }
+      : {
+          [`${baseColumn}_added_to_appfolio`]: true,
+          [`${baseColumn}_added_to_appfolio_at`]: new Date().toISOString(),
+          [`${baseColumn}_added_to_appfolio_by`]: addedBy,
+          [`${baseColumn}_amount`]: parsedAmount,
+        };
 
     const { data, error } = await supabaseAdmin
       .from('submissions')
@@ -70,8 +88,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await logAudit(sessionUser, 'appfolio.fee_added', 'submission', submissionId, {
-      feeType, amount: parsedAmount, addedBy,
+    await logAudit(sessionUser, isUndo ? 'appfolio.fee_added_undo' : 'appfolio.fee_added', 'submission', submissionId, {
+      feeType, amount: isUndo ? null : parsedAmount, addedBy, undo: isUndo,
     }, getClientIp(request));
 
     return NextResponse.json({

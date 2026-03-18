@@ -14,87 +14,96 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId } = body;
+    const { submissionId, submissionIds } = body;
 
-    if (!submissionId) {
+    // Determine the list of IDs to process
+    const ids: string[] = submissionIds
+      ? (Array.isArray(submissionIds) ? submissionIds : [submissionIds])
+      : submissionId
+        ? [submissionId]
+        : [];
+
+    if (ids.length === 0) {
       return NextResponse.json(
-        { success: false, message: 'Submission ID required' },
+        { success: false, message: 'Submission ID(s) required' },
         { status: 400 }
       );
     }
 
-    // Fetch submission to get document paths
-    const { data: submission, error: fetchError } = await supabaseAdmin
+    // Fetch all submissions
+    const { data: submissions, error: fetchError } = await supabaseAdmin
       .from('submissions')
-      .select('full_name, unit_number, pet_addendum_file, vehicle_addendum_file, insurance_file')
-      .eq('id', submissionId)
-      .single();
+      .select('id, full_name, unit_number, pet_addendum_file, vehicle_addendum_file, insurance_file')
+      .in('id', ids);
 
-    if (fetchError || !submission) {
+    if (fetchError || !submissions || submissions.length === 0) {
       return NextResponse.json(
-        { success: false, message: 'Submission not found' },
+        { success: false, message: 'No submissions found' },
         { status: 404 }
       );
     }
 
     const zip = new JSZip();
-    const documents: Array<{ path: string; name: string }> = [];
+    const isBulk = submissions.length > 1;
+    let totalDocs = 0;
 
-    if (submission.pet_addendum_file) {
-      documents.push({
-        path: submission.pet_addendum_file,
-        name: 'Pet_Addendum.pdf'
-      });
+    for (const submission of submissions) {
+      const safeName = submission.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
+      const safeUnit = submission.unit_number?.replace(/[^a-zA-Z0-9]/g, '_') || 'NoUnit';
+      const folderPrefix = isBulk ? `Unit_${safeUnit}_${safeName}/` : '';
+
+      const documents: Array<{ path: string; name: string }> = [];
+
+      if (submission.pet_addendum_file) {
+        documents.push({ path: submission.pet_addendum_file, name: 'Pet_Addendum.pdf' });
+      }
+      if (submission.vehicle_addendum_file) {
+        documents.push({ path: submission.vehicle_addendum_file, name: 'Vehicle_Addendum.pdf' });
+      }
+      if (submission.insurance_file) {
+        const ext = submission.insurance_file.split('.').pop() || 'pdf';
+        documents.push({ path: submission.insurance_file, name: `Insurance.${ext}` });
+      }
+
+      for (const doc of documents) {
+        try {
+          const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+            .from('submissions')
+            .download(doc.path);
+
+          if (downloadError || !fileData) {
+            console.error(`Failed to download ${doc.name} for ${submission.id}:`, downloadError);
+            continue;
+          }
+
+          const arrayBuffer = await fileData.arrayBuffer();
+          zip.file(`${folderPrefix}${doc.name}`, arrayBuffer);
+          totalDocs++;
+        } catch (error) {
+          console.error(`Error processing ${doc.name} for ${submission.id}:`, error);
+        }
+      }
     }
 
-    if (submission.vehicle_addendum_file) {
-      documents.push({
-        path: submission.vehicle_addendum_file,
-        name: 'Vehicle_Addendum.pdf'
-      });
-    }
-
-    if (submission.insurance_file) {
-      const ext = submission.insurance_file.split('.').pop() || 'pdf';
-      documents.push({
-        path: submission.insurance_file,
-        name: `Insurance.${ext}`
-      });
-    }
-
-    if (documents.length === 0) {
+    if (totalDocs === 0) {
       return NextResponse.json(
         { success: false, message: 'No documents available to download' },
         { status: 404 }
       );
     }
 
-    // Download each document and add to ZIP
-    for (const doc of documents) {
-      try {
-        const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-          .from('submissions')
-          .download(doc.path);
-
-        if (downloadError || !fileData) {
-          console.error(`Failed to download ${doc.name}:`, downloadError);
-          continue;
-        }
-
-        const arrayBuffer = await fileData.arrayBuffer();
-        zip.file(doc.name, arrayBuffer);
-      } catch (error) {
-        console.error(`Error processing ${doc.name}:`, error);
-      }
-    }
-
     // Generate ZIP file
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
     // Create filename
-    const safeName = submission.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
-    const safeUnit = submission.unit_number?.replace(/[^a-zA-Z0-9]/g, '_') || 'NoUnit';
-    const filename = `${safeName}_Unit${safeUnit}_Documents.zip`;
+    const filename = isBulk
+      ? `Documents_${submissions.length}_tenants.zip`
+      : (() => {
+          const s = submissions[0];
+          const sn = s.full_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
+          const su = s.unit_number?.replace(/[^a-zA-Z0-9]/g, '_') || 'NoUnit';
+          return `${sn}_Unit${su}_Documents.zip`;
+        })();
 
     return new NextResponse(zipBuffer as unknown as BodyInit, {
       status: 200,
