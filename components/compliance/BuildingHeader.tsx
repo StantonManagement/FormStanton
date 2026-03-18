@@ -68,6 +68,14 @@ export default function BuildingHeader({ buildingAddress, stats, onAddTenant, mo
       value: `${stats.missing_submissions}`,
       tone: stats.missing_submissions === 0 ? 'good' : 'critical',
     });
+
+    if (stats.unprocessed_notes_count > 0) {
+      pills.push({
+        label: 'Unread Notes',
+        value: `${stats.unprocessed_notes_count}`,
+        tone: 'attention',
+      });
+    }
   }
 
   const toneClasses: Record<string, string> = {

@@ -147,6 +147,11 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   // Quick note state
   const [quickNote, setQuickNote] = useState('');
 
+  // Lobby notes for compliance
+  const [lobbyNotes, setLobbyNotes] = useState(submissionData?.lobby_notes || '');
+  const [savingLobbyNotes, setSavingLobbyNotes] = useState(false);
+  const [lobbyNotesSaved, setLobbyNotesSaved] = useState(true);
+
   // ESA / Exemption state
   const [esaReason, setEsaReason] = useState('emotional_support');
   const [esaFile, setEsaFile] = useState<File | null>(null);
@@ -894,6 +899,38 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     }
   };
 
+  // -- Lobby notes for compliance handler --
+
+  const handleSaveLobbyNotes = async () => {
+    setSavingLobbyNotes(true);
+    try {
+      const res = await fetch('/api/admin/lobby-intake', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_name: tenant.name,
+          building_address: tenant.buildingAddress,
+          unit_number: tenant.unitNumber,
+          lobby_notes: lobbyNotes.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLobbyNotesSaved(true);
+        if (data.submissionData && onSubmissionUpdated) {
+          onSubmissionUpdated(data.submissionData);
+        }
+        setAlertDialog({ isOpen: true, title: 'Notes Saved', message: 'Compliance notes saved.', variant: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Error', message: data.message || 'Failed to save notes', variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to save compliance notes', variant: 'error' });
+    } finally {
+      setSavingLobbyNotes(false);
+    }
+  };
+
   // -- ESA / Exemption handler --
 
   const handleSaveEsa = async () => {
@@ -1146,6 +1183,40 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         {idPhotoPreview && (
           <img src={idPhotoPreview} alt="ID Preview" className="mt-2 max-h-24 border border-gray-200" />
         )}
+      </div>
+
+      {/* Notes for Compliance — always visible above tabs */}
+      <div className="px-5 py-3 border-b border-gray-200 bg-[#fdfcfa]">
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide">Notes for Compliance</label>
+          {!lobbyNotesSaved && (
+            <span className="text-xs text-amber-600 font-medium">Unsaved</span>
+          )}
+        </div>
+        <textarea
+          value={lobbyNotes}
+          onChange={(e) => { setLobbyNotes(e.target.value); setLobbyNotesSaved(false); }}
+          placeholder="Leave notes for compliance staff to review..."
+          rows={2}
+          className="w-full border border-gray-300 rounded-none px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#1a2744] focus:border-[#1a2744] resize-none"
+        />
+        <div className="flex items-center gap-2 mt-1.5">
+          <button
+            onClick={handleSaveLobbyNotes}
+            disabled={savingLobbyNotes || lobbyNotesSaved}
+            className="px-3 py-1.5 bg-[#1a2744] text-white text-xs font-medium rounded-none hover:bg-[#2d3f5f] transition-colors duration-200 disabled:opacity-50"
+          >
+            {savingLobbyNotes ? 'Saving...' : 'Save Notes'}
+          </button>
+          {lobbyNotes.trim() && (
+            <button
+              onClick={() => { setLobbyNotes(''); setLobbyNotesSaved(false); }}
+              className="text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

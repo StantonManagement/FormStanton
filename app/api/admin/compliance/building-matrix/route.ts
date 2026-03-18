@@ -261,6 +261,9 @@ export async function GET(request: NextRequest) {
 
         requires_parking_permit: reqs.requires_parking_permit && (sub?.has_vehicle ?? false),
 
+        lobby_notes: sub?.lobby_notes || null,
+        lobby_notes_processed: sub?.lobby_notes_processed ?? false,
+
         missing: isOccupied && !hasSub,
         tenant_lookup_name: tenantName,
       });
@@ -274,6 +277,7 @@ export async function GET(request: NextRequest) {
       submissions: withSub.length,
       missing_submissions: rows.filter(r => r.missing).length,
       columns: computeColumnStats(withSub),
+      unprocessed_notes_count: withSub.filter(r => r.lobby_notes && !r.lobby_notes_processed).length,
     };
 
     const response: BuildingMatrixResponse = {

@@ -64,6 +64,10 @@ export interface MatrixRow {
   // Building requirements (computed from building config, not tenant self-report)
   requires_parking_permit: boolean;
 
+  // Lobby notes for compliance
+  lobby_notes: string | null;
+  lobby_notes_processed: boolean;
+
   // Missing flag: occupied unit with no submission
   missing: boolean;
 
@@ -87,6 +91,7 @@ export interface BuildingMatrixStats {
   submissions: number;
   missing_submissions: number;
   columns: Record<string, import('@/lib/complianceColumns').ColumnStat>;
+  unprocessed_notes_count: number;
 }
 
 /** One row per building in the portfolio table */
@@ -100,6 +105,7 @@ export interface PortfolioBuildingStats {
   columns: Record<string, import('@/lib/complianceColumns').ColumnStat>;
   /** Overall completion score 0–100 for sorting (average of all applicable column percentages) */
   completion_score: number;
+  unprocessed_notes_count: number;
 }
 
 /** Cell visual state in the matrix table */
@@ -178,6 +184,10 @@ export interface TenantSubmission {
   pet_notes?: string;
   insurance_notes?: string;
   admin_notes?: string;
+  lobby_notes?: string;
+  lobby_notes_processed?: boolean;
+  lobby_notes_updated_at?: string;
+  lobby_notes_updated_by?: string;
   ready_for_review: boolean;
   reviewed_for_permit: boolean;
   reviewed_by?: string;

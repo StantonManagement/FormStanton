@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { buildingToAssetId } from '@/lib/buildingAssetIds';
 import { buildingToPortfolio, portfolioOrder } from '@/lib/portfolios';
-import type { BuildingStats, TenantSubmission, DynamicColumn, ProjectMatrixRow } from '@/types/compliance';
+import type { BuildingStats, TenantSubmission, DynamicColumn, ProjectMatrixRow, PortfolioBuildingStats } from '@/types/compliance';
 import type { MatrixRow } from '@/types/compliance';
 import MatrixFilterBar from './MatrixFilterBar';
 
@@ -30,6 +30,8 @@ interface ComplianceSidebarProps {
   mode?: 'legacy' | 'project';
   projectColumns?: DynamicColumn[];
   projectRows?: ProjectMatrixRow[];
+  // Portfolio building stats for notes indicators
+  portfolioBuildingStats?: PortfolioBuildingStats[];
 }
 
 const inputClass = 'w-full px-3 py-2 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] text-sm focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200 ease-out';
@@ -55,6 +57,7 @@ export default function ComplianceSidebar({
   mode = 'legacy',
   projectColumns,
   projectRows,
+  portfolioBuildingStats,
 }: ComplianceSidebarProps) {
   const isProjectMode = mode === 'project';
   const [buildingSearch, setBuildingSearch] = useState('');
@@ -150,6 +153,8 @@ export default function ComplianceSidebar({
               const stats = buildingStats[building] || { totalUnits: 0, occupiedUnits: 0, submissionCount: 0, percentComplete: 0, missingUnits: [], missingSubmissions: [], vacantUnits: 0 };
               const assetId = buildingToAssetId[building] || '';
               const icon = stats.percentComplete === 100 ? '\u2705' : stats.percentComplete > 0 ? '\uD83D\uDFE1' : '\u26AA';
+              const pbs = portfolioBuildingStats?.find(b => b.building_address === building);
+              const unreadNotes = pbs?.unprocessed_notes_count || 0;
               return (
                 <button
                   key={building}
@@ -160,7 +165,15 @@ export default function ComplianceSidebar({
                       : 'bg-white border-[var(--divider)] hover:bg-[var(--bg-section)]'
                   }`}
                 >
-                  <div className="font-medium">{icon} {assetId} - {building}</div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{icon} {assetId} - {building}</span>
+                    {unreadNotes > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[var(--warning)] font-medium" title={`${unreadNotes} unread note${unreadNotes > 1 ? 's' : ''}`}>
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2z" /></svg>
+                        {unreadNotes}
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[var(--muted)] mt-1">
                     {stats.totalUnits} units | {stats.occupiedUnits} occ | {stats.submissionCount} sub ({stats.percentComplete}%)
                   </div>

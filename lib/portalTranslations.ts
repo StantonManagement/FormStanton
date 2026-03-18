@@ -23,6 +23,8 @@ export interface PortalStrings {
   completed: string;
   pending: string;
   tasks_title: string;
+  skip_to_vehicle: string;
+  skip_to_vehicle_btn: string;
 }
 
 export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
@@ -49,6 +51,8 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     completed: 'Completed',
     pending: 'Pending',
     tasks_title: 'Your Tasks',
+    skip_to_vehicle: 'Are you adding another vehicle?',
+    skip_to_vehicle_btn: 'Go to Vehicle Registration',
   },
   es: {
     deadline_label: 'Completar antes del',
@@ -73,6 +77,8 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     completed: 'Completado',
     pending: 'Pendiente',
     tasks_title: 'Sus Tareas',
+    skip_to_vehicle: '¿Está registrando otro vehículo?',
+    skip_to_vehicle_btn: 'Ir al Registro de Vehículo',
   },
   pt: {
     deadline_label: 'Concluir até',
@@ -97,5 +103,7 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     completed: 'Concluído',
     pending: 'Pendente',
     tasks_title: 'Suas Tarefas',
+    skip_to_vehicle: 'Está registrando outro veículo?',
+    skip_to_vehicle_btn: 'Ir para Registro de Veículo',
   },
 };

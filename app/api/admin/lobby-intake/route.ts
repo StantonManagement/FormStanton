@@ -35,6 +35,70 @@ async function findSubmission(building: string, unit: string, name: string) {
 }
 
 /**
+ * PATCH — Save lobby_notes on an existing submission.
+ * Resets lobby_notes_processed = false so compliance re-reads.
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { tenant_name, building_address, unit_number, lobby_notes } = body;
+
+    if (!tenant_name || !building_address || !unit_number) {
+      return NextResponse.json(
+        { success: false, message: 'Missing required fields (tenant_name, building_address, unit_number)' },
+        { status: 400 }
+      );
+    }
+
+    const sessionUser = await getSessionUser();
+    const performedBy = sessionUser?.displayName || 'Unknown';
+
+    const existing = await findSubmission(building_address, unit_number, tenant_name);
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, message: 'No submission found for this tenant' },
+        { status: 404 }
+      );
+    }
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('submissions')
+      .update({
+        lobby_notes: lobby_notes || null,
+        lobby_notes_processed: false,
+        lobby_notes_updated_at: new Date().toISOString(),
+        lobby_notes_updated_by: performedBy,
+      })
+      .eq('id', existing.id)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error saving lobby notes:', error);
+      return NextResponse.json({ success: false, message: 'Failed to save lobby notes' }, { status: 500 });
+    }
+
+    await logAudit(sessionUser, 'lobby_intake.update_notes', 'submission', existing.id, {
+      tenant_name, building_address, unit_number,
+      has_notes: !!lobby_notes,
+    }, getClientIp(request));
+
+    return NextResponse.json({ success: true, submissionData: updated });
+  } catch (error: any) {
+    console.error('Lobby intake PATCH error:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to save lobby notes' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * Lobby Intake API — upserts submissions table AND logs to tenant_interactions.
  * Handles pet_registration and vehicle_registration action types.
  */

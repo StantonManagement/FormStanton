@@ -139,6 +139,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
           mode={data.mode}
           projectColumns={data.projectColumns}
           projectRows={data.filteredProjectRows}
+          portfolioBuildingStats={data.portfolioBuildingStats}
         />
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-6 xl:p-8 relative">

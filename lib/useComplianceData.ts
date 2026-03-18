@@ -430,6 +430,8 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
 
       const columns = computeColumnStats(records);
 
+      const unprocessedNotes = subs.filter(s => s.lobby_notes && !s.lobby_notes_processed).length;
+
       return {
         building_address: building,
         asset_id: buildingToAssetId[building] || '',
@@ -439,6 +441,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
         submissions: subs.length,
         columns,
         completion_score: computeCompletionScore({ num: subs.length, den: occupied }, columns),
+        unprocessed_notes_count: unprocessedNotes,
       };
     });
   }, [buildings, allSubmissions, buildingStats]);

@@ -303,6 +303,46 @@ export default function TenantSidePanel({
             </div>
           )}
 
+          {/* Lobby Notes for Compliance */}
+          {sub.lobby_notes && (
+            <div className={`p-4 border ${row.lobby_notes_processed ? 'bg-[var(--bg-section)] border-[var(--divider)]' : 'bg-[var(--warning)]/10 border-[var(--warning)]/35'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-serif text-[var(--primary)] text-sm">Lobby Notes</h4>
+                {!row.lobby_notes_processed && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--warning)] px-1.5 py-0.5 border border-[var(--warning)]/30 bg-[var(--warning)]/10">
+                    Unread
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-[var(--ink)] whitespace-pre-wrap mb-2">{sub.lobby_notes}</div>
+              {sub.lobby_notes_updated_by && (
+                <div className="text-[10px] text-[var(--muted)] mb-2">
+                  — {sub.lobby_notes_updated_by}{sub.lobby_notes_updated_at ? ` · ${new Date(sub.lobby_notes_updated_at).toLocaleString()}` : ''}
+                </div>
+              )}
+              {!row.lobby_notes_processed && (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/admin/compliance/lobby-notes', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ submission_id: row.submission_id, processed: true }),
+                      });
+                      const data = await res.json();
+                      if (data.success) onRefresh();
+                    } catch (e) {
+                      console.error('Failed to mark notes processed', e);
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+                >
+                  Mark as Processed
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Notes */}
           {(sub.vehicle_notes || sub.pet_notes || sub.insurance_notes || sub.admin_notes) && (
             <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">

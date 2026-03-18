@@ -240,6 +240,7 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
               {COMPLIANCE_COLUMNS.map(col => (
                 <th key={col.id} className={`${thClass} text-center`}>{col.label}</th>
               ))}
+              <th className={`${thClass} text-center`}>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -385,6 +386,24 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
                       }
                     }
                   })}
+
+                  {/* Notes indicator column */}
+                  <td className="px-2 py-1.5 text-center border border-[var(--divider)] text-xs whitespace-nowrap">
+                    {isMissing ? (
+                      <span className="text-[var(--muted)]">—</span>
+                    ) : row.lobby_notes ? (
+                      row.lobby_notes_processed ? (
+                        <span className="text-[var(--muted)]" title="Notes processed">✓</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[var(--warning)] font-medium" title="Unread lobby notes">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2z" /></svg>
+                          New
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[var(--muted)]">—</span>
+                    )}
+                  </td>
                 </tr>
               );
             })}

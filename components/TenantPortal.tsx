@@ -35,6 +35,7 @@ export default function TenantPortal({ token }: { token: string }) {
   const [state, setState] = useState<PortalState>({ status: 'loading' });
   const [language, setLanguage] = useState<PreferredLanguage>('en');
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   const fetchPortal = useCallback(async () => {
     try {
@@ -77,6 +78,31 @@ export default function TenantPortal({ token }: { token: string }) {
   }, [fetchPortal]);
 
   const t = portalTranslations[language];
+
+  const handleSkipToVehicle = async (vehicleTaskId: string) => {
+    setSkipping(true);
+    try {
+      const res = await fetch(`/api/t/${token}/skip-to-vehicle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vehicleTaskId }),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const refreshed = json.data;
+      // Re-fetch full portal data to get updated state
+      const portalRes = await fetch(`/api/t/${token}`);
+      if (!portalRes.ok) return;
+      const portalJson = await portalRes.json();
+      const portalData = portalJson.data as PortalData;
+      setState({ status: 'ready', data: portalData });
+      setExpandedTask(vehicleTaskId);
+    } catch {
+      // Silent
+    } finally {
+      setSkipping(false);
+    }
+  };
 
   const handleTaskComplete = async () => {
     // Re-fetch portal data to get updated task list
@@ -159,12 +185,25 @@ export default function TenantPortal({ token }: { token: string }) {
   const getTaskLocked = (task: PortalTask, index: number): boolean => {
     if (!data.sequential) return false;
     if (task.completion.status === 'complete') return false;
-    // Find first incomplete task
+    if (task.completion.status === 'waived') return false;
     const firstIncompleteIndex = data.tasks.findIndex(
       (t) => t.completion.status !== 'complete' && t.completion.status !== 'waived'
     );
     return index > firstIncompleteIndex && firstIncompleteIndex !== -1;
   };
+
+  // Detect locked vehicle task behind skippable non-required tasks
+  const vehicleTask = data.sequential
+    ? data.tasks.find(
+        (task, idx) =>
+          /vehicle/i.test(task.task_type.name) &&
+          task.completion.status !== 'complete' &&
+          task.completion.status !== 'waived' &&
+          getTaskLocked(task, idx)
+      )
+    : null;
+
+  const showVehicleBanner = !!vehicleTask && !skipping;
 
   // --- All Complete Screen ---
   if (allComplete) {
@@ -214,6 +253,26 @@ export default function TenantPortal({ token }: { token: string }) {
               </p>
             )}
           </div>
+
+          {/* Skip-to-vehicle banner */}
+          {showVehicleBanner && (
+            <div className="bg-white border border-[var(--primary)]/30 rounded-sm p-4 mb-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <svg className="w-6 h-6 text-[var(--primary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8m-8 4h4m-2 4v-2a2 2 0 012-2h4a2 2 0 012 2v2m-6 0h6m-9 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm font-medium text-[var(--ink)]">{t.skip_to_vehicle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSkipToVehicle(vehicleTask!.id)}
+                disabled={skipping}
+                className="flex-shrink-0 bg-[var(--primary)] text-white py-2 px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
+              >
+                {t.skip_to_vehicle_btn}
+              </button>
+            </div>
+          )}
 
           {/* Progress bar */}
           <div className="bg-white border border-[var(--border)] rounded-sm p-4 mb-6">

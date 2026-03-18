@@ -175,6 +175,7 @@ export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuildi
               {COMPLIANCE_COLUMNS.map(col => (
                 <th key={col.id} className={thClass}>{col.label}</th>
               ))}
+              <th className={thClass}>Notes</th>
             </tr>
           </thead>
           <tbody>
@@ -204,6 +205,16 @@ export default function PortfolioTable({ rows, selectedPortfolio, onSelectBuildi
                     <td key={col.id} className="px-2 py-2 text-center text-xs text-[var(--muted)] border border-[var(--divider)]">—</td>
                   );
                 })}
+                <td className="px-2 py-2 text-center text-xs border border-[var(--divider)]">
+                  {row.unprocessed_notes_count > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-[var(--warning)] font-medium">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2z" /></svg>
+                      {row.unprocessed_notes_count}
+                    </span>
+                  ) : (
+                    <span className="text-[var(--muted)]">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
