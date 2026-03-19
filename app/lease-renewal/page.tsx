@@ -254,7 +254,7 @@ function LeaseRenewalFormContent() {
         subtitle="Tenant intent to renew or vacate at lease end"
       />
       
-      <FormLayout title="Lease Renewal / Non-Renewal Notice">
+      <FormLayout>
         <TabNavigation
           tabs={['Tenant Information', 'Lease Intent']}
           currentTab={currentSection}

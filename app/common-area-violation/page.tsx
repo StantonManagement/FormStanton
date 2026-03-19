@@ -224,7 +224,7 @@ function CommonAreaViolationFormContent() {
         />
       )}
       
-      <FormLayout title={t.formTitle}>
+      <FormLayout>
         <TabNavigation
           tabs={tabs}
           activeTab={currentSection}

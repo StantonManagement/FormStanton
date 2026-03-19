@@ -246,7 +246,7 @@ function AfterHoursLockoutFormContent() {
     <>
       <Header language={language} onLanguageChange={setLanguage} />
       
-      <FormLayout title="After-Hours Lockout Acknowledgment">
+      <FormLayout>
         <TabNavigation
           tabs={tabs}
           activeTab={currentSection}

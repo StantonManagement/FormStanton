@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Language } from '@/lib/translations';
@@ -108,10 +108,6 @@ function ReimbursementFormContent() {
     if (!category || !category.labelKey) return categoryValue;
     return translations[category.labelKey] || categoryValue;
   };
-
-  useEffect(() => {
-    document.title = 'Tenant Reimbursement Request - Stanton Management';
-  }, []);
 
   if (!showForm) {
     return <ReimbursementLanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { Language } from '@/lib/translations';
 import Footer from '@/components/Footer';
 
@@ -17,10 +16,6 @@ export default function LanguageLanding({
   description,
   onSelect,
 }: LanguageLandingProps) {
-  useEffect(() => {
-    document.title = `${title} - Stanton Management`;
-  }, [title]);
-
   return (
     <>
       <main className="min-h-screen bg-[var(--paper)]">

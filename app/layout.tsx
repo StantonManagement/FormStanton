@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import PageTitle from '@/components/PageTitle'
 import './globals.css'
 import './mobile-styles.css'
 
@@ -24,7 +25,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <PageTitle />
+        {children}
+      </body>
     </html>
   )
 }

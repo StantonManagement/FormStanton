@@ -229,7 +229,7 @@ function BillingDisputeFormContent() {
         />
       )}
       
-      <FormLayout title={t.formTitle}>
+      <FormLayout>
         <TabNavigation
           tabs={tabs}
           activeTab={currentSection}

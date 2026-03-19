@@ -186,7 +186,7 @@ function PaySlipRequestFormContent() {
         description="Request PaySlip barcode to pay rent at retail locations"
       />
       
-      <FormLayout title="PaySlip Request">
+      <FormLayout>
         <AnimatePresence mode="wait">
           <motion.div
             key="section1"
