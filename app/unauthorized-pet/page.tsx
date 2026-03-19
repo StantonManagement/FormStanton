@@ -222,7 +222,7 @@ function UnauthorizedPetFormContent() {
         />
       )}
       
-      <FormLayout>
+      <FormLayout title={t.formTitle}>
         <TabNavigation
           tabs={tabs}
           activeTab={currentSection}

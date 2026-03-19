@@ -287,7 +287,7 @@ function MoveOutNoticeFormContent() {
         subtitle="30-day written notice required before moving out"
       />
       
-      <FormLayout>
+      <FormLayout title="Move-Out Notice">
         <TabNavigation
           tabs={['Notice Information', 'Forwarding Address', 'Acknowledgments']}
           currentTab={currentSection}

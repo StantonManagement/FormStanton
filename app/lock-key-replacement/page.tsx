@@ -275,7 +275,7 @@ function LockKeyReplacementFormContent() {
         subtitle="Request and authorize charges for lost keys or lock changes"
       />
       
-      <FormLayout>
+      <FormLayout title="Lock / Key Replacement Authorization">
         <TabNavigation
           tabs={['Request Information', 'Items & Authorization']}
           currentTab={currentSection}

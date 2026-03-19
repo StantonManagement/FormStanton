@@ -222,7 +222,7 @@ function UtilityTransferFormContent() {
         subtitle="Confirm utilities transferred before key release"
       />
       
-      <FormLayout>
+      <FormLayout title="Utility Transfer Confirmation">
         <TabNavigation
           tabs={['Tenant Information', 'Utility Details']}
           currentTab={currentSection}

@@ -317,7 +317,7 @@ function Section8RecertificationFormContent() {
         description="Annual recertification requirements for Section 8 tenants"
       />
       
-      <FormLayout>
+      <FormLayout title="Section 8 Recertification Checklist">
         <AnimatePresence mode="wait">
           {currentSection === 0 && (
             <motion.div

@@ -169,7 +169,7 @@ function ApartmentInquiryFormContent() {
   return (
     <>
       <Header language={language} onLanguageChange={setLanguage} />
-      <FormLayout>
+      <FormLayout title={t.formTitle}>
         <form onSubmit={handleSubmit}>
           {/* Title */}
           <div className="border-b border-[var(--divider)] bg-[var(--bg-section)] px-6 py-5">

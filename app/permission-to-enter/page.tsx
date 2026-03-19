@@ -219,7 +219,7 @@ function PermissionToEnterFormContent() {
         subtitle="Set entry preferences for maintenance and inspections"
       />
       
-      <FormLayout>
+      <FormLayout title="Permission to Enter / Entry Restriction">
         <TabNavigation
           tabs={['Tenant Information', 'Entry Preferences']}
           currentTab={currentSection}

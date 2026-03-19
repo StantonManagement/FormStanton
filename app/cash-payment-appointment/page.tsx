@@ -192,7 +192,7 @@ function CashPaymentAppointmentFormContent() {
         subtitle="Schedule appointment for cash rent payment (no walk-ins)"
       />
       
-      <FormLayout>
+      <FormLayout title="Cash Payment Appointment Request">
         <TabNavigation
           tabs={['Tenant Information', 'Payment Details']}
           currentTab={currentSection}

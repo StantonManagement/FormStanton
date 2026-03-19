@@ -236,7 +236,7 @@ function PetFeeExemptionFormContent() {
     <>
       <Header language={language} onLanguageChange={setLanguage} />
       
-      <FormLayout>
+      <FormLayout title={t.formTitle}>
         <TabNavigation
           tabs={tabs}
           activeTab={currentSection}

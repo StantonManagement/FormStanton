@@ -115,6 +115,10 @@ function ReimbursementFormContent() {
 
   const t = reimbursementTranslations[language];
 
+  useEffect(() => {
+    document.title = `${t.formTitle} - Stanton Management`;
+  }, [t.formTitle]);
+
   const totalAmount = formData.expenses.reduce((sum, exp) => {
     const amt = parseFloat(exp.amount);
     return sum + (isNaN(amt) ? 0 : amt);

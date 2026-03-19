@@ -205,7 +205,7 @@ function ForwardingAddressFormContent() {
         subtitle="Required for security deposit return"
       />
       
-      <FormLayout>
+      <FormLayout title="Forwarding Address Submission">
         <TabNavigation
           tabs={['Move-Out Information', 'Forwarding Address']}
           currentTab={currentSection}

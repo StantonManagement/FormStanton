@@ -150,6 +150,11 @@ function FormContent() {
   }
 
   const t = translations[language];
+
+  useEffect(() => {
+    document.title = 'Tenant Onboarding Form - Stanton Management';
+  }, []);
+
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
   const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
   const canHaveMultipleVehicles = allowsMultipleVehicles(formData.buildingAddress);

@@ -281,7 +281,7 @@ export default function TenantAssessmentPage() {
     <>
       <Header language={language} onLanguageChange={setLanguage} />
 
-      <FormLayout>
+      <FormLayout title="Tenant Assessment">
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
           <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
             <h1 className="font-serif text-xl text-[var(--primary)] mb-2">Tenant Assessment</h1>
