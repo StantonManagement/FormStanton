@@ -8,7 +8,6 @@ import './mobile-styles.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Stanton Management',
   description: 'Stanton Management tenant forms and services',
 }
 

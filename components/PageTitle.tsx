@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 const SUFFIX = ' - Stanton Management';
@@ -35,11 +34,7 @@ const TITLE_MAP: Record<string, string> = {
 
 export default function PageTitle() {
   const pathname = usePathname();
-
-  useEffect(() => {
-    const title = TITLE_MAP[pathname];
-    document.title = title ? `${title}${SUFFIX}` : DEFAULT_TITLE;
-  }, [pathname]);
-
-  return null;
+  const title = TITLE_MAP[pathname];
+  const fullTitle = title ? `${title}${SUFFIX}` : DEFAULT_TITLE;
+  return <title>{fullTitle}</title>;
 }
