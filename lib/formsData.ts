@@ -1334,6 +1334,76 @@ After you add it:
 
 **Questions?** Call (860) 993-3401 or visit the office Mon-Fri 9 AM - 5 PM`,
   },
+  {
+    id: 25,
+    title: 'Apartment Inquiry',
+    department: 'property_management',
+    description: 'Lead capture form for prospective tenants via QR code, flyers, and banners',
+    path: '/apartment-inquiry',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**APARTMENT INQUIRY**
+
+---
+
+**Full Name:** _______________________________________________
+
+**Phone Number:** ___________________________________________
+
+**Email Address:** ___________________________________________
+
+---
+
+## What Are You Looking For?
+
+**Bedrooms Needed:**
+- [ ] Studio
+- [ ] 1 Bedroom
+- [ ] 2 Bedrooms
+- [ ] 3 Bedrooms
+- [ ] Not Sure
+
+**Move-In Timeframe:**
+- [ ] ASAP
+- [ ] 1-2 Months
+- [ ] 3-6 Months
+- [ ] Just Looking
+
+**Housing Voucher (Section 8):**
+- [ ] Yes
+- [ ] No
+- [ ] Not Sure
+
+---
+
+## Areas of Interest
+
+- [ ] Park St
+- [ ] Maple Ave
+- [ ] Seymour / Affleck
+- [ ] Franklin Ave
+- [ ] Main St
+- [ ] Broad St
+- [ ] Other / No Preference
+
+---
+
+**How Did You Hear About Us?** ________________________________
+
+**Additional Comments:**
+
+_______________________________________________
+_______________________________________________
+
+---
+
+*For office use:*
+Received: __________ Contacted: __________ By: __________
+Outcome: ___________________________________________________`,
+  },
 ];
 
 export function getFormsByDepartment(department: Department): TenantForm[] {
