@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { translations, Language } from '@/lib/translations';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 interface InsuranceUpdateModalProps {
   isOpen: boolean;
@@ -38,14 +39,14 @@ export default function InsuranceUpdateModal({ isOpen, onClose, language }: Insu
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Submission not found');
+        throw new Error(getErrorMessage(data?.message, 'Submission not found'));
       }
 
       setSubmissionId(data.submission.id);
       setSubmissionData(data.submission);
       setStep('upload');
-    } catch (err: any) {
-      setError(err.message || 'Failed to find submission');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to find submission'));
     } finally {
       setIsLoading(false);
     }
@@ -75,12 +76,12 @@ export default function InsuranceUpdateModal({ isOpen, onClose, language }: Insu
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Upload failed');
+        throw new Error(getErrorMessage(data?.message, 'Upload failed'));
       }
 
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload insurance documents');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to upload insurance documents'));
     } finally {
       setIsLoading(false);
     }

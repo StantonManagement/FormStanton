@@ -18,6 +18,7 @@ import { formatPhone } from '@/lib/formUtils';
 import SectionHeader from '@/components/SectionHeader';
 import InsuranceUpdateModal from '@/components/InsuranceUpdateModal';
 import BuildingAutocomplete from '@/components/BuildingAutocomplete';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 function LanguageLanding({ onSelect }: { onSelect: (lang: Language) => void }) {
   return (
@@ -457,7 +458,7 @@ function FormContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Submission failed');
+        throw new Error(getErrorMessage(result?.message, 'Submission failed'));
       }
 
       // Check for warnings
@@ -483,8 +484,8 @@ function FormContent() {
       }
 
       setSubmitSuccess(true);
-    } catch (error: any) {
-      setSubmitError(error.message || 'An error occurred during submission');
+    } catch (error: unknown) {
+      setSubmitError(getErrorMessage(error, 'An error occurred during submission'));
     } finally {
       setIsSubmitting(false);
     }

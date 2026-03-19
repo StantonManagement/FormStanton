@@ -7,6 +7,7 @@ import {
   generateVehicleAddendumPdf,
 } from '@/lib/documentGenerator';
 import { sanitizePlate } from '@/lib/plateSanitizer';
+import { getErrorMessage } from '@/lib/errorMessage';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -283,10 +284,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Submission error:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Submission failed' },
+      { success: false, message: getErrorMessage(error, 'Submission failed') },
       { status: 500 }
     );
   }
