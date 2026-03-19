@@ -109,15 +109,15 @@ function ReimbursementFormContent() {
     return translations[category.labelKey] || categoryValue;
   };
 
+  useEffect(() => {
+    document.title = 'Tenant Reimbursement Request - Stanton Management';
+  }, []);
+
   if (!showForm) {
     return <ReimbursementLanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
   }
 
   const t = reimbursementTranslations[language];
-
-  useEffect(() => {
-    document.title = `${t.formTitle} - Stanton Management`;
-  }, [t.formTitle]);
 
   const totalAmount = formData.expenses.reduce((sum, exp) => {
     const amt = parseFloat(exp.amount);

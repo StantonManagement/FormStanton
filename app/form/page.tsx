@@ -145,15 +145,15 @@ function FormContent() {
   const [residentOptions, setResidentOptions] = useState<Array<{ full_name: string; phone: string; email: string }>>([]);
   const [isLoadingResidents, setIsLoadingResidents] = useState(false);
 
+  useEffect(() => {
+    document.title = 'Tenant Onboarding Form - Stanton Management';
+  }, []);
+
   if (!showForm) {
     return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
   }
 
   const t = translations[language];
-
-  useEffect(() => {
-    document.title = 'Tenant Onboarding Form - Stanton Management';
-  }, []);
 
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
   const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
