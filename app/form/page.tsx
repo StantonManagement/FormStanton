@@ -141,6 +141,8 @@ function FormContent() {
     insurance: '',
   });
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
+  const [residentOptions, setResidentOptions] = useState<Array<{ full_name: string; phone: string; email: string }>>([]);
+  const [isLoadingResidents, setIsLoadingResidents] = useState(false);
 
   if (!showForm) {
     return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
@@ -150,10 +152,71 @@ function FormContent() {
   const hasParking = buildingsWithParking.has(formData.buildingAddress);
   const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
   const canHaveMultipleVehicles = allowsMultipleVehicles(formData.buildingAddress);
+  const fullNameMatchesResident = residentOptions.some((resident) => resident.full_name === formData.fullName);
+  const showManualNameInput = residentOptions.length === 0 || !fullNameMatchesResident;
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    if (!formData.buildingAddress || !formData.unitNumber) {
+      setResidentOptions([]);
+      setIsLoadingResidents(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchResidents = async () => {
+      setIsLoadingResidents(true);
+      try {
+        const params = new URLSearchParams({
+          building: formData.buildingAddress,
+          unit: formData.unitNumber,
+        });
+        const response = await fetch(`/api/lookup?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error('Failed to lookup residents');
+        }
+
+        const payload = await response.json();
+        if (isCancelled) return;
+
+        if (!payload?.success || !Array.isArray(payload.results)) {
+          setResidentOptions([]);
+          return;
+        }
+
+        const dedupedResidents = payload.results
+          .map((row: any) => ({
+            full_name: typeof row?.full_name === 'string' ? row.full_name.trim() : '',
+            phone: typeof row?.phone === 'string' ? row.phone : '',
+            email: typeof row?.email === 'string' ? row.email : '',
+          }))
+          .filter((row: { full_name: string }) => row.full_name.length > 0)
+          .filter((row: { full_name: string }, index: number, arr: Array<{ full_name: string }>) => (
+            arr.findIndex((candidate) => candidate.full_name.toLowerCase() === row.full_name.toLowerCase()) === index
+          ));
+
+        setResidentOptions(dedupedResidents);
+      } catch {
+        if (!isCancelled) {
+          setResidentOptions([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingResidents(false);
+        }
+      }
+    };
+
+    void fetchResidents();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [formData.buildingAddress, formData.unitNumber]);
 
   const handleFileChange = (field: keyof typeof files, file: File | null) => {
     setFiles(prev => ({ ...prev, [field]: file }));
@@ -551,15 +614,62 @@ function FormContent() {
                       <div className="space-y-4">
                         <label className="block">
                           <span className="text-sm font-medium text-[var(--ink)]">{t.fullName} <span className="text-[var(--error)]">*</span></span>
-                          <input
-                            type="text"
-                            required
-                            value={formData.fullName}
-                            onChange={(e) => handleInputChange('fullName', e.target.value)}
-                            placeholder="Enter your full legal name"
-                            className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                          />
-                          <p className="text-xs text-[var(--muted)] mt-1">As it appears on your lease</p>
+                          {isLoadingResidents && formData.buildingAddress && formData.unitNumber && (
+                            <p className="text-xs text-[var(--muted)] mt-1">
+                              {language === 'en' ? 'Looking up resident names...' : language === 'es' ? 'Buscando nombres de residentes...' : 'Buscando nomes dos residentes...'}
+                            </p>
+                          )}
+
+                          {residentOptions.length > 0 && (
+                            <div className="relative mt-1">
+                              <select
+                                required={showManualNameInput}
+                                value={fullNameMatchesResident ? formData.fullName : '__manual__'}
+                                onChange={(e) => {
+                                  if (e.target.value === '__manual__') {
+                                    handleInputChange('fullName', '');
+                                    return;
+                                  }
+
+                                  const selectedResident = residentOptions.find((resident) => resident.full_name === e.target.value);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    fullName: e.target.value,
+                                    phone: prev.phone || selectedResident?.phone || '',
+                                    email: prev.email || selectedResident?.email || '',
+                                  }));
+                                  setPhoneValidationError('');
+                                  setEmailValidationError('');
+                                }}
+                                className="block w-full appearance-none rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 pr-10 text-base focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                              >
+                                <option value="__manual__">{language === 'en' ? '-- Select your name --' : language === 'es' ? '-- Seleccione su nombre --' : '-- Selecione seu nome --'}</option>
+                                {residentOptions.map((resident) => (
+                                  <option key={resident.full_name} value={resident.full_name}>{resident.full_name}</option>
+                                ))}
+                              </select>
+                              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                                <svg className="h-5 w-5 text-[var(--muted)]" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+
+                          {showManualNameInput && (
+                            <input
+                              type="text"
+                              required
+                              value={formData.fullName}
+                              onChange={(e) => handleInputChange('fullName', e.target.value)}
+                              placeholder={language === 'en' ? 'Enter your full legal name' : language === 'es' ? 'Ingrese su nombre legal completo' : 'Digite seu nome legal completo'}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          )}
+
+                          <p className="text-xs text-[var(--muted)] mt-1">
+                            {language === 'en' ? 'Use the name on your lease. If your name is not listed, enter it manually.' : language === 'es' ? 'Use el nombre que aparece en su contrato. Si no aparece, escríbalo manualmente.' : 'Use o nome do seu contrato. Se seu nome não estiver listado, digite manualmente.'}
+                          </p>
                         </label>
 
                         <label className="block">
@@ -612,7 +722,11 @@ function FormContent() {
                           <span className="text-sm font-medium text-[var(--ink)]">{t.building} <span className="text-[var(--error)]">*</span></span>
                           <BuildingAutocomplete
                             value={formData.buildingAddress}
-                            onChange={(val) => { handleInputChange('buildingAddress', val); handleInputChange('unitNumber', ''); }}
+                            onChange={(val) => {
+                              handleInputChange('buildingAddress', val);
+                              handleInputChange('unitNumber', '');
+                              handleInputChange('fullName', '');
+                            }}
                             buildings={buildings}
                             placeholder={language === 'en' ? '-- Search your building --' : language === 'es' ? '-- Busque su edificio --' : '-- Pesquise seu prédio --'}
                             required
@@ -626,7 +740,10 @@ function FormContent() {
                               <select
                                 required
                                 value={formData.unitNumber}
-                                onChange={(e) => handleInputChange('unitNumber', e.target.value)}
+                                onChange={(e) => {
+                                  handleInputChange('unitNumber', e.target.value);
+                                  handleInputChange('fullName', '');
+                                }}
                                 className="block w-full appearance-none rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 pr-10 text-base focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                               >
                                 <option value="">{language === 'en' ? '-- Select your unit --' : language === 'es' ? '-- Seleccione su unidad --' : '-- Selecione sua unidade --'}</option>
@@ -645,7 +762,10 @@ function FormContent() {
                               type="text"
                               required
                               value={formData.unitNumber}
-                              onChange={(e) => handleInputChange('unitNumber', e.target.value)}
+                              onChange={(e) => {
+                                handleInputChange('unitNumber', e.target.value);
+                                handleInputChange('fullName', '');
+                              }}
                               placeholder={language === 'en' ? 'Enter your unit number' : language === 'es' ? 'Ingrese su número de unidad' : 'Digite o número da sua unidade'}
                               className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
                             />
@@ -1274,7 +1394,11 @@ function FormContent() {
                         name="hasVehicle"
                         required
                         checked={formData.hasVehicle === false}
-                        onChange={() => handleInputChange('hasVehicle', false)}
+                        onChange={() => {
+                          handleInputChange('hasVehicle', false);
+                          handleInputChange('wantsAdditionalVehicle', false);
+                          handleInputChange('additionalVehicles', []);
+                        }}
                         className="text-[var(--primary)] focus:ring-[var(--primary)]"
                       />
                       <span className="text-sm text-[var(--ink)]">{t.no}</span>
@@ -1357,157 +1481,127 @@ function FormContent() {
                   <div className="space-y-4">
                     <div className="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 rounded-sm">
                       <p className="text-sm font-medium text-[var(--ink)]">{t.additionalVehicleQuestion}</p>
-                      <div className="flex space-x-4 mt-2">
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="wantsAdditionalVehicle"
-                            checked={formData.wantsAdditionalVehicle === true}
-                            onChange={() => {
-                              handleInputChange('wantsAdditionalVehicle', true);
-                              if (formData.additionalVehicles.length === 0) {
-                                handleInputChange('additionalVehicles', [{ vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' }]);
-                              }
-                            }}
-                            className="text-[var(--primary)] focus:ring-[var(--primary)]"
-                          />
-                          <span className="text-sm text-[var(--ink)]">{t.yes}</span>
-                        </label>
-                        <label className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name="wantsAdditionalVehicle"
-                            checked={formData.wantsAdditionalVehicle === false}
-                            onChange={() => {
-                              handleInputChange('wantsAdditionalVehicle', false);
-                              handleInputChange('additionalVehicles', []);
-                            }}
-                            className="text-[var(--primary)] focus:ring-[var(--primary)]"
-                          />
-                          <span className="text-sm text-[var(--ink)]">{t.no}</span>
-                        </label>
-                      </div>
+                      <p className="text-xs text-[var(--ink)] mt-1">
+                        {language === 'en' ? 'Use the button below to add extra vehicles from the start of this section.' : language === 'es' ? 'Use el botón de abajo para agregar vehículos adicionales desde el inicio de esta sección.' : 'Use o botão abaixo para adicionar veículos extras desde o início desta seção.'}
+                      </p>
                     </div>
 
-                    {formData.wantsAdditionalVehicle === true && (
-                      <div className="space-y-4">
-                        <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-sm">
-                          <p className="text-sm text-amber-800">{t.additionalVehicleNotice}</p>
-                        </div>
-
-                        {formData.additionalVehicles.map((av, index) => (
-                          <div key={index} className="space-y-3 bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
-                            <div className="flex justify-between items-center">
-                              <h4 className="font-semibold text-[var(--ink)] text-sm">{t.additionalVehicle} #{index + 1}</h4>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = formData.additionalVehicles.filter((_, i) => i !== index);
-                                  handleInputChange('additionalVehicles', updated);
-                                  if (updated.length === 0) {
-                                    handleInputChange('wantsAdditionalVehicle', false);
-                                  }
-                                }}
-                                className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                              >
-                                {t.removeVehicle}
-                              </button>
-                            </div>
-                            <label className="block">
-                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleMake} <span className="text-[var(--error)]">*</span></span>
-                              <input
-                                type="text"
-                                required
-                                value={av.vehicleMake}
-                                onChange={(e) => {
-                                  const updated = [...formData.additionalVehicles];
-                                  updated[index] = { ...updated[index], vehicleMake: e.target.value };
-                                  handleInputChange('additionalVehicles', updated);
-                                }}
-                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleModel} <span className="text-[var(--error)]">*</span></span>
-                              <input
-                                type="text"
-                                required
-                                value={av.vehicleModel}
-                                onChange={(e) => {
-                                  const updated = [...formData.additionalVehicles];
-                                  updated[index] = { ...updated[index], vehicleModel: e.target.value };
-                                  handleInputChange('additionalVehicles', updated);
-                                }}
-                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleYear} <span className="text-[var(--error)]">*</span></span>
-                              <input
-                                type="number"
-                                required
-                                min="1900"
-                                max="2030"
-                                value={av.vehicleYear}
-                                onChange={(e) => {
-                                  const updated = [...formData.additionalVehicles];
-                                  updated[index] = { ...updated[index], vehicleYear: e.target.value };
-                                  handleInputChange('additionalVehicles', updated);
-                                }}
-                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleColor} <span className="text-[var(--error)]">*</span></span>
-                              <input
-                                type="text"
-                                required
-                                value={av.vehicleColor}
-                                onChange={(e) => {
-                                  const updated = [...formData.additionalVehicles];
-                                  updated[index] = { ...updated[index], vehicleColor: e.target.value };
-                                  handleInputChange('additionalVehicles', updated);
-                                }}
-                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                              />
-                            </label>
-                            <label className="block">
-                              <span className="text-sm font-medium text-[var(--ink)]">{t.vehiclePlate} <span className="text-[var(--error)]">*</span></span>
-                              <input
-                                type="text"
-                                required
-                                value={av.vehiclePlate}
-                                onChange={(e) => {
-                                  const updated = [...formData.additionalVehicles];
-                                  updated[index] = { ...updated[index], vehiclePlate: e.target.value };
-                                  handleInputChange('additionalVehicles', updated);
-                                }}
-                                className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
-                              />
-                            </label>
-                          </div>
-                        ))}
-
-                        {formData.additionalVehicles.length < 2 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleInputChange('additionalVehicles', [
-                                ...formData.additionalVehicles,
-                                { vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' },
-                              ]);
-                            }}
-                            className="w-full py-2.5 px-4 border-2 border-dashed border-[var(--primary)]/30 rounded-sm text-[var(--primary)] hover:bg-[var(--primary)]/5 hover:border-[var(--primary)]/50 transition-colors text-sm font-medium"
-                          >
-                            + {t.addAnotherVehicle}
-                          </button>
-                        )}
-
-                        {formData.additionalVehicles.length >= 2 && (
-                          <p className="text-xs text-center text-[var(--muted)]">{t.maxVehiclesReached}</p>
-                        )}
+                    <div className="space-y-4">
+                      <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-sm">
+                        <p className="text-sm text-amber-800">{t.additionalVehicleNotice}</p>
                       </div>
-                    )}
+
+                      {formData.additionalVehicles.map((av, index) => (
+                        <div key={index} className="space-y-3 bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-semibold text-[var(--ink)] text-sm">{t.additionalVehicle} #{index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = formData.additionalVehicles.filter((_, i) => i !== index);
+                                handleInputChange('additionalVehicles', updated);
+                                handleInputChange('wantsAdditionalVehicle', updated.length > 0);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                            >
+                              {t.removeVehicle}
+                            </button>
+                          </div>
+                          <label className="block">
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleMake} <span className="text-[var(--error)]">*</span></span>
+                            <input
+                              type="text"
+                              required
+                              value={av.vehicleMake}
+                              onChange={(e) => {
+                                const updated = [...formData.additionalVehicles];
+                                updated[index] = { ...updated[index], vehicleMake: e.target.value };
+                                handleInputChange('additionalVehicles', updated);
+                              }}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleModel} <span className="text-[var(--error)]">*</span></span>
+                            <input
+                              type="text"
+                              required
+                              value={av.vehicleModel}
+                              onChange={(e) => {
+                                const updated = [...formData.additionalVehicles];
+                                updated[index] = { ...updated[index], vehicleModel: e.target.value };
+                                handleInputChange('additionalVehicles', updated);
+                              }}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleYear} <span className="text-[var(--error)]">*</span></span>
+                            <input
+                              type="number"
+                              required
+                              min="1900"
+                              max="2030"
+                              value={av.vehicleYear}
+                              onChange={(e) => {
+                                const updated = [...formData.additionalVehicles];
+                                updated[index] = { ...updated[index], vehicleYear: e.target.value };
+                                handleInputChange('additionalVehicles', updated);
+                              }}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.vehicleColor} <span className="text-[var(--error)]">*</span></span>
+                            <input
+                              type="text"
+                              required
+                              value={av.vehicleColor}
+                              onChange={(e) => {
+                                const updated = [...formData.additionalVehicles];
+                                updated[index] = { ...updated[index], vehicleColor: e.target.value };
+                                handleInputChange('additionalVehicles', updated);
+                              }}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-[var(--ink)]">{t.vehiclePlate} <span className="text-[var(--error)]">*</span></span>
+                            <input
+                              type="text"
+                              required
+                              value={av.vehiclePlate}
+                              onChange={(e) => {
+                                const updated = [...formData.additionalVehicles];
+                                updated[index] = { ...updated[index], vehiclePlate: e.target.value };
+                                handleInputChange('additionalVehicles', updated);
+                              }}
+                              className="mt-1 block w-full px-4 py-3 border border-[var(--border)] rounded-none bg-[var(--bg-input)] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200"
+                            />
+                          </label>
+                        </div>
+                      ))}
+
+                      {formData.additionalVehicles.length < 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleInputChange('additionalVehicles', [
+                              ...formData.additionalVehicles,
+                              { vehicleMake: '', vehicleModel: '', vehicleYear: '', vehicleColor: '', vehiclePlate: '' },
+                            ]);
+                            handleInputChange('wantsAdditionalVehicle', true);
+                          }}
+                          className="w-full py-2.5 px-4 border-2 border-dashed border-[var(--primary)]/30 rounded-sm text-[var(--primary)] hover:bg-[var(--primary)]/5 hover:border-[var(--primary)]/50 transition-colors text-sm font-medium"
+                        >
+                          + {t.addAnotherVehicle}
+                        </button>
+                      )}
+
+                      {formData.additionalVehicles.length >= 2 && (
+                        <p className="text-xs text-center text-[var(--muted)]">{t.maxVehiclesReached}</p>
+                      )}
+                    </div>
                   </div>
                 )}
 

@@ -227,6 +227,26 @@ export default function LobbyPage() {
     }
   };
 
+  const openLobbyIntakePanel = () => {
+    if (!activeTenant) return;
+    if (activeTenant.canonicalSelectionRequired) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Canonical Selection Required',
+        message: 'Select the canonical submission for this unit before opening Lobby Intake.',
+        variant: 'info',
+      });
+      return;
+    }
+    setShowIntakePanel(true);
+  };
+
+  useEffect(() => {
+    if (showIntakePanel && activeTenant?.canonicalSelectionRequired) {
+      setShowIntakePanel(false);
+    }
+  }, [showIntakePanel, activeTenant?.canonicalSelectionRequired]);
+
   const refreshTenantsAndKeepActive = async (opts?: {
     building?: string;
     unit?: string;
@@ -1245,7 +1265,7 @@ export default function LobbyPage() {
                   title="No Online Submission"
                   message="This tenant hasn't submitted the online form yet. Use Lobby Intake to register their information and print forms."
                   actionLabel="Open Lobby Intake"
-                  onAction={() => setShowIntakePanel(true)}
+                  onAction={openLobbyIntakePanel}
                 />
               </div>
             ) : (
@@ -1253,7 +1273,7 @@ export default function LobbyPage() {
             {/* Lobby Intake Button (for tenants with submissions too) */}
             <div className="mb-4 flex justify-end">
               <button
-                onClick={() => setShowIntakePanel(true)}
+                onClick={openLobbyIntakePanel}
                 className="px-4 py-2 bg-[var(--primary)] text-white text-sm rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
               >
                 Lobby Intake
@@ -1924,7 +1944,7 @@ export default function LobbyPage() {
       date={documentViewer.date}
     />
     {/* Lobby Intake Panel */}
-    {showIntakePanel && activeTenant && (
+    {showIntakePanel && activeTenant && !activeTenant.canonicalSelectionRequired && (
       <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-12 px-4">
         <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto">
           <LobbyIntakePanel
