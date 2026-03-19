@@ -8,6 +8,8 @@ export default function PhotoTask({ task, token, t, onComplete }: TaskComponentP
   const [preview, setPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (f: File | null) => {
@@ -33,6 +35,7 @@ export default function PhotoTask({ task, token, t, onComplete }: TaskComponentP
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (note.trim()) formData.append('notes', note.trim());
 
       const res = await fetch(`/api/t/${token}/tasks/${task.id}/complete`, {
         method: 'POST',
@@ -98,6 +101,24 @@ export default function PhotoTask({ task, token, t, onComplete }: TaskComponentP
             </svg>
           </button>
         </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowNote(!showNote)}
+        className="text-xs text-[var(--muted)] hover:text-[var(--ink)] transition-colors duration-200 underline"
+      >
+        {t.add_note}
+      </button>
+
+      {showNote && (
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t.notes_placeholder}
+          rows={2}
+          className="w-full border border-[var(--border)] rounded-none p-3 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] bg-white focus:outline-none focus:border-[var(--primary)] transition-colors duration-200 resize-none"
+        />
       )}
 
       {error && (

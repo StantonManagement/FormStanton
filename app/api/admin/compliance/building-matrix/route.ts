@@ -207,6 +207,15 @@ export async function GET(request: NextRequest) {
         ? (tenant.name || `${tenant.first_name || ''} ${tenant.last_name || ''}`.trim())
         : null;
 
+      const exemptionDocs = Array.isArray(sub?.exemption_documents)
+        ? sub.exemption_documents.filter((d: unknown): d is string => typeof d === 'string' && d.length > 0)
+        : [];
+      const esaDocFile = exemptionDocs[0] ?? null;
+      const hasEsaDoc =
+        (sub?.exemption_reason ?? null) === 'emotional_support'
+        || exemptionDocs.length > 0
+        || (sub?.esa_doc_uploaded_to_appfolio ?? false);
+
       rows.push({
         unit_number: unit,
         submission_id: sub?.id || null,
@@ -219,10 +228,12 @@ export async function GET(request: NextRequest) {
         has_vehicle: sub?.has_vehicle ?? false,
         has_pets: sub?.has_pets ?? false,
         has_insurance: (sub?.has_insurance ?? false) || reqs.requires_renters_insurance,
+        has_esa_doc: hasEsaDoc,
 
         vehicle_addendum_file: sub?.vehicle_addendum_file || null,
         pet_addendum_file: sub?.pet_addendum_file || null,
         insurance_file: sub?.insurance_file || null,
+        esa_doc_file: esaDocFile,
 
         vehicle_addendum_uploaded_to_appfolio: sub?.vehicle_addendum_uploaded_to_appfolio ?? false,
         vehicle_addendum_uploaded_to_appfolio_at: sub?.vehicle_addendum_uploaded_to_appfolio_at || null,
@@ -233,6 +244,9 @@ export async function GET(request: NextRequest) {
         insurance_uploaded_to_appfolio: sub?.insurance_uploaded_to_appfolio ?? false,
         insurance_uploaded_to_appfolio_at: sub?.insurance_uploaded_to_appfolio_at || null,
         insurance_uploaded_to_appfolio_by: sub?.insurance_uploaded_to_appfolio_by || null,
+        esa_doc_uploaded_to_appfolio: sub?.esa_doc_uploaded_to_appfolio ?? false,
+        esa_doc_uploaded_to_appfolio_at: sub?.esa_doc_uploaded_to_appfolio_at || null,
+        esa_doc_uploaded_to_appfolio_by: sub?.esa_doc_uploaded_to_appfolio_by || null,
 
         pet_fee_added_to_appfolio: sub?.pet_fee_added_to_appfolio ?? false,
         pet_fee_added_to_appfolio_at: sub?.pet_fee_added_to_appfolio_at || null,

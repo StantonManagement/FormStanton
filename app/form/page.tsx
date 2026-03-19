@@ -116,7 +116,7 @@ function FormContent() {
     finalConfirm: false,
   });
 
-  const [petFiles, setPetFiles] = useState<{ vaccination: File | null; photo: File | null }[]>([{ vaccination: null, photo: null }]);
+  const [petFiles, setPetFiles] = useState<{ vaccination: File | null; spayNeuter: File | null; photo: File | null }[]>([{ vaccination: null, spayNeuter: null, photo: null }]);
 
   const [files, setFiles] = useState({
     insuranceProof: null as File | null,
@@ -167,7 +167,7 @@ function FormContent() {
     });
   };
 
-  const handlePetFileChange = (index: number, field: 'vaccination' | 'photo', file: File | null) => {
+  const handlePetFileChange = (index: number, field: 'vaccination' | 'spayNeuter' | 'photo', file: File | null) => {
     setPetFiles(prev => {
       const newFiles = [...prev];
       newFiles[index] = { ...newFiles[index], [field]: file };
@@ -178,7 +178,7 @@ function FormContent() {
   const addPet = () => {
     if (formData.pets.length < MAX_PETS) {
       setFormData(prev => ({ ...prev, pets: [...prev.pets, { ...emptyPet }] }));
-      setPetFiles(prev => [...prev, { vaccination: null, photo: null }]);
+      setPetFiles(prev => [...prev, { vaccination: null, spayNeuter: null, photo: null }]);
     }
   };
 
@@ -254,7 +254,7 @@ function FormContent() {
       }
       if (formData.hasPets === true) {
         for (const pet of formData.pets) {
-          if (!pet.petType || !pet.petName || !pet.petBreed || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
+          if (!pet.petType || !pet.petName || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
             setSectionError(t.incompletePetEntry);
             return false;
           }
@@ -321,7 +321,7 @@ function FormContent() {
     // Validate pet entries are complete
     if (formData.hasPets === true) {
       for (const pet of formData.pets) {
-        if (!pet.petType || !pet.petName || !pet.petBreed || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
+        if (!pet.petType || !pet.petName || !pet.petWeight || !pet.petColor || pet.petSpayed === null || pet.petVaccinationsCurrent === null) {
           setSubmitError(t.incompletePetEntry);
           setIsSubmitting(false);
           setCurrentSection(3);
@@ -381,6 +381,7 @@ function FormContent() {
       // Append per-pet files with indexed keys
       petFiles.forEach((pf, i) => {
         if (pf.vaccination) formDataToSend.append(`petVaccination_${i}`, pf.vaccination);
+        if (pf.spayNeuter) formDataToSend.append(`petSpayNeuterProof_${i}`, pf.spayNeuter);
         if (pf.photo) formDataToSend.append(`petPhoto_${i}`, pf.photo);
       });
       if (files.insuranceProof) formDataToSend.append('insuranceProof', files.insuranceProof);
@@ -774,7 +775,7 @@ function FormContent() {
                                 </label>
 
                                 <label className="block">
-                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petBreed} <span className="text-[var(--error)]">*</span></span>
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petBreed} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
                                   <input
                                     type="text"
                                     value={pet.petBreed}
@@ -863,6 +864,16 @@ function FormContent() {
                                     type="file"
                                     accept=".pdf,.jpg,.jpeg,.png"
                                     onChange={(e) => handlePetFileChange(idx, 'vaccination', e.target.files?.[0] || null)}
+                                    className="mt-1 block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
+                                  />
+                                </label>
+
+                                <label className="block">
+                                  <span className="text-sm font-medium text-[var(--ink)]">{t.petSpayNeuterUpload} <span className="text-[var(--muted)] font-normal">{t.optional}</span></span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={(e) => handlePetFileChange(idx, 'spayNeuter', e.target.files?.[0] || null)}
                                     className="mt-1 block w-full text-sm text-[var(--muted)] file:mr-4 file:py-2 file:px-4 file:rounded-sm file:border-0 file:text-sm file:font-semibold file:bg-[var(--primary)]/5 file:text-[var(--primary)] hover:file:bg-[var(--primary)]/10"
                                   />
                                 </label>

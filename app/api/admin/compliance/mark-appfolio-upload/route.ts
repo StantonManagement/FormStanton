@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
       'pet_addendum': 'pet_addendum_uploaded_to_appfolio',
       'vehicle_addendum': 'vehicle_addendum_uploaded_to_appfolio',
       'insurance': 'insurance_uploaded_to_appfolio',
+      'exemption_document': 'esa_doc_uploaded_to_appfolio',
     };
 
     const baseColumn = columnMap[documentType];

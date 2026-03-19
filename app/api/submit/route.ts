@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       for (let i = 0; i < formDataJson.pets.length; i++) {
         const pet = formDataJson.pets[i];
         let vaccinationPath = null;
+        let spayNeuterPath = null;
         let photoPath = null;
 
         const vacFile = formData.get(`petVaccination_${i}`) as File | null;
@@ -58,6 +59,17 @@ export async function POST(request: NextRequest) {
           photoPath = data.path;
         }
 
+        const spayNeuterFile = formData.get(`petSpayNeuterProof_${i}`) as File | null;
+        if (spayNeuterFile) {
+          const fileName = `${submissionId}_pet_${i}_spay_neuter.${spayNeuterFile.name.split('.').pop()}`;
+          const buffer = await spayNeuterFile.arrayBuffer();
+          const { data, error } = await supabaseAdmin.storage
+            .from('submissions')
+            .upload(`pet_documents/${fileName}`, buffer, { contentType: spayNeuterFile.type });
+          if (error) throw error;
+          spayNeuterPath = data.path;
+        }
+
         petsArray.push({
           pet_type: pet.petType || null,
           pet_name: pet.petName || null,
@@ -67,6 +79,7 @@ export async function POST(request: NextRequest) {
           pet_spayed: pet.petSpayed,
           pet_vaccinations_current: pet.petVaccinationsCurrent,
           pet_vaccination_file: vaccinationPath,
+          pet_spay_neuter_file: spayNeuterPath,
           pet_photo_file: photoPath,
         });
       }

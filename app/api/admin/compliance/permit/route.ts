@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId } = body;
+    const { submissionId, managerOverride, overrideReason } = body;
 
     const sessionUser = await getSessionUser();
     const admin = sessionUser?.displayName || body.admin || 'Admin';
@@ -41,38 +41,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate all required items are verified before issuing permit
-    const missingItems = [];
-    
+    // Validate required items before issuing permit
+    const missingItems: string[] = [];
+
     if (!submission.vehicle_verified) {
-      missingItems.push('Vehicle information');
-    }
-    
-    if (!submission.pet_verified) {
-      missingItems.push('Pet form');
-    }
-    
-    if (!submission.insurance_verified) {
-      missingItems.push('Renters insurance');
+      missingItems.push('Vehicle verification');
     }
 
-    if (missingItems.length > 0) {
+    // Pet verification only applies if tenant has pets and no fee exemption
+    if (!submission.pet_verified && submission.has_pets && !submission.has_fee_exemption) {
+      missingItems.push('Pet verification');
+    }
+
+    if (!submission.insurance_verified) {
+      missingItems.push('Insurance verification');
+    }
+
+    if (missingItems.length > 0 && !managerOverride) {
       return NextResponse.json(
         { 
           success: false, 
-          message: `Cannot issue permit. Missing verification for: ${missingItems.join(', ')}. All items must be verified before issuing a parking permit.` 
+          message: `Cannot issue permit. Missing verification for: ${missingItems.join(', ')}. Manager override is required to continue.`,
+          missingItems,
+        },
+        { status: 400 }
+      );
+    }
+
+    const trimmedOverrideReason = typeof overrideReason === 'string' ? overrideReason.trim() : '';
+    if (missingItems.length > 0 && managerOverride && !trimmedOverrideReason) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Override reason is required when issuing a permit with manager override',
+          missingItems,
         },
         { status: 400 }
       );
     }
 
     // All requirements met - issue the permit (no PDF, permits are hand-written)
+    const existingNotes = typeof submission.admin_notes === 'string' ? submission.admin_notes : '';
+    const overrideNote =
+      missingItems.length > 0 && managerOverride
+        ? `[${new Date().toISOString()}] Manager override permit issue by ${admin}. Missing: ${missingItems.join(', ')}. Reason: ${trimmedOverrideReason}`
+        : '';
+
     const { data, error } = await supabaseAdmin
       .from('submissions')
       .update({
         permit_issued: true,
         permit_issued_at: new Date().toISOString(),
         permit_issued_by: admin,
+        admin_notes: overrideNote
+          ? (existingNotes ? `${existingNotes}\n${overrideNote}` : overrideNote)
+          : submission.admin_notes,
       })
       .eq('id', submissionId)
       .select()
@@ -86,11 +109,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await logAudit(sessionUser, 'permit.issue', 'submission', submissionId, { admin }, getClientIp(request));
+    await logAudit(sessionUser, 'permit.issue', 'submission', submissionId, {
+      admin,
+      manager_override: !!managerOverride,
+      override_reason: trimmedOverrideReason || null,
+      missing_items: missingItems,
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,
       data,
+      managerOverrideUsed: !!managerOverride,
+      missingItems,
     });
 
   } catch (error: any) {

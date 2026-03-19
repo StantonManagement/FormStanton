@@ -40,6 +40,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   vehicle_addendum: 'Vehicle Addendum',
   pet_addendum: 'Pet Addendum',
   insurance: 'Insurance',
+  exemption_document: 'ESA Doc',
 };
 
 interface MatrixDocumentCellProps {

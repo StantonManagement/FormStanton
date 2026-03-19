@@ -10,6 +10,7 @@ export interface ComplianceRecord {
   has_vehicle: boolean;
   has_pets: boolean;
   has_insurance: boolean;
+  has_esa_doc: boolean;
   requires_parking_permit: boolean;
   vehicle_addendum_file: string | null;
   vehicle_addendum_uploaded_to_appfolio: boolean;
@@ -17,6 +18,8 @@ export interface ComplianceRecord {
   pet_addendum_uploaded_to_appfolio: boolean;
   insurance_file: string | null;
   insurance_uploaded_to_appfolio: boolean;
+  esa_doc_file: string | null;
+  esa_doc_uploaded_to_appfolio: boolean;
   pet_fee_added_to_appfolio: boolean;
   permit_fee_added_to_appfolio: boolean;
   permit_issued: boolean;
@@ -151,6 +154,27 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
       uploadedBy: row.insurance_uploaded_to_appfolio_by,
       uploadedAt: row.insurance_uploaded_to_appfolio_at,
       documentType: 'insurance',
+    }),
+  },
+  {
+    id: 'esa_doc',
+    label: 'ESA Doc',
+    cellType: 'doc',
+    priority: 1,
+    isApplicable: (rec) => rec.has_esa_doc,
+    isComplete: (rec) => !!(rec.esa_doc_file && rec.esa_doc_uploaded_to_appfolio),
+    getAction: (rec) => {
+      if (!rec.has_esa_doc) return null;
+      if (!rec.esa_doc_file) return { text: '⚠ Missing ESA doc', level: 'red' };
+      if (!rec.esa_doc_uploaded_to_appfolio) return { text: 'Upload ESA doc to AppFolio', level: 'blue' };
+      return null;
+    },
+    getDocCellProps: (row) => ({
+      filePath: row.esa_doc_file,
+      uploadedToAppfolio: row.esa_doc_uploaded_to_appfolio,
+      uploadedBy: row.esa_doc_uploaded_to_appfolio_by,
+      uploadedAt: row.esa_doc_uploaded_to_appfolio_at,
+      documentType: 'exemption_document',
     }),
   },
 

@@ -14,11 +14,13 @@ export interface MatrixRow {
   has_vehicle: boolean;
   has_pets: boolean;
   has_insurance: boolean;
+  has_esa_doc: boolean;
 
   // Document file paths (null = no document on file)
   vehicle_addendum_file: string | null;
   pet_addendum_file: string | null;
   insurance_file: string | null;
+  esa_doc_file: string | null;
 
   // AppFolio document upload tracking
   vehicle_addendum_uploaded_to_appfolio: boolean;
@@ -30,6 +32,9 @@ export interface MatrixRow {
   insurance_uploaded_to_appfolio: boolean;
   insurance_uploaded_to_appfolio_at: string | null;
   insurance_uploaded_to_appfolio_by: string | null;
+  esa_doc_uploaded_to_appfolio: boolean;
+  esa_doc_uploaded_to_appfolio_at: string | null;
+  esa_doc_uploaded_to_appfolio_by: string | null;
 
   // AppFolio fee tracking
   pet_fee_added_to_appfolio: boolean;
@@ -210,6 +215,9 @@ export interface TenantSubmission {
   vehicle_addendum_uploaded_to_appfolio?: boolean;
   pet_addendum_uploaded_to_appfolio?: boolean;
   insurance_uploaded_to_appfolio?: boolean;
+  esa_doc_uploaded_to_appfolio?: boolean;
+  esa_doc_uploaded_to_appfolio_at?: string;
+  esa_doc_uploaded_to_appfolio_by?: string;
   pet_fee_added_to_appfolio?: boolean;
   permit_fee_added_to_appfolio?: boolean;
 }
@@ -291,9 +299,22 @@ export interface ProjectUnit {
   token_expires_at: string | null
   preferred_language: PreferredLanguage
   overall_status: OverallStatus
-  twilio_delivery_status: 'pending' | 'sent' | 'delivered' | 'failed' | null
+  first_viewed_at: string | null
+  last_viewed_at: string | null
+  view_count: number
   created_at: string
   task_completions?: TaskCompletion[]
+}
+
+export interface LinkDelivery {
+  id: string
+  project_unit_id: string
+  method: 'sms' | 'email'
+  sent_to: string
+  sent_at: string
+  sent_by: string
+  send_error: string | null
+  created_at: string
 }
 
 export interface TaskCompletion {

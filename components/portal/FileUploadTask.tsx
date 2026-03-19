@@ -8,6 +8,8 @@ export default function FileUploadTask({ task, token, t, onComplete }: TaskCompo
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
@@ -22,6 +24,7 @@ export default function FileUploadTask({ task, token, t, onComplete }: TaskCompo
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (note.trim()) formData.append('notes', note.trim());
 
       const res = await fetch(`/api/t/${token}/tasks/${task.id}/complete`, {
         method: 'POST',
@@ -78,6 +81,24 @@ export default function FileUploadTask({ task, token, t, onComplete }: TaskCompo
         <div className="w-full bg-[var(--bg-section)] rounded-none h-2">
           <div className="bg-[var(--primary)] h-2 rounded-none animate-pulse w-full" />
         </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowNote(!showNote)}
+        className="text-xs text-[var(--muted)] hover:text-[var(--ink)] transition-colors duration-200 underline"
+      >
+        {t.add_note}
+      </button>
+
+      {showNote && (
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t.notes_placeholder}
+          rows={2}
+          className="w-full border border-[var(--border)] rounded-none p-3 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] bg-white focus:outline-none focus:border-[var(--primary)] transition-colors duration-200 resize-none"
+        />
       )}
 
       {error && (

@@ -32,6 +32,19 @@ export async function GET(
       }
     }
 
+    // Record view tracking (fire-and-forget, don't block response)
+    supabaseAdmin
+      .from('project_units')
+      .update({
+        view_count: (unit.view_count ?? 0) + 1,
+        last_viewed_at: new Date().toISOString(),
+        ...(unit.first_viewed_at ? {} : { first_viewed_at: new Date().toISOString() }),
+      })
+      .eq('id', unit.id)
+      .then(({ error: viewErr }) => {
+        if (viewErr) console.error('View tracking error:', viewErr);
+      });
+
     const project = (unit as any).projects as any;
 
     // Fetch ordered tasks with completion status for this unit

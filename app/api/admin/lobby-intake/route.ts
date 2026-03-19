@@ -4,19 +4,14 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 import { normalizeAddress } from '@/lib/addressNormalizer';
 
-function normalizeNameForMatch(name: string): string {
-  return (name || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[,.']/g, '')
-    .split(/\s+/)
-    .filter(p => p.length > 0)
-    .sort()
-    .join(' ');
+function normalizeForMatching(str: string | null | undefined): string {
+  return (str || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
-async function findSubmission(building: string, unit: string, name: string) {
-  const normalizedAddr = normalizeAddress(building).toLowerCase();
+async function findActiveUnitSubmissions(building: string, unit: string) {
+  const normalizedBuilding = normalizeAddress(building).toLowerCase();
+  const normalizedUnit = normalizeForMatching(unit);
+
   const { data: candidates } = await supabaseAdmin
     .from('submissions')
     .select('*')
@@ -24,14 +19,47 @@ async function findSubmission(building: string, unit: string, name: string) {
     .is('merged_into', null)
     .order('created_at', { ascending: false });
 
-  if (!candidates || candidates.length === 0) return null;
+  const scopedCandidates = (candidates || []).filter((candidate) => {
+    const candidateBuilding = normalizeAddress(candidate.building_address).toLowerCase();
+    const candidateUnit = normalizeForMatching(candidate.unit_number);
+    return candidateBuilding === normalizedBuilding && candidateUnit === normalizedUnit;
+  });
 
-  const normalizedName = normalizeNameForMatch(name);
-  return candidates.find(sub => {
-    const addrMatch = normalizeAddress(sub.building_address).toLowerCase() === normalizedAddr;
-    const nameMatch = normalizeNameForMatch(sub.full_name) === normalizedName;
-    return addrMatch && nameMatch;
-  }) || null;
+  return scopedCandidates;
+}
+
+async function resolveCanonicalSubmission(building: string, unit: string): Promise<{
+  submission: any | null;
+  canonicalSelectionRequired: boolean;
+  candidateIds: string[];
+}> {
+  const candidates = await findActiveUnitSubmissions(building, unit);
+  if (candidates.length === 0) {
+    return { submission: null, canonicalSelectionRequired: false, candidateIds: [] };
+  }
+
+  if (candidates.length === 1) {
+    return {
+      submission: candidates[0],
+      canonicalSelectionRequired: false,
+      candidateIds: [candidates[0].id],
+    };
+  }
+
+  const primarySubs = candidates.filter((candidate) => candidate.is_primary === true);
+  if (primarySubs.length === 1) {
+    return {
+      submission: primarySubs[0],
+      canonicalSelectionRequired: false,
+      candidateIds: candidates.map((candidate) => candidate.id),
+    };
+  }
+
+  return {
+    submission: null,
+    canonicalSelectionRequired: true,
+    candidateIds: candidates.map((candidate) => candidate.id),
+  };
 }
 
 /**
@@ -48,9 +76,9 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { tenant_name, building_address, unit_number, lobby_notes } = body;
 
-    if (!tenant_name || !building_address || !unit_number) {
+    if (!building_address || !unit_number) {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields (tenant_name, building_address, unit_number)' },
+        { success: false, message: 'Missing required fields (building_address, unit_number)' },
         { status: 400 }
       );
     }
@@ -58,10 +86,23 @@ export async function PATCH(request: NextRequest) {
     const sessionUser = await getSessionUser();
     const performedBy = sessionUser?.displayName || 'Unknown';
 
-    const existing = await findSubmission(building_address, unit_number, tenant_name);
+    const canonicalResolution = await resolveCanonicalSubmission(building_address, unit_number);
+    if (canonicalResolution.canonicalSelectionRequired) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Canonical selection required before updating lobby notes for this unit',
+          canonicalSelectionRequired: true,
+          candidateIds: canonicalResolution.candidateIds,
+        },
+        { status: 409 }
+      );
+    }
+
+    const existing = canonicalResolution.submission;
     if (!existing) {
       return NextResponse.json(
-        { success: false, message: 'No submission found for this tenant' },
+        { success: false, message: 'No submission found for this unit' },
         { status: 404 }
       );
     }
@@ -122,6 +163,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const canonicalResolution = await resolveCanonicalSubmission(building_address, unit_number);
+    if (canonicalResolution.canonicalSelectionRequired) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Canonical selection required before intake actions for this unit',
+          canonicalSelectionRequired: true,
+          candidateIds: canonicalResolution.candidateIds,
+        },
+        { status: 409 }
+      );
+    }
+
+    const canonicalExisting = canonicalResolution.submission;
+
     // 1. Log to tenant_interactions (history)
     const { data: interaction, error: ixError } = await supabaseAdmin
       .from('tenant_interactions')
@@ -149,7 +205,7 @@ export async function POST(request: NextRequest) {
     let submissionData = null;
 
     if (action_type === 'id_photo_upload') {
-      const existing = await findSubmission(building_address, unit_number, tenant_name);
+      const existing = canonicalExisting;
 
       if (existing) {
         submissionData = existing;
@@ -180,7 +236,7 @@ export async function POST(request: NextRequest) {
 
     if (action_type === 'esa_document_received') {
       // Find existing submission
-      const existing = await findSubmission(building_address, unit_number, tenant_name);
+      const existing = canonicalExisting;
 
       if (existing) {
         const { data: updated, error: updateErr } = await supabaseAdmin
@@ -219,7 +275,7 @@ export async function POST(request: NextRequest) {
 
     if (action_type === 'pet_registration' || action_type === 'pet_update' || action_type === 'pet_removal' || action_type === 'vehicle_registration' || action_type === 'vehicle_update' || action_type === 'vehicle_removal') {
       // Find existing submission by building + unit + normalized name
-      const existing = await findSubmission(building_address, unit_number, tenant_name);
+      const existing = canonicalExisting;
 
       if (action_type === 'pet_registration') {
         const petObj = action_data.pets?.[0] || {};

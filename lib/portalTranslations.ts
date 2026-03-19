@@ -25,6 +25,8 @@ export interface PortalStrings {
   tasks_title: string;
   skip_to_vehicle: string;
   skip_to_vehicle_btn: string;
+  add_note: string;
+  notes_placeholder: string;
 }
 
 export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
@@ -53,6 +55,8 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     tasks_title: 'Your Tasks',
     skip_to_vehicle: 'Are you adding another vehicle?',
     skip_to_vehicle_btn: 'Go to Vehicle Registration',
+    add_note: 'Add a note',
+    notes_placeholder: 'Add a note (optional)',
   },
   es: {
     deadline_label: 'Completar antes del',
@@ -79,6 +83,8 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     tasks_title: 'Sus Tareas',
     skip_to_vehicle: '¿Está registrando otro vehículo?',
     skip_to_vehicle_btn: 'Ir al Registro de Vehículo',
+    add_note: 'Agregar una nota',
+    notes_placeholder: 'Agregar una nota (opcional)',
   },
   pt: {
     deadline_label: 'Concluir até',
@@ -105,5 +111,7 @@ export const portalTranslations: Record<PreferredLanguage, PortalStrings> = {
     tasks_title: 'Suas Tarefas',
     skip_to_vehicle: 'Está registrando outro veículo?',
     skip_to_vehicle_btn: 'Ir para Registro de Veículo',
+    add_note: 'Adicionar uma nota',
+    notes_placeholder: 'Adicionar uma nota (opcional)',
   },
 };

@@ -362,6 +362,9 @@ export default function TenantPortal({ token }: { token: string }) {
                       {isComplete && (
                         <p className="text-xs text-[var(--success)] mt-0.5">{t.completed}</p>
                       )}
+                      {isComplete && task.completion.notes && (
+                        <p className="text-xs text-[var(--muted)] mt-1 italic">{task.completion.notes}</p>
+                      )}
                     </div>
 
                     {/* Expand chevron */}

@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
     
     const data = JSON.parse(formDataString);
     
-    // Upload photos to Supabase Storage
+    // Upload photos and pet proof documents to Supabase Storage
     const photoUrls: string[] = [];
+    const petVaccinationUrls: Record<number, string> = {};
+    const petSpayNeuterUrls: Record<number, string> = {};
     
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('pet_') && key.includes('_photo_') && value instanceof File) {
@@ -42,7 +44,68 @@ export async function POST(request: NextRequest) {
           photoUrls.push(urlData.publicUrl);
         }
       }
+
+      if (key.startsWith('pet_') && key.endsWith('_vaccination') && value instanceof File) {
+        const file = value as File;
+        const fileName = `${Date.now()}-${key}-${file.name}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('form-photos')
+          .upload(`pet-approval/${fileName}`, file, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Vaccination upload error:', uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('form-photos')
+            .getPublicUrl(uploadData.path);
+
+          const petIndex = Number(key.split('_')[1]);
+          if (!Number.isNaN(petIndex)) {
+            petVaccinationUrls[petIndex] = urlData.publicUrl;
+          }
+        }
+      }
+
+      if (key.startsWith('pet_') && key.endsWith('_spay_neuter') && value instanceof File) {
+        const file = value as File;
+        const fileName = `${Date.now()}-${key}-${file.name}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('form-photos')
+          .upload(`pet-approval/${fileName}`, file, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Spay/neuter upload error:', uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('form-photos')
+            .getPublicUrl(uploadData.path);
+
+          const petIndex = Number(key.split('_')[1]);
+          if (!Number.isNaN(petIndex)) {
+            petSpayNeuterUrls[petIndex] = urlData.publicUrl;
+          }
+        }
+      }
     }
+
+    const enrichedFormData = {
+      ...data,
+      pets: Array.isArray(data.pets)
+        ? data.pets.map((pet: any, index: number) => ({
+            ...pet,
+            petVaccinationFile: petVaccinationUrls[index] || null,
+            petSpayNeuterFile: petSpayNeuterUrls[index] || null,
+          }))
+        : data.pets,
+    };
     
     // Upload signature
     let signatureUrl = '';
@@ -71,10 +134,10 @@ export async function POST(request: NextRequest) {
       .from('form_submissions')
       .insert({
         form_type: 'pet_approval',
-        tenant_name: data.tenantName,
-        building_address: data.buildingAddress,
-        unit_number: data.unitNumber,
-        form_data: data,
+        tenant_name: enrichedFormData.tenantName,
+        building_address: enrichedFormData.buildingAddress,
+        unit_number: enrichedFormData.unitNumber,
+        form_data: enrichedFormData,
         photo_urls: photoUrls,
         signature_url: signatureUrl,
         language: language,

@@ -145,6 +145,7 @@ export default function ProjectDetailPage() {
             project={project}
             units={detail.units}
             unitsLoading={detail.unitsLoading}
+            onRefresh={detail.fetchUnits}
           />
         )}
       </div>

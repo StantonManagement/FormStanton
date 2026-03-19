@@ -410,23 +410,36 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
       const occupied = stats?.occupiedUnits || 0;
       const reqs = getBuildingRequirements(building);
 
-      const records: ComplianceRecord[] = subs.map(s => ({
-        has_vehicle: s.has_vehicle,
-        has_pets: s.has_pets,
-        has_insurance: s.has_insurance || reqs.requires_renters_insurance,
-        requires_parking_permit: reqs.requires_parking_permit && s.has_vehicle,
-        vehicle_addendum_file: s.vehicle_addendum_file ?? null,
-        vehicle_addendum_uploaded_to_appfolio: s.vehicle_addendum_uploaded_to_appfolio ?? false,
-        pet_addendum_file: s.pet_addendum_file ?? null,
-        pet_addendum_uploaded_to_appfolio: s.pet_addendum_uploaded_to_appfolio ?? false,
-        insurance_file: s.insurance_file ?? null,
-        insurance_uploaded_to_appfolio: s.insurance_uploaded_to_appfolio ?? false,
-        pet_fee_added_to_appfolio: s.pet_fee_added_to_appfolio ?? false,
-        permit_fee_added_to_appfolio: s.permit_fee_added_to_appfolio ?? false,
-        permit_issued: s.permit_issued,
-        calculated_pet_fee: null,
-        calculated_permit_fee: null,
-      }));
+      const records: ComplianceRecord[] = subs.map(s => {
+        const exemptionDocs = Array.isArray(s.exemption_documents)
+          ? s.exemption_documents.filter((d: unknown): d is string => typeof d === 'string' && d.length > 0)
+          : [];
+        const hasEsaDoc =
+          (s.exemption_reason ?? null) === 'emotional_support'
+          || exemptionDocs.length > 0
+          || (s.esa_doc_uploaded_to_appfolio ?? false);
+
+        return {
+          has_vehicle: s.has_vehicle,
+          has_pets: s.has_pets,
+          has_insurance: s.has_insurance || reqs.requires_renters_insurance,
+          has_esa_doc: hasEsaDoc,
+          requires_parking_permit: reqs.requires_parking_permit && s.has_vehicle,
+          vehicle_addendum_file: s.vehicle_addendum_file ?? null,
+          vehicle_addendum_uploaded_to_appfolio: s.vehicle_addendum_uploaded_to_appfolio ?? false,
+          pet_addendum_file: s.pet_addendum_file ?? null,
+          pet_addendum_uploaded_to_appfolio: s.pet_addendum_uploaded_to_appfolio ?? false,
+          insurance_file: s.insurance_file ?? null,
+          insurance_uploaded_to_appfolio: s.insurance_uploaded_to_appfolio ?? false,
+          esa_doc_file: exemptionDocs[0] ?? null,
+          esa_doc_uploaded_to_appfolio: s.esa_doc_uploaded_to_appfolio ?? false,
+          pet_fee_added_to_appfolio: s.pet_fee_added_to_appfolio ?? false,
+          permit_fee_added_to_appfolio: s.permit_fee_added_to_appfolio ?? false,
+          permit_issued: s.permit_issued,
+          calculated_pet_fee: null,
+          calculated_permit_fee: null,
+        };
+      });
 
       const columns = computeColumnStats(records);
 

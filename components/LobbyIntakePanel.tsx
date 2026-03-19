@@ -87,8 +87,20 @@ const ACTION_LABELS: Record<string, string> = {
   gave_additional_insured_instructions: 'Gave Additional Insured Instructions',
   id_photo_upload: 'Tenant ID Photo Uploaded',
   printed_forms: 'Printed Forms',
+  data_quality_flag: 'Data Quality Flag',
   general_note: 'Note',
 };
+
+const DATA_QUALITY_ISSUES: Array<{ value: string; label: string }> = [
+  { value: 'missing_doc', label: 'Missing Required Document' },
+  { value: 'field_mismatch', label: 'Field Mismatch' },
+  { value: 'tenant_statement_conflict', label: 'Tenant Statement Conflict' },
+  { value: 'requires_follow_up', label: 'Requires Follow-Up' },
+];
+
+const DATA_QUALITY_LABELS: Record<string, string> = Object.fromEntries(
+  DATA_QUALITY_ISSUES.map((issue) => [issue.value, issue.label])
+);
 
 const EXEMPTION_REASONS = [
   { value: 'emotional_support', label: 'Emotional Support Animal (ESA)' },
@@ -146,6 +158,8 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   // Quick note state
   const [quickNote, setQuickNote] = useState('');
+  const [qualityIssueType, setQualityIssueType] = useState('missing_doc');
+  const [qualityIssueDetail, setQualityIssueDetail] = useState('');
 
   // Lobby notes for compliance
   const [lobbyNotes, setLobbyNotes] = useState(submissionData?.lobby_notes || '');
@@ -170,13 +184,28 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   const [insProvider, setInsProvider] = useState('');
   const [insPolicyNumber, setInsPolicyNumber] = useState('');
   const [insCoverage, setInsCoverage] = useState('100000');
+  const [insCoverageMode, setInsCoverageMode] = useState<'preset' | 'custom'>('preset');
+  const [insCustomCoverage, setInsCustomCoverage] = useState('');
   const [insExpiration, setInsExpiration] = useState('');
   const [insAdditionalInsured, setInsAdditionalInsured] = useState(false);
   const [insProofReceived, setInsProofReceived] = useState(false);
   const [insHasPets, setInsHasPets] = useState(false);
+  const [insAdditionalInsuredTouched, setInsAdditionalInsuredTouched] = useState(false);
+  const [insProofReceivedTouched, setInsProofReceivedTouched] = useState(false);
+  const [insHasPetsTouched, setInsHasPetsTouched] = useState(false);
   const [currentPolicy, setCurrentPolicy] = useState<InsurancePolicy | null>(null);
   const [loadingPolicy, setLoadingPolicy] = useState(true);
   const [printLang, setPrintLang] = useState<PrintLang>('en');
+
+  const getNormalizedCoverageAmount = () => {
+    const rawCoverage = insCoverageMode === 'custom' ? insCustomCoverage : insCoverage;
+    const sanitized = rawCoverage.replace(/[^\d]/g, '');
+    const numericCoverage = Number(sanitized);
+    if (!Number.isFinite(numericCoverage) || numericCoverage <= 0) {
+      return null;
+    }
+    return numericCoverage;
+  };
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -207,11 +236,23 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         setInsuranceChoice(p.insurance_type);
         setInsProvider(p.provider || '');
         setInsPolicyNumber(p.policy_number || '');
-        setInsCoverage(p.liability_coverage ? String(p.liability_coverage) : '100000');
+        const loadedCoverage = p.liability_coverage ? String(p.liability_coverage) : '100000';
+        if (loadedCoverage === '100000' || loadedCoverage === '300000' || loadedCoverage === '500000') {
+          setInsCoverageMode('preset');
+          setInsCoverage(loadedCoverage);
+          setInsCustomCoverage('');
+        } else {
+          setInsCoverageMode('custom');
+          setInsCustomCoverage(loadedCoverage);
+          setInsCoverage('100000');
+        }
         setInsExpiration(p.policy_expiration || '');
         setInsAdditionalInsured(p.additional_insured_added || false);
         setInsProofReceived(p.proof_received || false);
         setInsHasPets(p.has_pets || false);
+        setInsAdditionalInsuredTouched(true);
+        setInsProofReceivedTouched(true);
+        setInsHasPetsTouched(true);
       }
     } catch (e) {
       console.error('Failed to fetch insurance', e);
@@ -226,11 +267,15 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       const res = await fetch('/api/admin/unified-tenants');
       const data = await res.json();
       if (data.success) {
-        const match = data.data.find((t: any) => 
-          t.building_address === tenant.buildingAddress &&
-          t.unit_number === tenant.unitNumber &&
-          t.name === tenant.name
-        );
+        const match = data.data.find((t: any) => {
+          if (t.building_address !== tenant.buildingAddress || t.unit_number !== tenant.unitNumber) {
+            return false;
+          }
+
+          // Unit-only canonical model: prefer canonical submission holder for this unit.
+          if (t.canonicalSelectionRequired) return false;
+          return !!t.submissionData;
+        });
         if (match?.submissionData) {
           const sub = match.submissionData;
           // Build registered vehicles list from flat fields + additional_vehicles
@@ -306,6 +351,31 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveQualityFlag = async () => {
+    const issueLabel = DATA_QUALITY_LABELS[qualityIssueType] || qualityIssueType;
+    const detail = qualityIssueDetail.trim();
+    const note = detail ? `${issueLabel}: ${detail}` : issueLabel;
+
+    const saved = await saveInteraction(
+      'data_quality_flag',
+      {
+        issue_type: qualityIssueType,
+        detail: detail || null,
+      },
+      note
+    );
+
+    if (saved) {
+      setQualityIssueDetail('');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Flag Recorded',
+        message: 'Data quality flag saved for follow-up.',
+        variant: 'success',
+      });
     }
   };
 
@@ -622,11 +692,11 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   };
 
   const handleSavePet = async () => {
-    if (!petBreed || !petName) {
+    if (!petName.trim() || !petWeight.trim()) {
       setAlertDialog({
         isOpen: true,
         title: 'Missing Information',
-        message: 'Please fill in breed and name.',
+        message: 'Please fill in pet name and weight.',
         variant: 'error'
       });
       return;
@@ -782,6 +852,69 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   // -- Insurance handlers --
 
   const handleSaveInsurance = async () => {
+    const normalizedCoverage = getNormalizedCoverageAmount();
+
+    if (insuranceChoice === 'own_policy' && !insAdditionalInsuredTouched) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Confirmation Required',
+        message: 'Please confirm whether Additional Insured (LLC) has been added before saving.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (insuranceChoice === 'own_policy' && !insProofReceivedTouched) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Confirmation Required',
+        message: 'Please confirm whether proof of insurance has been received before saving.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (!insHasPetsTouched) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Confirmation Required',
+        message: 'Please confirm whether the tenant has pets before saving.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (normalizedCoverage === null) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid Coverage Amount',
+        message: 'Enter a valid liability coverage amount before saving.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (insHasPets && normalizedCoverage < 300000) {
+      const note = `Coverage below compliance minimum for pet household: entered $${normalizedCoverage.toLocaleString()} (minimum $300,000)`;
+      await saveInteraction(
+        'data_quality_flag',
+        {
+          issue_type: 'requires_follow_up',
+          detail: note,
+          category: 'insurance_compliance',
+        },
+        note
+      );
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Coverage Too Low',
+        message: 'Pet households require at least $300,000 liability coverage. Policy was not saved. You can still upload proof for follow-up.',
+        variant: 'error'
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       // Save to tenant_insurance_policies table
@@ -795,7 +928,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
           insurance_type: insuranceChoice,
           provider: insuranceChoice === 'own_policy' ? insProvider : 'Appfolio',
           policy_number: insuranceChoice === 'own_policy' ? insPolicyNumber : null,
-          liability_coverage: Number(insCoverage) || 100000,
+          liability_coverage: normalizedCoverage,
           policy_expiration: insuranceChoice === 'own_policy' && insExpiration ? insExpiration : null,
           additional_insured_added: insAdditionalInsured,
           proof_received: insProofReceived,
@@ -819,14 +952,14 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       // Also log as interaction
       const label = insuranceChoice === 'appfolio'
         ? 'Appfolio enrollment'
-        : `${insProvider || 'Own policy'} - Policy #${insPolicyNumber || 'N/A'} - $${Number(insCoverage).toLocaleString()} coverage - Exp: ${insExpiration || 'N/A'}`;
+        : `${insProvider || 'Own policy'} - Policy #${insPolicyNumber || 'N/A'} - $${normalizedCoverage.toLocaleString()} coverage - Exp: ${insExpiration || 'N/A'}`;
       await saveInteraction(
         'insurance_policy_recorded',
         {
           insurance_type: insuranceChoice,
           provider: insProvider,
           policy_number: insPolicyNumber,
-          coverage: insCoverage,
+          coverage: normalizedCoverage,
           expiration: insExpiration,
           additional_insured: insAdditionalInsured,
           proof_received: insProofReceived,
@@ -844,7 +977,8 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
           const match = freshData.data.find((t: any) =>
             t.building_address === tenant.buildingAddress &&
             t.unit_number === tenant.unitNumber &&
-            t.name === tenant.name
+            !t.canonicalSelectionRequired &&
+            !!t.submissionData
           );
           if (match?.submissionData) {
             onSubmissionUpdated(match.submissionData);
@@ -1003,7 +1137,11 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   // -- Document upload handler (inside intake panel) --
 
-  const handleUploadDoc = async (docType: 'pet_addendum' | 'insurance' | 'vehicle_addendum', file: File) => {
+  const handleUploadDoc = async (
+    docType: 'pet_addendum' | 'insurance' | 'vehicle_addendum' | 'pet_vaccination_proof' | 'pet_spay_neuter_proof',
+    file: File,
+    options?: { petIndex?: number }
+  ) => {
     const subId = submissionData?.id;
     if (!subId) {
       setAlertDialog({ isOpen: true, title: 'No Submission', message: 'This tenant has no submission record yet. Register a vehicle or pet first.', variant: 'error' });
@@ -1015,12 +1153,21 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       formData.append('submissionId', subId);
       formData.append('documentType', docType);
       formData.append('file', file);
+      if (typeof options?.petIndex === 'number') {
+        formData.append('petIndex', String(options.petIndex));
+      }
 
       const res = await fetch('/api/admin/compliance/attach-document', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
         if (onSubmissionUpdated) onSubmissionUpdated(data.data);
-        const labels: Record<string, string> = { pet_addendum: 'Pet Addendum', insurance: 'Insurance Proof', vehicle_addendum: 'Vehicle Addendum' };
+        const labels: Record<string, string> = {
+          pet_addendum: 'Pet Addendum',
+          insurance: 'Insurance Proof',
+          vehicle_addendum: 'Vehicle Addendum',
+          pet_vaccination_proof: 'Pet Vaccination Proof',
+          pet_spay_neuter_proof: 'Pet Spayed/Neutered Proof',
+        };
         setAlertDialog({ isOpen: true, title: 'Uploaded', message: `${labels[docType]} uploaded successfully.`, variant: 'success' });
       } else {
         setAlertDialog({ isOpen: true, title: 'Upload Failed', message: data.message || 'Upload failed', variant: 'error' });
@@ -1107,6 +1254,16 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     return new Date(dateStr) < new Date();
   };
 
+  const getPetDocUploadIndex = (): number | null => {
+    if (editingPetIndex !== null && editingPetIndex >= 0) {
+      return editingPetIndex;
+    }
+    if (registeredPets.length === 1) {
+      return 0;
+    }
+    return null;
+  };
+
   // -- Input styling --
 
   const inputClass = 'w-full border border-gray-300 rounded-none px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#1a2744] focus:border-[#1a2744]';
@@ -1122,6 +1279,71 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     { key: 'insurance', label: 'Insurance' },
     { key: 'history', label: `History (${interactions.length})` },
   ];
+
+  const hasSubmission = !!submissionData;
+  const dogCatPets = Array.isArray(submissionData?.pets)
+    ? submissionData.pets.filter((pet: any) => {
+        const petType = String(pet?.pet_type || '').toLowerCase();
+        return petType === 'dog' || petType === 'cat';
+      })
+    : [];
+
+  const dataQualityChecklist: Array<{ label: string; passed: boolean; detail: string }> = [
+    {
+      label: 'Canonical submission selected',
+      passed: hasSubmission,
+      detail: hasSubmission ? 'Submission record is available for this unit.' : 'No canonical submission selected yet.',
+    },
+    {
+      label: 'Vehicle details complete (if applicable)',
+      passed: !submissionData?.has_vehicle || !!(submissionData?.vehicle_make && submissionData?.vehicle_model && submissionData?.vehicle_plate),
+      detail: !submissionData?.has_vehicle
+        ? 'Not applicable (no vehicle declared).'
+        : submissionData?.vehicle_make && submissionData?.vehicle_model && submissionData?.vehicle_plate
+          ? 'Vehicle details are present.'
+          : 'Missing make/model/plate fields.',
+    },
+    {
+      label: 'Pet details complete for dogs/cats (if applicable)',
+      passed: !submissionData?.has_pets || dogCatPets.every((pet: any) => pet.pet_name && pet.pet_weight),
+      detail: !submissionData?.has_pets
+        ? 'Not applicable (no pets declared).'
+        : dogCatPets.every((pet: any) => pet.pet_name && pet.pet_weight)
+          ? 'Dog/cat name and weight are complete.'
+          : 'One or more dogs/cats are missing required name/weight.',
+    },
+    {
+      label: 'Insurance record present for policy path',
+      passed: !!submissionData?.add_insurance_to_rent || !!submissionData?.insurance_file,
+      detail: submissionData?.add_insurance_to_rent
+        ? 'Insurance is being added to rent (authorization path).'
+        : submissionData?.insurance_file
+          ? 'Insurance document is on file.'
+          : 'No insurance file on record for own-policy path.',
+    },
+    {
+      label: 'Insurance type classified (if file uploaded)',
+      passed: !submissionData?.insurance_file || !!submissionData?.insurance_type,
+      detail: !submissionData?.insurance_file
+        ? 'Not applicable until insurance file is uploaded.'
+        : submissionData?.insurance_type
+          ? `Classified as ${submissionData.insurance_type}.`
+          : 'Insurance file is uploaded but not classified.',
+    },
+    {
+      label: 'ID photo on file before pickup',
+      passed: !submissionData?.permit_issued || !!submissionData?.pickup_id_photo || !submissionData?.tenant_picked_up,
+      detail: !submissionData?.permit_issued
+        ? 'Not applicable until permit is issued.'
+        : submissionData?.tenant_picked_up
+          ? submissionData?.pickup_id_photo
+            ? 'Pickup ID photo is on file.'
+            : 'Permit marked picked up without ID photo.'
+          : 'Permit not picked up yet.',
+    },
+  ];
+
+  const dataQualityFlags = interactions.filter((ix) => ix.action_type === 'data_quality_flag');
 
   return (
     <div className="bg-white border border-gray-200 rounded-none shadow-sm">
@@ -1346,7 +1568,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                   {registeredPets.map((pet, index) => (
                     <div key={index} className="flex items-center justify-between bg-white p-2 rounded text-sm">
                       <div>
-                        <strong>{pet.pet_name}</strong> ({pet.pet_type}, {pet.pet_breed}, {pet.pet_weight}lbs)
+                        <strong>{pet.pet_name}</strong> ({pet.pet_type}{pet.pet_breed ? `, ${pet.pet_breed}` : ''}, {pet.pet_weight}lbs)
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => handleEditPet(index)} className="text-xs px-3 py-1 bg-[#8b7355] text-white rounded hover:bg-[#6d5a43] transition-colors">
@@ -1442,6 +1664,60 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                     e.target.value = '';
                   }}
                   disabled={uploadingDocType === 'pet_addendum'}
+                  className="hidden"
+                />
+              </label>
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'pet_vaccination_proof' ? 'Uploading...' : 'Upload Vaccination Proof'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const petIndex = getPetDocUploadIndex();
+                      if (petIndex === null) {
+                        setAlertDialog({
+                          isOpen: true,
+                          title: 'Select Pet',
+                          message: 'Click Edit on a pet first to upload vaccination proof for that specific pet.',
+                          variant: 'error',
+                        });
+                        e.target.value = '';
+                        return;
+                      }
+                      handleUploadDoc('pet_vaccination_proof', file, { petIndex });
+                    }
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'pet_vaccination_proof'}
+                  className="hidden"
+                />
+              </label>
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'pet_spay_neuter_proof' ? 'Uploading...' : 'Upload Spayed/Neutered Proof'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const petIndex = getPetDocUploadIndex();
+                      if (petIndex === null) {
+                        setAlertDialog({
+                          isOpen: true,
+                          title: 'Select Pet',
+                          message: 'Click Edit on a pet first to upload spayed/neutered proof for that specific pet.',
+                          variant: 'error',
+                        });
+                        e.target.value = '';
+                        return;
+                      }
+                      handleUploadDoc('pet_spay_neuter_proof', file, { petIndex });
+                    }
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'pet_spay_neuter_proof'}
                   className="hidden"
                 />
               </label>
@@ -1602,11 +1878,34 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Liability Coverage</label>
-                    <select value={insCoverage} onChange={e => setInsCoverage(e.target.value)} className={selectClass}>
+                    <select
+                      value={insCoverageMode === 'custom' ? 'custom' : insCoverage}
+                      onChange={(e) => {
+                        if (e.target.value === 'custom') {
+                          setInsCoverageMode('custom');
+                          return;
+                        }
+                        setInsCoverageMode('preset');
+                        setInsCoverage(e.target.value);
+                      }}
+                      className={selectClass}
+                    >
                       <option value="100000">$100,000</option>
                       <option value="300000">$300,000 (required with pets)</option>
                       <option value="500000">$500,000</option>
+                      <option value="custom">Custom amount...</option>
                     </select>
+                    {insCoverageMode === 'custom' && (
+                      <input
+                        type="number"
+                        min="0"
+                        step="1000"
+                        value={insCustomCoverage}
+                        onChange={(e) => setInsCustomCoverage(e.target.value)}
+                        className={`${inputClass} mt-2`}
+                        placeholder="Enter policy amount"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className={labelClass}>Policy Expiration Date</label>
@@ -1615,11 +1914,27 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={insAdditionalInsured} onChange={e => setInsAdditionalInsured(e.target.checked)} className="w-4 h-4" />
+                    <input
+                      type="checkbox"
+                      checked={insAdditionalInsured}
+                      onChange={e => {
+                        setInsAdditionalInsured(e.target.checked);
+                        setInsAdditionalInsuredTouched(true);
+                      }}
+                      className="w-4 h-4"
+                    />
                     <span className="text-sm">Additional Insured (LLC) added</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={insProofReceived} onChange={e => setInsProofReceived(e.target.checked)} className="w-4 h-4" />
+                    <input
+                      type="checkbox"
+                      checked={insProofReceived}
+                      onChange={e => {
+                        setInsProofReceived(e.target.checked);
+                        setInsProofReceivedTouched(true);
+                      }}
+                      className="w-4 h-4"
+                    />
                     <span className="text-sm">Proof of insurance received</span>
                   </label>
                 </div>
@@ -1628,10 +1943,18 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
             {/* Has pets flag */}
             <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input type="checkbox" checked={insHasPets} onChange={e => setInsHasPets(e.target.checked)} className="w-4 h-4" />
+              <input
+                type="checkbox"
+                checked={insHasPets}
+                onChange={e => {
+                  setInsHasPets(e.target.checked);
+                  setInsHasPetsTouched(true);
+                }}
+                className="w-4 h-4"
+              />
               <span className="text-sm font-medium">Tenant has pets (requires $300,000 coverage)</span>
             </label>
-            {insHasPets && Number(insCoverage) < 300000 && (
+            {insHasPets && (getNormalizedCoverageAmount() || 0) < 300000 && (
               <div className="text-xs text-red-700 font-semibold bg-red-50 p-2">
                 [!] Coverage is below $300,000 -- pet owners must have at least $300,000 liability.
               </div>
@@ -1695,6 +2018,85 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         {/* -- HISTORY TAB -- */}
         {activeTab === 'history' && (
           <div>
+            {/* Structured quality checklist and flags */}
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <h3 className="font-serif text-base mb-2">Data Quality Checklist</h3>
+              <div className="space-y-2">
+                {dataQualityChecklist.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-xs">
+                    <span className={item.passed ? 'text-green-700' : 'text-red-700'}>
+                      {item.passed ? '✓' : '✕'}
+                    </span>
+                    <div>
+                      <div className={item.passed ? 'text-green-800 font-medium' : 'text-red-800 font-medium'}>{item.label}</div>
+                      <div className="text-gray-500">{item.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <h3 className="font-serif text-base mb-2">Flag Data Quality Issue</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className={labelClass}>Issue Type</label>
+                  <select
+                    value={qualityIssueType}
+                    onChange={(e) => setQualityIssueType(e.target.value)}
+                    className={selectClass}
+                  >
+                    {DATA_QUALITY_ISSUES.map((issue) => (
+                      <option key={issue.value} value={issue.value}>{issue.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Details (optional)</label>
+                  <textarea
+                    value={qualityIssueDetail}
+                    onChange={(e) => setQualityIssueDetail(e.target.value)}
+                    className={`${inputClass} resize-none`}
+                    rows={2}
+                    placeholder="Example: Plate on document does not match plate on vehicle"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveQualityFlag}
+                  disabled={saving}
+                  className={btnGold}
+                >
+                  {saving ? 'Saving...' : 'Save Data Quality Flag'}
+                </button>
+              </div>
+            </div>
+
+            {dataQualityFlags.length > 0 && (
+              <div className="mb-4 pb-4 border-b border-gray-200">
+                <h3 className="font-serif text-base mb-2">Active Data Quality Flags ({dataQualityFlags.length})</h3>
+                <div className="space-y-2">
+                  {dataQualityFlags.map((flag) => {
+                    const issueType = flag.action_data?.issue_type;
+                    const detail = flag.action_data?.detail;
+                    return (
+                      <div key={flag.id} className="bg-amber-50 border border-amber-200 px-3 py-2 text-xs">
+                        <div className="font-medium text-amber-900">
+                          {DATA_QUALITY_LABELS[issueType] || 'Data Quality Flag'}
+                        </div>
+                        {detail && <div className="text-amber-800 mt-0.5">{detail}</div>}
+                        <div className="text-amber-700 mt-1">
+                          {new Date(flag.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {' '}at{' '}
+                          {new Date(flag.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          {' '}&mdash;{' '}{flag.performed_by}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quick Note */}
             <div className="mb-4 pb-4 border-b border-gray-200">
               <label className={labelClass}>Add a Note</label>
@@ -1726,6 +2128,11 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-[#1a2744]">
                         {ACTION_LABELS[ix.action_type] || ix.action_type}
+                        {ix.action_type === 'data_quality_flag' && ix.action_data?.issue_type && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700">
+                            {DATA_QUALITY_LABELS[ix.action_data.issue_type] || ix.action_data.issue_type}
+                          </span>
+                        )}
                       </div>
                       {ix.notes && (
                         <div className="text-xs text-gray-600 mt-0.5">{ix.notes}</div>

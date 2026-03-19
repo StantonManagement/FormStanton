@@ -8,6 +8,8 @@ export default function SignatureTask({ task, token, t, onComplete }: TaskCompon
   const [signatureData, setSignatureData] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
 
   const handleSubmit = async () => {
     if (!signatureData) {
@@ -21,7 +23,7 @@ export default function SignatureTask({ task, token, t, onComplete }: TaskCompon
       const res = await fetch(`/api/t/${token}/tasks/${task.id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signature_data: signatureData }),
+        body: JSON.stringify({ signature_data: signatureData, ...(note.trim() ? { notes: note.trim() } : {}) }),
       });
 
       if (!res.ok) {
@@ -48,6 +50,24 @@ export default function SignatureTask({ task, token, t, onComplete }: TaskCompon
         value={signatureData}
         onSave={(dataUrl) => setSignatureData(dataUrl)}
       />
+
+      <button
+        type="button"
+        onClick={() => setShowNote(!showNote)}
+        className="text-xs text-[var(--muted)] hover:text-[var(--ink)] transition-colors duration-200 underline"
+      >
+        {t.add_note}
+      </button>
+
+      {showNote && (
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t.notes_placeholder}
+          rows={2}
+          className="w-full border border-[var(--border)] rounded-none p-3 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] bg-white focus:outline-none focus:border-[var(--primary)] transition-colors duration-200 resize-none"
+        />
+      )}
 
       {error && (
         <p className="text-sm text-[var(--error)]">{error}</p>

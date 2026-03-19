@@ -7,6 +7,8 @@ export default function AcknowledgmentTask({ task, token, t, onComplete }: TaskC
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showNote, setShowNote] = useState(false);
+  const [note, setNote] = useState('');
 
   const instructionText = task.task_type.instructions || t.acknowledgment_default;
 
@@ -19,7 +21,7 @@ export default function AcknowledgmentTask({ task, token, t, onComplete }: TaskC
       const res = await fetch(`/api/t/${token}/tasks/${task.id}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: 'Acknowledged' }),
+        body: JSON.stringify({ notes: note ? `Acknowledged: ${note}` : 'Acknowledged' }),
       });
 
       if (!res.ok) {
@@ -46,6 +48,24 @@ export default function AcknowledgmentTask({ task, token, t, onComplete }: TaskC
         />
         <span className="text-sm text-[var(--ink)] leading-relaxed">{instructionText}</span>
       </label>
+
+      <button
+        type="button"
+        onClick={() => setShowNote(!showNote)}
+        className="text-xs text-[var(--muted)] hover:text-[var(--ink)] transition-colors duration-200 underline"
+      >
+        {t.add_note}
+      </button>
+
+      {showNote && (
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder={t.notes_placeholder}
+          rows={2}
+          className="w-full border border-[var(--border)] rounded-none p-3 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] bg-white focus:outline-none focus:border-[var(--primary)] transition-colors duration-200 resize-none"
+        />
+      )}
 
       {error && (
         <p className="text-sm text-[var(--error)]">{error}</p>

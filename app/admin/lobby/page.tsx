@@ -93,6 +93,20 @@ interface UnifiedTenant {
   tenantLookupId: string | null;
   move_in: string | null;
   is_current: boolean;
+  unitSubmissionCount?: number;
+  canonicalSubmissionId?: string | null;
+  canonicalSelectionRequired?: boolean;
+  unitSubmissionCandidates?: Array<{
+    id: string;
+    full_name: string;
+    created_at: string;
+    phone: string | null;
+    email: string | null;
+    has_vehicle: boolean;
+    has_pets: boolean;
+    has_insurance: boolean;
+    is_primary: boolean;
+  }>;
 }
 
 // Noise words stripped from search queries — users type "unit 1s" but data stores just "1S"
@@ -169,6 +183,7 @@ export default function LobbyPage() {
   const [showIntakePanel, setShowIntakePanel] = useState(false);
   const [pickupIdFile, setPickupIdFile] = useState<File | null>(null);
   const [pickupIdPreview, setPickupIdPreview] = useState<string | null>(null);
+  const [selectedCanonicalSubmissionId, setSelectedCanonicalSubmissionId] = useState<string>('');
 
   useEffect(() => {
     checkAuth();
@@ -179,6 +194,20 @@ export default function LobbyPage() {
       fetchAvailableUsers();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!activeTenant) {
+      setSelectedCanonicalSubmissionId('');
+      return;
+    }
+
+    const preferredId =
+      activeTenant.canonicalSubmissionId ||
+      activeTenant.unitSubmissionCandidates?.find((candidate) => candidate.is_primary)?.id ||
+      activeTenant.unitSubmissionCandidates?.[0]?.id ||
+      '';
+    setSelectedCanonicalSubmissionId(preferredId);
+  }, [activeTenant?.key, activeTenant?.canonicalSubmissionId]);
 
   const fetchAvailableUsers = async () => {
     try {
@@ -195,6 +224,87 @@ export default function LobbyPage() {
       }
     } catch (e) {
       console.error('Failed to fetch users:', e);
+    }
+  };
+
+  const refreshTenantsAndKeepActive = async (opts?: {
+    building?: string;
+    unit?: string;
+    canonicalId?: string;
+  }) => {
+    const response = await fetch('/api/admin/unified-tenants');
+    const result = await response.json();
+    if (!result.success) return;
+
+    const tenants = result.data as UnifiedTenant[];
+    setAllTenants(tenants);
+
+    if (!activeTenant && !opts?.building && !opts?.unit && !opts?.canonicalId) return;
+
+    const targetBuilding = opts?.building || activeTenant?.building_address;
+    const targetUnit = opts?.unit || activeTenant?.unit_number;
+    const targetCanonicalId = opts?.canonicalId;
+
+    const refreshedActive = tenants.find((tenant) => {
+      if (targetCanonicalId) {
+        return tenant.canonicalSubmissionId === targetCanonicalId;
+      }
+      return tenant.building_address === targetBuilding && tenant.unit_number === targetUnit;
+    });
+
+    if (refreshedActive) {
+      setActiveTenant(refreshedActive);
+    }
+  };
+
+  const handleSetCanonicalSubmission = async () => {
+    if (!activeTenant || !selectedCanonicalSubmissionId) return;
+
+    setUpdatingField('set_canonical');
+    try {
+      const response = await fetch('/api/admin/lobby-canonical', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          building_address: activeTenant.building_address,
+          unit_number: activeTenant.unit_number,
+          canonical_submission_id: selectedCanonicalSubmissionId,
+        }),
+      });
+      const result = await response.json();
+
+      if (!result.success) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Canonical Selection Failed',
+          message: result.message || 'Failed to set canonical submission',
+          variant: 'error',
+        });
+        return;
+      }
+
+      await refreshTenantsAndKeepActive({
+        building: activeTenant.building_address,
+        unit: activeTenant.unit_number,
+        canonicalId: selectedCanonicalSubmissionId,
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Canonical Submission Set',
+        message: 'Canonical submission selected. You can now continue intake and permit workflow for this unit.',
+        variant: 'success',
+      });
+    } catch (error) {
+      console.error('Canonical selection error:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Canonical Selection Failed',
+        message: 'Failed to set canonical submission',
+        variant: 'error',
+      });
+    } finally {
+      setUpdatingField(null);
     }
   };
 
@@ -597,7 +707,7 @@ export default function LobbyPage() {
     }
   };
 
-  const handleIssuePermit = async () => {
+  const handleIssuePermit = async (opts?: { managerOverride?: boolean; overrideReason?: string }) => {
     if (!activeTenant || !activeTenant.submissionData) return;
 
     setUpdatingField('permit_issue');
@@ -609,6 +719,8 @@ export default function LobbyPage() {
         body: JSON.stringify({
           submissionId: activeTenant.submissionData.id,
           admin: selectedStaffName,
+          managerOverride: !!opts?.managerOverride,
+          overrideReason: opts?.overrideReason || null,
         }),
       });
 
@@ -629,6 +741,29 @@ export default function LobbyPage() {
           setAllTenants(updated);
         }
       } else {
+        if (!opts?.managerOverride && Array.isArray(result.missingItems) && result.missingItems.length > 0) {
+          setConfirmDialog({
+            isOpen: true,
+            title: 'Manager Override Required',
+            message: `Missing: ${result.missingItems.join(', ')}. Proceed with manager override?`,
+            onConfirm: async () => {
+              setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+              const reason = window.prompt('Enter manager override reason (required):', 'Manager approved exception at front desk');
+              if (!reason || !reason.trim()) {
+                setAlertDialog({
+                  isOpen: true,
+                  title: 'Override Reason Required',
+                  message: 'Permit override was cancelled because no reason was provided.',
+                  variant: 'error',
+                });
+                return;
+              }
+              await handleIssuePermit({ managerOverride: true, overrideReason: reason.trim() });
+            },
+          });
+          return;
+        }
+
         setAlertDialog({
           isOpen: true,
           title: 'Failed to Issue Permit',
@@ -1006,7 +1141,11 @@ export default function LobbyPage() {
                   className="block w-full text-left px-3 py-2 hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
                 >
                   <span className="font-medium">{result.name}</span> — {result.building_address} Unit {result.unit_number}
-                  {!result.hasSubmission && <span className="ml-2 text-xs text-yellow-600">(No submission)</span>}
+                  {result.canonicalSelectionRequired ? (
+                    <span className="ml-2 text-xs text-red-700">(Canonical selection required)</span>
+                  ) : !result.hasSubmission ? (
+                    <span className="ml-2 text-xs text-yellow-600">(No submission)</span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -1054,7 +1193,52 @@ export default function LobbyPage() {
             </div>
 
             {/* Show submission sections only if tenant has submitted */}
-            {!activeTenant.hasSubmission ? (
+            {activeTenant.canonicalSelectionRequired ? (
+              <div className="py-4">
+                <InfoCallout
+                  variant="warning"
+                  title="Canonical Selection Required"
+                  message="Multiple active submissions exist for this unit. Select the canonical submission before intake, verification, or permit actions."
+                />
+                <div className="mt-4 p-4 border border-[var(--divider)] bg-[var(--bg-section)]">
+                  <label className="block text-sm font-medium text-[var(--ink)] mb-2">
+                    Canonical submission for {activeTenant.building_address} Unit {activeTenant.unit_number}
+                  </label>
+                  <select
+                    value={selectedCanonicalSubmissionId}
+                    onChange={(e) => setSelectedCanonicalSubmissionId(e.target.value)}
+                    className="w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  >
+                    <option value="">Select a submission</option>
+                    {(activeTenant.unitSubmissionCandidates || []).map((candidate) => {
+                      const created = new Date(candidate.created_at).toLocaleString();
+                      const flags = [
+                        candidate.has_vehicle ? 'vehicle' : null,
+                        candidate.has_pets ? 'pets' : null,
+                        candidate.has_insurance ? 'insurance' : null,
+                      ].filter(Boolean).join(', ');
+                      return (
+                        <option key={candidate.id} value={candidate.id}>
+                          {candidate.full_name} — {created}{flags ? ` — ${flags}` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      onClick={handleSetCanonicalSubmission}
+                      disabled={!selectedCanonicalSubmissionId || updatingField === 'set_canonical'}
+                      className="px-4 py-2 bg-[var(--primary)] text-white text-sm rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300"
+                    >
+                      {updatingField === 'set_canonical' ? 'Saving...' : 'Set Canonical Submission'}
+                    </button>
+                    <span className="text-xs text-[var(--muted)]">
+                      Required once per duplicate set. All desk actions remain blocked until this is selected.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : !activeTenant.hasSubmission ? (
               <div className="py-6">
                 <InfoCallout
                   variant="warning"
@@ -1692,8 +1876,8 @@ export default function LobbyPage() {
                   ) : (
                     <div>
                       <button
-                        onClick={handleIssuePermit}
-                        disabled={!permitStatus.canIssue || updatingField === 'permit_issue'}
+                        onClick={() => handleIssuePermit()}
+                        disabled={updatingField === 'permit_issue'}
                         className="px-4 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
                       >
                         {updatingField === 'permit_issue' ? 'Issuing...' : '🎫 Issue Permit'}
@@ -1702,6 +1886,9 @@ export default function LobbyPage() {
                       {permitStatus.blocking.length > 0 && (
                         <div className="text-xs text-[var(--error)] mt-2">
                           ⚠️ Missing: {permitStatus.blocking.join(', ')}
+                          <div className="mt-1 text-[var(--muted)]">
+                            Manager override can still issue with required reason.
+                          </div>
                         </div>
                       )}
                     </div>

@@ -49,6 +49,7 @@ export const petApprovalTranslations: Record<Language, Record<string, string>> =
     uploadHelper: 'JPG, PNG up to 5MB - Max 3 photos per pet',
     uploadVaccination: 'Upload Vaccination Records',
     vaccinationHelper: 'PDF or photo of vaccination certificate',
+    uploadSpayNeuter: 'Upload Spayed/Neutered Proof',
     
     // Terms
     termsTitle: 'Terms & Conditions',
@@ -139,6 +140,7 @@ export const petApprovalTranslations: Record<Language, Record<string, string>> =
     uploadHelper: 'JPG, PNG hasta 5MB - Máximo 3 fotos por mascota',
     uploadVaccination: 'Subir Registros de Vacunación',
     vaccinationHelper: 'PDF o foto del certificado de vacunación',
+    uploadSpayNeuter: 'Subir prueba de esterilización/castración',
     termsTitle: 'Términos y Condiciones',
     termsIntro: 'Al firmar a continuación, acepta lo siguiente:',
     term1: 'Las mascotas deben permanecer aprobadas y registradas — agregar una nueva mascota requiere una nueva solicitud',
@@ -217,6 +219,7 @@ export const petApprovalTranslations: Record<Language, Record<string, string>> =
     uploadHelper: 'JPG, PNG até 5MB - Máximo 3 fotos por animal',
     uploadVaccination: 'Carregar Registros de Vacinação',
     vaccinationHelper: 'PDF ou foto do certificado de vacinação',
+    uploadSpayNeuter: 'Carregar comprovante de castração/esterilização',
     termsTitle: 'Termos e Condições',
     termsIntro: 'Ao assinar abaixo, você concorda com o seguinte:',
     term1: 'Os animais devem permanecer aprovados e registrados — adicionar um novo animal requer uma nova solicitação',

@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     const submissionId = formData.get('submissionId') as string;
     const documentType = formData.get('documentType') as string;
     const file = formData.get('file') as File;
+    const petIndexRaw = formData.get('petIndex');
+    const petIndex = typeof petIndexRaw === 'string' ? Number(petIndexRaw) : null;
 
     if (!submissionId || !documentType || !file) {
       return NextResponse.json(
@@ -25,9 +27,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['pet_addendum', 'insurance', 'vehicle_addendum', 'pickup_id_photo', 'exemption_document'].includes(documentType)) {
+    if (!['pet_addendum', 'insurance', 'vehicle_addendum', 'pickup_id_photo', 'exemption_document', 'pet_vaccination_proof', 'pet_spay_neuter_proof'].includes(documentType)) {
       return NextResponse.json(
         { success: false, message: 'Invalid document type' },
+        { status: 400 }
+      );
+    }
+
+    if ((documentType === 'pet_vaccination_proof' || documentType === 'pet_spay_neuter_proof') && (petIndex === null || Number.isNaN(petIndex) || petIndex < 0)) {
+      return NextResponse.json(
+        { success: false, message: 'Missing or invalid pet index for pet proof document upload' },
         { status: 400 }
       );
     }
@@ -58,6 +67,14 @@ export async function POST(request: NextRequest) {
       case 'exemption_document':
         storagePath = `exemptions/${submissionId}_exemption_${timestamp}.${fileExt}`;
         columnToUpdate = '__exemption_array__';
+        break;
+      case 'pet_vaccination_proof':
+        storagePath = `pet_documents/${submissionId}_pet_${petIndex}_vaccination_${timestamp}.${fileExt}`;
+        columnToUpdate = '__pet_array_doc__';
+        break;
+      case 'pet_spay_neuter_proof':
+        storagePath = `pet_documents/${submissionId}_pet_${petIndex}_spay_neuter_${timestamp}.${fileExt}`;
+        columnToUpdate = '__pet_array_doc__';
         break;
       default:
         return NextResponse.json(
@@ -107,6 +124,45 @@ export async function POST(request: NextRequest) {
           exemption_documents: updatedDocs,
           exemption_status: existing?.exemption_documents?.length ? undefined : 'pending',
         })
+        .eq('id', submissionId)
+        .select()
+        .single();
+
+      submission = data;
+      updateError = error;
+    } else if (columnToUpdate === '__pet_array_doc__') {
+      const { data: existing, error: existingError } = await supabaseAdmin
+        .from('submissions')
+        .select('pets')
+        .eq('id', submissionId)
+        .single();
+
+      if (existingError) {
+        console.error('Failed to load pets for document attach:', existingError);
+        return NextResponse.json(
+          { success: false, message: 'Failed to load pet records for this submission' },
+          { status: 500 }
+        );
+      }
+
+      const existingPets = Array.isArray(existing?.pets) ? [...existing.pets] : [];
+      if (petIndex === null || petIndex >= existingPets.length) {
+        return NextResponse.json(
+          { success: false, message: 'Pet index is out of range for this submission' },
+          { status: 400 }
+        );
+      }
+
+      const currentPet = existingPets[petIndex] || {};
+      existingPets[petIndex] = {
+        ...currentPet,
+        ...(documentType === 'pet_vaccination_proof' ? { pet_vaccination_file: uploadData.path } : {}),
+        ...(documentType === 'pet_spay_neuter_proof' ? { pet_spay_neuter_file: uploadData.path } : {}),
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('submissions')
+        .update({ pets: existingPets })
         .eq('id', submissionId)
         .select()
         .single();

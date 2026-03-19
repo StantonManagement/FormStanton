@@ -57,6 +57,20 @@ interface UnifiedTenant {
   tenantLookupId: string | null;
   move_in: string | null;
   is_current: boolean;
+  unitSubmissionCount: number;
+  canonicalSubmissionId: string | null;
+  canonicalSelectionRequired: boolean;
+  unitSubmissionCandidates: Array<{
+    id: string;
+    full_name: string;
+    created_at: string;
+    phone: string | null;
+    email: string | null;
+    has_vehicle: boolean;
+    has_pets: boolean;
+    has_insurance: boolean;
+    is_primary: boolean;
+  }>;
 }
 
 function normalizeForMatching(str: string | null | undefined): string {
@@ -72,26 +86,6 @@ function normalizeNameForKey(name: string | null | undefined): string {
     .filter(p => p.length > 0)
     .sort()
     .join(' ');
-}
-
-function tenantsMatch(
-  building1: string,
-  unit1: string,
-  name1: string,
-  building2: string,
-  unit2: string,
-  name2: string
-): boolean {
-  // Use enhanced address normalization to handle city/state/zip variations and building aliases
-  const normalizedBuilding1 = normalizeAddress(building1).toLowerCase();
-  const normalizedBuilding2 = normalizeAddress(building2).toLowerCase();
-  const buildingMatch = normalizedBuilding1 === normalizedBuilding2;
-  
-  const unitMatch = normalizeForMatching(unit1) === normalizeForMatching(unit2);
-  const nameMatch = normalizeForMatching(name1) === normalizeForMatching(name2) ||
-                    normalizeNameForKey(name1) === normalizeNameForKey(name2);
-  
-  return buildingMatch && unitMatch && nameMatch;
 }
 
 export async function GET(request: NextRequest) {
@@ -137,29 +131,56 @@ export async function GET(request: NextRequest) {
       .filter(t => t.name !== 'Occupied Unit');
     const submissions = (submissionsData || []) as Submission[];
 
+    const submissionsByUnit = new Map<string, Submission[]>();
+    for (const submission of submissions) {
+      const unitKey = `${normalizeAddress(submission.building_address).toLowerCase()}_${normalizeForMatching(submission.unit_number)}`;
+      const existing = submissionsByUnit.get(unitKey) || [];
+      existing.push(submission);
+      submissionsByUnit.set(unitKey, existing);
+    }
+
+    const canonicalByUnit = new Map<string, {
+      canonicalSubmission: Submission | null;
+      canonicalSelectionRequired: boolean;
+      candidates: Submission[];
+    }>();
+
+    for (const [unitKey, unitSubs] of submissionsByUnit.entries()) {
+      const sorted = [...unitSubs].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const primarySubs = sorted.filter(s => s.is_primary === true);
+      const canonicalSelectionRequired = sorted.length > 1 && primarySubs.length !== 1;
+      const canonicalSubmission =
+        sorted.length === 1
+          ? sorted[0]
+          : primarySubs.length === 1
+            ? primarySubs[0]
+            : null;
+
+      canonicalByUnit.set(unitKey, {
+        canonicalSubmission,
+        canonicalSelectionRequired,
+        candidates: sorted,
+      });
+    }
+
     // Use a Map to deduplicate tenants with matching normalized keys
     const tenantMap = new Map<string, UnifiedTenant>();
-    const processedSubmissions = new Set<string>();
+    const processedUnitKeys = new Set<string>();
 
     // Process tenant_lookup records
     for (const tenant of tenantLookup) {
-      const matchingSubmission = submissions.find(sub => 
-        tenantsMatch(
-          tenant.building_address,
-          tenant.unit_number,
-          tenant.name,
-          sub.building_address,
-          sub.unit_number,
-          sub.full_name
-        )
-      );
+      const normalizedAddr = normalizeAddress(tenant.building_address).toLowerCase();
+      const unitKey = `${normalizedAddr}_${normalizeForMatching(tenant.unit_number)}`;
+      const unitResolution = canonicalByUnit.get(unitKey);
+      const matchingSubmission = unitResolution?.canonicalSubmission || null;
 
-      if (matchingSubmission) {
-        processedSubmissions.add(matchingSubmission.id);
+      if (unitResolution) {
+        processedUnitKeys.add(unitKey);
       }
 
       // Use normalized address in key to merge duplicates
-      const normalizedAddr = normalizeAddress(tenant.building_address).toLowerCase();
       const key = `${normalizedAddr}_${normalizeForMatching(tenant.unit_number)}_${normalizeNameForKey(tenant.name)}`;
 
       // If this key already exists, prefer the record with a submission
@@ -181,31 +202,62 @@ export async function GET(request: NextRequest) {
         tenantLookupId: tenant.id,
         move_in: tenant.move_in,
         is_current: tenant.is_current,
+        unitSubmissionCount: unitResolution?.candidates.length || 0,
+        canonicalSubmissionId: unitResolution?.canonicalSubmission?.id || null,
+        canonicalSelectionRequired: unitResolution?.canonicalSelectionRequired || false,
+        unitSubmissionCandidates: (unitResolution?.candidates || []).map((candidate) => ({
+          id: candidate.id,
+          full_name: candidate.full_name,
+          created_at: candidate.created_at,
+          phone: candidate.phone || null,
+          email: candidate.email || null,
+          has_vehicle: !!candidate.has_vehicle,
+          has_pets: !!candidate.has_pets,
+          has_insurance: !!candidate.has_insurance,
+          is_primary: candidate.is_primary === true,
+        })),
       });
     }
 
-    // Process unmatched submissions
-    for (const submission of submissions) {
-      if (!processedSubmissions.has(submission.id)) {
-        const normalizedAddr = normalizeAddress(submission.building_address).toLowerCase();
-        const key = `${normalizedAddr}_${normalizeForMatching(submission.unit_number)}_${normalizeNameForKey(submission.full_name)}`;
+    // Process unmatched unit-level canonical submissions
+    for (const [unitKey, unitResolution] of canonicalByUnit.entries()) {
+      if (processedUnitKeys.has(unitKey)) continue;
 
-        // Check if this submission matches an existing tenant (edge case)
-        if (!tenantMap.has(key)) {
-          tenantMap.set(key, {
-            key,
-            name: submission.full_name,
-            unit_number: submission.unit_number,
-            building_address: normalizeAddress(submission.building_address),
-            phone: submission.phone,
-            email: submission.email,
-            hasSubmission: true,
-            submissionData: submission,
-            tenantLookupId: null,
-            move_in: null,
-            is_current: true,
-          });
-        }
+      const canonicalSubmission = unitResolution.canonicalSubmission;
+      const fallbackSubmission = unitResolution.candidates[0] || null;
+      const displaySubmission = canonicalSubmission || fallbackSubmission;
+      if (!displaySubmission) continue;
+
+      const key = `${normalizeAddress(displaySubmission.building_address).toLowerCase()}_${normalizeForMatching(displaySubmission.unit_number)}_${normalizeNameForKey(displaySubmission.full_name)}`;
+
+      if (!tenantMap.has(key)) {
+        tenantMap.set(key, {
+          key,
+          name: displaySubmission.full_name,
+          unit_number: displaySubmission.unit_number,
+          building_address: normalizeAddress(displaySubmission.building_address),
+          phone: displaySubmission.phone || null,
+          email: displaySubmission.email || null,
+          hasSubmission: !!canonicalSubmission,
+          submissionData: canonicalSubmission,
+          tenantLookupId: null,
+          move_in: null,
+          is_current: true,
+          unitSubmissionCount: unitResolution.candidates.length,
+          canonicalSubmissionId: canonicalSubmission?.id || null,
+          canonicalSelectionRequired: unitResolution.canonicalSelectionRequired,
+          unitSubmissionCandidates: unitResolution.candidates.map((candidate) => ({
+            id: candidate.id,
+            full_name: candidate.full_name,
+            created_at: candidate.created_at,
+            phone: candidate.phone || null,
+            email: candidate.email || null,
+            has_vehicle: !!candidate.has_vehicle,
+            has_pets: !!candidate.has_pets,
+            has_insurance: !!candidate.has_insurance,
+            is_primary: candidate.is_primary === true,
+          })),
+        });
       }
     }
 

@@ -87,6 +87,8 @@ function PetApprovalFormContent() {
   
   const { formData, updateField } = useFormData(initialFormData);
   const [petPhotos, setPetPhotos] = useState<File[][]>([[]]);
+  const [petVaccinationDocs, setPetVaccinationDocs] = useState<(File | null)[]>([null]);
+  const [petSpayNeuterDocs, setPetSpayNeuterDocs] = useState<(File | null)[]>([null]);
   const [signature, setSignature] = useState('');
   
   const { currentSection, nextSection, goToSection } = useFormSection(4);
@@ -101,6 +103,18 @@ function PetApprovalFormContent() {
       photos.forEach((photo, photoIndex) => {
         formDataToSend.append(`pet_${petIndex}_photo_${photoIndex}`, photo);
       });
+    });
+
+    petVaccinationDocs.forEach((doc, petIndex) => {
+      if (doc) {
+        formDataToSend.append(`pet_${petIndex}_vaccination`, doc);
+      }
+    });
+
+    petSpayNeuterDocs.forEach((doc, petIndex) => {
+      if (doc) {
+        formDataToSend.append(`pet_${petIndex}_spay_neuter`, doc);
+      }
     });
     
     const response = await fetch('/api/forms/pet-approval', {
@@ -150,6 +164,8 @@ function PetApprovalFormContent() {
     if (formData.pets.length < MAX_PETS) {
       updateField('pets', [...formData.pets, { ...emptyPet }]);
       setPetPhotos([...petPhotos, []]);
+      setPetVaccinationDocs([...petVaccinationDocs, null]);
+      setPetSpayNeuterDocs([...petSpayNeuterDocs, null]);
     }
   };
   
@@ -157,6 +173,8 @@ function PetApprovalFormContent() {
     if (formData.pets.length > 1) {
       updateField('pets', formData.pets.filter((_, i) => i !== index));
       setPetPhotos(petPhotos.filter((_, i) => i !== index));
+      setPetVaccinationDocs(petVaccinationDocs.filter((_, i) => i !== index));
+      setPetSpayNeuterDocs(petSpayNeuterDocs.filter((_, i) => i !== index));
     }
   };
   
@@ -164,6 +182,18 @@ function PetApprovalFormContent() {
     const newPetPhotos = [...petPhotos];
     newPetPhotos[petIndex] = photos;
     setPetPhotos(newPetPhotos);
+  };
+
+  const handlePetVaccinationDocChange = (petIndex: number, file: File | null) => {
+    const newDocs = [...petVaccinationDocs];
+    newDocs[petIndex] = file;
+    setPetVaccinationDocs(newDocs);
+  };
+
+  const handlePetSpayNeuterDocChange = (petIndex: number, file: File | null) => {
+    const newDocs = [...petSpayNeuterDocs];
+    newDocs[petIndex] = file;
+    setPetSpayNeuterDocs(newDocs);
   };
   
   const validateSection = (section: number): boolean => {
@@ -202,7 +232,7 @@ function PetApprovalFormContent() {
     
     if (section === 2) {
       for (const pet of formData.pets) {
-        if (!pet.petType || !pet.petBreed || !pet.petName || !pet.petWeight || !pet.petAge || !pet.petColor) {
+        if (!pet.petType || !pet.petName || !pet.petWeight || !pet.petAge || !pet.petColor) {
           return false;
         }
         if (pet.petSpayed === null || pet.petVaccinations === null) {
@@ -427,13 +457,12 @@ function PetApprovalFormContent() {
                               />
                             </FormField>
                             
-                            <FormField label={t.petBreed} required>
+                            <FormField label={t.petBreed}>
                               <FormInput
                                 type="text"
                                 value={pet.petBreed}
                                 onChange={(e) => handlePetChange(idx, 'petBreed', e.target.value)}
                                 placeholder={t.petBreedPlaceholder}
-                                required
                               />
                             </FormField>
                           </div>
@@ -562,6 +591,28 @@ function PetApprovalFormContent() {
                           photos={petPhotos[idx] || []}
                           onPhotosChange={(photos) => handlePetPhotosChange(idx, photos)}
                         />
+
+                        <FormField label={t.uploadVaccination}>
+                          <FormInput
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handlePetVaccinationDocChange(idx, e.target.files?.[0] || null)}
+                          />
+                          {petVaccinationDocs[idx] && (
+                            <p className="text-xs text-[var(--muted)] mt-1">{petVaccinationDocs[idx]?.name}</p>
+                          )}
+                        </FormField>
+
+                        <FormField label={t.uploadSpayNeuter}>
+                          <FormInput
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handlePetSpayNeuterDocChange(idx, e.target.files?.[0] || null)}
+                          />
+                          {petSpayNeuterDocs[idx] && (
+                            <p className="text-xs text-[var(--muted)] mt-1">{petSpayNeuterDocs[idx]?.name}</p>
+                          )}
+                        </FormField>
                       </div>
                     ))}
                   </div>
