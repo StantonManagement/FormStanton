@@ -211,15 +211,14 @@ export default function LobbyPage() {
   const fetchAvailableUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await fetch('/api/admin/staff-list');
       const data = await res.json();
       if (data.success) {
-        const activeUsers = data.data.filter((u: any) => u.is_active);
-        setAvailableUsers(activeUsers);
+        setAvailableUsers(data.data);
         // Set default to current user if available, otherwise first user
-        if (activeUsers.length > 0) {
-          const currentUserMatch = activeUsers.find((u: any) => u.display_name === adminName);
-          setSelectedStaffName(currentUserMatch?.display_name || activeUsers[0].display_name);
+        if (data.data.length > 0) {
+          const currentUserMatch = data.data.find((u: any) => u.display_name === adminName);
+          setSelectedStaffName(currentUserMatch?.display_name || data.data[0].display_name);
         }
       }
     } catch (e) {
