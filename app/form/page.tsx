@@ -145,22 +145,6 @@ function FormContent() {
   const [residentOptions, setResidentOptions] = useState<Array<{ full_name: string; phone: string; email: string }>>([]);
   const [isLoadingResidents, setIsLoadingResidents] = useState(false);
 
-  if (!showForm) {
-    return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
-  }
-
-  const t = translations[language];
-
-  const hasParking = buildingsWithParking.has(formData.buildingAddress);
-  const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
-  const canHaveMultipleVehicles = allowsMultipleVehicles(formData.buildingAddress);
-  const fullNameMatchesResident = residentOptions.some((resident) => resident.full_name === formData.fullName);
-  const showManualNameInput = residentOptions.length === 0 || !fullNameMatchesResident;
-
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
   useEffect(() => {
     if (!formData.buildingAddress || !formData.unitNumber) {
       setResidentOptions([]);
@@ -219,6 +203,22 @@ function FormContent() {
       isCancelled = true;
     };
   }, [formData.buildingAddress, formData.unitNumber]);
+
+  if (!showForm) {
+    return <LanguageLanding onSelect={(lang) => { setLanguage(lang); setShowForm(true); }} />;
+  }
+
+  const t = translations[language];
+
+  const hasParking = buildingsWithParking.has(formData.buildingAddress);
+  const isNewAcquisition = newAcquisitionBuildings.has(formData.buildingAddress);
+  const canHaveMultipleVehicles = allowsMultipleVehicles(formData.buildingAddress);
+  const fullNameMatchesResident = residentOptions.some((resident) => resident.full_name === formData.fullName);
+  const showManualNameInput = residentOptions.length === 0 || !fullNameMatchesResident;
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleFileChange = (field: keyof typeof files, file: File | null) => {
     setFiles(prev => ({ ...prev, [field]: file }));
