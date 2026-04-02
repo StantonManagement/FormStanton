@@ -86,6 +86,7 @@ export interface ComplianceData {
   projectBuildings: string[];
   projectName: string | null;
   handleStaffComplete: (unitId: string, taskId: string) => Promise<void>;
+  handleStaffFail: (unitId: string, taskId: string, reason: string) => Promise<void>;
   handleStaffUncomplete: (unitId: string, taskId: string) => Promise<void>;
 }
 
@@ -155,6 +156,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
         evidence_type: t.task_type?.evidence_type || 'acknowledgment',
         required: t.required !== false,
         order_index: t.order_index,
+        failure_reasons: t.task_type?.failure_reasons || null,
       }));
       setProjectColumns(cols);
 
@@ -169,6 +171,9 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
             completed_at: c.completed_at,
             completed_by: c.completed_by,
             evidence_url: c.evidence_url,
+            failure_reason: c.failure_reason,
+            reviewer_notes: c.reviewer_notes,
+            form_submission_id: c.form_submission_id,
           };
         }
         return {
@@ -179,6 +184,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
           overall_status: u.overall_status || 'not_started',
           completions,
           submission_data: u.submission_data || null,
+          parent_evidence: u.parent_evidence || null,
         };
       });
       setProjectRows(rows);
@@ -339,12 +345,24 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
     }
   }, [selectedBuilding, fetchData, fetchMatrix, mode, selectedProject, fetchProjectData]);
 
-  const handleStaffComplete = useCallback(async (unitId: string, taskId: string) => {
+  const handleStaffComplete = useCallback(async (unitId: string, taskId: string, reviewerNotes?: string) => {
     if (mode !== 'project') return;
     const res = await fetch(`/api/admin/projects/${selectedProject}/units/${unitId}/tasks/${taskId}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ reviewer_notes: reviewerNotes }),
+    });
+    if (res.ok) {
+      fetchProjectData(selectedProject);
+    }
+  }, [mode, selectedProject, fetchProjectData]);
+
+  const handleStaffFail = useCallback(async (unitId: string, taskId: string, reason: string, reviewerNotes?: string) => {
+    if (mode !== 'project') return;
+    const res = await fetch(`/api/admin/projects/${selectedProject}/units/${unitId}/tasks/${taskId}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'failed', failure_reason: reason, reviewer_notes: reviewerNotes }),
     });
     if (res.ok) {
       fetchProjectData(selectedProject);
@@ -566,6 +584,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
     projectBuildings,
     projectName,
     handleStaffComplete,
+    handleStaffFail,
     handleStaffUncomplete,
   };
 }

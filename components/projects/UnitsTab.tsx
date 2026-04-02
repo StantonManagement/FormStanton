@@ -9,12 +9,14 @@ const statusColors: Record<OverallStatus, string> = {
   not_started: 'bg-red-50 text-red-700 border-red-300',
   in_progress: 'bg-yellow-50 text-yellow-700 border-yellow-300',
   complete: 'bg-green-50 text-green-700 border-green-300',
+  has_failure: 'bg-red-100 text-red-800 border-red-400',
 };
 
 const statusLabels: Record<OverallStatus, string> = {
   not_started: 'Not Started',
   in_progress: 'In Progress',
   complete: 'Complete',
+  has_failure: 'Has Failure',
 };
 
 interface UnitsTabProps {

@@ -52,6 +52,7 @@ export async function GET(
           task_type_id: t.task_type_id,
           order_index: t.order_index,
           required: t.required,
+          parent_task_id: t.parent_task_id || null,
           task_type: t.task_types as unknown,
         })),
         unit_count: count || 0,
@@ -88,6 +89,7 @@ export async function PATCH(
       allowed.status = body.status;
     }
     if (body.sequential !== undefined) allowed.sequential = body.sequential === true;
+    if (body.parent_project_id !== undefined) allowed.parent_project_id = body.parent_project_id || null;
 
     if (Object.keys(allowed).length === 0) {
       return NextResponse.json({ success: false, message: 'No valid fields to update' }, { status: 400 });

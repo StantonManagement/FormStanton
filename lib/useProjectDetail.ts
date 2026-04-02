@@ -20,6 +20,7 @@ export interface UseProjectDetailReturn {
   loading: boolean;
   unitsLoading: boolean;
   error: string | null;
+  parentProjectName: string | null;
   updateProject: (data: Partial<{ name: string; description: string; deadline: string | null; sequential: boolean; status: ProjectStatus }>) => Promise<void>;
   addTask: (taskTypeId: string, orderIndex: number, required?: boolean) => Promise<void>;
   updateTask: (taskId: string, data: Partial<{ order_index: number; required: boolean }>) => Promise<void>;
@@ -37,6 +38,7 @@ export function useProjectDetail(projectId: string | null): UseProjectDetailRetu
   const [loading, setLoading] = useState(true);
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parentProjectName, setParentProjectName] = useState<string | null>(null);
 
   const fetchProject = useCallback(async () => {
     if (!projectId) { setLoading(false); return; }
@@ -79,6 +81,17 @@ export function useProjectDetail(projectId: string | null): UseProjectDetailRetu
       fetchUnits();
     }
   }, [project?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (project?.parent_project_id) {
+      fetch(`/api/admin/projects/${project.parent_project_id}`)
+        .then(r => r.json())
+        .then(j => { if (j.success) setParentProjectName(j.data.name); })
+        .catch(() => {});
+    } else {
+      setParentProjectName(null);
+    }
+  }, [project?.parent_project_id]);
 
   const updateProject = useCallback(async (data: Partial<{ name: string; description: string; deadline: string | null; sequential: boolean; status: ProjectStatus }>) => {
     if (!projectId) return;
@@ -170,6 +183,7 @@ export function useProjectDetail(projectId: string | null): UseProjectDetailRetu
     loading,
     unitsLoading,
     error,
+    parentProjectName,
     updateProject,
     addTask,
     updateTask,

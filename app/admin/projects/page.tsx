@@ -14,6 +14,7 @@ export default function ProjectsListPage() {
   const [newDescription, setNewDescription] = useState('');
   const [newDeadline, setNewDeadline] = useState('');
   const [newSequential, setNewSequential] = useState(false);
+  const [newParentId, setNewParentId] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -27,12 +28,14 @@ export default function ProjectsListPage() {
         description: newDescription.trim() || undefined,
         deadline: newDeadline || undefined,
         sequential: newSequential,
+        parent_project_id: newParentId || undefined,
       });
       setShowCreate(false);
       setNewName('');
       setNewDescription('');
       setNewDeadline('');
       setNewSequential(false);
+      setNewParentId('');
       if (project) {
         router.push(`/admin/projects/${project.id}`);
       }
@@ -169,6 +172,20 @@ export default function ProjectsListPage() {
                   onChange={(e) => setNewDeadline(e.target.value)}
                   className="mt-1 w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-[var(--ink)]">Parent Project</label>
+                <select
+                  value={newParentId}
+                  onChange={(e) => setNewParentId(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                >
+                  <option value="">None (standalone project)</option>
+                  {projects.filter(p => p.status !== 'draft').map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--muted)] mt-1">Link to a parent project to inherit its evidence</p>
               </div>
               <div>
                 <label className="flex items-center gap-2 text-sm">

@@ -28,6 +28,7 @@ export async function GET(
       task_type_id: t.task_type_id,
       order_index: t.order_index,
       required: t.required,
+      parent_task_id: t.parent_task_id || null,
       task_type: t.task_types as unknown,
     }));
 
@@ -50,7 +51,7 @@ export async function POST(
 
     const { id } = await context.params;
     const body = await request.json();
-    const { task_type_id, order_index, required } = body;
+    const { task_type_id, order_index, required, parent_task_id } = body;
 
     if (!task_type_id || order_index === undefined) {
       return NextResponse.json(
@@ -66,6 +67,7 @@ export async function POST(
         task_type_id,
         order_index,
         required: required !== false,
+        parent_task_id: parent_task_id || null,
       })
       .select('*, task_types(*)')
       .single();
@@ -78,6 +80,7 @@ export async function POST(
       task_type_id: data.task_type_id,
       order_index: data.order_index,
       required: data.required,
+      parent_task_id: data.parent_task_id || null,
       task_type: (data as any).task_types as unknown,
     };
 

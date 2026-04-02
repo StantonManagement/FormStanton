@@ -62,6 +62,7 @@ interface BuildingMatrixTableProps {
   projectColumns?: DynamicColumn[];
   projectRows?: ProjectMatrixRow[];
   onStaffComplete?: (unitId: string, taskId: string) => Promise<void>;
+  onStaffFail?: (unitId: string, taskId: string, reason: string) => Promise<void>;
   onStaffUncomplete?: (unitId: string, taskId: string) => Promise<void>;
 }
 
@@ -75,7 +76,7 @@ interface PopoverState {
   defaultAmount: number | null;
 }
 
-export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, selectedIds, onSelectionChange, onToast, mode = 'legacy', projectColumns, projectRows, onStaffComplete, onStaffUncomplete }: BuildingMatrixTableProps) {
+export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, selectedIds, onSelectionChange, onToast, mode = 'legacy', projectColumns, projectRows, onStaffComplete, onStaffFail, onStaffUncomplete }: BuildingMatrixTableProps) {
   const [popover, setPopover] = useState<PopoverState | null>(null);
 
   const selectableRows = useMemo(() => rows.filter(r => !r.missing && r.submission_id), [rows]);
@@ -200,9 +201,15 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
                         column={col}
                         completedAt={comp?.completed_at || null}
                         completedBy={comp?.completed_by || null}
+                        failureReason={comp?.failure_reason || null}
                         onStaffComplete={
                           col.assignee === 'staff' && onStaffComplete
                             ? () => onStaffComplete(row.unit_id, col.id)
+                            : undefined
+                        }
+                        onStaffFail={
+                          col.assignee === 'staff' && onStaffFail
+                            ? (reason: string) => onStaffFail(row.unit_id, col.id, reason)
                             : undefined
                         }
                         onStaffUncomplete={
@@ -211,9 +218,11 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
                             : undefined
                         }
                         docUrl={
-                          row.submission_data?.insurance_file
-                            ? `/api/admin/file?path=${encodeURIComponent(row.submission_data.insurance_file)}`
-                            : null
+                          row.parent_evidence?.[col.id]?.evidence_url
+                            ? `/api/admin/file?path=${encodeURIComponent(row.parent_evidence[col.id].evidence_url!)}`
+                            : row.submission_data?.insurance_file
+                              ? `/api/admin/file?path=${encodeURIComponent(row.submission_data.insurance_file)}`
+                              : null
                         }
                       />
                     );

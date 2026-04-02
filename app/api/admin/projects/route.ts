@@ -31,10 +31,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, deadline, sequential } = body;
+    const { name, description, deadline, sequential, parent_project_id } = body;
 
     if (!name) {
       return NextResponse.json({ success: false, message: 'Missing required field: name' }, { status: 400 });
+    }
+
+    if (parent_project_id) {
+      const { data: parent, error: parentErr } = await supabaseAdmin
+        .from('projects')
+        .select('id')
+        .eq('id', parent_project_id)
+        .single();
+      if (parentErr || !parent) {
+        return NextResponse.json({ success: false, message: 'Parent project not found' }, { status: 400 });
+      }
     }
 
     const { data, error } = await supabaseAdmin
@@ -44,6 +55,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         deadline: deadline || null,
         sequential: sequential === true,
+        parent_project_id: parent_project_id || null,
       })
       .select()
       .single();

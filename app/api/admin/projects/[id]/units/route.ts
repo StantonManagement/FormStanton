@@ -15,6 +15,14 @@ export async function GET(
 
     const { id } = await context.params;
 
+    // Fetch the project to check for parent_project_id
+    const { data: project, error: projErr } = await supabaseAdmin
+      .from('projects')
+      .select('id, parent_project_id')
+      .eq('id', id)
+      .single();
+    if (projErr) throw projErr;
+
     const { data, error } = await supabaseAdmin
       .from('project_units')
       .select('*, task_completions(*)')
@@ -34,12 +42,78 @@ export async function GET(
         .in('building_address', buildings);
 
       for (const s of subs || []) {
-        submissionMap.set(`${s.building_address}||${s.unit_number}`, s);
+        const key = `${s.building_address}||${s.unit_number}`;
+        const existing = submissionMap.get(key);
+        if (!existing || (!existing.insurance_file && s.insurance_file)) {
+          submissionMap.set(key, s);
+        }
+      }
+    }
+
+    // Build parent evidence map: child_task_id → { building||unit → evidence }
+    // Only populated if this project has a parent and tasks have parent_task_id set
+    let parentEvidenceMap = new Map<string, Map<string, { evidence_url: string | null; task_name: string; completed_at: string | null; status: string }>>();
+    if (project.parent_project_id) {
+      // Get this project's tasks that have parent_task_id
+      const { data: childTasks } = await supabaseAdmin
+        .from('project_tasks')
+        .select('id, parent_task_id')
+        .eq('project_id', id)
+        .not('parent_task_id', 'is', null);
+
+      const parentTaskIds = (childTasks || []).map((t: any) => t.parent_task_id).filter(Boolean);
+
+      if (parentTaskIds.length > 0) {
+        // Get parent units + their completions for those parent tasks
+        const { data: parentUnits } = await supabaseAdmin
+          .from('project_units')
+          .select('building, unit_number')
+          .eq('project_id', project.parent_project_id);
+
+        const { data: parentCompletions } = await supabaseAdmin
+          .from('task_completions')
+          .select('project_task_id, project_unit_id, evidence_url, completed_at, status, project_tasks!inner(id, task_types(name)), project_units!inner(building, unit_number)')
+          .in('project_task_id', parentTaskIds)
+          .eq('project_units.project_id', project.parent_project_id);
+
+        // Build a mapping from child_task_id → building||unit → evidence
+        const parentTaskToChildTask = new Map<string, string>();
+        for (const ct of childTasks || []) {
+          if (ct.parent_task_id) parentTaskToChildTask.set(ct.parent_task_id, ct.id);
+        }
+
+        for (const pc of parentCompletions || []) {
+          const pu = (pc as any).project_units;
+          const pt = (pc as any).project_tasks;
+          const taskName = pt?.task_types?.name || 'Unknown';
+          const childTaskId = parentTaskToChildTask.get(pc.project_task_id);
+          if (!childTaskId || !pu) continue;
+
+          const unitKey = `${pu.building}||${pu.unit_number}`;
+          if (!parentEvidenceMap.has(childTaskId)) {
+            parentEvidenceMap.set(childTaskId, new Map());
+          }
+          parentEvidenceMap.get(childTaskId)!.set(unitKey, {
+            evidence_url: pc.evidence_url,
+            task_name: taskName,
+            completed_at: pc.completed_at,
+            status: pc.status,
+          });
+        }
       }
     }
 
     const enriched = (data || []).map((u: any) => {
       const sub = submissionMap.get(`${u.building}||${u.unit_number}`);
+      const unitKey = `${u.building}||${u.unit_number}`;
+
+      // Build parent_evidence keyed by child task ID
+      const parent_evidence: Record<string, { evidence_url: string | null; task_name: string; completed_at: string | null; status: string }> = {};
+      for (const [childTaskId, unitMap] of parentEvidenceMap) {
+        const ev = unitMap.get(unitKey);
+        if (ev) parent_evidence[childTaskId] = ev;
+      }
+
       return {
         ...u,
         submission_data: sub ? {
@@ -47,6 +121,7 @@ export async function GET(
           insurance_verified: sub.insurance_verified,
           insurance_type: sub.insurance_type,
         } : null,
+        parent_evidence: Object.keys(parent_evidence).length > 0 ? parent_evidence : null,
       };
     });
 

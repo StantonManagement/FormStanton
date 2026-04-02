@@ -82,15 +82,42 @@ export default function ProjectDetailPage() {
             </button>
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-serif text-[var(--primary)]">{project.name}</h1>
-              <ProjectStatusBadge status={project.status} />
-            </div>
-            {project.deadline && (
-              <div className="text-sm text-[var(--muted)]">
-                Deadline: <span className="text-[var(--ink)] font-medium">{project.deadline}</span>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-serif text-[var(--primary)]">{project.name}</h1>
+                <ProjectStatusBadge status={project.status} />
               </div>
-            )}
+              {project.parent_project_id && (
+                <p className="text-xs text-[var(--muted)] mt-0.5">
+                  ↳ Child of: <button
+                    type="button"
+                    onClick={() => router.push(`/admin/projects/${project.parent_project_id}`)}
+                    className="text-[var(--primary)] hover:underline"
+                  >
+                    {detail.parentProjectName || project.parent_project_id}
+                  </button>
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              {project.status === 'active' && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/admin/compliance?project=${project.id}`)}
+                  className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  Open Audit Dashboard
+                </button>
+              )}
+              {project.deadline && (
+                <div className="text-sm text-[var(--muted)]">
+                  Deadline: <span className="text-[var(--ink)] font-medium">{project.deadline}</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -87,7 +87,7 @@ export async function POST(
         if (priorError) throw priorError;
 
         const allPriorComplete = (priorCompletions || []).every(
-          (c: any) => c.status === 'complete' || c.status === 'waived'
+          (c: any) => c.status === 'complete' || c.status === 'waived' || c.status === 'failed'
         );
 
         if (!allPriorComplete) {

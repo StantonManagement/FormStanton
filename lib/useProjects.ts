@@ -12,7 +12,7 @@ export interface UseProjectsReturn {
   projects: ProjectListItem[];
   loading: boolean;
   error: string | null;
-  createProject: (data: { name: string; description?: string; deadline?: string; sequential?: boolean }) => Promise<Project | null>;
+  createProject: (data: { name: string; description?: string; deadline?: string; sequential?: boolean; parent_project_id?: string }) => Promise<Project | null>;
   refresh: () => void;
 }
 
@@ -77,6 +77,7 @@ export function useProjects(): UseProjectsReturn {
     description?: string;
     deadline?: string;
     sequential?: boolean;
+    parent_project_id?: string;
   }): Promise<Project | null> => {
     try {
       const res = await fetch('/api/admin/projects', {

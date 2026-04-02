@@ -254,8 +254,8 @@ export interface BuildingStats {
 export type EvidenceType = 'form' | 'file_upload' | 'photo' | 'signature' | 'acknowledgment' | 'staff_check'
 export type Assignee = 'tenant' | 'staff'
 export type ProjectStatus = 'draft' | 'active' | 'closed'
-export type TaskCompletionStatus = 'pending' | 'complete' | 'waived'
-export type OverallStatus = 'not_started' | 'in_progress' | 'complete'
+export type TaskCompletionStatus = 'pending' | 'complete' | 'waived' | 'failed'
+export type OverallStatus = 'not_started' | 'in_progress' | 'complete' | 'has_failure'
 export type PreferredLanguage = 'en' | 'es' | 'pt'
 
 export interface TaskType {
@@ -267,6 +267,7 @@ export interface TaskType {
   form_id: string | null
   instructions: string | null
   submission_column: string | null
+  failure_reasons: string[] | null
   created_by: string | null
   created_at: string
 }
@@ -278,6 +279,7 @@ export interface Project {
   deadline: string | null
   status: ProjectStatus
   sequential: boolean
+  parent_project_id: string | null
   created_by: string | null
   created_at: string
 }
@@ -288,6 +290,7 @@ export interface ProjectTask {
   task_type_id: string
   order_index: number
   required: boolean
+  parent_task_id: string | null
   task_type?: TaskType
 }
 
@@ -328,6 +331,8 @@ export interface TaskCompletion {
   completed_by: string | null
   completed_at: string | null
   notes: string | null
+  failure_reason: string | null
+  reviewer_notes: string | null
 }
 
 export interface TenantProfile {
@@ -351,6 +356,7 @@ export interface DynamicColumn {
   evidence_type: string
   required: boolean
   order_index: number
+  failure_reasons: string[] | null  // from task_type
 }
 
 /** One row per unit in project mode matrix */
@@ -365,12 +371,21 @@ export interface ProjectMatrixRow {
     completed_at: string | null
     completed_by: string | null
     evidence_url: string | null
+    failure_reason: string | null
+    reviewer_notes: string | null
+    form_submission_id: string | null
   }>
   submission_data?: {
     insurance_file: string | null
     insurance_verified: boolean
     insurance_type: string | null
   } | null
+  parent_evidence?: Record<string, {
+    evidence_url: string | null
+    task_name: string
+    completed_at: string | null
+    status: string
+  }> | null
 }
 
 /** Per-building stats for project mode portfolio table */

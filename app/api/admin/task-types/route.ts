@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, assignee, evidence_type, form_id, instructions, submission_column } = body;
+    const { name, description, assignee, evidence_type, form_id, instructions, submission_column, failure_reasons } = body;
 
     if (!name || !assignee || !evidence_type) {
       return NextResponse.json(
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
         form_id: form_id || null,
         instructions: instructions || null,
         submission_column: submission_column || null,
+        failure_reasons: failure_reasons || null,
       })
       .select()
       .single();

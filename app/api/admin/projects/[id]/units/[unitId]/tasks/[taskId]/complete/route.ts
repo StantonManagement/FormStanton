@@ -14,11 +14,28 @@ export async function POST(
 
     const { id: projectId, unitId, taskId } = await context.params;
     const body = await request.json();
-    const { completed_by, notes } = body;
+    const { completed_by, notes, status: requestedStatus, failure_reason, reviewer_notes } = body;
 
     // Resolve session user as fallback for completed_by
     const sessionUser = await getSessionUser();
     const completedByName = completed_by || sessionUser?.displayName || 'staff';
+
+    // Validate status if provided
+    const targetStatus = requestedStatus || 'complete';
+    if (!['complete', 'failed'].includes(targetStatus)) {
+      return NextResponse.json(
+        { success: false, message: 'Status must be "complete" or "failed"' },
+        { status: 400 }
+      );
+    }
+
+    // Require failure_reason when marking as failed
+    if (targetStatus === 'failed' && !failure_reason?.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'failure_reason is required when marking task as failed' },
+        { status: 400 }
+      );
+    }
 
     // 1. Verify project exists
     const { data: project, error: projectError } = await supabaseAdmin
@@ -77,10 +94,12 @@ export async function POST(
     const { data: updated, error: updateError } = await supabaseAdmin
       .from('task_completions')
       .update({
-        status: 'complete',
+        status: targetStatus,
         completed_by: completedByName,
         completed_at: new Date().toISOString(),
         notes: notes || null,
+        failure_reason: targetStatus === 'failed' ? failure_reason : null,
+        reviewer_notes: reviewer_notes || null,
       })
       .eq('id', completion.id)
       .select()
@@ -91,15 +110,64 @@ export async function POST(
     // 6. Side-effect: update submission field if task_type.submission_column is set
     const submissionColumn = taskType?.submission_column;
     if (submissionColumn) {
+      // Set to true only if complete, false if failed
       const { error: subError } = await supabaseAdmin
         .from('submissions')
-        .update({ [submissionColumn]: true })
+        .update({ [submissionColumn]: targetStatus === 'complete' })
         .eq('building_address', unit.building)
         .eq('unit_number', unit.unit_number);
 
       if (subError) {
         console.error('Side-effect submission update failed:', subError);
         // Non-fatal — task completion still succeeded
+      }
+    }
+
+    // 6b. Side-effect: push result UP to parent project if parent_task_id is set
+    const parentTaskId = (completion as any).project_tasks?.parent_task_id;
+    if (parentTaskId) {
+      try {
+        // Get the parent project's project_id from the parent task
+        const { data: parentTask } = await supabaseAdmin
+          .from('project_tasks')
+          .select('project_id')
+          .eq('id', parentTaskId)
+          .single();
+
+        if (parentTask) {
+          // Find the parent unit with matching building+unit_number
+          const { data: parentUnit } = await supabaseAdmin
+            .from('project_units')
+            .select('id')
+            .eq('project_id', parentTask.project_id)
+            .eq('building', unit.building)
+            .eq('unit_number', unit.unit_number)
+            .single();
+
+          if (parentUnit) {
+            // Get the project name for the note
+            const { data: thisProject } = await supabaseAdmin
+              .from('projects')
+              .select('name')
+              .eq('id', projectId)
+              .single();
+
+            const projectName = thisProject?.name || 'Child Project';
+            const timestamp = new Date().toLocaleDateString();
+            const noteText = targetStatus === 'complete'
+              ? `Verified by ${projectName} — ${completedByName} on ${timestamp}`
+              : `Failed: ${failure_reason} — ${projectName} — ${completedByName} on ${timestamp}`;
+
+            await supabaseAdmin
+              .from('task_completions')
+              .update({ notes: noteText })
+              .eq('project_task_id', parentTaskId)
+              .eq('project_unit_id', parentUnit.id);
+          }
+        }
+      } catch (parentErr) {
+        console.error('Parent up-flow side-effect failed:', parentErr);
+        // Non-fatal — child completion still succeeded
       }
     }
 
@@ -114,6 +182,12 @@ export async function POST(
     const requiredCompletions = (allCompletions || []).filter(
       (c: any) => c.project_tasks?.required !== false
     );
+    
+    // Check for any failed required tasks
+    const anyRequiredFailed = requiredCompletions.some(
+      (c: any) => c.status === 'failed'
+    );
+    
     const allRequiredDone = requiredCompletions.every(
       (c: any) => c.status === 'complete' || c.status === 'waived'
     );
@@ -122,7 +196,9 @@ export async function POST(
     );
 
     let overallStatus = 'not_started';
-    if (allRequiredDone) {
+    if (anyRequiredFailed) {
+      overallStatus = 'has_failure';
+    } else if (allRequiredDone) {
       overallStatus = 'complete';
     } else if (anyDone) {
       overallStatus = 'in_progress';
@@ -198,6 +274,8 @@ export async function DELETE(
         completed_by: null,
         completed_at: null,
         notes: null,
+        failure_reason: null,
+        reviewer_notes: null,
       })
       .eq('id', completion.id)
       .select()
@@ -219,6 +297,38 @@ export async function DELETE(
       }
     }
 
+    // 4b. Side-effect: clear parent note if parent_task_id is set
+    const parentTaskId = (completion as any).project_tasks?.parent_task_id;
+    if (parentTaskId) {
+      try {
+        const { data: parentTask } = await supabaseAdmin
+          .from('project_tasks')
+          .select('project_id')
+          .eq('id', parentTaskId)
+          .single();
+
+        if (parentTask) {
+          const { data: parentUnit } = await supabaseAdmin
+            .from('project_units')
+            .select('id')
+            .eq('project_id', parentTask.project_id)
+            .eq('building', unit.building)
+            .eq('unit_number', unit.unit_number)
+            .single();
+
+          if (parentUnit) {
+            await supabaseAdmin
+              .from('task_completions')
+              .update({ notes: null })
+              .eq('project_task_id', parentTaskId)
+              .eq('project_unit_id', parentUnit.id);
+          }
+        }
+      } catch (parentErr) {
+        console.error('Parent up-flow revert failed:', parentErr);
+      }
+    }
+
     // 5. Recompute project_units.overall_status
     const { data: allCompletions, error: allCompError } = await supabaseAdmin
       .from('task_completions')
@@ -230,6 +340,12 @@ export async function DELETE(
     const requiredCompletions = (allCompletions || []).filter(
       (c: any) => c.project_tasks?.required !== false
     );
+    
+    // Check for any failed required tasks
+    const anyRequiredFailed = requiredCompletions.some(
+      (c: any) => c.status === 'failed'
+    );
+    
     const allRequiredDone = requiredCompletions.every(
       (c: any) => c.status === 'complete' || c.status === 'waived'
     );
@@ -238,7 +354,9 @@ export async function DELETE(
     );
 
     let overallStatus = 'not_started';
-    if (allRequiredDone) {
+    if (anyRequiredFailed) {
+      overallStatus = 'has_failure';
+    } else if (allRequiredDone) {
       overallStatus = 'complete';
     } else if (anyDone) {
       overallStatus = 'in_progress';

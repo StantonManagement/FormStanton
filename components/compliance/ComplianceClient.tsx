@@ -8,6 +8,7 @@ import VehicleExportCenter from '@/components/VehicleExportCenter';
 import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
 import { DashboardHeader, ComplianceSidebar, BuildingDetailView, PortfolioTable, TenantSidePanel, BuildingMatrixTable } from '@/components/compliance';
+import ReviewMode from '@/components/compliance/ReviewMode';
 import Toast from '@/components/kit/Toast';
 import type { TenantSubmission } from '@/types/compliance';
 
@@ -60,6 +61,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
   const [showExportCenter, setShowExportCenter] = useState(false);
   const [showAddTenant, setShowAddTenant] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<TenantSubmission | null>(null);
+  const [reviewMode, setReviewMode] = useState(false);
 
   useEffect(() => {
     if (editingSubmission) {
@@ -212,12 +214,28 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
           {/* Building detail — project mode */}
           {data.selectedBuilding && isProjectMode && (
             <div className="max-w-7xl mx-auto space-y-6">
-              <button
-                onClick={() => data.setSelectedBuilding('')}
-                className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] hover:underline transition-colors duration-200 ease-out font-medium"
-              >
-                &larr; All Buildings
-              </button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => data.setSelectedBuilding('')}
+                  className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] hover:underline transition-colors duration-200 ease-out font-medium"
+                >
+                  &larr; All Buildings
+                </button>
+                
+                {/* Review Mode toggle */}
+                {data.projectColumns.length > 0 && (
+                  <button
+                    onClick={() => setReviewMode(!reviewMode)}
+                    className={`px-4 py-2 text-sm font-medium border transition-colors ${
+                      reviewMode
+                        ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                        : 'bg-white text-[var(--primary)] border-[var(--border)] hover:bg-[var(--bg-section)]'
+                    }`}
+                  >
+                    {reviewMode ? '✓ Review Mode' : 'Review Mode'}
+                  </button>
+                )}
+              </div>
 
               {currentProjectBuildingStats && (
                 <div className="bg-white border border-[var(--border)] shadow-sm p-6">
@@ -251,25 +269,41 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
                 </div>
               )}
 
-              <div className="space-y-3">
-                <BuildingMatrixTable
-                  rows={[]}
-                  onSelectTenant={() => {}}
-                  onRefresh={() => {}}
-                  selectedIds={new Set()}
-                  onSelectionChange={() => {}}
-                  mode="project"
-                  projectColumns={data.projectColumns}
-                  projectRows={data.filteredProjectRows}
-                  onStaffComplete={data.handleStaffComplete}
-                  onStaffUncomplete={data.handleStaffUncomplete}
-                />
-                {data.activeFilters.size > 0 && (
-                  <div className="text-xs text-[var(--muted)]">
-                    Showing {data.filteredProjectRows.length} rows (filtered)
-                  </div>
-                )}
-              </div>
+              {reviewMode ? (
+                /* Review Mode UI */
+                <div className="bg-white border border-[var(--border)] shadow-sm" style={{ height: 'calc(100vh - 240px)' }}>
+                  <ReviewMode
+                    columns={data.projectColumns}
+                    rows={data.filteredProjectRows}
+                    projectName={data.projectName || 'Project'}
+                    onStaffComplete={data.handleStaffComplete}
+                    onStaffFail={data.handleStaffFail}
+                    onStaffUncomplete={data.handleStaffUncomplete}
+                  />
+                </div>
+              ) : (
+                /* Standard matrix grid */
+                <div className="space-y-3">
+                  <BuildingMatrixTable
+                    rows={[]}
+                    onSelectTenant={() => {}}
+                    onRefresh={() => {}}
+                    selectedIds={new Set()}
+                    onSelectionChange={() => {}}
+                    mode="project"
+                    projectColumns={data.projectColumns}
+                    projectRows={data.filteredProjectRows}
+                    onStaffComplete={data.handleStaffComplete}
+                    onStaffFail={data.handleStaffFail}
+                    onStaffUncomplete={data.handleStaffUncomplete}
+                  />
+                  {data.activeFilters.size > 0 && (
+                    <div className="text-xs text-[var(--muted)]">
+                      Showing {data.filteredProjectRows.length} rows (filtered)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
