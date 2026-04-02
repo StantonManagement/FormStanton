@@ -254,13 +254,19 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         setInsAdditionalInsuredTouched(true);
         setInsProofReceivedTouched(true);
         setInsHasPetsTouched(true);
+      } else {
+        // No policy on file - check if insurance file exists on submission and auto-check proof_received
+        if (submissionData?.insurance_file) {
+          setInsProofReceived(true);
+          setInsProofReceivedTouched(true);
+        }
       }
     } catch (e) {
       console.error('Failed to fetch insurance', e);
     } finally {
       setLoadingPolicy(false);
     }
-  }, [tenant.buildingAddress, tenant.unitNumber]);
+  }, [tenant.buildingAddress, tenant.unitNumber, submissionData?.insurance_file]);
 
   // Fetch fresh submission data on mount
   const fetchFreshSubmission = useCallback(async () => {
@@ -855,26 +861,31 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
   const handleSaveInsurance = async () => {
     const normalizedCoverage = getNormalizedCoverageAmount();
 
-    if (insuranceChoice === 'own_policy' && !insAdditionalInsuredTouched) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Confirmation Required',
-        message: 'Please confirm whether Additional Insured (LLC) has been added before saving.',
-        variant: 'error'
-      });
-      return;
+    // Conditional validation based on insurance type
+    if (insuranceChoice === 'own_policy') {
+      // Own policy requires all three confirmations
+      if (!insAdditionalInsuredTouched) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Confirmation Required',
+          message: 'Please confirm whether Additional Insured (LLC) has been added before saving.',
+          variant: 'error'
+        });
+        return;
+      }
+
+      if (!insProofReceivedTouched) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Confirmation Required',
+          message: 'Please confirm whether proof of insurance has been received before saving.',
+          variant: 'error'
+        });
+        return;
+      }
     }
 
-    if (insuranceChoice === 'own_policy' && !insProofReceivedTouched) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Confirmation Required',
-        message: 'Please confirm whether proof of insurance has been received before saving.',
-        variant: 'error'
-      });
-      return;
-    }
-
+    // Both paths require has_pets confirmation
     if (!insHasPetsTouched) {
       setAlertDialog({
         isOpen: true,
@@ -895,6 +906,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       return;
     }
 
+    // Log data quality flag for low coverage with pets, but allow save to proceed
     if (insHasPets && normalizedCoverage < 300000) {
       const note = `Coverage below compliance minimum for pet household: entered $${normalizedCoverage.toLocaleString()} (minimum $300,000)`;
       await saveInteraction(
@@ -906,14 +918,6 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         },
         note
       );
-
-      setAlertDialog({
-        isOpen: true,
-        title: 'Coverage Too Low',
-        message: 'Pet households require at least $300,000 liability coverage. Policy was not saved. You can still upload proof for follow-up.',
-        variant: 'error'
-      });
-      return;
     }
 
     setSaving(true);
@@ -987,12 +991,22 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
         }
       }
 
-      setAlertDialog({
-        isOpen: true,
-        title: 'Insurance Saved',
-        message: 'Insurance policy saved.',
-        variant: 'success'
-      });
+      // Show appropriate message based on compliance status
+      if (insHasPets && normalizedCoverage < 300000) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Policy Saved with Compliance Flag',
+          message: `Insurance policy saved. WARNING: Pet households require $300,000 coverage (current: $${normalizedCoverage.toLocaleString()}). This has been flagged for follow-up.`,
+          variant: 'info'
+        });
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Insurance Saved',
+          message: 'Insurance policy saved.',
+          variant: 'success'
+        });
+      }
     } catch (e) {
       setAlertDialog({
         isOpen: true,
@@ -1143,10 +1157,35 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
     file: File,
     options?: { petIndex?: number }
   ) => {
-    const subId = submissionData?.id;
+    let subId = submissionData?.id;
+    
+    // Create stub submission if none exists (allows insurance upload without vehicle/pet)
     if (!subId) {
-      setAlertDialog({ isOpen: true, title: 'No Submission', message: 'This tenant has no submission record yet. Register a vehicle or pet first.', variant: 'error' });
-      return;
+      try {
+        const res = await fetch('/api/admin/lobby-intake', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_name: tenant.name,
+            building_address: tenant.buildingAddress,
+            unit_number: tenant.unitNumber,
+            action_type: 'insurance_proof_received',
+            action_data: {},
+            notes: `${docType === 'insurance' ? 'Insurance' : 'Document'} uploaded via Lobby Intake`,
+            performed_by: staffName,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success || !data.submissionData?.id) {
+          setAlertDialog({ isOpen: true, title: 'Error', message: data.message || 'Failed to create submission for upload', variant: 'error' });
+          return;
+        }
+        subId = data.submissionData.id;
+        if (onSubmissionUpdated) onSubmissionUpdated(data.submissionData);
+      } catch (e) {
+        setAlertDialog({ isOpen: true, title: 'Error', message: 'Failed to create submission for upload', variant: 'error' });
+        return;
+      }
     }
     setUploadingDocType(docType);
     try {
@@ -1163,6 +1202,13 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       if (data.success) {
         if (onSubmissionUpdated) onSubmissionUpdated(data.data);
         await fetchFreshSubmission();
+        
+        // Auto-check proof_received checkbox when insurance uploaded
+        if (docType === 'insurance') {
+          setInsProofReceived(true);
+          setInsProofReceivedTouched(true);
+        }
+        
         const labels: Record<string, string> = {
           pet_addendum: 'Pet Addendum',
           insurance: 'Insurance Document',
@@ -1201,6 +1247,13 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       if (data.success) {
         if (onSubmissionUpdated) onSubmissionUpdated(data.data);
         await fetchFreshSubmission();
+        
+        // Auto-uncheck proof_received checkbox when insurance deleted
+        if (docType === 'insurance') {
+          setInsProofReceived(false);
+          setInsProofReceivedTouched(true);
+        }
+        
         setAlertDialog({ isOpen: true, title: 'Document Deleted', message: 'The document has been removed.', variant: 'success' });
       } else {
         setAlertDialog({ isOpen: true, title: 'Delete Failed', message: data.message || 'Failed to delete document', variant: 'error' });
@@ -1928,6 +1981,9 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
             {insuranceChoice === 'appfolio' && (
               <div className="bg-amber-50 p-3 text-xs text-amber-800 font-medium" style={{ borderLeftWidth: '3px', borderLeftColor: '#d97706' }}>
                 ⚠️ Tenant must sign an authorization form before enrollment. If they submitted online and signed digitally, the signature is already on file. Otherwise, print the authorization form below for a physical signature.
+                <div className="mt-2 text-xs text-amber-700">
+                  Note: Appfolio manages the policy and additional insured automatically. You only need to confirm pet status.
+                </div>
               </div>
             )}
 
@@ -1965,15 +2021,29 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                       <option value="custom">Custom amount...</option>
                     </select>
                     {insCoverageMode === 'custom' && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="1000"
-                        value={insCustomCoverage}
-                        onChange={(e) => setInsCustomCoverage(e.target.value)}
-                        className={`${inputClass} mt-2`}
-                        placeholder="Enter policy amount"
-                      />
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={insCustomCoverage}
+                          onChange={(e) => {
+                            // Strip non-numeric characters and format
+                            const raw = e.target.value.replace(/[^\d]/g, '');
+                            setInsCustomCoverage(raw);
+                          }}
+                          className={inputClass}
+                          placeholder="Enter policy amount (e.g., 300000)"
+                        />
+                        {insCustomCoverage && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            Preview: ${Number(insCustomCoverage).toLocaleString()}
+                          </div>
+                        )}
+                        {insCustomCoverage && Number(insCustomCoverage) < 100000 && (
+                          <div className="text-xs text-red-600 mt-1 font-medium">
+                            ⚠ Minimum recommended coverage is $100,000
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div>
@@ -2004,30 +2074,42 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                       }}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm">Proof of insurance received</span>
+                    <span className="text-sm">
+                      Proof of insurance received
+                      {submissionData?.insurance_file && (
+                        <span className="ml-2 text-xs text-green-700 font-medium">✓ File on record</span>
+                      )}
+                    </span>
                   </label>
                 </div>
               </div>
             )}
 
             {/* Has pets flag */}
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={insHasPets}
-                onChange={e => {
-                  setInsHasPets(e.target.checked);
-                  setInsHasPetsTouched(true);
-                }}
-                className="w-4 h-4"
-              />
-              <span className="text-sm font-medium">Tenant has pets (requires $300,000 coverage)</span>
-            </label>
-            {insHasPets && (getNormalizedCoverageAmount() || 0) < 300000 && (
-              <div className="text-xs text-red-700 font-semibold bg-red-50 p-2">
-                [!] Coverage is below $300,000 -- pet owners must have at least $300,000 liability.
-              </div>
-            )}
+            <div className="pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={insHasPets}
+                  onChange={e => {
+                    setInsHasPets(e.target.checked);
+                    setInsHasPetsTouched(true);
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium">Tenant has pets (requires $300,000 coverage)</span>
+              </label>
+              {insHasPets && (getNormalizedCoverageAmount() || 0) < 300000 && (
+                <div className="text-xs text-red-700 font-semibold bg-red-50 p-2 mt-2 border-l-2 border-red-600">
+                  ⚠ Coverage is below $300,000 — pet owners must have at least $300,000 liability. Policy will be saved with a compliance flag for follow-up.
+                </div>
+              )}
+              {!insHasPets && insHasPetsTouched && (getNormalizedCoverageAmount() || 0) >= 100000 && (
+                <div className="text-xs text-green-700 bg-green-50 p-2 mt-2 border-l-2 border-green-600">
+                  ✓ No pets — coverage amount is acceptable for this household.
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-2 pt-2 mb-2">
               <span className="text-xs font-medium text-[var(--primary)]">Print Language:</span>
@@ -2053,40 +2135,49 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
               <button onClick={handlePrintInsurance} className={btnSecondary}>
                 Print Authorization
               </button>
-              {insuranceChoice === 'own_policy' && (
+              
+              {/* Upload/View/Delete buttons - available for both own_policy and appfolio */}
+              <label className={`${btnSecondary} cursor-pointer`}>
+                {uploadingDocType === 'insurance' ? 'Uploading...' : insuranceChoice === 'appfolio' ? 'Upload Authorization Form' : 'Upload Proof of Insurance'}
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUploadDoc('insurance', file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingDocType === 'insurance'}
+                  className="hidden"
+                />
+              </label>
+              
+              {submissionData?.insurance_file && (
                 <>
-                  <label className={`${btnSecondary} cursor-pointer`}>
-                    {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUploadDoc('insurance', file);
-                        e.target.value = '';
-                      }}
-                      disabled={uploadingDocType === 'insurance'}
-                      className="hidden"
-                    />
-                  </label>
-                  {submissionData?.insurance_file && (
-                    <button
-                      onClick={() => setConfirmDialog({
-                        isOpen: true,
-                        title: 'Delete Insurance Document',
-                        message: 'Are you sure you want to delete this insurance document? This cannot be undone.',
-                        variant: 'danger',
-                        onConfirm: () => {
-                          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                          handleDeleteDoc('insurance');
-                        },
-                      })}
-                      disabled={deletingDocType === 'insurance'}
-                      className="px-4 py-2 border border-red-600 text-red-600 text-sm font-medium rounded-none hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
-                    >
-                      {deletingDocType === 'insurance' ? 'Deleting...' : 'Delete Document'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      window.open(submissionData.insurance_file, '_blank');
+                    }}
+                    className={btnSecondary}
+                  >
+                    View Current Proof
+                  </button>
+                  <button
+                    onClick={() => setConfirmDialog({
+                      isOpen: true,
+                      title: 'Delete Insurance Document',
+                      message: 'Are you sure you want to delete this insurance document? This cannot be undone.',
+                      variant: 'danger',
+                      onConfirm: () => {
+                        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                        handleDeleteDoc('insurance');
+                      },
+                    })}
+                    disabled={deletingDocType === 'insurance'}
+                    className="px-4 py-2 border border-red-600 text-red-600 text-sm font-medium rounded-none hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {deletingDocType === 'insurance' ? 'Deleting...' : 'Delete Document'}
+                  </button>
                 </>
               )}
             </div>
