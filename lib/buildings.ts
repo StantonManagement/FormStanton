@@ -109,7 +109,7 @@ export const buildingUnits: Record<string, string[]> = {
   "67-73 Park St": ["201", "202", "302", "COM 67 Park", "COM 75 Park"],
   "83-91 Park St": ["201", "202", "203", "301", "302", "303", "COM 83 Park", "COM 91 Park"],
   "57-59 Park St": ["2W", "COM 57 Park"],
-  "179 Affleck St": ["1N", "1S", "2N", "2S", "3N", "3S", "4N"],
+  "179 Affleck St": ["1N", "1S", "2N", "2S", "3N", "3S", "4N", "4S"],
   "144-146 Affleck St": ["1S", "2N", "2S", "3N", "3S"],
   "178 Affleck St": ["1", "2", "3", "4", "4S"],
   "182-184 Affleck St": ["1", "2"],

@@ -262,6 +262,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
                   projectColumns={data.projectColumns}
                   projectRows={data.filteredProjectRows}
                   onStaffComplete={data.handleStaffComplete}
+                  onStaffUncomplete={data.handleStaffUncomplete}
                 />
                 {data.activeFilters.size > 0 && (
                   <div className="text-xs text-[var(--muted)]">

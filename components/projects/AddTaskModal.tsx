@@ -37,6 +37,7 @@ export default function AddTaskModal({ isOpen, onClose, onSelectExisting, onCrea
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('form');
   const [instructions, setInstructions] = useState('');
   const [formId, setFormId] = useState('');
+  const [submissionColumn, setSubmissionColumn] = useState('');
   const [forms, setForms] = useState<{ id: number; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +52,7 @@ export default function AddTaskModal({ isOpen, onClose, onSelectExisting, onCrea
     setEvidenceType('form');
     setInstructions('');
     setFormId('');
+    setSubmissionColumn('');
     setError('');
     fetchTaskTypes();
     fetchForms();
@@ -101,6 +103,7 @@ export default function AddTaskModal({ isOpen, onClose, onSelectExisting, onCrea
         evidence_type: evidenceType,
         form_id: evidenceType === 'form' && formId ? formId : null,
         instructions: instructions.trim() || null,
+        submission_column: submissionColumn.trim() || null,
       });
       onClose();
     } catch (err: any) {
@@ -258,6 +261,20 @@ export default function AddTaskModal({ isOpen, onClose, onSelectExisting, onCrea
                       <option key={f.id} value={f.id}>{f.title}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {assignee === 'staff' && evidenceType === 'staff_check' && (
+                <div>
+                  <label className="text-sm font-medium text-[var(--ink)]">Submission Column (optional)</label>
+                  <input
+                    type="text"
+                    value={submissionColumn}
+                    onChange={(e) => setSubmissionColumn(e.target.value)}
+                    placeholder="e.g. insurance_verified"
+                    className="mt-1 w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                  />
+                  <p className="text-xs text-[var(--muted)] mt-1">If set, completing this task will also set this boolean column to true on the matching submission.</p>
                 </div>
               )}
 

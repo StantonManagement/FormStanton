@@ -137,6 +137,7 @@ export default function ProjectDetailPage() {
             selectedUnits={selectedUnits}
             onSelectedUnitsChange={setSelectedUnits}
             onRegenerateToken={detail.regenerateToken}
+            onAddUnits={detail.addUnits}
           />
         )}
 

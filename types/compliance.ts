@@ -266,6 +266,7 @@ export interface TaskType {
   evidence_type: EvidenceType
   form_id: string | null
   instructions: string | null
+  submission_column: string | null
   created_by: string | null
   created_at: string
 }
@@ -365,6 +366,11 @@ export interface ProjectMatrixRow {
     completed_by: string | null
     evidence_url: string | null
   }>
+  submission_data?: {
+    insurance_file: string | null
+    insurance_verified: boolean
+    insurance_type: string | null
+  } | null
 }
 
 /** Per-building stats for project mode portfolio table */

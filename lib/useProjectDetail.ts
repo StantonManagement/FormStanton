@@ -25,6 +25,7 @@ export interface UseProjectDetailReturn {
   updateTask: (taskId: string, data: Partial<{ order_index: number; required: boolean }>) => Promise<void>;
   removeTask: (taskId: string) => Promise<void>;
   activate: (units: { building: string; unit_number: string }[]) => Promise<{ units_activated: number; tasks_created: number }>;
+  addUnits: (units: { building: string; unit_number: string }[]) => Promise<{ units_added: number; tasks_created: number }>;
   regenerateToken: (unitId: string) => Promise<void>;
   fetchUnits: () => Promise<void>;
   refresh: () => void;
@@ -139,6 +140,20 @@ export function useProjectDetail(projectId: string | null): UseProjectDetailRetu
     return json.data as { units_activated: number; tasks_created: number };
   }, [projectId, fetchProject, fetchUnits]);
 
+  const addUnits = useCallback(async (unitList: { building: string; unit_number: string }[]) => {
+    if (!projectId) throw new Error('No project');
+    const res = await fetch(`/api/admin/projects/${projectId}/units`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ units: unitList }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Failed to add units');
+    await fetchProject();
+    await fetchUnits();
+    return json.data as { units_added: number; tasks_created: number };
+  }, [projectId, fetchProject, fetchUnits]);
+
   const regenerateToken = useCallback(async (unitId: string) => {
     if (!projectId) return;
     const res = await fetch(`/api/admin/projects/${projectId}/units/${unitId}/token`, {
@@ -160,6 +175,7 @@ export function useProjectDetail(projectId: string | null): UseProjectDetailRetu
     updateTask,
     removeTask,
     activate,
+    addUnits,
     regenerateToken,
     fetchUnits,
     refresh: fetchProject,

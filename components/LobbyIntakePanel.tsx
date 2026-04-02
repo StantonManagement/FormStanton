@@ -173,6 +173,7 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
 
   // Document upload state
   const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+  const [deletingDocType, setDeletingDocType] = useState<string | null>(null);
 
   // ID photo state
   const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
@@ -1161,9 +1162,10 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       const data = await res.json();
       if (data.success) {
         if (onSubmissionUpdated) onSubmissionUpdated(data.data);
+        await fetchFreshSubmission();
         const labels: Record<string, string> = {
           pet_addendum: 'Pet Addendum',
-          insurance: 'Insurance Proof',
+          insurance: 'Insurance Document',
           vehicle_addendum: 'Vehicle Addendum',
           pet_vaccination_proof: 'Pet Vaccination Proof',
           pet_spay_neuter_proof: 'Pet Spayed/Neutered Proof',
@@ -1176,6 +1178,37 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
       setAlertDialog({ isOpen: true, title: 'Upload Failed', message: 'Upload failed', variant: 'error' });
     } finally {
       setUploadingDocType(null);
+    }
+  };
+
+  // -- Document delete handler (inside intake panel) --
+
+  const handleDeleteDoc = async (docType: 'pet_addendum' | 'insurance' | 'vehicle_addendum') => {
+    const subId = submissionData?.id;
+    if (!subId) return;
+
+    setDeletingDocType(docType);
+    try {
+      const res = await fetch('/api/admin/compliance/delete-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionId: subId,
+          documentType: docType,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (onSubmissionUpdated) onSubmissionUpdated(data.data);
+        await fetchFreshSubmission();
+        setAlertDialog({ isOpen: true, title: 'Document Deleted', message: 'The document has been removed.', variant: 'success' });
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Delete Failed', message: data.message || 'Failed to delete document', variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Delete Failed', message: 'Failed to delete document', variant: 'error' });
+    } finally {
+      setDeletingDocType(null);
     }
   };
 
@@ -1553,6 +1586,24 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                   className="hidden"
                 />
               </label>
+              {submissionData?.vehicle_addendum_file && (
+                <button
+                  onClick={() => setConfirmDialog({
+                    isOpen: true,
+                    title: 'Delete Vehicle Addendum',
+                    message: 'Are you sure you want to delete this vehicle addendum document? This cannot be undone.',
+                    variant: 'danger',
+                    onConfirm: () => {
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      handleDeleteDoc('vehicle_addendum');
+                    },
+                  })}
+                  disabled={deletingDocType === 'vehicle_addendum'}
+                  className="px-4 py-2 border border-red-600 text-red-600 text-sm font-medium rounded-none hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
+                >
+                  {deletingDocType === 'vehicle_addendum' ? 'Deleting...' : 'Delete Addendum'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1667,6 +1718,24 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                   className="hidden"
                 />
               </label>
+              {submissionData?.pet_addendum_file && (
+                <button
+                  onClick={() => setConfirmDialog({
+                    isOpen: true,
+                    title: 'Delete Pet Addendum',
+                    message: 'Are you sure you want to delete this pet addendum document? This cannot be undone.',
+                    variant: 'danger',
+                    onConfirm: () => {
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      handleDeleteDoc('pet_addendum');
+                    },
+                  })}
+                  disabled={deletingDocType === 'pet_addendum'}
+                  className="px-4 py-2 border border-red-600 text-red-600 text-sm font-medium rounded-none hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
+                >
+                  {deletingDocType === 'pet_addendum' ? 'Deleting...' : 'Delete Addendum'}
+                </button>
+              )}
               <label className={`${btnSecondary} cursor-pointer`}>
                 {uploadingDocType === 'pet_vaccination_proof' ? 'Uploading...' : 'Upload Vaccination Proof'}
                 <input
@@ -1985,20 +2054,40 @@ export default function LobbyIntakePanel({ tenant, submissionData, staffName: st
                 Print Authorization
               </button>
               {insuranceChoice === 'own_policy' && (
-                <label className={`${btnSecondary} cursor-pointer`}>
-                  {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUploadDoc('insurance', file);
-                      e.target.value = '';
-                    }}
-                    disabled={uploadingDocType === 'insurance'}
-                    className="hidden"
-                  />
-                </label>
+                <>
+                  <label className={`${btnSecondary} cursor-pointer`}>
+                    {uploadingDocType === 'insurance' ? 'Uploading...' : 'Upload Proof of Insurance'}
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadDoc('insurance', file);
+                        e.target.value = '';
+                      }}
+                      disabled={uploadingDocType === 'insurance'}
+                      className="hidden"
+                    />
+                  </label>
+                  {submissionData?.insurance_file && (
+                    <button
+                      onClick={() => setConfirmDialog({
+                        isOpen: true,
+                        title: 'Delete Insurance Document',
+                        message: 'Are you sure you want to delete this insurance document? This cannot be undone.',
+                        variant: 'danger',
+                        onConfirm: () => {
+                          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                          handleDeleteDoc('insurance');
+                        },
+                      })}
+                      disabled={deletingDocType === 'insurance'}
+                      className="px-4 py-2 border border-red-600 text-red-600 text-sm font-medium rounded-none hover:bg-red-50 transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {deletingDocType === 'insurance' ? 'Deleting...' : 'Delete Document'}
+                    </button>
+                  )}
+                </>
               )}
             </div>
 

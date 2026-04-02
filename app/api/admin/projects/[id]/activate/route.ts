@@ -73,6 +73,19 @@ export async function POST(
       profileMap.set(`${p.building}||${p.unit_number}`, p.preferred_language);
     }
 
+    // 3b. Batch-lookup tenant_lookup for tenant names
+    const { data: tenants, error: tenantsError } = await supabaseAdmin
+      .from('tenant_lookup')
+      .select('building_address, unit_number, name')
+      .eq('is_current', true);
+
+    if (tenantsError) throw tenantsError;
+
+    const tenantNameMap = new Map<string, string>();
+    for (const t of tenants || []) {
+      tenantNameMap.set(`${t.building_address}||${t.unit_number}`, t.name);
+    }
+
     // 4. Compute token_expires_at: project deadline + 30 days, or null
     let tokenExpiresAt: string | null = null;
     if (project.deadline) {
@@ -86,6 +99,7 @@ export async function POST(
       project_id: id,
       building: u.building,
       unit_number: u.unit_number,
+      tenant_name: tenantNameMap.get(`${u.building}||${u.unit_number}`) || null,
       tenant_link_token: generateToken(),
       token_expires_at: tokenExpiresAt,
       preferred_language: profileMap.get(`${u.building}||${u.unit_number}`) || 'en',

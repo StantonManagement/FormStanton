@@ -23,6 +23,7 @@ export interface ComplianceRecord {
   pet_fee_added_to_appfolio: boolean;
   permit_fee_added_to_appfolio: boolean;
   permit_issued: boolean;
+  insurance_verified: boolean;
   calculated_pet_fee: number | null;
   calculated_permit_fee: number | null;
 }
@@ -154,6 +155,26 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
       uploadedBy: row.insurance_uploaded_to_appfolio_by,
       uploadedAt: row.insurance_uploaded_to_appfolio_at,
       documentType: 'insurance',
+    }),
+  },
+  {
+    id: 'insurance_verified',
+    label: 'Ins. Verified',
+    cellType: 'status',
+    priority: 1,
+    isApplicable: (rec) => rec.has_insurance,
+    isComplete: (rec) => rec.insurance_verified,
+    getAction: (rec) => {
+      if (!rec.has_insurance) return null;
+      if (!rec.insurance_verified) return { text: 'Verify insurance type', level: 'amber' };
+      return null;
+    },
+    getStatusCellProps: (row) => ({
+      done: row.insurance_verified,
+      doneLabel: '✓',
+      pendingLabel: 'Pending',
+      auditBy: null,
+      auditAt: null,
     }),
   },
   {

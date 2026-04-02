@@ -86,6 +86,7 @@ export interface ComplianceData {
   projectBuildings: string[];
   projectName: string | null;
   handleStaffComplete: (unitId: string, taskId: string) => Promise<void>;
+  handleStaffUncomplete: (unitId: string, taskId: string) => Promise<void>;
 }
 
 export function useComplianceData(selectedProject: string = 'legacy'): ComplianceData {
@@ -177,6 +178,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
           tenant_name: u.tenant_name || null,
           overall_status: u.overall_status || 'not_started',
           completions,
+          submission_data: u.submission_data || null,
         };
       });
       setProjectRows(rows);
@@ -349,6 +351,16 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
     }
   }, [mode, selectedProject, fetchProjectData]);
 
+  const handleStaffUncomplete = useCallback(async (unitId: string, taskId: string) => {
+    if (mode !== 'project') return;
+    const res = await fetch(`/api/admin/projects/${selectedProject}/units/${unitId}/tasks/${taskId}/complete`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      fetchProjectData(selectedProject);
+    }
+  }, [mode, selectedProject, fetchProjectData]);
+
   const handleMergeSubmissions = useCallback(async (primaryId: string, duplicateIds: string[]) => {
     const response = await fetch('/api/admin/compliance/merge-submissions', {
       method: 'POST',
@@ -436,6 +448,7 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
           pet_fee_added_to_appfolio: s.pet_fee_added_to_appfolio ?? false,
           permit_fee_added_to_appfolio: s.permit_fee_added_to_appfolio ?? false,
           permit_issued: s.permit_issued,
+          insurance_verified: s.insurance_verified ?? false,
           calculated_pet_fee: null,
           calculated_permit_fee: null,
         };
@@ -553,5 +566,6 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
     projectBuildings,
     projectName,
     handleStaffComplete,
+    handleStaffUncomplete,
   };
 }

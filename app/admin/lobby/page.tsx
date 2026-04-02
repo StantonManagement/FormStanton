@@ -156,7 +156,6 @@ export default function LobbyPage() {
   const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; display_name: string }>>([]);
   const [selectedStaffName, setSelectedStaffName] = useState(adminName);
 
-  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [updatingField, setUpdatingField] = useState<string | null>(null);
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -179,7 +178,6 @@ export default function LobbyPage() {
     message: string;
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-  const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
   const [showIntakePanel, setShowIntakePanel] = useState(false);
   const [pickupIdFile, setPickupIdFile] = useState<File | null>(null);
   const [pickupIdPreview, setPickupIdPreview] = useState<string | null>(null);
@@ -452,121 +450,6 @@ export default function LobbyPage() {
     setSearchResults([]);
   };
 
-  const handleUploadDocument = async (
-    documentType: 'pet_addendum' | 'insurance' | 'vehicle_addendum',
-    file: File
-  ) => {
-    if (!activeTenant || !activeTenant.submissionData) return;
-
-    setUploadingDoc(documentType);
-
-    try {
-      const formData = new FormData();
-      formData.append('submissionId', activeTenant.submissionData.id);
-      formData.append('documentType', documentType);
-      formData.append('file', file);
-
-      const response = await fetch('/api/admin/compliance/attach-document', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setActiveTenant({
-          ...activeTenant,
-          submissionData: result.data,
-        });
-        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
-        if (index !== -1) {
-          const updated = [...allTenants];
-          updated[index] = {
-            ...updated[index],
-            submissionData: result.data,
-          };
-          setAllTenants(updated);
-        }
-      } else {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Upload Failed',
-          message: result.message,
-          variant: 'error'
-        });
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Upload Failed',
-        message: 'Upload failed',
-        variant: 'error'
-      });
-    } finally {
-      setUploadingDoc(null);
-    }
-  };
-
-  const handleDeleteDocument = async (
-    documentType: 'pet_addendum' | 'insurance' | 'vehicle_addendum'
-  ) => {
-    if (!activeTenant || !activeTenant.submissionData) return;
-
-    setDeletingDoc(documentType);
-
-    try {
-      const response = await fetch('/api/admin/compliance/delete-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionId: activeTenant.submissionData.id,
-          documentType,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setActiveTenant({
-          ...activeTenant,
-          submissionData: result.data,
-        });
-        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
-        if (index !== -1) {
-          const updated = [...allTenants];
-          updated[index] = {
-            ...updated[index],
-            submissionData: result.data,
-          };
-          setAllTenants(updated);
-        }
-        setAlertDialog({
-          isOpen: true,
-          title: 'Document Deleted',
-          message: 'The document has been removed.',
-          variant: 'success'
-        });
-      } else {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Delete Failed',
-          message: result.message,
-          variant: 'error'
-        });
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Delete Failed',
-        message: 'Failed to delete document',
-        variant: 'error'
-      });
-    } finally {
-      setDeletingDoc(null);
-    }
-  };
 
   const handleSetInsuranceType = async (insuranceType: 'renters' | 'car' | 'other') => {
     if (!activeTenant || !activeTenant.submissionData) return;
@@ -1392,21 +1275,6 @@ export default function LobbyPage() {
                     >
                       View Document
                     </button>
-                    <button
-                      onClick={() => setConfirmDialog({
-                        isOpen: true,
-                        title: 'Delete Pet Addendum',
-                        message: 'Are you sure you want to delete this pet addendum document? This cannot be undone.',
-                        onConfirm: () => {
-                          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                          handleDeleteDocument('pet_addendum');
-                        },
-                      })}
-                      disabled={deletingDoc === 'pet_addendum'}
-                      className="ml-2 text-red-600 hover:underline text-sm"
-                    >
-                      {deletingDoc === 'pet_addendum' ? 'Deleting...' : 'Delete'}
-                    </button>
                   </div>
                 )}
 
@@ -1442,31 +1310,15 @@ export default function LobbyPage() {
                 )}
               </div>
 
-              <div className="flex gap-2 mb-4">
-                {!sub.pet_addendum_received && (
-                  <button
-                    onClick={() => handleMarkReceived('pet')}
-                    disabled={updatingField === 'pet_receipt'}
-                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300"
-                  >
-                    {updatingField === 'pet_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
-                  </button>
-                )}
-
-                <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
-                  {uploadingDoc === 'pet_addendum' ? 'Uploading...' : 'Upload Document'}
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUploadDocument('pet_addendum', file);
-                    }}
-                    disabled={uploadingDoc === 'pet_addendum'}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              {!sub.pet_addendum_received && (
+                <button
+                  onClick={() => handleMarkReceived('pet')}
+                  disabled={updatingField === 'pet_receipt'}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300 mb-4"
+                >
+                  {updatingField === 'pet_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
+                </button>
+              )}
 
               <button
                 onClick={() => handleToggleVerified('pet')}
@@ -1578,37 +1430,8 @@ export default function LobbyPage() {
                       >
                         View Document
                       </button>
-                      <button
-                        onClick={() => setConfirmDialog({
-                          isOpen: true,
-                          title: 'Delete Insurance Document',
-                          message: 'Are you sure you want to delete this insurance document? This cannot be undone.',
-                          onConfirm: () => {
-                            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                            handleDeleteDocument('insurance');
-                          },
-                        })}
-                        disabled={deletingDoc === 'insurance'}
-                        className="ml-2 text-red-600 hover:underline text-sm"
-                      >
-                        {deletingDoc === 'insurance' ? 'Deleting...' : 'Delete'}
-                      </button>
                     </div>
                   )}
-
-                  <label className="inline-block px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer mb-4">
-                    {uploadingDoc === 'insurance' ? 'Uploading...' : 'Upload Insurance Document'}
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUploadDocument('insurance', file);
-                      }}
-                      disabled={uploadingDoc === 'insurance'}
-                      className="hidden"
-                    />
-                  </label>
                 </>
               )}
 
@@ -1734,50 +1557,19 @@ export default function LobbyPage() {
                         >
                           View Document
                         </button>
-                        <button
-                          onClick={() => setConfirmDialog({
-                            isOpen: true,
-                            title: 'Delete Vehicle Addendum',
-                            message: 'Are you sure you want to delete this vehicle addendum document? This cannot be undone.',
-                            onConfirm: () => {
-                              setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-                              handleDeleteDocument('vehicle_addendum');
-                            },
-                          })}
-                          disabled={deletingDoc === 'vehicle_addendum'}
-                          className="ml-2 text-red-600 hover:underline text-sm"
-                        >
-                          {deletingDoc === 'vehicle_addendum' ? 'Deleting...' : 'Delete'}
-                        </button>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex gap-2 mb-4">
-                    {!sub.vehicle_addendum_received && (
-                      <button
-                        onClick={() => handleMarkReceived('vehicle')}
-                        disabled={updatingField === 'vehicle_receipt'}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300"
-                      >
-                        {updatingField === 'vehicle_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
-                      </button>
-                    )}
-
-                    <label className="px-3 py-1 text-sm bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
-                      {uploadingDoc === 'vehicle_addendum' ? 'Uploading...' : 'Upload Document'}
-                      <input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadDocument('vehicle_addendum', file);
-                        }}
-                        disabled={uploadingDoc === 'vehicle_addendum'}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
+                  {!sub.vehicle_addendum_received && (
+                    <button
+                      onClick={() => handleMarkReceived('vehicle')}
+                      disabled={updatingField === 'vehicle_receipt'}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded-none hover:bg-blue-700 transition-colors duration-200 ease-out disabled:bg-gray-300 mb-4"
+                    >
+                      {updatingField === 'vehicle_receipt' ? 'Updating...' : 'Mark Physical Form Received'}
+                    </button>
+                  )}
 
                   <button
                     onClick={() => handleToggleVerified('vehicle')}
