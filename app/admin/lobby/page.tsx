@@ -155,6 +155,7 @@ export default function LobbyPage() {
   const [activeTenant, setActiveTenant] = useState<UnifiedTenant | null>(null);
   const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; display_name: string }>>([]);
   const [selectedStaffName, setSelectedStaffName] = useState(adminName);
+  const [loadingUsers, setLoadingUsers] = useState(true);
 
   const [updatingField, setUpdatingField] = useState<string | null>(null);
 
@@ -208,6 +209,7 @@ export default function LobbyPage() {
   }, [activeTenant?.key, activeTenant?.canonicalSubmissionId]);
 
   const fetchAvailableUsers = async () => {
+    setLoadingUsers(true);
     try {
       const res = await fetch('/api/admin/users');
       const data = await res.json();
@@ -222,6 +224,8 @@ export default function LobbyPage() {
       }
     } catch (e) {
       console.error('Failed to fetch users:', e);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -948,12 +952,19 @@ export default function LobbyPage() {
               value={selectedStaffName}
               onChange={(e) => setSelectedStaffName(e.target.value)}
               className="w-full px-3 py-2 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              disabled={loadingUsers}
             >
-              {availableUsers.map((u) => (
-                <option key={u.id} value={u.display_name}>
-                  {u.display_name}
-                </option>
-              ))}
+              {loadingUsers ? (
+                <option value={adminName}>{adminName} (Loading...)</option>
+              ) : availableUsers.length > 0 ? (
+                availableUsers.map((u) => (
+                  <option key={u.id} value={u.display_name}>
+                    {u.display_name}
+                  </option>
+                ))
+              ) : (
+                <option value={adminName}>{adminName}</option>
+              )}
             </select>
           </div>
 
