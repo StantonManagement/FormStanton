@@ -876,6 +876,25 @@ export default function LobbyPage() {
     };
   };
 
+  const petStatus = sessionStarted && activeTenant ? getPetVerifiedStatus() : { canVerify: false, reason: '' };
+  const insuranceStatus = sessionStarted && activeTenant ? getInsuranceVerifiedStatus() : { canVerify: false, reason: '' };
+  const vehicleStatus = sessionStarted && activeTenant ? getVehicleVerifiedStatus() : { canVerify: false, reason: '' };
+  const permitStatus = sessionStarted && activeTenant ? getPermitStatus() : { canIssue: false, blocking: [] };
+
+  const isComplete = (() => {
+    if (!activeTenant?.submissionData) return false;
+    
+    const sub = activeTenant.submissionData;
+    
+    if (sub.has_vehicle) {
+      return sub.permit_issued && sub.tenant_picked_up;
+    } else if (sub.has_pets) {
+      return (sub.has_fee_exemption || sub.pet_verified) && sub.insurance_verified;
+    } else {
+      return sub.insurance_verified;
+    }
+  })();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg)]">
@@ -948,25 +967,6 @@ export default function LobbyPage() {
       </div>
     );
   }
-
-  const petStatus = getPetVerifiedStatus();
-  const insuranceStatus = getInsuranceVerifiedStatus();
-  const vehicleStatus = getVehicleVerifiedStatus();
-  const permitStatus = getPermitStatus();
-
-  const isComplete = (() => {
-    if (!activeTenant?.submissionData) return false;
-    
-    const sub = activeTenant.submissionData;
-    
-    if (sub.has_vehicle) {
-      return sub.permit_issued && sub.tenant_picked_up;
-    } else if (sub.has_pets) {
-      return (sub.has_fee_exemption || sub.pet_verified) && sub.insurance_verified;
-    } else {
-      return sub.insurance_verified;
-    }
-  })();
 
   return (
     <>
