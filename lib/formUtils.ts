@@ -194,14 +194,14 @@ export function formatFormContent(content: string): string {
   html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // Headers with print-optimized classes
-  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-6 mb-3 avoid-break">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-gray-900 mt-8 mb-4 avoid-break">$1</h2>');
+  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-[var(--primary)] mt-6 mb-3 avoid-break font-serif">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-[var(--primary)] mt-8 mb-4 avoid-break font-serif">$1</h2>');
 
   // Bold text - company name and field labels
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
   // Horizontal rules - section dividers
-  html = html.replace(/^---$/gm, '<hr class="my-6 border-gray-300" />');
+  html = html.replace(/^---$/gm, '<hr class="my-6 border-[var(--border)]" />');
 
   // Checkboxes with better spacing for print
   html = html.replace(/- \[ \] (.+)$/gm, '<div class="flex items-start gap-2 my-3 avoid-break"><input type="checkbox" class="mt-1" /><span>$1</span></div>');
@@ -224,7 +224,7 @@ export function formatFormContent(content: string): string {
     if (headers.length > 0) {
       tableHtml += '<thead><tr>';
       headers.forEach((header: string) => {
-        tableHtml += `<th class="border border-gray-400 px-3 py-2 bg-gray-100 text-left font-semibold">${header}</th>`;
+        tableHtml += `<th class="border border-[var(--border)] px-3 py-2 bg-[var(--bg-section)] text-left font-semibold text-[var(--ink)]">${header}</th>`;
       });
       tableHtml += '</tr></thead>';
     }
@@ -235,7 +235,7 @@ export function formatFormContent(content: string): string {
       if (row.length > 0) {
         tableHtml += '<tr>';
         row.forEach((cell: string) => {
-          tableHtml += `<td class="border border-gray-400 px-3 py-2">${cell || '&nbsp;'}</td>`;
+          tableHtml += `<td class="border border-[var(--border)] px-3 py-2 text-[var(--ink)]">${cell || '&nbsp;'}</td>`;
         });
         tableHtml += '</tr>';
       }
@@ -246,11 +246,11 @@ export function formatFormContent(content: string): string {
   });
 
   // Blockquotes - important instructions
-  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-gray-400 pl-4 italic text-gray-700 my-4 bg-gray-50 py-2 avoid-break">$1</blockquote>');
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-[var(--accent)] pl-4 italic text-[var(--muted)] my-4 bg-[var(--bg-section)] py-2 avoid-break">$1</blockquote>');
 
   // Format field lines (e.g., "Tenant Name: _______________")
   html = html.replace(/([A-Z][^:]+):\s*_{5,}/g, (match, label) => {
-    return `<div class="my-3"><strong>${label}:</strong> <span class="inline-block border-b border-gray-800 min-w-[300px] pb-1">&nbsp;</span></div>`;
+    return `<div class="my-3"><strong>${label}:</strong> <span class="inline-block border-b border-[var(--ink)] min-w-[300px] pb-1">&nbsp;</span></div>`;
   });
 
   // Signature lines - special formatting
@@ -258,11 +258,11 @@ export function formatFormContent(content: string): string {
     return `<div class="mt-6 mb-4 avoid-break">
       <div class="flex gap-8 items-end">
         <div class="flex-1">
-          <div class="border-b-2 border-gray-800 pb-1 mb-1">&nbsp;</div>
+          <div class="border-b-2 border-[var(--ink)] pb-1 mb-1">&nbsp;</div>
           <div class="text-sm font-semibold">${label}</div>
         </div>
         <div class="w-32">
-          <div class="border-b-2 border-gray-800 pb-1 mb-1">&nbsp;</div>
+          <div class="border-b-2 border-[var(--ink)] pb-1 mb-1">&nbsp;</div>
           <div class="text-sm font-semibold">Date</div>
         </div>
       </div>
@@ -271,7 +271,7 @@ export function formatFormContent(content: string): string {
 
   // Office use sections
   html = html.replace(/\*For office use[^*]*\*/gi, (match) => {
-    return `<div class="mt-6 pt-4 border-t-2 border-dashed border-gray-400 text-sm text-gray-600 italic">${match.replace(/\*/g, '')}</div>`;
+    return `<div class="mt-6 pt-4 border-t-2 border-dashed border-[var(--border)] text-sm text-[var(--muted)] italic">${match.replace(/\*/g, '')}</div>`;
   });
 
   // Convert line breaks - preserve double breaks for paragraphs
