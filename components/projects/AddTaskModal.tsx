@@ -104,6 +104,7 @@ export default function AddTaskModal({ isOpen, onClose, onSelectExisting, onCrea
         form_id: evidenceType === 'form' && formId ? formId : null,
         instructions: instructions.trim() || null,
         submission_column: submissionColumn.trim() || null,
+        failure_reasons: null,
       });
       onClose();
     } catch (err: any) {
