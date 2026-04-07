@@ -215,11 +215,8 @@ export default function LobbyPage() {
       const data = await res.json();
       if (data.success) {
         setAvailableUsers(data.data);
-        // Set default to current user if available, otherwise first user
-        if (data.data.length > 0) {
-          const currentUserMatch = data.data.find((u: any) => u.display_name === adminName);
-          setSelectedStaffName(currentUserMatch?.display_name || data.data[0].display_name);
-        }
+        // Default to current user
+        setSelectedStaffName(adminName);
       }
     } catch (e) {
       console.error('Failed to fetch users:', e);

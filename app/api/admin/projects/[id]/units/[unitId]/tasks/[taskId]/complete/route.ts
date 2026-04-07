@@ -81,14 +81,7 @@ export async function POST(
       throw compError;
     }
 
-    // 4. Verify task is staff_check type
     const taskType = (completion as any).project_tasks?.task_types;
-    if (taskType?.assignee !== 'staff') {
-      return NextResponse.json(
-        { success: false, message: 'Only staff tasks can be completed from the admin panel' },
-        { status: 403 }
-      );
-    }
 
     // 5. Update task_completions
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -259,12 +252,6 @@ export async function DELETE(
     }
 
     const taskType = (completion as any).project_tasks?.task_types;
-    if (taskType?.assignee !== 'staff') {
-      return NextResponse.json(
-        { success: false, message: 'Only staff tasks can be uncompleted from the admin panel' },
-        { status: 403 }
-      );
-    }
 
     // 3. Revert task_completions to pending
     const { data: updated, error: updateError } = await supabaseAdmin

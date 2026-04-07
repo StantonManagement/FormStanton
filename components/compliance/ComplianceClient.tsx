@@ -186,29 +186,68 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
 
           {/* Building detail — legacy mode */}
           {data.selectedBuilding && !isProjectMode && (
-            <BuildingDetailView
-              selectedBuilding={data.selectedBuilding}
-              onBack={() => data.setSelectedBuilding('')}
-              onAddTenant={() => setShowAddTenant(true)}
-              matrixRows={data.matrixRows}
-              matrixStats={data.matrixStats}
-              matrixLoading={data.matrixLoading}
-              filteredMatrixRows={data.filteredMatrixRows}
-              missingSubmissions={data.missingSubmissions}
-              activeFilters={data.activeFilters}
-              selectedIds={data.selectedIds}
-              onSelectionChange={data.setSelectedIds}
-              duplicateGroups={data.duplicateGroups}
-              onMerge={data.handleMergeSubmissions}
-              onMarkPrimary={data.handleMarkPrimary}
-              onDismiss={data.handleDismissDuplicate}
-              pendingParkingRequests={data.pendingParkingRequests}
-              parkingExpanded={data.parkingExpanded}
-              onSetParkingExpanded={data.setParkingExpanded}
-              onSelectTenant={data.setSelectedRow}
-              onRefresh={data.handleRefreshAll}
-              onToast={showToast}
-            />
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => data.setSelectedBuilding('')}
+                  className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] hover:underline transition-colors duration-200 ease-out font-medium"
+                >
+                  &larr; All Buildings
+                </button>
+
+                {/* Review Mode toggle — now available in legacy mode too */}
+                <button
+                  onClick={() => setReviewMode(!reviewMode)}
+                  className={`px-4 py-2 text-sm font-medium border transition-colors ${
+                    reviewMode
+                      ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                      : 'bg-white text-[var(--primary)] border-[var(--border)] hover:bg-[var(--bg-section)]'
+                  }`}
+                >
+                  {reviewMode ? '✓ Review Mode' : 'Review Mode'}
+                </button>
+              </div>
+
+              {reviewMode ? (
+                /* Review Mode UI — placeholder for legacy mode */
+                <div className="bg-white border border-[var(--border)] shadow-sm p-6" style={{ height: 'calc(100vh - 240px)' }}>
+                  <div className="flex items-center justify-center h-full text-[var(--muted)]">
+                    <div className="text-center">
+                      <svg className="w-16 h-16 mx-auto mb-4 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-sm">Review mode is available for project-based workflows.</p>
+                      <p className="text-xs mt-2">Select a project from the dropdown to use review mode.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Standard legacy building detail view */
+                <BuildingDetailView
+                  selectedBuilding={data.selectedBuilding}
+                  onBack={() => data.setSelectedBuilding('')}
+                  onAddTenant={() => setShowAddTenant(true)}
+                  matrixRows={data.matrixRows}
+                  matrixStats={data.matrixStats}
+                  matrixLoading={data.matrixLoading}
+                  filteredMatrixRows={data.filteredMatrixRows}
+                  missingSubmissions={data.missingSubmissions}
+                  activeFilters={data.activeFilters}
+                  selectedIds={data.selectedIds}
+                  onSelectionChange={data.setSelectedIds}
+                  duplicateGroups={data.duplicateGroups}
+                  onMerge={data.handleMergeSubmissions}
+                  onMarkPrimary={data.handleMarkPrimary}
+                  onDismiss={data.handleDismissDuplicate}
+                  pendingParkingRequests={data.pendingParkingRequests}
+                  parkingExpanded={data.parkingExpanded}
+                  onSetParkingExpanded={data.setParkingExpanded}
+                  onSelectTenant={data.setSelectedRow}
+                  onRefresh={data.handleRefreshAll}
+                  onToast={showToast}
+                />
+              )}
+            </div>
           )}
 
           {/* Building detail — project mode */}
@@ -223,18 +262,16 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
                 </button>
                 
                 {/* Review Mode toggle */}
-                {data.projectColumns.length > 0 && (
-                  <button
-                    onClick={() => setReviewMode(!reviewMode)}
-                    className={`px-4 py-2 text-sm font-medium border transition-colors ${
-                      reviewMode
-                        ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-                        : 'bg-white text-[var(--primary)] border-[var(--border)] hover:bg-[var(--bg-section)]'
-                    }`}
-                  >
-                    {reviewMode ? '✓ Review Mode' : 'Review Mode'}
-                  </button>
-                )}
+                <button
+                  onClick={() => setReviewMode(!reviewMode)}
+                  className={`px-4 py-2 text-sm font-medium border transition-colors ${
+                    reviewMode
+                      ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                      : 'bg-white text-[var(--primary)] border-[var(--border)] hover:bg-[var(--bg-section)]'
+                  }`}
+                >
+                  {reviewMode ? '✓ Review Mode' : 'Review Mode'}
+                </button>
               </div>
 
               {currentProjectBuildingStats && (
@@ -293,8 +330,6 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
                     mode="project"
                     projectColumns={data.projectColumns}
                     projectRows={data.filteredProjectRows}
-                    onStaffComplete={data.handleStaffComplete}
-                    onStaffFail={data.handleStaffFail}
                     onStaffUncomplete={data.handleStaffUncomplete}
                   />
                   {data.activeFilters.size > 0 && (
