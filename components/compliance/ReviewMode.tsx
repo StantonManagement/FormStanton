@@ -59,7 +59,8 @@ export default function ReviewMode({
     } else if (rows.length > 0) {
       setSelectedUnitId(rows[0].unit_id);
     }
-  }, [selectedTaskId, rows]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTaskId]);  // intentionally omits rows — only reset unit when task changes, not on every data refresh
 
   const selectedColumn = useMemo(() => {
     return columns.find(col => col.id === selectedTaskId) || null;
@@ -140,6 +141,7 @@ export default function ReviewMode({
         onSelectUnit={setSelectedUnitId}
       />
       <ReviewPanel
+        key={`${selectedTaskId}-${selectedUnitId}`}
         column={selectedColumn}
         row={selectedRow}
         projectName={projectName}

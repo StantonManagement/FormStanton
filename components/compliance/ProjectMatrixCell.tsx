@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { DynamicColumn } from '@/types/compliance';
 
 
@@ -185,7 +186,7 @@ export default function ProjectMatrixCell({
           </div>
         </td>
 
-        {showFailModal && (
+        {showFailModal && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setShowFailModal(false)}>
             <div className="bg-white border border-gray-300 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--divider)]">
@@ -257,7 +258,7 @@ export default function ProjectMatrixCell({
               </div>
             </div>
           </div>
-        )}
+        , document.body)}
       </>
     );
   }
