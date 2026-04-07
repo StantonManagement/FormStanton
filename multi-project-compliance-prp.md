@@ -99,7 +99,7 @@ project_units (
   tenant_link_token text unique not null,
   token_expires_at date, -- project deadline + 30 days
   preferred_language text default 'en', -- 'en' | 'es' | 'pt'
-  overall_status text default 'not_started', -- 'not_started' | 'in_progress' | 'complete'
+  overall_status text default 'not_started', -- 'not_started' | 'in_progress' | 'complete' | 'has_failure'
   created_at timestamp default now()
 )
 
@@ -108,12 +108,14 @@ task_completions (
   id uuid primary key,
   project_unit_id uuid references project_units(id),
   project_task_id uuid references project_tasks(id),
-  status text default 'pending', -- 'pending' | 'complete' | 'waived'
+  status text default 'pending', -- 'pending' | 'complete' | 'waived' | 'failed'
   evidence_url text, -- nullable
   form_submission_id uuid, -- nullable, references existing submissions table
   completed_by text, -- 'tenant' or staff user id
   completed_at timestamp,
-  notes text
+  notes text,
+  failure_reason text, -- required when status = 'failed'
+  reviewer_notes text -- internal staff notes, not shown to tenants
 )
 ```
 
@@ -174,7 +176,7 @@ Portal is designed for hostile-tenancy UX: minimal friction, no ambiguity, no op
 - Project selector in header — switching projects reloads columns
 - Rows = units scoped to selected project
 - Columns = tasks defined in `project_tasks` for that project
-- Cell states: green (complete), red (pending), yellow (in progress), gray (waived)
+- Cell states: green (complete), red (pending), red+indicator (failed), yellow (in progress), gray (waived)
 - Filter by task: "show me all units where smoke alarm check is incomplete"
 - Bulk actions: waive task, send reminder, mark staff check complete
 - Portfolio view: building rows with % complete per project

@@ -9,7 +9,7 @@
 2. Audit the entire current compliance page and all its components — `app/admin/compliance/page.tsx`, `lib/useComplianceData.ts`, `components/compliance/`, `types/compliance.ts`. Understand every column, every cell renderer, every filter, every bulk action. This refactor must preserve all existing behavior.
 3. Audit the column registry (`COMPLIANCE_COLUMNS`) thoroughly — understand how columns are defined, how cells are rendered, and how filters are driven by that registry.
 4. Audit the Phase 1 API routes — specifically `GET /api/admin/projects`, `GET /api/admin/projects/[id]`, and `GET /api/admin/projects/[id]/units` — to understand the shape of project and task data.
-5. Audit Phase 3's `task_completions` data to understand what cell states are available: `pending`, `complete`, `waived`.
+5. Audit Phase 3's `task_completions` data to understand what cell states are available: `pending`, `complete`, `waived`, `failed`.
 6. Do not guess. Read first.
 
 ---
@@ -75,6 +75,7 @@ Each dynamic column:
 - Cell renderer: maps `task_completions.status` to cell states:
   - `complete` → green
   - `pending` → red
+  - `failed` → red with failure indicator
   - `waived` → gray
   - missing row → red (treat as pending)
 - Filter: same filter mechanism as existing columns — filter by completion status
@@ -99,11 +100,12 @@ Option A is preferred if the existing component can accept a `columns` prop with
 - Waived → gray cell with "—"
 - Staff check tasks that are pending → show differently from tenant tasks — staff needs to know these are theirs to complete, not the tenant's problem
 
-**Staff check column behavior:**
+**Task completion from admin (all task types):**
 - Staff check tasks are completable directly from the matrix cell — clicking a pending staff check cell marks it complete inline
-- POST to a new endpoint: `POST /api/admin/projects/[id]/units/[unitId]/tasks/[taskId]/complete`
-- Body: `{ completed_by: string, notes?: string }`
-- This is staff completing their own task — no tenant token required
+- Review Mode enables pass/fail on ALL task types (tenant and staff), not just staff_check
+- POST to: `POST /api/admin/projects/[id]/units/[unitId]/tasks/[taskId]/complete`
+- Body: `{ status?: 'complete'|'failed', failure_reason?: string, reviewer_notes?: string, completed_by?: string }`
+- No assignee guard — the endpoint accepts any task type
 
 ---
 
@@ -115,14 +117,17 @@ POST /api/admin/projects/[id]/units/[unitId]/tasks/[taskId]/complete
 
 Auth required (existing `isAuthenticated()` guard).
 
-Body: `{ completed_by: string, notes?: string }`
+Body: `{ status?: 'complete'|'failed', failure_reason?: string, reviewer_notes?: string, completed_by?: string }`
 
 Logic:
 1. Verify project exists and unit belongs to project
-2. Verify task is a `staff_check` type — return 403 if tenant task (tenant tasks complete via `/api/t/[token]`)
-3. Update `task_completions`: status = 'complete', completed_by, completed_at = now()
-4. Recompute `project_units.overall_status` (same logic as Phase 3 — only required tasks count)
-5. Return updated task_completions row
+2. Verify task_completions row exists for this unit+task
+3. Update `task_completions`: status = complete/failed, completed_by, completed_at, failure_reason, reviewer_notes
+4. Recompute `project_units.overall_status` (includes `has_failure` when any required task is failed)
+5. Side-effect: update parent project if parent_task_id is set
+6. Return updated task_completions row
+
+No assignee guard — this endpoint accepts all task types. Review Mode uses it for pass/fail on tenant and staff tasks alike.
 
 ---
 
