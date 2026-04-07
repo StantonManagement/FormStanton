@@ -27,6 +27,7 @@ export default function ReviewPanel({
   const [customReason, setCustomReason] = useState('');
   const [reviewerNotes, setReviewerNotes] = useState('');
   const [passNotes, setPassNotes] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const completion = row.completions[column.id];
   const status = completion?.status || 'pending';
@@ -34,25 +35,33 @@ export default function ReviewPanel({
 
   const handlePass = async () => {
     setSubmitting(true);
+    setError(null);
     try {
       await onPass(passNotes.trim() || undefined);
       setPassNotes('');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit pass');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleFailSubmit = async () => {
-    const reason = selectedReason === 'Other' ? customReason.trim() : selectedReason;
+    const reason = failureReasons.length === 0
+      ? customReason.trim()
+      : (selectedReason === 'Other' ? customReason.trim() : selectedReason);
     if (!reason) return;
 
     setSubmitting(true);
+    setError(null);
     try {
       await onFail(reason, reviewerNotes.trim() || undefined);
       setShowFailForm(false);
       setSelectedReason('');
       setCustomReason('');
       setReviewerNotes('');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit failure');
     } finally {
       setSubmitting(false);
     }
@@ -60,8 +69,11 @@ export default function ReviewPanel({
 
   const handleUndoClick = async () => {
     setSubmitting(true);
+    setError(null);
     try {
       await onUndo();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to undo');
     } finally {
       setSubmitting(false);
     }
@@ -92,6 +104,11 @@ export default function ReviewPanel({
 
         {/* Action area */}
         <div className="border border-[var(--divider)] bg-white">
+          {error && (
+            <div className="mx-6 mt-4 px-4 py-3 bg-[var(--error)]/10 border border-[var(--error)]/35 text-[var(--error)] text-sm">
+              {error}
+            </div>
+          )}
           {/* Pending state */}
           {status === 'pending' && (
             <div className="p-6 space-y-4">

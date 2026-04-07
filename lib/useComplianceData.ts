@@ -352,9 +352,11 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reviewer_notes: reviewerNotes }),
     });
-    if (res.ok) {
-      fetchProjectData(selectedProject);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Staff complete failed (${res.status})`);
     }
+    fetchProjectData(selectedProject);
   }, [mode, selectedProject, fetchProjectData]);
 
   const handleStaffFail = useCallback(async (unitId: string, taskId: string, reason: string, reviewerNotes?: string) => {
@@ -364,9 +366,11 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'failed', failure_reason: reason, reviewer_notes: reviewerNotes }),
     });
-    if (res.ok) {
-      fetchProjectData(selectedProject);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Staff fail failed (${res.status})`);
     }
+    fetchProjectData(selectedProject);
   }, [mode, selectedProject, fetchProjectData]);
 
   const handleStaffUncomplete = useCallback(async (unitId: string, taskId: string) => {
@@ -374,9 +378,11 @@ export function useComplianceData(selectedProject: string = 'legacy'): Complianc
     const res = await fetch(`/api/admin/projects/${selectedProject}/units/${unitId}/tasks/${taskId}/complete`, {
       method: 'DELETE',
     });
-    if (res.ok) {
-      fetchProjectData(selectedProject);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || `Staff undo failed (${res.status})`);
     }
+    fetchProjectData(selectedProject);
   }, [mode, selectedProject, fetchProjectData]);
 
   const handleMergeSubmissions = useCallback(async (primaryId: string, duplicateIds: string[]) => {
