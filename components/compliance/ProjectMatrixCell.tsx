@@ -263,6 +263,15 @@ export default function ProjectMatrixCell({
     );
   }
 
+  // Pending — staff task, no inline actions (matrix view outside review mode)
+  if (column.assignee === 'staff') {
+    return (
+      <td className="px-2 py-1.5 text-center border border-[var(--divider)] bg-[var(--warning)]/5">
+        <span className="text-[var(--warning)] text-xs font-medium">Pending</span>
+      </td>
+    );
+  }
+
   // Pending — tenant task
   return (
     <td className="px-2 py-1.5 text-center border border-[var(--divider)] bg-[var(--error)]/5">
