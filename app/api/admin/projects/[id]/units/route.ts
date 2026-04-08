@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateToken } from '@/lib/generateToken';
+import { normalizeAddress } from '@/lib/addressNormalizer';
 
 export async function GET(
   _request: NextRequest,
@@ -35,20 +36,20 @@ export async function GET(
     // Enrich with submission cross-reference (insurance_file, etc.)
     const buildings = [...new Set((data || []).map((u: any) => u.building))];
 
-    // Live tenant name lookup — overrides whatever was stored at activation time
+    // Live tenant name lookup — normalize both sides so address variants resolve correctly
     const liveNameMap = new Map<string, string>();
-    if (buildings.length > 0) {
+    {
       const { data: liveTenants } = await supabaseAdmin
         .from('tenant_lookup')
         .select('building_address, unit_number, name, first_name, last_name')
-        .in('building_address', buildings)
         .eq('is_current', true);
       for (const t of liveTenants || []) {
         const derived = t.name !== 'Occupied Unit' && t.name
           ? t.name
           : `${t.first_name || ''} ${t.last_name || ''}`.trim();
         if (derived && derived !== 'Occupied Unit') {
-          liveNameMap.set(`${t.building_address}||${t.unit_number}`, derived);
+          const normBuilding = normalizeAddress(t.building_address || '');
+          liveNameMap.set(`${normBuilding}||${t.unit_number}`, derived);
         }
       }
     }
@@ -142,6 +143,7 @@ export async function GET(
     const enriched = (data || []).map((u: any) => {
       const sub = submissionMap.get(`${u.building}||${u.unit_number}`);
       const unitKey = `${u.building}||${u.unit_number}`;
+      const normUnitKey = `${normalizeAddress(u.building)}||${u.unit_number}`;
 
       // Build parent_evidence keyed by child task ID
       const parent_evidence: Record<string, { evidence_url: string | null; task_name: string; completed_at: string | null; status: string }> = {};
@@ -152,7 +154,7 @@ export async function GET(
 
       return {
         ...u,
-        tenant_name: liveNameMap.get(unitKey) || u.tenant_name || null,
+        tenant_name: liveNameMap.get(normUnitKey) || u.tenant_name || null,
         submission_data: sub ? {
           insurance_file: sub.insurance_file,
           insurance_verified: sub.insurance_verified,
