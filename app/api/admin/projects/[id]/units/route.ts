@@ -34,6 +34,25 @@ export async function GET(
 
     // Enrich with submission cross-reference (insurance_file, etc.)
     const buildings = [...new Set((data || []).map((u: any) => u.building))];
+
+    // Live tenant name lookup — overrides whatever was stored at activation time
+    const liveNameMap = new Map<string, string>();
+    if (buildings.length > 0) {
+      const { data: liveTenants } = await supabaseAdmin
+        .from('tenant_lookup')
+        .select('building_address, unit_number, name, first_name, last_name')
+        .in('building_address', buildings)
+        .eq('is_current', true);
+      for (const t of liveTenants || []) {
+        const derived = t.name !== 'Occupied Unit' && t.name
+          ? t.name
+          : `${t.first_name || ''} ${t.last_name || ''}`.trim();
+        if (derived && derived !== 'Occupied Unit') {
+          liveNameMap.set(`${t.building_address}||${t.unit_number}`, derived);
+        }
+      }
+    }
+
     let submissionMap = new Map<string, any>();
     if (buildings.length > 0) {
       const { data: subs } = await supabaseAdmin
@@ -133,6 +152,7 @@ export async function GET(
 
       return {
         ...u,
+        tenant_name: liveNameMap.get(unitKey) || u.tenant_name || null,
         submission_data: sub ? {
           insurance_file: sub.insurance_file,
           insurance_verified: sub.insurance_verified,
