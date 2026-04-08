@@ -39,7 +39,35 @@ export default function EvidenceViewer({
     }
   }
 
-  const proxyUrl = evidenceUrl ? `/api/admin/file?path=${encodeURIComponent(evidenceUrl)}` : null;
+  const proxyUrl = evidenceUrl
+    ? evidenceUrl.startsWith('http')
+      ? evidenceUrl
+      : `/api/admin/file?path=${encodeURIComponent(evidenceUrl)}`
+    : null;
+
+  // Insurance authorization card — tenant authorized rent charge instead of uploading own policy
+  if (
+    !evidenceUrl &&
+    (submissionData as any)?.add_insurance_to_rent === true &&
+    column.label.toLowerCase().includes('insurance')
+  ) {
+    return (
+      <div className="border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-6">
+        <div className="flex items-start gap-3">
+          <svg className="w-5 h-5 text-[var(--primary)] mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="text-sm font-medium text-[var(--primary)] mb-1">Tenant authorized insurance via rent charge</p>
+            <p className="text-xs text-[var(--ink)] leading-relaxed">
+              This tenant gave permission to add renters insurance to their monthly rent through the AppFolio enrollment program.
+              No document upload is required — confirm enrollment has been processed in AppFolio and mark this task complete.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Staff check without evidence — show "no submission" message
   if (column.evidence_type === 'staff_check' && !proxyUrl) {

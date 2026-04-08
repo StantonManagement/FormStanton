@@ -72,7 +72,16 @@ const propertyNameToAddress: Record<string, string> = {
 };
 
 async function importUnitOccupancy() {
+  // Validate required environment variables before starting
+  if (!cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || !cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+    console.error('\n❌ Missing required env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.local');
+    console.error('   These should point to the test/app DB (not production).\n');
+    process.exit(1);
+  }
+
   console.log('🚀 Importing occupancy data from AF_UnitDirectory and AF_UnitVacancyDetail...\n');
+  console.log('ℹ️  NOTE: AF_ table queries require a connection to the production AppFolio DB.');
+  console.log('   The hardcoded property name map (lines 31-72) must be updated when new properties are added.\n');
 
   try {
     // Step 1: Fetch all units from AF_UnitDirectory (excluding S0049 properties)
@@ -83,7 +92,14 @@ async function importUnitOccupancy() {
       .like('property_name', 'S00%')
       .not('property_name', 'like', 'S0049%'); // Exclude S0049 properties
 
-    if (unitsError) throw unitsError;
+    if (unitsError) {
+      if (unitsError.message?.includes('does not exist') || unitsError.code === '42P01') {
+        console.error('\n❌ AF_UnitDirectory table not found.');
+        console.error('   Ensure prodSupabase credentials (lines 19-22) point to the production AppFolio DB.\n');
+        process.exit(1);
+      }
+      throw unitsError;
+    }
     console.log(`✅ Fetched ${allUnits.length} total units\n`);
 
     // Step 2: Fetch vacant units from AF_UnitVacancyDetail
@@ -93,7 +109,14 @@ async function importUnitOccupancy() {
       .select('property_name, unit, unit_status')
       .like('unit_status', 'Vacant%');
 
-    if (vacancyError) throw vacancyError;
+    if (vacancyError) {
+      if (vacancyError.message?.includes('does not exist') || vacancyError.code === '42P01') {
+        console.error('\n❌ AF_UnitVacancyDetail table not found.');
+        console.error('   Ensure prodSupabase credentials (lines 19-22) point to the production AppFolio DB.\n');
+        process.exit(1);
+      }
+      throw vacancyError;
+    }
     console.log(`✅ Fetched ${vacantUnits.length} vacant units\n`);
 
     // Step 3: Create vacancy lookup set

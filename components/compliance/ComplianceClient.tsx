@@ -111,7 +111,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
     : undefined;
 
   return (
-    <div className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+    <div className="h-screen flex flex-col bg-[var(--paper)] text-[var(--ink)]">
       <DashboardHeader
         portfolioStats={data.portfolioStats}
         onOpenExportCenter={() => setShowExportCenter(true)}
@@ -120,7 +120,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
         onSelectProject={handleSelectProject}
       />
 
-      <div className="flex" style={{ height: 'calc(100vh - 120px)' }}>
+      <div className="flex flex-1 overflow-hidden">
         <ComplianceSidebar
           buildings={sidebarBuildings}
           buildingStats={data.buildingStats}

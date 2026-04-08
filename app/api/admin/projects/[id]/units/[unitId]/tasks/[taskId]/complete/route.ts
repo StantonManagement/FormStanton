@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
+interface CompletionWithRelations {
+  id: string;
+  project_unit_id: string;
+  project_task_id: string;
+  status: string;
+  evidence_url: string | null;
+  notes: string | null;
+  project_tasks: {
+    id: string;
+    order_index: number;
+    required: boolean;
+    parent_task_id: string | null;
+    task_types: {
+      id: string;
+      name: string;
+      assignee: string;
+      evidence_type: string;
+      submission_column: string | null;
+    } | null;
+  };
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string; unitId: string; taskId: string }> }
@@ -81,7 +103,8 @@ export async function POST(
       throw compError;
     }
 
-    const taskType = (completion as any).project_tasks?.task_types;
+    const typedCompletion = completion as unknown as CompletionWithRelations;
+    const taskType = typedCompletion.project_tasks?.task_types;
 
     // 5. Update task_completions
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -117,7 +140,7 @@ export async function POST(
     }
 
     // 6b. Side-effect: push result UP to parent project if parent_task_id is set
-    const parentTaskId = (completion as any).project_tasks?.parent_task_id;
+    const parentTaskId = typedCompletion.project_tasks?.parent_task_id;
     if (parentTaskId) {
       try {
         // Get the parent project's project_id from the parent task
@@ -147,13 +170,24 @@ export async function POST(
 
             const projectName = thisProject?.name || 'Child Project';
             const timestamp = new Date().toLocaleDateString();
-            const noteText = targetStatus === 'complete'
-              ? `Verified by ${projectName} — ${completedByName} on ${timestamp}`
-              : `Failed: ${failure_reason} — ${projectName} — ${completedByName} on ${timestamp}`;
+            const stamp = targetStatus === 'complete'
+              ? `[Verified by ${projectName} — ${completedByName} on ${timestamp}]`
+              : `[Failed: ${failure_reason} — ${projectName} — ${completedByName} on ${timestamp}]`;
+
+            // Fetch existing notes to append rather than overwrite
+            const { data: parentCompletion } = await supabaseAdmin
+              .from('task_completions')
+              .select('notes')
+              .eq('project_task_id', parentTaskId)
+              .eq('project_unit_id', parentUnit.id)
+              .single();
+
+            const existingNotes = parentCompletion?.notes || null;
+            const finalNotes = existingNotes ? `${existingNotes}\n${stamp}` : stamp;
 
             await supabaseAdmin
               .from('task_completions')
-              .update({ notes: noteText })
+              .update({ notes: finalNotes })
               .eq('project_task_id', parentTaskId)
               .eq('project_unit_id', parentUnit.id);
           }
@@ -251,7 +285,8 @@ export async function DELETE(
       throw compError;
     }
 
-    const taskType = (completion as any).project_tasks?.task_types;
+    const typedCompletion = completion as unknown as CompletionWithRelations;
+    const taskType = typedCompletion.project_tasks?.task_types;
 
     // 3. Revert task_completions to pending
     const { data: updated, error: updateError } = await supabaseAdmin
@@ -285,7 +320,7 @@ export async function DELETE(
     }
 
     // 4b. Side-effect: clear parent note if parent_task_id is set
-    const parentTaskId = (completion as any).project_tasks?.parent_task_id;
+    const parentTaskId = typedCompletion.project_tasks?.parent_task_id;
     if (parentTaskId) {
       try {
         const { data: parentTask } = await supabaseAdmin
@@ -304,9 +339,26 @@ export async function DELETE(
             .single();
 
           if (parentUnit) {
+            // Fetch existing notes and strip only the stamp lines added by child projects
+            const { data: parentCompletion } = await supabaseAdmin
+              .from('task_completions')
+              .select('notes')
+              .eq('project_task_id', parentTaskId)
+              .eq('project_unit_id', parentUnit.id)
+              .single();
+
+            const existingNotes = parentCompletion?.notes || null;
+            let cleanedNotes: string | null = null;
+            if (existingNotes) {
+              const lines = existingNotes.split('\n').filter(
+                (line: string) => !/^\[(?:Verified by|Failed:)/.test(line.trim())
+              );
+              cleanedNotes = lines.join('\n').trim() || null;
+            }
+
             await supabaseAdmin
               .from('task_completions')
-              .update({ notes: null })
+              .update({ notes: cleanedNotes })
               .eq('project_task_id', parentTaskId)
               .eq('project_unit_id', parentUnit.id);
           }

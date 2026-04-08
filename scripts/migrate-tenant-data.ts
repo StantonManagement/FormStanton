@@ -26,6 +26,21 @@ const testSupabase = createClient(
 );
 
 async function migrateData() {
+  // Validate required environment variables before starting
+  const appUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const appKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const prodUrl = cleanEnv(process.env.NEXT_PUBLIC_PROD_SUPABASE_URL);
+  const prodKey = cleanEnv(process.env.NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY);
+
+  if (!appUrl || !appKey) {
+    console.error('\n❌ Missing app DB env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.local\n');
+    process.exit(1);
+  }
+  if (!prodUrl || !prodKey) {
+    console.error('\n❌ Missing production DB env vars: NEXT_PUBLIC_PROD_SUPABASE_URL and NEXT_PUBLIC_PROD_SUPABASE_ANON_KEY must be set in .env.local\n');
+    process.exit(1);
+  }
+
   console.log('🚀 Starting tenant data migration...\n');
 
   try {
@@ -36,7 +51,14 @@ async function migrateData() {
       .select('id, asset_id, llc_name, portfolio, address, units')
       .order('address');
 
-    if (propError) throw propError;
+    if (propError) {
+      if (propError.message?.includes('does not exist') || propError.code === '42P01') {
+        console.error('\n❌ acct_property_master table not found.');
+        console.error('   Ensure NEXT_PUBLIC_PROD_SUPABASE_URL points to the production DB.\n');
+        process.exit(1);
+      }
+      throw propError;
+    }
     console.log(`✅ Fetched ${prodProperties.length} properties\n`);
 
     // Step 2: Insert properties into test DB

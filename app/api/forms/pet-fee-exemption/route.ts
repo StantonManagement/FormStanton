@@ -100,14 +100,18 @@ export async function POST(request: NextRequest) {
     }
     
     // Also update the main submissions table if tenant exists
-    const { data: existingSubmission } = await supabase
+    // Match on building + unit only — name matching is fragile and fails on discrepancies
+    const { data: submissionCandidates } = await supabase
       .from('submissions')
-      .select('id')
-      .eq('full_name', data.tenantName)
+      .select('id, is_primary, created_at')
       .eq('building_address', data.buildingAddress)
       .eq('unit_number', data.unitNumber)
-      .single();
-    
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const existingSubmission = submissionCandidates?.[0] ?? null;
+
     if (existingSubmission) {
       await supabase
         .from('submissions')
@@ -116,6 +120,8 @@ export async function POST(request: NextRequest) {
           exemption_documents: documentUrls,
           exemption_status: 'pending',
           exemption_notes: `Exemption request submitted on ${new Date().toISOString().split('T')[0]}`,
+          has_esa_doc: true,
+          esa_doc_file: documentUrls[0] || null,
         })
         .eq('id', existingSubmission.id);
     }

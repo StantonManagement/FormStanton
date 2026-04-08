@@ -22,6 +22,7 @@ export default function TenantSidePanel({
 }: TenantSidePanelProps) {
   const [viewingDocument, setViewingDocument] = useState<{ path: string; type: 'signature' | 'insurance' | 'addendum' | 'photo'; title: string; date?: string } | null>(null);
   const [viewingSignature, setViewingSignature] = useState<{ path: string; type: string; date?: string } | null>(null);
+  const [verifyingInsurance, setVerifyingInsurance] = useState(false);
 
   // Close on Escape
   useEffect(() => {
@@ -273,7 +274,37 @@ export default function TenantSidePanel({
           {/* Insurance Section */}
           {sub.has_insurance && (
             <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
-              <h4 className="font-serif text-[var(--primary)] mb-2 text-sm">Insurance</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-serif text-[var(--primary)] text-sm">Insurance</h4>
+                {sub.id && (
+                  <button
+                    disabled={verifyingInsurance}
+                    onClick={async () => {
+                      setVerifyingInsurance(true);
+                      try {
+                        const res = await fetch('/api/admin/compliance/verify-insurance', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ submissionId: sub.id, verified: !sub.insurance_verified }),
+                        });
+                        const d = await res.json();
+                        if (d.success) onRefresh();
+                      } catch (e) {
+                        console.error('Failed to toggle insurance verification', e);
+                      } finally {
+                        setVerifyingInsurance(false);
+                      }
+                    }}
+                    className={`text-xs font-medium px-2 py-1 border transition-colors duration-200 ease-out ${
+                      sub.insurance_verified
+                        ? 'text-[var(--success)] border-[var(--success)]/30 bg-[var(--success)]/5 hover:bg-[var(--success)]/10'
+                        : 'text-[var(--muted)] border-[var(--divider)] bg-white hover:bg-[var(--bg-section)]'
+                    }`}
+                  >
+                    {verifyingInsurance ? '...' : sub.insurance_verified ? '✓ Verified' : 'Mark Verified'}
+                  </button>
+                )}
+              </div>
               <div className="text-xs space-y-1">
                 <div><span className="text-[var(--muted)]">Provider:</span> {sub.insurance_provider}</div>
                 {sub.insurance_policy_number && <div><span className="text-[var(--muted)]">Policy:</span> {sub.insurance_policy_number}</div>}

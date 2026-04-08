@@ -1,6 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+interface UnitWithProject {
+  id: string;
+  project_id: string;
+  building: string;
+  unit_number: string;
+  tenant_link_token: string;
+  token_expires_at: string | null;
+  preferred_language: string;
+  overall_status: string;
+  projects: {
+    id: string;
+    sequential: boolean;
+    status: string;
+  };
+}
+
+interface CompletionWithTask {
+  id: string;
+  project_unit_id: string;
+  project_task_id: string;
+  status: string;
+  evidence_url: string | null;
+  project_tasks: {
+    id: string;
+    order_index: number;
+    required: boolean;
+    task_types: {
+      id: string;
+      name: string;
+      assignee: string;
+      evidence_type: string;
+      form_id: string | null;
+      instructions: string | null;
+    } | null;
+  };
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ token: string; taskId: string }> }
@@ -32,7 +69,8 @@ export async function POST(
       }
     }
 
-    const project = (unit as any).projects as any;
+    const typedUnit = unit as unknown as UnitWithProject;
+    const project = typedUnit.projects;
 
     // 2. Verify task_completions row exists for this project_task_id + project_unit_id
     const { data: completion, error: compError } = await supabaseAdmin
@@ -54,8 +92,9 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Task already completed' }, { status: 409 });
     }
 
-    const projectTask = (completion as any).project_tasks as any;
-    const taskType = projectTask?.task_types as any;
+    const typedCompletion = completion as unknown as CompletionWithTask;
+    const projectTask = typedCompletion.project_tasks;
+    const taskType = projectTask?.task_types;
 
     // Reject if staff_check — tenants cannot complete these
     if (taskType?.assignee === 'staff') {
@@ -63,7 +102,7 @@ export async function POST(
     }
 
     // 4. If sequential project: verify all prior tasks are complete
-    if (project?.sequential) {
+    if (project.sequential) {
       const { data: allTasks, error: allTasksError } = await supabaseAdmin
         .from('project_tasks')
         .select('id, order_index')
@@ -72,7 +111,7 @@ export async function POST(
 
       if (allTasksError) throw allTasksError;
 
-      const currentOrderIndex = projectTask.order_index;
+      const currentOrderIndex = projectTask?.order_index ?? 0;
       const priorTaskIds = (allTasks || [])
         .filter((t: any) => t.order_index < currentOrderIndex)
         .map((t: any) => t.id);
@@ -200,6 +239,9 @@ export async function POST(
     const requiredCompletions = (allCompletions || []).filter(
       (c: any) => c.project_tasks?.required !== false
     );
+    const anyRequiredFailed = requiredCompletions.some(
+      (c: any) => c.status === 'failed'
+    );
     const allRequiredDone = requiredCompletions.every(
       (c: any) => c.status === 'complete' || c.status === 'waived'
     );
@@ -208,7 +250,9 @@ export async function POST(
     );
 
     let overallStatus = 'not_started';
-    if (allRequiredDone) {
+    if (anyRequiredFailed) {
+      overallStatus = 'has_failure';
+    } else if (allRequiredDone) {
       overallStatus = 'complete';
     } else if (anyDone) {
       overallStatus = 'in_progress';

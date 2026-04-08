@@ -379,6 +379,7 @@ export interface ProjectMatrixRow {
     insurance_file: string | null
     insurance_verified: boolean
     insurance_type: string | null
+    add_insurance_to_rent: boolean
   } | null
   parent_evidence?: Record<string, {
     evidence_url: string | null

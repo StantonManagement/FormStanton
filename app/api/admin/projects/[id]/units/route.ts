@@ -38,14 +38,31 @@ export async function GET(
     if (buildings.length > 0) {
       const { data: subs } = await supabaseAdmin
         .from('submissions')
-        .select('building_address, unit_number, insurance_file, insurance_verified, insurance_type')
-        .in('building_address', buildings);
+        .select('building_address, unit_number, insurance_file, insurance_verified, insurance_type, add_insurance_to_rent, created_at, is_primary')
+        .in('building_address', buildings)
+        .order('created_at', { ascending: false });
 
-      for (const s of subs || []) {
+      // Sort: primary submissions first, then newest
+      const sorted = (subs || []).slice().sort((a: any, b: any) => {
+        if (a.is_primary && !b.is_primary) return -1;
+        if (!a.is_primary && b.is_primary) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      for (const s of sorted) {
         const key = `${s.building_address}||${s.unit_number}`;
         const existing = submissionMap.get(key);
-        if (!existing || (!existing.insurance_file && s.insurance_file)) {
+        if (!existing) {
+          // First (canonical) row for this unit
           submissionMap.set(key, s);
+        } else {
+          // Backfill insurance fields if canonical row is missing them
+          if (!existing.insurance_file && s.insurance_file) {
+            submissionMap.set(key, { ...existing, insurance_file: s.insurance_file });
+          }
+          if (!existing.add_insurance_to_rent && s.add_insurance_to_rent) {
+            submissionMap.set(key, { ...submissionMap.get(key), add_insurance_to_rent: s.add_insurance_to_rent });
+          }
         }
       }
     }
@@ -120,6 +137,7 @@ export async function GET(
           insurance_file: sub.insurance_file,
           insurance_verified: sub.insurance_verified,
           insurance_type: sub.insurance_type,
+          add_insurance_to_rent: sub.add_insurance_to_rent ?? false,
         } : null,
         parent_evidence: Object.keys(parent_evidence).length > 0 ? parent_evidence : null,
       };
