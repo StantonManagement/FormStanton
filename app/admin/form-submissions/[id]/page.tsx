@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   FormSubmissionStatus,
@@ -45,6 +45,7 @@ interface FormSubmission {
   revision_notes: string | null;
   sent_to_appfolio_at: string | null;
   sent_to_appfolio_by: string | null;
+  pdf_url: string | null;
 }
 
 interface RelatedSubmission {
@@ -54,7 +55,116 @@ interface RelatedSubmission {
   status: string;
 }
 
-export default function FormSubmissionDetailPage({ params }: { params: { id: string } }) {
+function formatKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/\b\w/g, (l) => l.toUpperCase())
+    .trim();
+}
+
+function expandCondition(code: string): string {
+  const map: Record<string, string> = {
+    G: 'Good',
+    F: 'Fair',
+    P: 'Poor',
+    'N/A': 'N/A',
+  };
+  return map[code] ?? (code || '—');
+}
+
+function isInspectionArray(value: unknown): value is Array<{ item: string; notes: string; condition: string }> {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    typeof value[0] === 'object' &&
+    value[0] !== null &&
+    'item' in value[0] &&
+    'condition' in value[0]
+  );
+}
+
+function renderFormValue(value: unknown): React.ReactNode {
+  if (value === null || value === undefined || value === '') return <span className="text-gray-400">—</span>;
+
+  if (typeof value === 'boolean') {
+    return <span>{value ? 'Yes' : 'No'}</span>;
+  }
+
+  if (isInspectionArray(value)) {
+    return (
+      <table className="w-full text-sm border-collapse mt-1">
+        <thead>
+          <tr className="bg-gray-50">
+            <th className="text-left px-2 py-1 font-medium text-gray-600 border border-gray-200 w-1/3">Item</th>
+            <th className="text-left px-2 py-1 font-medium text-gray-600 border border-gray-200 w-1/4">Condition</th>
+            <th className="text-left px-2 py-1 font-medium text-gray-600 border border-gray-200">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {value.map((row, i) => (
+            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+              <td className="px-2 py-1 border border-gray-200 text-gray-900">{formatKey(row.item)}</td>
+              <td className="px-2 py-1 border border-gray-200">
+                <span className={
+                  row.condition === 'G' ? 'text-green-700 font-medium' :
+                  row.condition === 'F' ? 'text-yellow-700 font-medium' :
+                  row.condition === 'P' ? 'text-red-700 font-medium' :
+                  'text-gray-600'
+                }>
+                  {expandCondition(row.condition)}
+                </span>
+              </td>
+              <td className="px-2 py-1 border border-gray-200 text-gray-700">{row.notes || <span className="text-gray-400">—</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-gray-400">—</span>;
+
+    if (typeof value[0] === 'object' && value[0] !== null) {
+      return (
+        <div className="space-y-2 mt-1">
+          {value.map((item, i) => (
+            <div key={i} className="border border-gray-200 rounded-none p-3 bg-gray-50">
+              {Object.entries(item as Record<string, unknown>).map(([k, v]) => (
+                <div key={k} className="grid grid-cols-2 gap-1 text-sm py-0.5">
+                  <span className="text-gray-500 font-medium">{formatKey(k)}:</span>
+                  <span className="text-gray-900">{renderFormValue(v)}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return <span>{(value as unknown[]).map(String).join(', ')}</span>;
+  }
+
+  if (typeof value === 'object') {
+    return (
+      <div className="space-y-1 mt-1">
+        {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
+          <div key={k} className="grid grid-cols-2 gap-1 text-sm">
+            <span className="text-gray-500 font-medium">{formatKey(k)}:</span>
+            <span className="text-gray-900">{renderFormValue(v)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <span>{String(value)}</span>;
+}
+
+export default function FormSubmissionDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const router = useRouter();
   const [submission, setSubmission] = useState<FormSubmission | null>(null);
   const [relatedSubmissions, setRelatedSubmissions] = useState<RelatedSubmission[]>([]);
@@ -73,7 +183,7 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
 
   useEffect(() => {
     fetchSubmission();
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     if (submission) {
@@ -88,7 +198,7 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
 
   const fetchSubmission = async () => {
     try {
-      const response = await fetch(`/api/admin/form-submissions/${params.id}`);
+      const response = await fetch(`/api/admin/form-submissions/${id}`);
       const data = await response.json();
 
       if (data.success) {
@@ -127,7 +237,7 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
         updates.revision_notes = revisionNotes;
       }
 
-      const response = await fetch(`/api/admin/form-submissions/${params.id}`, {
+      const response = await fetch(`/api/admin/form-submissions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -213,12 +323,27 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
               </p>
             </div>
 
-            <button
-              onClick={() => setEditMode(!editMode)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-none hover:bg-blue-700 transition-colors font-medium"
-            >
-              {editMode ? 'Cancel Edit' : 'Edit'}
-            </button>
+            <div className="flex items-center gap-3">
+              {submission.pdf_url && (
+                <a
+                  href={submission.pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download PDF
+                </a>
+              )}
+              <button
+                onClick={() => setEditMode(!editMode)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-none hover:bg-blue-700 transition-colors font-medium"
+              >
+                {editMode ? 'Cancel Edit' : 'Edit'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -259,11 +384,11 @@ export default function FormSubmissionDetailPage({ params }: { params: { id: str
                 {Object.entries(submission.form_data || {}).map(([key, value]) => (
                   <div key={key} className="border-b border-gray-200 pb-3 last:border-0">
                     <span className="text-gray-600 font-medium text-sm">
-                      {key.split(/(?=[A-Z])/).join(' ').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                      {formatKey(key)}:
                     </span>
-                    <p className="text-gray-900 mt-1">
-                      {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                    </p>
+                    <div className="text-gray-900 mt-1 text-sm">
+                      {renderFormValue(value)}
+                    </div>
                   </div>
                 ))}
               </div>
