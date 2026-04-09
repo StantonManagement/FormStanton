@@ -271,28 +271,31 @@ export async function generateGenericFormPdf(
   const unit = formData.unitNumber || formData.unit_number || '';
   const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Header
-  page.drawText('STANTON MANAGEMENT LLC', { x: margin, y, size: 10, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
-  y -= 12;
-  page.drawText('421 Park Street, Hartford, CT 06106 | (860) 993-3401', { x: margin, y, size: 8, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
-  y -= 24;
+  // Header bar
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 18, color: rgb(0.18, 0.22, 0.36) });
+  page.drawText('STANTON MANAGEMENT LLC', { x: margin + 6, y: y - 1, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('421 Park Street, Hartford, CT 06106  |  (860) 993-3401', { x: margin + 6 + 160, y: y - 1, size: 8, font: fontRegular, color: rgb(0.8, 0.85, 0.95) });
+  y -= 26;
 
   // Title
-  page.drawText(formTitle.toUpperCase(), { x: margin, y, size: 16, font: fontBold, color: rgb(0.1, 0.1, 0.2) });
-  y -= 28;
-
-  // Tenant info
-  page.drawText(`Tenant: ${tenantName}`, { x: margin, y, size: 10, font: fontRegular });
-  y -= 14;
-  page.drawText(`Building: ${building}  |  Unit: ${unit}  |  Date: ${dateStr}`, { x: margin, y, size: 10, font: fontRegular });
-  y -= 24;
-
-  // Draw horizontal line
-  page.drawLine({ start: { x: margin, y }, end: { x: 612 - margin, y }, thickness: 1, color: rgb(0.8, 0.8, 0.8) });
+  page.drawText(formTitle.toUpperCase(), { x: margin, y, size: 15, font: fontBold, color: rgb(0.18, 0.22, 0.36) });
   y -= 20;
 
+  // Tenant info block
+  const unitSizeVal = formData.unitSize ? `  |  Unit Size: ${formData.unitSize}` : '';
+  const moveInDateVal = formData.moveInDate || dateStr;
+  page.drawRectangle({ x: margin, y: y - 40, width: 512, height: 52, color: rgb(0.95, 0.95, 0.97) });
+  page.drawText(`Tenant: ${tenantName}`, { x: margin + 8, y: y - 8, size: 9, font: fontRegular, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText(`Address: ${building}  |  Unit: ${unit}${unitSizeVal}`, { x: margin + 8, y: y - 20, size: 9, font: fontRegular, color: rgb(0.1, 0.1, 0.1) });
+  page.drawText(`Move-In Date: ${moveInDateVal}  |  Keys: ${formData.unitKeys || 0} unit  ${formData.mailboxKeys || 0} mailbox  ${formData.fobs || 0} fobs`, { x: margin + 8, y: y - 32, size: 9, font: fontRegular, color: rgb(0.1, 0.1, 0.1) });
+  y -= 62;
+
+  // Horizontal rule
+  page.drawLine({ start: { x: margin, y }, end: { x: 612 - margin, y }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
+  y -= 16;
+
   // Form data fields
-  const excludeFields = ['buildingAddress', 'building_address', 'unitNumber', 'unit_number', 'tenantName', 'tenant_name', 'fullName', 'full_name', 'dateSubmitted', 'date_submitted', 'finalConfirm', 'final_confirm'];
+  const excludeFields = ['buildingAddress', 'building_address', 'unitNumber', 'unit_number', 'tenantName', 'tenant_name', 'fullName', 'full_name', 'dateSubmitted', 'date_submitted', 'finalConfirm', 'final_confirm', 'unitSize', 'unit_size', 'moveInDate', 'move_in_date', 'unitKeys', 'unit_keys', 'mailboxKeys', 'mailbox_keys', 'fobs'];
   
   for (const [key, value] of Object.entries(formData)) {
     if (excludeFields.includes(key) || value === null || value === undefined || value === '') continue;
@@ -306,14 +309,72 @@ export async function generateGenericFormPdf(
       .replace(/^./, str => str.toUpperCase())
       .trim();
     
-    // Handle different value types
+    // Handle arrays of inspection items (item/condition/notes structure)
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'item' in value[0] && 'condition' in value[0]) {
+      const visibleItems = (value as Array<{ item: string; condition: string; notes: string }>).filter(r => r.item && r.item.trim());
+      if (visibleItems.length === 0) continue;
+
+      if (y < 80) { page = pdfDoc.addPage([612, 792]); y = 742; }
+
+      // Section header bar
+      page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 16, color: rgb(0.18, 0.22, 0.36) });
+      page.drawText(fieldLabel.toUpperCase(), { x: margin + 6, y: y - 1, size: 8, font: fontBold, color: rgb(1, 1, 1) });
+      y -= 20;
+
+      // Column header row
+      page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: rgb(0.93, 0.94, 0.96) });
+      const colItem = margin + 4;
+      const colCond = margin + 210;
+      const colNotes = margin + 320;
+      page.drawText('Item', { x: colItem, y: y - 1, size: 7, font: fontBold, color: rgb(0.3, 0.3, 0.4) });
+      page.drawText('Condition', { x: colCond, y: y - 1, size: 7, font: fontBold, color: rgb(0.3, 0.3, 0.4) });
+      page.drawText('Notes / Description', { x: colNotes, y: y - 1, size: 7, font: fontBold, color: rgb(0.3, 0.3, 0.4) });
+      y -= 18;
+
+      for (let ri = 0; ri < visibleItems.length; ri++) {
+        const inspItem = visibleItems[ri];
+        if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+
+        const rowH = 13;
+        if (ri % 2 === 1) {
+          page.drawRectangle({ x: margin, y: y - rowH + 10, width: 512, height: rowH, color: rgb(0.96, 0.97, 0.98) });
+        }
+
+        const condLabel = {
+          good: 'Good',
+          damage: 'Damage Present',
+          immediate_repair: 'Immediate Repair Required',
+          missing: 'Missing',
+          na: 'N/A',
+        }[inspItem.condition] ?? (inspItem.condition || '');
+
+        const condColor = inspItem.condition === 'good'
+          ? rgb(0.05, 0.45, 0.05)
+          : inspItem.condition === 'damage' || inspItem.condition === 'immediate_repair'
+            ? rgb(0.7, 0.35, 0.05)
+            : inspItem.condition === 'missing'
+              ? rgb(0.65, 0.05, 0.05)
+              : rgb(0.4, 0.4, 0.4);
+
+        page.drawText(inspItem.item, { x: colItem, y, size: 8, font: fontRegular, color: rgb(0.1, 0.1, 0.1) });
+        if (condLabel) page.drawText(condLabel, { x: colCond, y, size: 8, font: fontRegular, color: condColor });
+        if (inspItem.notes) page.drawText(inspItem.notes.substring(0, 42), { x: colNotes, y, size: 7, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+
+        page.drawLine({ start: { x: margin, y: y - 4 }, end: { x: 562, y: y - 4 }, thickness: 0.3, color: rgb(0.85, 0.85, 0.88) });
+        y -= rowH;
+      }
+      y -= 10;
+      continue;
+    }
+
+    // Handle other value types
     let displayValue = '';
     if (typeof value === 'boolean') {
       displayValue = value ? 'Yes' : 'No';
     } else if (typeof value === 'object' && !Array.isArray(value)) {
       displayValue = JSON.stringify(value, null, 2);
     } else if (Array.isArray(value)) {
-      displayValue = `${value.length} item(s)`;
+      displayValue = value.join(', ');
     } else {
       displayValue = String(value);
     }
@@ -331,11 +392,43 @@ export async function generateGenericFormPdf(
     y -= 6;
   }
 
-  // Signature
+  // Legal acknowledgment blocks
+  if (y < 180) { page = pdfDoc.addPage([612, 792]); y = 742; }
+  y -= 10;
+
+  // Management ack
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: rgb(0.18, 0.22, 0.36) });
+  page.drawText('MANAGEMENT ACKNOWLEDGMENT', { x: margin + 6, y: y - 1, size: 7, font: fontBold, color: rgb(1, 1, 1) });
+  y -= 20;
+  const mgmtAckLines = wrapText('This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.', fontRegular, 8, 500);
+  for (const line of mgmtAckLines) {
+    if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawText(line, { x: margin + 4, y, size: 8, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
+    y -= 11;
+  }
+  y -= 8;
+  page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.5, color: rgb(0.3, 0.3, 0.3) });
+  y -= 4;
+  page.drawText("Manager's Signature", { x: margin, y, size: 7, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+  page.drawText('Date _______________', { x: margin + 230, y, size: 7, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+  y -= 20;
+
+  // Tenant ack
+  if (y < 140) { page = pdfDoc.addPage([612, 792]); y = 742; }
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: rgb(0.18, 0.22, 0.36) });
+  page.drawText('TENANT ACKNOWLEDGMENT', { x: margin + 6, y: y - 1, size: 7, font: fontBold, color: rgb(1, 1, 1) });
+  y -= 20;
+  const tenantAckLines = wrapText('I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear. In the event of damage, I agree to pay the cost to restore the apartment to its original condition.', fontRegular, 8, 500);
+  for (const line of tenantAckLines) {
+    if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawText(line, { x: margin + 4, y, size: 8, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
+    y -= 11;
+  }
+  y -= 10;
+
   if (signatureBase64) {
     if (y < 100) { page = pdfDoc.addPage([612, 792]); y = 742; }
-    y -= 10;
-    page.drawText('Signature:', { x: margin, y, size: 10, font: fontBold });
+    page.drawText('Resident Signature:', { x: margin, y, size: 9, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
     y -= 5;
     try {
       const sigData = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -344,11 +437,21 @@ export async function generateGenericFormPdf(
       y -= sigDims.height;
       if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742 - sigDims.height; }
       page.drawImage(sigImage, { x: margin, y, width: sigDims.width, height: sigDims.height });
-      y -= 15;
+      y -= 10;
     } catch (e) {
       console.error('Failed to embed signature image:', e);
     }
-    page.drawText(`Date: ${dateStr}`, { x: margin, y, size: 10, font: fontRegular });
+    page.drawText(`Date: ${dateStr}`, { x: margin + 230, y: y + 4, size: 8, font: fontRegular, color: rgb(0.3, 0.3, 0.3) });
+  } else {
+    if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.5, color: rgb(0.3, 0.3, 0.3) });
+    y -= 4;
+    page.drawText("Resident's Signature", { x: margin, y, size: 7, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText('Date _______________', { x: margin + 230, y, size: 7, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
+    y -= 14;
+    page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.5, color: rgb(0.3, 0.3, 0.3) });
+    y -= 4;
+    page.drawText("Resident's Signature (if applicable)", { x: margin, y, size: 7, font: fontRegular, color: rgb(0.4, 0.4, 0.4) });
   }
 
   return pdfDoc.save();

@@ -40,116 +40,66 @@ export const tenantForms: TenantForm[] = [
 
 **Tenant Name(s):** _______________________________________________
 
-**Unit Address:** _________________________________________________
+**Property Address:** _____________________________________________
 
-**Move-In Date:** _________________________________________________
+**Apartment No.:** ________________ **Unit Size:** ________________
 
-**Keys Received:** Unit Keys _____ Mailbox Keys _____ Fobs _____
-
----
-
-## Instructions
-
-Walk through your entire unit and note the condition of each item below. Use the following codes:
-
-- **G** = Good / No issues
-- **D** = Damaged (describe)
-- **M** = Missing
-- **N/A** = Not applicable to this unit
-
-Take photos of any damage and attach them to this form. **Return this form to the office within 7 days of move-in.** If we do not receive it within that window, the unit will be considered accepted in its delivered condition.
+**Move-In Inspection Date:** ______________ **Keys:** Unit _____ Mailbox _____ Fobs _____
 
 ---
 
-## Living Room / Common Areas
-
-| Item | Condition | Notes |
+| Item | Condition | Notes / Description |
 |---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors / Carpet | | |
-| Windows | | |
-| Window Screens | | |
-| Blinds / Shades | | |
-| Doors | | |
-| Door Hardware / Locks | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
-| Baseboards / Heaters | | |
+| **ENTRANCE / HALLS** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **BEDROOM(S)** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **KITCHEN** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **LIVING ROOM** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **BATHROOM(S)** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **OTHER** | | |
+| | | |
+| | | |
 
 ---
 
-## Kitchen
-
-| Item | Condition | Notes |
-|---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors | | |
-| Cabinets | | |
-| Countertops | | |
-| Sink / Faucet | | |
-| Stove / Oven | | |
-| Refrigerator | | |
-| Dishwasher (if applicable) | | |
-| Microwave (if applicable) | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
+**Condition codes:** Good | Damage Present | Immediate Repair Required | Missing | N/A
 
 ---
 
-## Bathroom(s)
+**MANAGEMENT ACKNOWLEDGMENT**
 
-| Item | Condition | Notes |
-|---|---|---|
-| Walls / Tiles | | |
-| Ceiling | | |
-| Floor | | |
-| Toilet | | |
-| Sink / Faucet | | |
-| Shower / Tub | | |
-| Shower Curtain / Door | | |
-| Mirror / Medicine Cabinet | | |
-| Exhaust Fan | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
+This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.
+
+Manager's Signature _________________________________ Date __________
 
 ---
 
-## Bedroom(s)
+**TENANT ACKNOWLEDGMENT**
 
-| Item | Condition | Notes |
-|---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors / Carpet | | |
-| Windows | | |
-| Window Screens | | |
-| Blinds / Shades | | |
-| Closet Doors | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
-| Baseboards / Heaters | | |
+I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear. In the event of damage, I agree to pay the cost to restore the apartment to its original condition.
 
----
+Resident's Signature _________________________________ Date __________
 
-## Additional Notes
-
-_______________________________________________
-_______________________________________________
-_______________________________________________
-
----
-
-## Signatures
-
-By signing below, both parties acknowledge the condition of the unit as documented above.
-
-**Tenant Signature:** _________________________ Date: __________
-
-**Tenant Signature (if applicable):** _________________________ Date: __________
-
-**Stanton Management Representative:** _________________________ Date: __________`,
+Resident's Signature _________________________________ Date __________`,
   },
   {
     id: 2,

@@ -37,10 +37,12 @@ interface MoveInInspectionFormData {
   tenantName: string;
   buildingAddress: string;
   unitNumber: string;
+  unitSize: string;
   moveInDate: string;
   unitKeys: number;
   mailboxKeys: number;
   fobs: number;
+  entranceHalls: InspectionItem[];
   livingRoom: InspectionItem[];
   kitchen: InspectionItem[];
   bathroom: InspectionItem[];
@@ -49,23 +51,24 @@ interface MoveInInspectionFormData {
   finalConfirm: boolean;
 }
 
-const createInspectionItems = (items: string[]): InspectionItem[] => {
-  return items.map(item => ({ item, condition: '', notes: '' }));
-};
+const blankRows = (n = 3): InspectionItem[] =>
+  Array.from({ length: n }, () => ({ item: '', condition: '', notes: '' }));
 
 const initialFormData: MoveInInspectionFormData = {
   tenantName: '',
   buildingAddress: '',
   unitNumber: '',
+  unitSize: '',
   moveInDate: new Date().toISOString().split('T')[0],
   unitKeys: 0,
   mailboxKeys: 0,
   fobs: 0,
-  livingRoom: createInspectionItems(['walls', 'ceiling', 'floors', 'windows', 'windowScreens', 'blinds', 'doors', 'doorHardware', 'lightFixtures', 'outlets', 'baseboards']),
-  kitchen: createInspectionItems(['walls', 'ceiling', 'floors', 'cabinets', 'countertops', 'sink', 'stove', 'refrigerator', 'dishwasher', 'microwave', 'lightFixtures', 'outlets']),
-  bathroom: createInspectionItems(['tiles', 'ceiling', 'floors', 'toilet', 'sink', 'shower', 'showerCurtain', 'lightFixtures', 'outlets']),
-  bedroom: createInspectionItems(['walls', 'ceiling', 'floors', 'windows', 'windowScreens', 'blinds', 'closets', 'doors', 'doorHardware', 'lightFixtures', 'outlets']),
-  otherAreas: createInspectionItems(['smokeDetector', 'coDetector']),
+  entranceHalls: blankRows(3),
+  bedroom: blankRows(3),
+  kitchen: blankRows(3),
+  livingRoom: blankRows(3),
+  bathroom: blankRows(3),
+  otherAreas: blankRows(2),
   finalConfirm: false,
 };
 
@@ -131,9 +134,21 @@ function MoveInInspectionFormContent() {
     );
   }
   
-  const updateInspectionItem = (room: keyof Pick<MoveInInspectionFormData, 'livingRoom' | 'kitchen' | 'bathroom' | 'bedroom' | 'otherAreas'>, index: number, field: keyof InspectionItem, value: string) => {
+  type RoomKey = 'entranceHalls' | 'livingRoom' | 'kitchen' | 'bathroom' | 'bedroom' | 'otherAreas';
+
+  const updateInspectionItem = (room: RoomKey, index: number, field: keyof InspectionItem, value: string) => {
     const roomData = [...formData[room]];
     roomData[index] = { ...roomData[index], [field]: value };
+    updateField(room, roomData);
+  };
+
+  const addRow = (room: RoomKey) => {
+    updateField(room, [...formData[room], { item: '', condition: '', notes: '' }]);
+  };
+
+  const removeRow = (room: RoomKey, index: number) => {
+    if (formData[room].length <= 1) return;
+    const roomData = formData[room].filter((_, i) => i !== index);
     updateField(room, roomData);
   };
   
@@ -178,67 +193,104 @@ function MoveInInspectionFormContent() {
     await submit(formData);
   };
   
-  const renderInspectionTable = (
-    room: keyof Pick<MoveInInspectionFormData, 'livingRoom' | 'kitchen' | 'bathroom' | 'bedroom' | 'otherAreas'>,
-    title: string
-  ) => {
+  const CONDITION_OPTIONS = [
+    { value: '', label: t.conditionPlaceholder },
+    { value: 'good', label: t.conditionGood },
+    { value: 'damage', label: t.conditionDamage },
+    { value: 'immediate_repair', label: t.conditionImmediateRepair },
+    { value: 'missing', label: t.conditionMissing },
+    { value: 'na', label: t.conditionNA },
+  ];
+
+  const conditionColor = (val: string) => {
+    if (val === 'good') return 'text-green-700';
+    if (val === 'damage' || val === 'immediate_repair') return 'text-amber-700';
+    if (val === 'missing') return 'text-red-700';
+    return 'text-[var(--ink)]';
+  };
+
+  const renderInspectionTable = (room: RoomKey, title: string) => {
     const items = formData[room];
-    
     return (
-      <div className="mb-6">
-        <h3 className="text-base font-semibold text-[var(--primary)] mb-3 font-serif">{title}</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-[var(--border)]">
+      <div className="mb-8">
+        <div className="bg-[var(--primary)] px-4 py-2 mb-0">
+          <h3 className="text-sm font-bold text-white tracking-wide">{title}</h3>
+        </div>
+        <div className="overflow-x-auto border border-[var(--border)] border-t-0">
+          <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-[var(--bg-section)]">
-                <th className="border border-[var(--border)] px-3 py-2 text-left text-sm font-medium text-[var(--ink)]">Item</th>
-                <th className="border border-[var(--border)] px-3 py-2 text-left text-sm font-medium text-[var(--ink)] w-24">{t.condition}</th>
-                <th className="border border-[var(--border)] px-3 py-2 text-left text-sm font-medium text-[var(--ink)]">{t.notes}</th>
+              <tr className="bg-[var(--bg-section)] border-b border-[var(--border)]">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-2/5">{t.itemColumn}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-1/4">{t.condition}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)]">{t.notes}</th>
+                <th className="px-2 py-2 w-8"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((inspectionItem, idx) => (
-                <tr key={idx} className="hover:bg-[var(--bg-section)]/50">
-                  <td className="border border-[var(--border)] px-3 py-2 text-sm text-[var(--ink)]">
-                    {t[inspectionItem.item as keyof typeof t] || inspectionItem.item}
-                  </td>
-                  <td className="border border-[var(--border)] px-3 py-2">
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-[var(--bg-section)]/40'}>
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
                     <input
                       type="text"
-                      value={inspectionItem.condition}
-                      onChange={(e) => updateInspectionItem(room, idx, 'condition', e.target.value)}
-                      placeholder={t.conditionPlaceholder}
-                      className="w-full px-2 py-1 text-sm border border-[var(--border)] rounded-none bg-white text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20"
-                      maxLength={4}
+                      value={inspectionItem.item}
+                      onChange={(e) => updateInspectionItem(room, idx, 'item', e.target.value)}
+                      placeholder={t.itemPlaceholder}
+                      className="w-full px-0 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none"
                     />
                   </td>
-                  <td className="border border-[var(--border)] px-3 py-2">
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
+                    <select
+                      value={inspectionItem.condition}
+                      onChange={(e) => updateInspectionItem(room, idx, 'condition', e.target.value)}
+                      className={`w-full px-0 py-0.5 text-sm bg-transparent border-none outline-none cursor-pointer ${conditionColor(inspectionItem.condition)}`}
+                    >
+                      {CONDITION_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
                     <input
                       type="text"
                       value={inspectionItem.notes}
                       onChange={(e) => updateInspectionItem(room, idx, 'notes', e.target.value)}
                       placeholder={t.notesPlaceholder}
-                      className="w-full px-2 py-1 text-sm border border-[var(--border)] rounded-none bg-white text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20"
+                      className="w-full px-0 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none"
                     />
+                  </td>
+                  <td className="px-2 py-1.5 border-b border-[var(--border)]/50 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(room, idx)}
+                      disabled={items.length <= 1}
+                      className="text-[var(--muted)] hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-base leading-none transition-colors"
+                      title={t.removeItem}
+                    >×</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <button
+          type="button"
+          onClick={() => addRow(room)}
+          className="mt-2 text-xs text-[var(--primary)] hover:underline font-medium transition-colors"
+        >
+          {t.addItem}
+        </button>
       </div>
     );
   };
   
   const countIssues = () => {
-    let count = 0;
-    const allRooms = [...formData.livingRoom, ...formData.kitchen, ...formData.bathroom, ...formData.bedroom, ...formData.otherAreas];
-    allRooms.forEach(item => {
-      if (item.condition && item.condition.toUpperCase() !== 'G' && item.condition.toUpperCase() !== 'N/A') {
-        count++;
-      }
-    });
-    return count;
+    const allRooms = [...formData.entranceHalls, ...formData.livingRoom, ...formData.kitchen, ...formData.bathroom, ...formData.bedroom, ...formData.otherAreas];
+    return allRooms.filter(item => item.condition && item.condition !== 'good' && item.condition !== 'na').length;
+  };
+
+  const countItems = () => {
+    return [...formData.entranceHalls, ...formData.livingRoom, ...formData.kitchen, ...formData.bathroom, ...formData.bedroom, ...formData.otherAreas]
+      .filter(item => item.item.trim() !== '').length;
   };
   
   const tabs = [
@@ -354,6 +406,15 @@ function MoveInInspectionFormContent() {
                     />
                   </FormField>
                   
+                  <FormField label={t.unitSize}>
+                    <FormInput
+                      type="text"
+                      value={formData.unitSize}
+                      onChange={(e) => updateField('unitSize', e.target.value)}
+                      placeholder={t.unitSizePlaceholder}
+                    />
+                  </FormField>
+                  
                   <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)]">
                     <h4 className="text-sm font-semibold text-[var(--ink)] mb-3">{t.keysReceived}</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -408,20 +469,15 @@ function MoveInInspectionFormContent() {
                   />
                   
                   <div className="bg-[var(--bg-section)] border-l-4 border-[var(--accent)] p-4 rounded-sm mb-6">
-                    <p className="text-sm text-[var(--ink)] mb-3">{t.instructionsText}</p>
-                    <ul className="text-xs text-[var(--ink)] space-y-1 ml-4">
-                      <li>• {t.codeG}</li>
-                      <li>• {t.codeD}</li>
-                      <li>• {t.codeM}</li>
-                      <li>• {t.codeNA}</li>
-                    </ul>
-                    <p className="text-xs text-[var(--muted)] mt-3">{t.photoNote}</p>
+                    <p className="text-sm text-[var(--ink)] mb-2">{t.instructionsText}</p>
+                    <p className="text-xs text-[var(--muted)]">{t.photoNote}</p>
                   </div>
                   
-                  {renderInspectionTable('livingRoom', t.livingRoomTitle)}
-                  {renderInspectionTable('kitchen', t.kitchenTitle)}
-                  {renderInspectionTable('bathroom', t.bathroomTitle)}
+                  {renderInspectionTable('entranceHalls', t.entranceHallsTitle)}
                   {renderInspectionTable('bedroom', t.bedroomTitle)}
+                  {renderInspectionTable('kitchen', t.kitchenTitle)}
+                  {renderInspectionTable('livingRoom', t.livingRoomTitle)}
+                  {renderInspectionTable('bathroom', t.bathroomTitle)}
                   {renderInspectionTable('otherAreas', t.otherAreasTitle)}
                   
                   <FormButton
@@ -488,6 +544,10 @@ function MoveInInspectionFormContent() {
                       <div className="font-medium">{formData.unitNumber}</div>
                       <div className="text-[var(--muted)]">{t.moveInDate}:</div>
                       <div className="font-medium">{formData.moveInDate}</div>
+                      {formData.unitSize && (<>
+                        <div className="text-[var(--muted)]">{t.unitSize}:</div>
+                        <div className="font-medium">{formData.unitSize}</div>
+                      </>)}
                       <div className="text-[var(--muted)]">{t.keysReceived}:</div>
                       <div className="font-medium">
                         {formData.unitKeys} unit, {formData.mailboxKeys} mailbox, {formData.fobs} fobs
@@ -499,12 +559,8 @@ function MoveInInspectionFormContent() {
                   <div className="bg-[var(--bg-section)] p-4 rounded-sm border border-[var(--border)] mb-4">
                     <h4 className="text-sm font-semibold text-[var(--ink)] mb-2">{t.reviewInspection}</h4>
                     <div className="text-sm space-y-1">
-                      <p className="text-[var(--ink)]">
-                        {formData.livingRoom.length + formData.kitchen.length + formData.bathroom.length + formData.bedroom.length + formData.otherAreas.length} {t.itemsInspected}
-                      </p>
-                      <p className="text-[var(--ink)]">
-                        {countIssues()} {t.issuesNoted}
-                      </p>
+                      <p className="text-[var(--ink)]">{countItems()} {t.itemsInspected}</p>
+                      <p className="text-[var(--ink)]">{countIssues()} {t.issuesNoted}</p>
                     </div>
                   </div>
                   
@@ -518,23 +574,35 @@ function MoveInInspectionFormContent() {
                     )}
                   </div>
                   
-                  {/* Signature */}
-                  <div className="space-y-2 mb-4">
-                    <SignatureCanvasComponent
-                      label={t.signature}
-                      value={signature}
-                      onSave={(dataUrl) => setSignature(dataUrl)}
-                    />
+                  {/* Manager Acknowledgment */}
+                  <div className="border border-[var(--border)] rounded-sm mb-4 overflow-hidden">
+                    <div className="bg-[var(--primary)] px-4 py-2">
+                      <p className="text-xs font-semibold text-white uppercase tracking-wide">{t.managerAckTitle}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm text-[var(--ink)] italic">{t.managerAckText}</p>
+                      <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                        <p className="text-xs text-[var(--muted)]">Manager&apos;s Signature _____________________________________ Date __________</p>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <FormField label={t.signatureDate}>
-                    <FormInput
-                      type="date"
-                      value={formData.moveInDate}
-                      readOnly
-                    />
-                  </FormField>
-                  
+
+                  {/* Tenant Acknowledgment & Signature */}
+                  <div className="border border-[var(--border)] rounded-sm mb-4 overflow-hidden">
+                    <div className="bg-[var(--primary)] px-4 py-2">
+                      <p className="text-xs font-semibold text-white uppercase tracking-wide">{t.tenantAckTitle}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm text-[var(--ink)] mb-4">{t.tenantAckText}</p>
+                      <SignatureCanvasComponent
+                        label={t.signature}
+                        value={signature}
+                        onSave={(dataUrl) => setSignature(dataUrl)}
+                      />
+                      <p className="text-xs text-[var(--muted)] mt-3">{t.signatureDate}: {formData.moveInDate}</p>
+                    </div>
+                  </div>
+
                   <FormCheckbox
                     label={t.finalConfirm}
                     checked={formData.finalConfirm}
