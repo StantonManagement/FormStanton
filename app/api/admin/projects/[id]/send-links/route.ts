@@ -43,7 +43,7 @@ export async function POST(
     // 2. Fetch project_units (optionally filtered by unit_ids)
     let query = supabaseAdmin
       .from('project_units')
-      .select('id, building, unit_number, tenant_link_token, preferred_language')
+      .select('id, building, unit_number, asset_id, tenant_link_token, preferred_language')
       .eq('project_id', projectId);
 
     if (unit_ids && unit_ids.length > 0) {
@@ -56,23 +56,21 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'No units found' }, { status: 404 });
     }
 
-    // 3. Batch lookup tenant contacts from tenant_lookup
-    const buildingUnitPairs = units.map((u) => ({
-      building: u.building,
-      unit: u.unit_number,
-    }));
+    // 3. Batch lookup tenant contacts from tenant_lookup via asset_id
+    const unitAssetIds = [...new Set(units.map((u: any) => u.asset_id).filter(Boolean))];
 
     const { data: tenants, error: tenantErr } = await supabaseAdmin
       .from('tenant_lookup')
-      .select('building_address, unit_number, phone, email, name')
+      .select('asset_id, unit_number, phone, email, name')
+      .in('asset_id', unitAssetIds.length > 0 ? unitAssetIds : ['__none__'])
       .eq('is_current', true);
 
     if (tenantErr) throw tenantErr;
 
-    // Build lookup map: "building||unit" -> tenant
+    // Build lookup map: "asset_id||unit" -> tenant
     const tenantMap = new Map<string, { phone: string | null; email: string | null; name: string | null }>();
     for (const t of (tenants || [])) {
-      const key = `${t.building_address}||${t.unit_number}`;
+      const key = `${t.asset_id}||${t.unit_number}`;
       tenantMap.set(key, { phone: t.phone, email: t.email, name: t.name });
     }
 
@@ -95,7 +93,7 @@ export async function POST(
       const batch = units.slice(i, i + BATCH_SIZE);
 
       const promises = batch.map(async (unit) => {
-        const key = `${unit.building}||${unit.unit_number}`;
+        const key = `${(unit as any).asset_id}||${unit.unit_number}`;
         const tenant = tenantMap.get(key);
 
         const rawPhone = tenant?.phone || null;

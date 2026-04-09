@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateToken } from '@/lib/generateToken';
-import { normalizeAddress } from '@/lib/addressNormalizer';
+import { buildingToAssetId } from '@/lib/buildings';
 
 export async function GET(
   _request: NextRequest,
@@ -36,20 +36,21 @@ export async function GET(
     // Enrich with submission cross-reference (insurance_file, etc.)
     const buildings = [...new Set((data || []).map((u: any) => u.building))];
 
-    // Live tenant name lookup — normalize both sides so address variants resolve correctly
+    // Live tenant name lookup via asset_id (format-agnostic)
+    const assetIds = [...new Set((data || []).map((u: any) => u.asset_id).filter(Boolean))];
     const liveNameMap = new Map<string, string>();
-    {
+    if (assetIds.length > 0) {
       const { data: liveTenants } = await supabaseAdmin
         .from('tenant_lookup')
-        .select('building_address, unit_number, name, first_name, last_name')
+        .select('asset_id, unit_number, name, first_name, last_name')
+        .in('asset_id', assetIds)
         .eq('is_current', true);
       for (const t of liveTenants || []) {
         const derived = t.name !== 'Occupied Unit' && t.name
           ? t.name
           : `${t.first_name || ''} ${t.last_name || ''}`.trim();
         if (derived && derived !== 'Occupied Unit') {
-          const normBuilding = normalizeAddress(t.building_address || '');
-          liveNameMap.set(`${normBuilding}||${t.unit_number}`, derived);
+          liveNameMap.set(`${t.asset_id}||${t.unit_number}`, derived);
         }
       }
     }
@@ -143,7 +144,7 @@ export async function GET(
     const enriched = (data || []).map((u: any) => {
       const sub = submissionMap.get(`${u.building}||${u.unit_number}`);
       const unitKey = `${u.building}||${u.unit_number}`;
-      const normUnitKey = `${normalizeAddress(u.building)}||${u.unit_number}`;
+      const assetUnitKey = `${u.asset_id}||${u.unit_number}`;
 
       // Build parent_evidence keyed by child task ID
       const parent_evidence: Record<string, { evidence_url: string | null; task_name: string; completed_at: string | null; status: string }> = {};
@@ -154,7 +155,7 @@ export async function GET(
 
       return {
         ...u,
-        tenant_name: liveNameMap.get(normUnitKey) || u.tenant_name || null,
+        tenant_name: liveNameMap.get(assetUnitKey) || u.tenant_name || null,
         submission_data: sub ? {
           insurance_file: sub.insurance_file,
           insurance_verified: sub.insurance_verified,
@@ -246,17 +247,19 @@ export async function POST(
 
     if (tasksError) throw tasksError;
 
-    // 4. Lookup tenant names
+    // 4. Lookup tenant names via asset_id
+    const newAssetIds = [...new Set(newUnits.map(u => buildingToAssetId[u.building]).filter(Boolean))];
     const { data: tenants, error: tenantsError } = await supabaseAdmin
       .from('tenant_lookup')
-      .select('building_address, unit_number, name')
+      .select('asset_id, unit_number, name')
+      .in('asset_id', newAssetIds.length > 0 ? newAssetIds : ['__none__'])
       .eq('is_current', true);
 
     if (tenantsError) throw tenantsError;
 
     const tenantNameMap = new Map<string, string>();
     for (const t of tenants || []) {
-      tenantNameMap.set(`${t.building_address}||${t.unit_number}`, t.name);
+      tenantNameMap.set(`${t.asset_id}||${t.unit_number}`, t.name);
     }
 
     // 5. Lookup tenant_profiles for preferred_language
@@ -280,16 +283,23 @@ export async function POST(
     }
 
     // 7. Insert new project_units
-    const unitRows = newUnits.map((u) => ({
-      project_id: id,
-      building: u.building,
-      unit_number: u.unit_number,
-      tenant_name: tenantNameMap.get(`${u.building}||${u.unit_number}`) || null,
-      tenant_link_token: generateToken(),
-      token_expires_at: tokenExpiresAt,
-      preferred_language: profileMap.get(`${u.building}||${u.unit_number}`) || 'en',
-      overall_status: 'not_started',
-    }));
+    const unitRows = newUnits.map((u) => {
+      const assetId = buildingToAssetId[u.building];
+      if (!assetId) {
+        throw new Error(`Unknown building: ${u.building} — no asset_id mapping found`);
+      }
+      return {
+        project_id: id,
+        building: u.building,
+        unit_number: u.unit_number,
+        asset_id: assetId,
+        tenant_name: tenantNameMap.get(`${assetId}||${u.unit_number}`) || null,
+        tenant_link_token: generateToken(),
+        token_expires_at: tokenExpiresAt,
+        preferred_language: profileMap.get(`${u.building}||${u.unit_number}`) || 'en',
+        overall_status: 'not_started',
+      };
+    });
 
     const { data: insertedUnits, error: unitsError } = await supabaseAdmin
       .from('project_units')

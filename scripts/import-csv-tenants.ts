@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import { join } from 'path';
+import { appfolioNameToAddress, appfolioNameToAssetId } from '../lib/buildings';
 
 config({ path: '.env' });
 config({ path: '.env.local', override: true });
@@ -20,48 +21,8 @@ const supabase = createClient(
   cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) || ''
 );
 
-// Property name mapping from CSV to app building addresses
-const propertyNameToAddress: Record<string, string> = {
-  "S0001 - 90 Park St": "90-100 Park St",
-  "S0002 - 101 Maple": "97-103 Maple Ave",
-  "S0003 - 222 Maple": "222-224 Maple Ave",
-  "S0004 - 43 Frank": "43-45 Franklin Ave",
-  "S0005 - 47 Frank": "47 Franklin Ave",
-  "S0006 - 15 Whit": "15-17 Whitmore Street",
-  "S0007 - 36 Whit": "36 Whitmore Street",
-  "S0008 - 38 Whit": "38-40 Whitmore Street",
-  "S0010 - 228 Maple": "228-230 Maple Ave",
-  "S0011 - 110 Martin": "110 Martin St",
-  "S0012 - 120 Martin": "120 Martin St",
-  "S0013 - 152 Wooster": "152-154 Wooster St",
-  "S0014 - 160 Wooster": "160 Wooster St",
-  "S0015 - 165 Westland": "165 Westland St",
-  "S0016 - 1721 Main": "1721-1739 Main St",
-  "S0017 - 69 Chestnut": "69-73 Chestnut St",
-  "S0018 - 90 Edwards": "91 Edwards St",
-  "S0019 - 93 Maple": "93-95 Maple Ave",
-  "S0020 - 31 Park": "31-33 Park St",
-  "S0021 - 67 Park": "67-73 Park St",
-  "S0022 - 83 Park": "83-91 Park St",
-  "S0023 - 57 Park": "57-59 Park St",
-  "S0025 - 179 Affleck": "179 Affleck St",
-  "S0026 - 144 Affleck": "144-146 Affleck St",
-  "S0027 - 178 Affleck": "178 Affleck St",
-  "S0028 - 182 Affleck": "182-184 Affleck St",
-  "S0029 - 190 Affleck": "190-192 Affleck St",
-  "S0030 - 195 Affleck": "195 Affleck St",
-  "S0031 - 88-90 Ward": "88-90 Ward St",
-  "S0032 - 865 Broad": "865 Broad St",
-  "S0033 - 142 Seymour": "142 Seymour St",
-  "S0034 - 158 Seymour": "158 Seymour St",
-  "S0035 - 164 Seymour": "164 Seymour St",
-  "S0036 - 167 Seymour": "167 Seymour St",
-  "S0037 - 169 Seymour": "169 Seymour St",
-  "S0038 - 170 Seymour": "170 Seymour St",
-  "S0039 - 180 Seymour": "180 Seymour St",
-  "S0040 - 213 Buckingh": "213-217 Buckingham St",
-  "S0041 - 23-31 Squire": "23-31 Squire St",
-};
+// Building identity maps imported from lib/buildings.ts (single source of truth)
+const propertyNameToAddress = appfolioNameToAddress;
 
 interface CSVRow {
   'Property Name': string;
@@ -88,6 +49,7 @@ interface TenantRecord {
   email: string | null;
   unit_number: string;
   building_address: string;
+  asset_id: string | null;
   move_in: string | null;
   status: string;
   is_current: boolean;
@@ -219,6 +181,7 @@ async function importCSVTenants() {
         email,
         unit_number: row.Unit || '',
         building_address: buildingAddress,
+        asset_id: appfolioNameToAssetId[row['Property Name']] || null,
         move_in: moveIn,
         status: 'Current',
         is_current: true,

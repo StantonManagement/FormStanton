@@ -299,6 +299,7 @@ export interface ProjectUnit {
   project_id: string
   building: string
   unit_number: string
+  asset_id: string
   tenant_link_token: string
   token_expires_at: string | null
   preferred_language: PreferredLanguage

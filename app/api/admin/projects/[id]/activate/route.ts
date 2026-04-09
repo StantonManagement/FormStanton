@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateToken } from '@/lib/generateToken';
+import { buildingToAssetId } from '@/lib/buildings';
 
 export async function POST(
   request: NextRequest,
@@ -73,17 +74,19 @@ export async function POST(
       profileMap.set(`${p.building}||${p.unit_number}`, p.preferred_language);
     }
 
-    // 3b. Batch-lookup tenant_lookup for tenant names
+    // 3b. Batch-lookup tenant_lookup for tenant names via asset_id
+    const unitAssetIds = [...new Set(units.map(u => buildingToAssetId[u.building]).filter(Boolean))];
     const { data: tenants, error: tenantsError } = await supabaseAdmin
       .from('tenant_lookup')
-      .select('building_address, unit_number, name')
+      .select('asset_id, unit_number, name')
+      .in('asset_id', unitAssetIds.length > 0 ? unitAssetIds : ['__none__'])
       .eq('is_current', true);
 
     if (tenantsError) throw tenantsError;
 
     const tenantNameMap = new Map<string, string>();
     for (const t of tenants || []) {
-      tenantNameMap.set(`${t.building_address}||${t.unit_number}`, t.name);
+      tenantNameMap.set(`${t.asset_id}||${t.unit_number}`, t.name);
     }
 
     // 4. Compute token_expires_at: project deadline + 30 days, or null
@@ -95,16 +98,23 @@ export async function POST(
     }
 
     // 5. Build project_units rows
-    const unitRows = units.map((u) => ({
-      project_id: id,
-      building: u.building,
-      unit_number: u.unit_number,
-      tenant_name: tenantNameMap.get(`${u.building}||${u.unit_number}`) || null,
-      tenant_link_token: generateToken(),
-      token_expires_at: tokenExpiresAt,
-      preferred_language: profileMap.get(`${u.building}||${u.unit_number}`) || 'en',
-      overall_status: 'not_started',
-    }));
+    const unitRows = units.map((u) => {
+      const assetId = buildingToAssetId[u.building];
+      if (!assetId) {
+        throw new Error(`Unknown building: ${u.building} — no asset_id mapping found`);
+      }
+      return {
+        project_id: id,
+        building: u.building,
+        unit_number: u.unit_number,
+        asset_id: assetId,
+        tenant_name: tenantNameMap.get(`${assetId}||${u.unit_number}`) || null,
+        tenant_link_token: generateToken(),
+        token_expires_at: tokenExpiresAt,
+        preferred_language: profileMap.get(`${u.building}||${u.unit_number}`) || 'en',
+        overall_status: 'not_started',
+      };
+    });
 
     const { data: insertedUnits, error: unitsError } = await supabaseAdmin
       .from('project_units')

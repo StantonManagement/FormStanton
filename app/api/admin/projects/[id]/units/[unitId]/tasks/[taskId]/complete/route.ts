@@ -76,14 +76,14 @@ export async function POST(
     // 2. Verify unit belongs to project
     const { data: unit, error: unitError } = await supabaseAdmin
       .from('project_units')
-      .select('id, project_id, building, unit_number')
+      .select('id, project_id, building, unit_number, asset_id')
       .eq('id', unitId)
       .eq('project_id', projectId)
       .single();
 
     if (unitError) {
       if (unitError.code === 'PGRST116') {
-        return NextResponse.json({ success: false, message: 'Unit not found in project' }, { status: 404 });
+        return NextResponse.json({ success: false, message: 'Unit not found in this project' }, { status: 404 });
       }
       throw unitError;
     }
@@ -151,12 +151,12 @@ export async function POST(
           .single();
 
         if (parentTask) {
-          // Find the parent unit with matching building+unit_number
+          // Find the parent unit with matching asset_id+unit_number
           const { data: parentUnit } = await supabaseAdmin
             .from('project_units')
             .select('id')
             .eq('project_id', parentTask.project_id)
-            .eq('building', unit.building)
+            .eq('asset_id', unit.asset_id)
             .eq('unit_number', unit.unit_number)
             .single();
 
@@ -258,7 +258,7 @@ export async function DELETE(
     // 1. Verify unit belongs to project
     const { data: unit, error: unitError } = await supabaseAdmin
       .from('project_units')
-      .select('id, project_id, building, unit_number')
+      .select('id, project_id, building, unit_number, asset_id')
       .eq('id', unitId)
       .eq('project_id', projectId)
       .single();
@@ -334,7 +334,7 @@ export async function DELETE(
             .from('project_units')
             .select('id')
             .eq('project_id', parentTask.project_id)
-            .eq('building', unit.building)
+            .eq('asset_id', unit.asset_id)
             .eq('unit_number', unit.unit_number)
             .single();
 
