@@ -457,6 +457,181 @@ export async function generateGenericFormPdf(
   return pdfDoc.save();
 }
 
+// ─── Blank Form Generators ────────────────────────────────────────────────────
+
+const INSPECTION_SECTIONS = [
+  'ENTRANCE / HALLS',
+  'BEDROOM(S)',
+  'KITCHEN',
+  'LIVING ROOM',
+  'BATHROOM(S)',
+  'OTHER',
+];
+
+const BLANK_ROW_COUNT = 6;
+
+export async function generateBlankMoveInPdf(): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  let page = pdfDoc.addPage([612, 792]);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const margin = 50;
+  let y = 742;
+
+  const navy = rgb(0.18, 0.22, 0.36);
+  const lightGray = rgb(0.96, 0.97, 0.98);
+  const medGray = rgb(0.93, 0.94, 0.96);
+  const inkLight = rgb(0.4, 0.4, 0.4);
+  const borderColor = rgb(0.82, 0.84, 0.88);
+
+  // ── Header bar ──────────────────────────────────────────────────────────────
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 20, color: navy });
+  page.drawText('STANTON MANAGEMENT LLC', { x: margin + 6, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('421 Park Street, Hartford, CT 06106  |  (860) 993-3401', {
+    x: margin + 6 + 166, y: y, size: 8, font: fontRegular, color: rgb(0.8, 0.85, 0.95),
+  });
+  y -= 28;
+
+  // ── Title ───────────────────────────────────────────────────────────────────
+  page.drawText('MOVE-IN INSPECTION FORM', { x: margin, y, size: 15, font: fontBold, color: navy });
+  y -= 22;
+
+  // ── Tenant info block ────────────────────────────────────────────────────────
+  page.drawRectangle({ x: margin, y: y - 52, width: 512, height: 64, color: medGray });
+
+  const fieldLine = (label: string, x: number, fy: number, lineW: number) => {
+    page.drawText(label, { x, y: fy, size: 7, font: fontBold, color: inkLight });
+    page.drawLine({ start: { x, y: fy - 10 }, end: { x: x + lineW, y: fy - 10 }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  };
+
+  fieldLine('Tenant Name(s)', margin + 8, y - 8, 220);
+  fieldLine('Move-In Date', margin + 240, y - 8, 100);
+  fieldLine('Unit Size', margin + 355, y - 8, 80);
+  fieldLine('Property Address', margin + 8, y - 32, 150);
+  fieldLine('Unit No.', margin + 175, y - 32, 60);
+  fieldLine('Keys: Unit', margin + 252, y - 32, 30);
+  fieldLine('Mailbox', margin + 310, y - 32, 30);
+  fieldLine('Fobs', margin + 368, y - 32, 30);
+
+  y -= 72;
+
+  // ── Condition legend ─────────────────────────────────────────────────────────
+  page.drawRectangle({ x: margin, y: y - 12, width: 512, height: 16, color: rgb(0.97, 0.97, 0.97) });
+  const legendText = 'Conditions:  Good  |  Damage Present  |  Immediate Repair Required  |  Missing  |  N/A';
+  page.drawText(legendText, { x: margin + 8, y: y - 8, size: 7, font: fontRegular, color: inkLight });
+  y -= 18;
+
+  // ── Inspection sections ──────────────────────────────────────────────────────
+  const drawSection = (title: string) => {
+    // May need new page
+    if (y < 100) {
+      page = pdfDoc.addPage([612, 792]);
+      y = 742;
+    }
+
+    // Section header
+    page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 16, color: navy });
+    page.drawText(title, { x: margin + 6, y: y - 1, size: 8, font: fontBold, color: rgb(1, 1, 1) });
+    y -= 20;
+
+    // Column headers
+    page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: medGray });
+    page.drawText('Item', { x: margin + 4, y: y - 1, size: 7, font: fontBold, color: inkLight });
+    page.drawText('Condition', { x: margin + 214, y: y - 1, size: 7, font: fontBold, color: inkLight });
+    page.drawText('Notes / Description', { x: margin + 324, y: y - 1, size: 7, font: fontBold, color: inkLight });
+    y -= 18;
+
+    // Blank rows
+    for (let i = 0; i < BLANK_ROW_COUNT; i++) {
+      if (y < 50) {
+        page = pdfDoc.addPage([612, 792]);
+        y = 742;
+      }
+      const rowH = 16;
+      if (i % 2 === 1) {
+        page.drawRectangle({ x: margin, y: y - rowH + 10, width: 512, height: rowH, color: lightGray });
+      }
+      // Column dividers
+      page.drawLine({ start: { x: margin + 210, y: y + 8 }, end: { x: margin + 210, y: y - 8 }, thickness: 0.4, color: borderColor });
+      page.drawLine({ start: { x: margin + 320, y: y + 8 }, end: { x: margin + 320, y: y - 8 }, thickness: 0.4, color: borderColor });
+      // Row bottom border
+      page.drawLine({ start: { x: margin, y: y - 8 }, end: { x: margin + 512, y: y - 8 }, thickness: 0.3, color: borderColor });
+      y -= rowH;
+    }
+    y -= 6;
+  };
+
+  for (const section of INSPECTION_SECTIONS) {
+    drawSection(section);
+  }
+
+  // ── Legal acknowledgment ─────────────────────────────────────────────────────
+  if (y < 200) {
+    page = pdfDoc.addPage([612, 792]);
+    y = 742;
+  }
+  y -= 8;
+
+  // Management ack
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: navy });
+  page.drawText('MANAGEMENT ACKNOWLEDGMENT', { x: margin + 6, y: y - 1, size: 7, font: fontBold, color: rgb(1, 1, 1) });
+  y -= 20;
+  const mgmtLines = wrapText('This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.', fontRegular, 8, 500);
+  for (const line of mgmtLines) {
+    if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawText(line, { x: margin + 4, y, size: 8, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
+    y -= 11;
+  }
+  y -= 8;
+  page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  y -= 4;
+  page.drawText("Manager's Signature", { x: margin, y, size: 7, font: fontRegular, color: inkLight });
+  page.drawText('Date _______________', { x: margin + 230, y, size: 7, font: fontRegular, color: inkLight });
+  y -= 22;
+
+  // Tenant ack
+  if (y < 150) { page = pdfDoc.addPage([612, 792]); y = 742; }
+  page.drawRectangle({ x: margin, y: y - 4, width: 512, height: 14, color: navy });
+  page.drawText('TENANT ACKNOWLEDGMENT', { x: margin + 6, y: y - 1, size: 7, font: fontBold, color: rgb(1, 1, 1) });
+  y -= 20;
+  const tenantLines = wrapText('I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear. In the event of damage, I agree to pay the cost to restore the apartment to its original condition.', fontRegular, 8, 500);
+  for (const line of tenantLines) {
+    if (y < 50) { page = pdfDoc.addPage([612, 792]); y = 742; }
+    page.drawText(line, { x: margin + 4, y, size: 8, font: fontRegular, color: rgb(0.2, 0.2, 0.2) });
+    y -= 11;
+  }
+  y -= 10;
+
+  // Resident signature lines
+  if (y < 60) { page = pdfDoc.addPage([612, 792]); y = 742; }
+  page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  page.drawLine({ start: { x: margin + 280, y }, end: { x: margin + 500, y }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  y -= 4;
+  page.drawText("Resident's Signature", { x: margin, y, size: 7, font: fontRegular, color: inkLight });
+  page.drawText('Date', { x: margin + 280, y, size: 7, font: fontRegular, color: inkLight });
+  y -= 18;
+
+  if (y < 40) { page = pdfDoc.addPage([612, 792]); y = 742; }
+  page.drawLine({ start: { x: margin, y }, end: { x: margin + 220, y }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  page.drawLine({ start: { x: margin + 280, y }, end: { x: margin + 500, y }, thickness: 0.6, color: rgb(0.3, 0.3, 0.3) });
+  y -= 4;
+  page.drawText("Resident's Signature (if applicable)", { x: margin, y, size: 7, font: fontRegular, color: inkLight });
+  page.drawText('Date', { x: margin + 280, y, size: 7, font: fontRegular, color: inkLight });
+
+  return pdfDoc.save();
+}
+
+// ─── Form ID → blank PDF dispatch ─────────────────────────────────────────────
+
+export async function generateBlankFormPdf(formId: number): Promise<Uint8Array | null> {
+  switch (formId) {
+    case 1:
+      return generateBlankMoveInPdf();
+    default:
+      return null;
+  }
+}
+
 // Legacy exports kept for backward compatibility — these are no longer used
 export function prepareTemplateData(formData: any, signatureBase64?: string, signatureDate?: string) {
   return { tenant_name: formData.fullName || formData.full_name };
