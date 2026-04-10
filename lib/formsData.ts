@@ -1286,16 +1286,16 @@ After you add it:
   },
   {
     id: 25,
-    title: 'Apartment Inquiry',
+    title: 'Apartment Application',
     department: 'property_management',
-    description: 'Lead capture form for prospective tenants via QR code, flyers, and banners',
+    description: 'Initial application for prospective tenants -- qualifies and schedules showing',
     path: '/apartment-inquiry',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
 ---
 
-**APARTMENT INQUIRY**
+**APARTMENT APPLICATION**
 
 ---
 
@@ -1305,53 +1305,257 @@ After you add it:
 
 **Email Address:** ___________________________________________
 
+**Date of Birth:** ___________________________________________
+
 ---
 
 ## What Are You Looking For?
 
 **Bedrooms Needed:**
-- [ ] Studio
-- [ ] 1 Bedroom
-- [ ] 2 Bedrooms
-- [ ] 3 Bedrooms
-- [ ] Not Sure
+- [ ] Studio  [ ] 1 Bedroom  [ ] 2 Bedrooms  [ ] 3 Bedrooms  [ ] 4 Bedrooms
 
 **Move-In Timeframe:**
-- [ ] ASAP
-- [ ] 1-2 Months
-- [ ] 3-6 Months
-- [ ] Just Looking
+- [ ] ASAP  [ ] 1-2 Months  [ ] 3-6 Months  [ ] Just Looking
 
-**Housing Voucher (Section 8):**
-- [ ] Yes
-- [ ] No
-- [ ] Not Sure
+---
+
+## Housing Voucher
+
+**Do you have a Section 8 or other housing voucher?**
+- [ ] Yes  [ ] No  [ ] Not Sure
+
+*If Yes:*
+
+**Voucher bedroom size:** ______________ **Housing authority:** __________________________
+
+---
+
+## Household Income
+
+**Approximate monthly household income:**
+- [ ] Under $1,500
+- [ ] $1,500 - $2,500
+- [ ] $2,500 - $3,500
+- [ ] $3,500 - $5,000
+- [ ] $5,000 - $7,500
+- [ ] $7,500+
+
+**Proof of income attached:** [ ] Yes  [ ] No  (pay stubs, bank statements, Cash App/Zelle, or other)
+
+---
+
+## Household
+
+**Number of people (including yourself):** __________
+
+**Names of additional occupants:**
+
+_______________________________________________
+
+_______________________________________________
 
 ---
 
 ## Areas of Interest
 
-- [ ] Park St
-- [ ] Maple Ave
-- [ ] Seymour / Affleck
-- [ ] Franklin Ave
-- [ ] Main St
-- [ ] Broad St
-- [ ] Other / No Preference
+- [ ] North End  [ ] South End  [ ] West End  [ ] Park Street Corridor  [ ] No Preference
 
 ---
 
-**How Did You Hear About Us?** ________________________________
+## How Did You Hear About Us?
 
-**Additional Comments:**
+- [ ] Vivian  [ ] Maribel  [ ] Online Listing  [ ] AppFolio  [ ] Walk-in  [ ] Other: ______________
+
+---
+
+**Comments:**
 
 _______________________________________________
+
 _______________________________________________
 
 ---
 
 *For office use:*
+Received: __________ Contacted: __________ By: __________ Outcome: __________________________`,
+  },
+  {
+    id: 26,
+    title: 'Full Tenant Application',
+    department: 'property_management',
+    description: 'Complete application after showing -- collects everything needed to process a lease',
+    path: '/tenant-application',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**FULL TENANT APPLICATION**
+
+---
+
+## Section A: Personal Information
+
+**Full Name:** _______________________________________________
+
+**Date of Birth:** ____________________________________________
+
+**Phone Number:** ___________________________________________
+
+**Email Address:** ___________________________________________
+
+**Current Address:** _________________________________________
+
+**How long at current address?** _______________________________
+
+---
+
+## Section B: Employment & Income
+
+**Income Source 1**
+
+Employer / source name: ______________________________________
+
+Phone: _____________________________________________________
+
+Position / job title: ___________________________________________
+
+How long? ___________________________________________________
+
+Proof of income attached: [ ] Yes  [ ] No
+
+---
+
+**Income Source 2**
+
+Employer / source name: ______________________________________
+
+Phone: _____________________________________________________
+
+Position / job title: ___________________________________________
+
+How long? ___________________________________________________
+
+Proof of income attached: [ ] Yes  [ ] No
+
+---
+
+**Approximate total monthly household income:**
+- [ ] Under $1,500
+- [ ] $1,500 - $2,500
+- [ ] $2,500 - $3,500
+- [ ] $3,500 - $5,000
+- [ ] $5,000 - $7,500
+- [ ] $7,500+
+
+---
+
+## Section C: Household
+
+**Number of people who will live in the unit (including yourself):** __________
+
+| Full Name | Date of Birth | Relationship |
+|---|---|---|
+| | | |
+| | | |
+| | | |
+
+---
+
+## Section D: Pets
+
+**Do you have any pets?** [ ] Yes  [ ] No
+
+*If Yes:*
+
+| Type | Approximate Weight |
+|---|---|
+| [ ] Dog [ ] Cat [ ] Other: ________ | __________ lbs |
+| [ ] Dog [ ] Cat [ ] Other: ________ | __________ lbs |
+
+---
+
+## Section E: Rental History
+
+**Current or most recent landlord name:** ________________________
+
+**Landlord phone number:** ____________________________________
+
+**Reason for moving:** ________________________________________
+
+---
+
+## Section F: What Are You Applying For?
+
+**Bedrooms needed:**
+- [ ] Studio  [ ] 1 Bedroom  [ ] 2 Bedrooms  [ ] 3 Bedrooms  [ ] 4 Bedrooms
+
+**Areas of interest:**
+- [ ] North End  [ ] South End  [ ] West End  [ ] Park Street Corridor  [ ] No Preference
+
+**Desired move-in date:** ______________________________________
+
+---
+
+## Section G: Payment Type
+
+**How will you be paying rent?**
+- [ ] Market Rate -- *complete Section H*
+- [ ] Section 8 / Housing Voucher -- *complete Section I*
+
+---
+
+## Section H: Market Rate Track
+
+- [ ] I authorize Stanton Management to verify the information provided in this application, including contacting my employer and landlord references.
+
+---
+
+## Section I: Section 8 / Voucher Track
+
+**Housing authority name:** ____________________________________
+
+**Voucher bedroom size:** ________________ **Payment standard:** _________________
+
+**Voucher expiration date:** ___________________________________
+
+**Caseworker name:** _________________________________________
+
+**Caseworker phone:** ________________________________________
+
+**Caseworker email:** _________________________________________
+
+Documents attached:
+- [ ] Voucher or approval letter
+- [ ] Moving packet / moving papers
+- [ ] Most recent bank statement(s)
+
+- [ ] I authorize Stanton Management to verify the information provided in this application, including contacting my employer, landlord references, and housing authority caseworker.
+
+---
+
+## Section J: Additional Information (Optional)
+
+**Social Security Number or Tax ID:** ___________________________
+
+Documents attached:
+- [ ] Government-issued photo ID
+- [ ] Social Security card or Tax ID document
+
+---
+
+## Signature
+
+By submitting this application, I confirm that all information provided is accurate to the best of my knowledge.
+
+**Signature:** _________________________ **Date:** ______________
+
+---
+
+*For office use:*
 Received: __________ Contacted: __________ By: __________
+Showing date: __________ Unit(s): __________________________
+Background check: __________ Credit check: __________________
 Outcome: ___________________________________________________`,
   },
 ];
