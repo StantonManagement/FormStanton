@@ -1,6 +1,4 @@
-export const metadata = {
-  title: 'Full Tenant Application — Printable | Stanton Management',
-};
+'use client';
 
 function PrintStyles() {
   return (
