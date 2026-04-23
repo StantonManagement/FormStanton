@@ -149,11 +149,32 @@ All resolved during Phase 0 checkpoint. Recorded here for migration reference:
 
 ---
 
-## `unique(form_submission_id, doc_type)` Constraint
+## `unique(form_submission_id, doc_type, person_slot)` Constraint
 
-Each submission can have at most one active document row per doc_type. Resubmissions add rows to `form_submission_document_revisions` and update the parent `form_submission_documents` row. This constraint prevents duplicate document rows from seeding bugs.
+Each submission can have at most one document row per `(doc_type, person_slot)` pair. Resubmissions add rows to `form_submission_document_revisions` and update the parent `form_submission_documents` row. The three-part key allows multiple slots for the same doc_type (one per person) while preventing duplicate seeding bugs. Original constraint `(form_submission_id, doc_type)` was amended — see Amendment section below.
 
 ---
+
+## Amendment — Per-Person Document Slots (approved Phase 1 checkpoint)
+
+**Problem identified:** `UNIQUE (form_submission_id, doc_type)` prevents multiple instances of the same doc_type per submission. PBV full application requires "Paystubs" once per employed adult, "HUD-9886-A" once per adult 18+, etc.
+
+**Changes applied to migration (migration not yet applied — safe to amend):**
+
+On `form_submission_documents`:
+- Added `person_slot integer NOT NULL DEFAULT 0` — `0` = submission-level; `1..N` = per-person (1-based index into `form_data.household_members`)
+- Changed `UNIQUE (form_submission_id, doc_type)` → `UNIQUE (form_submission_id, doc_type, person_slot)`
+- `person_label` not added — resolved at render time from `household_members[person_slot - 1]` to avoid name staleness
+
+On `form_document_templates`:
+- Added `per_person boolean NOT NULL DEFAULT false`
+- Added `applies_to text NOT NULL DEFAULT 'submission'` — values: `submission`, `each_member`, `each_adult`, `each_member_matching_rule`
+- Added `member_filter jsonb` — evaluated when `applies_to = 'each_member_matching_rule'`; multiple criteria ANDed
+- `applies_to` is intentionally generic — form-specific rules (e.g., "employed adult") are expressed via `member_filter` rather than hardcoded enum values
+
+Filename convention updated:
+- Per-person docs: `{AssetID}_{Unit} - {DocType} - {LastName} - P{slot} - {YYYYMMDD} - v{N}.{ext}`
+- Submission-level docs: omit `P{slot}` segment entirely
 
 ## Rollback Instructions
 

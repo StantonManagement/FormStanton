@@ -71,6 +71,8 @@ create table form_submission_documents (
   doc_type text not null,                    -- stable slug, e.g. 'paystubs', 'hud-9886a'
   label text not null,                       -- human-readable label shown to tenant and staff
   required boolean not null default true,
+  display_order integer not null default 0,
+  person_slot integer not null default 0,    -- 0 = submission-level; 1..N = per-person (1-based index into household_members)
   revision integer not null default 0,       -- 0 = never submitted; 1+ = submitted versions
   status text not null default 'missing',    -- 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived'
   file_name text,                            -- human-readable filename at rest (Stanton convention)
@@ -80,12 +82,16 @@ create table form_submission_documents (
   rejection_reason text,
   notes text,
   created_at timestamp default now(),
-  updated_at timestamp default now()
+  updated_at timestamp default now(),
+  unique (form_submission_id, doc_type, person_slot)  -- enforces one slot per (submission, doc_type, person)
 );
 
 create index idx_fsd_submission on form_submission_documents(form_submission_id);
 create index idx_fsd_status on form_submission_documents(status);
+create index idx_fsd_submission_status on form_submission_documents(form_submission_id, status);
 ```
+
+**Note on `person_label`:** Not stored on the row. Resolved at render time from `form_submissions.form_data.household_members[person_slot - 1]` to prevent staleness if the tenant corrects their name after seeding.
 
 ### New table: `form_submission_document_revisions`
 
@@ -124,6 +130,9 @@ create table form_document_templates (
   required boolean not null default true,
   conditional_on jsonb,                      -- optional: show only if form_data matches this shape
   display_order integer not null default 0,
+  per_person boolean not null default false, -- if true, one slot seeded per matched household member
+  applies_to text not null default 'submission', -- 'submission' | 'each_member' | 'each_adult' | 'each_member_matching_rule'
+  member_filter jsonb,                       -- criteria for 'each_member_matching_rule'; ANDed
   created_at timestamp default now(),
   unique (form_id, doc_type)
 );
@@ -133,18 +142,25 @@ create table form_document_templates (
 
 Files are renamed to the Stanton convention on upload, not on export.
 
-**Format:** `{AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{Revision}.{ext}`
+**Format (submission-level, `person_slot = 0`):**
+`{AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{Revision}.{ext}`
 
-**Example:** `S0001_2A - Paystubs - Garcia - 20260422 - v2.pdf`
+**Format (per-person, `person_slot ≥ 1`):**
+`{AssetID}_{Unit} - {DocType} - {LastName} - P{PersonSlot} - {YYYYMMDD} - v{Revision}.{ext}`
+
+**Examples:**
+- `S0001_2A - Proof of Identity - Garcia - 20260422 - v1.pdf` (submission-level)
+- `S0001_2A - Paystubs - Garcia - P2 - 20260422 - v1.pdf` (Adult 2's paystubs)
 
 Rules:
 - `AssetID_Unit` joined by underscore (one token — matches compliance storage path convention)
 - All other fields separated by ` - ` (space-dash-space)
 - `DocType` is the human-readable label from `form_document_templates.label`, not the slug (e.g., "Paystubs" not "paystubs")
-- `LastName` only — not "Last, First"
+- `LastName` is always the head-of-household's surname; `P{slot}` disambiguates which person within the household
+- `P{slot}` segment present only when `person_slot ≥ 1`; omit entirely for submission-level docs — do not render "P0"
 - Date in `YYYYMMDD` (no dashes) — avoids ambiguity with separator dashes
 - Revision always present, even for v1
-- If the combined filename exceeds 200 characters, truncate `DocType` first, then `LastName`
+- If the combined filename exceeds 200 characters, truncate `DocType` first, then `LastName`; never truncate `P{slot}` (it is the disambiguation key)
 
 Storage path: `form-submissions/{submission_id}/{doc_type}/{file_name}`
 
@@ -280,11 +296,13 @@ Parent status transitions must not regress without explicit staff action (e.g., 
 | Append-only revision history | Staff needs to see prior rejected versions to explain the pattern of rejection to tenant. |
 | Parent status derived from children | Single source of truth; reduces drift between parent and child state. |
 | Section 8 recertification as stress-test | If the abstraction doesn't fit recert, the abstraction is wrong. |
-| Filename convention: `{AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{N}.{ext}` | Extends existing compliance export dash-separated format. Consistent across systems. Decided Phase 0 checkpoint. |
+| Filename convention: see naming section | Submission-level omits person segment. Per-person appends `P{slot}` before date. LastName is always HOH. Decided Phase 0 checkpoint; per-person segment added Phase 1 amendment. |
 | Tenant access via `tenant_access_token` on `form_submissions` | Magic-link pattern consistent with project tool. No account required. Token is authorization. Decided Phase 0 checkpoint. |
 | Phase 4 is a new page, not an extension of TenantPortal | No existing tenant-facing submission-status page exists for `form_submissions`. Confirmed Phase 0 audit. |
 | Pre-existing workflow migration applied first in Phase 2 | Migration `20260314220000` was never applied to live DB. Must land before any new per-document columns. Confirmed Phase 0 audit. |
 | `pbv-document-tracker.jsx` lives in `tasks/reference/` for Phase 3 | Reference-only; not a route, not imported. Alex provides before Phase 3 begins. |
+| `person_label` not stored on document rows | Resolved at render time from `form_data.household_members[person_slot - 1]`. Storing names creates staleness risk. Decided Phase 1 amendment. |
+| `applies_to` is generic (`each_member_matching_rule` + `member_filter`) | Avoids ossifying PBV-specific values into foundation schema. Each form seeds its own filter criteria. Decided Phase 1 amendment. |
 
 ## Open Questions
 

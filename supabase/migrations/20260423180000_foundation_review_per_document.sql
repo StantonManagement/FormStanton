@@ -45,9 +45,13 @@ CREATE TABLE IF NOT EXISTS public.form_document_templates (
   required        BOOLEAN     NOT NULL DEFAULT TRUE,
   conditional_on  JSONB,
   display_order   INTEGER     NOT NULL DEFAULT 0,
+  per_person      BOOLEAN     NOT NULL DEFAULT FALSE,
+  applies_to      TEXT        NOT NULL DEFAULT 'submission',
+  member_filter   JSONB,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by      TEXT,
+  CONSTRAINT fdt_applies_to_chk CHECK (applies_to IN ('submission', 'each_member', 'each_adult', 'each_member_matching_rule')),
   UNIQUE (form_id, doc_type)
 );
 
@@ -69,6 +73,15 @@ CREATE INDEX IF NOT EXISTS idx_fdt_form_id
 COMMENT ON TABLE public.form_document_templates IS
   'Template definitions: which documents each per-document form expects. Rows here seed form_submission_documents at submission creation.';
 
+COMMENT ON COLUMN public.form_document_templates.per_person IS
+  'If true, seeding creates one form_submission_documents row per matched household member (using applies_to / member_filter). If false, seeding creates one row with person_slot = 0.';
+
+COMMENT ON COLUMN public.form_document_templates.applies_to IS
+  'Which household members receive a slot. submission = one slot for the whole submission. each_member = all members. each_adult = members aged 18+. each_member_matching_rule = members matching member_filter criteria.';
+
+COMMENT ON COLUMN public.form_document_templates.member_filter IS
+  'JSONB criteria evaluated against each household_members entry when applies_to = each_member_matching_rule. Format: {"field": "employed", "value": true} or {"field": "age", "op": "gte", "value": 18}. Multiple criteria are ANDed.';
+
 COMMENT ON COLUMN public.form_document_templates.conditional_on IS
   'Optional. If set, this document slot is only shown when form_submissions.form_data matches this shape. Format TBD per form — validated in application layer.';
 
@@ -86,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.form_submission_documents (
   label               TEXT        NOT NULL,
   required            BOOLEAN     NOT NULL DEFAULT TRUE,
   display_order       INTEGER     NOT NULL DEFAULT 0,
+  person_slot         INTEGER     NOT NULL DEFAULT 0,
   revision            INTEGER     NOT NULL DEFAULT 0,
   status              TEXT        NOT NULL DEFAULT 'missing',
   file_name           TEXT,
@@ -98,7 +112,8 @@ CREATE TABLE IF NOT EXISTS public.form_submission_documents (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by          TEXT,
   CONSTRAINT fsd_status_chk CHECK (status IN ('missing', 'submitted', 'approved', 'rejected', 'waived')),
-  UNIQUE (form_submission_id, doc_type)
+  CONSTRAINT fsd_person_slot_non_negative CHECK (person_slot >= 0),
+  UNIQUE (form_submission_id, doc_type, person_slot)
 );
 
 ALTER TABLE public.form_submission_documents ENABLE ROW LEVEL SECURITY;
@@ -125,11 +140,14 @@ CREATE INDEX IF NOT EXISTS idx_fsd_submission_status
 COMMENT ON TABLE public.form_submission_documents IS
   'Current state of each document slot in a per-document submission. revision=0 means never uploaded. Append-only history in form_submission_document_revisions.';
 
+COMMENT ON COLUMN public.form_submission_documents.person_slot IS
+  '0 = submission-level document (not tied to a specific person). 1..N = per-person instance; index into form_submissions.form_data.household_members (1-based). Name resolved at render time from household_members[person_slot - 1], never stored on this row.';
+
 COMMENT ON COLUMN public.form_submission_documents.revision IS
   '0 = never submitted. Incremented on each tenant upload. Matches the latest row in form_submission_document_revisions.';
 
 COMMENT ON COLUMN public.form_submission_documents.file_name IS
-  'Human-readable filename at rest: {AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{N}.{ext}. Set at upload time, not export time.';
+  'Human-readable filename at rest. Submission-level (person_slot=0): {AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{N}.{ext}. Per-person (person_slot>=1): {AssetID}_{Unit} - {DocType} - {LastName} - P{slot} - {YYYYMMDD} - v{N}.{ext}. Set at upload time, not export time.';
 
 COMMENT ON COLUMN public.form_submission_documents.storage_path IS
   'Full path in Supabase storage: form-submissions/{submission_id}/{doc_type}/{file_name}';
