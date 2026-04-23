@@ -116,7 +116,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: { revision: newRevision, file_name: fileName, storage_path: storagePath },
+      data: { revision: newRevision, file_name: fileName },
     }, { status: 201 });
   } catch (error: any) {
     console.error('Tenant document upload error:', error);

@@ -56,7 +56,8 @@ export function buildStantonFilename(params: {
 }
 
 /** Extracts the file extension (without dot) from a filename, lower-cased. */
-export function getExtension(filename: string): string {
+export function getExtension(filename: string | undefined | null): string {
+  if (!filename) return 'bin';
   const parts = filename.split('.');
   return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : 'bin';
 }

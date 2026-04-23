@@ -63,10 +63,36 @@ export async function GET(
       return acc;
     }, {});
 
-    const documentsWithRevisions = (documents ?? []).map(doc => ({
-      ...doc,
-      revisions: revisionsByDoc[doc.id] ?? [],
-    }));
+    // Generate short-lived signed URLs (5 min) for any revision that has a storage_path.
+    // Raw paths are never returned to the client.
+    const TTL = 300;
+    const allStoragePaths = revisions
+      .map(r => r.storage_path)
+      .filter(Boolean) as string[];
+    const signedMap: Record<string, string> = {};
+    if (allStoragePaths.length > 0) {
+      const { data: signed } = await supabaseAdmin.storage
+        .from('form-submissions')
+        .createSignedUrls(allStoragePaths, TTL);
+      for (const entry of signed ?? []) {
+        if (entry.path && entry.signedUrl) signedMap[entry.path] = entry.signedUrl;
+      }
+    }
+
+    const documentsWithRevisions = (documents ?? []).map(doc => {
+      // Also sign the current doc's storage_path if present
+      const docSignedUrl = doc.storage_path ? signedMap[doc.storage_path] ?? null : null;
+      const { storage_path: _sp, ...docWithoutPath } = doc;
+      return {
+        ...docWithoutPath,
+        download_url: docSignedUrl,
+        revisions: (revisionsByDoc[doc.id] ?? []).map(rev => {
+          const revSignedUrl = rev.storage_path ? signedMap[rev.storage_path] ?? null : null;
+          const { storage_path: _rsp, ...revWithoutPath } = rev;
+          return { ...revWithoutPath, download_url: revSignedUrl };
+        }),
+      };
+    });
 
     return NextResponse.json({
       success: true,
