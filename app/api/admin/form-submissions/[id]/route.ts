@@ -88,9 +88,19 @@ export async function PATCH(
 
     const { data: currentSubmission } = await supabaseAdmin
       .from('form_submissions')
-      .select('status, status_history, sent_to_appfolio_at')
+      .select('status, status_history, sent_to_appfolio_at, review_granularity')
       .eq('id', id)
       .single();
+
+    // Per-document submissions derive status from child documents; direct writes are rejected
+    if (currentSubmission?.review_granularity === 'per_document') {
+      if (status !== undefined || denial_reason !== undefined || revision_notes !== undefined) {
+        return NextResponse.json(
+          { success: false, message: 'Submission uses per_document review — status, denial_reason, and revision_notes are derived from child documents. Use POST /api/admin/submissions/[id]/documents/[documentId]/review instead.' },
+          { status: 400 }
+        );
+      }
+    }
 
     const updates: any = {};
 

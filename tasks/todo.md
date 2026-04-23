@@ -42,20 +42,27 @@
 
 ---
 
-## Phase 2 — Schema Execution + API Layer ⏳ WAITING
+## Phase 2 — Schema Execution + API Layer 🔄 IN PROGRESS
 
 **Deliverables:**
-- [ ] **PREREQUISITE:** Apply `20260314220000_add_submission_workflow_fields.sql` to live DB (never applied). Stop and flag if it fails.
-- [ ] Apply new per-document migration to live DB
-- [ ] Create `form-submissions` storage bucket
-- [ ] `POST /api/forms/[form_id]/submissions` — extended (init document rows)
-- [ ] `POST /api/t/[token]/submissions/[submission_id]/documents/[doc_type]` — tenant upload
-- [ ] `POST /api/admin/submissions/[submission_id]/documents/[document_id]/review` — staff action
-- [ ] `GET /api/admin/submissions/[submission_id]/documents` — list + revision history
-- [ ] `GET /api/admin/submissions/[submission_id]/export` — ZIP
-- [ ] Integration tests for each route
-- [ ] Guard on `PATCH /api/admin/form-submissions/[id]` — reject direct status write for per-document submissions
-- [ ] `form-submissions` storage bucket created
+- [x] **PREREQUISITE:** Apply `20260314220000_add_submission_workflow_fields.sql` to live DB ✓
+- [x] Apply amended per-document migration to live DB ✓
+- [x] Create `form-submissions` storage bucket (non-public) ✓
+- [x] `POST /api/forms/[formId]/submissions` — seeds per-document submission + document slots from templates
+- [x] `GET /api/t/[token]/status` — tenant views submission + document list
+- [x] `POST /api/t/[token]/documents/[documentId]` — tenant uploads file to slot (route deviation from PRD: documentId > doc_type+slot)
+- [x] `POST /api/admin/submissions/[submissionId]/documents/[documentId]/review` — approve/reject/waive
+- [x] `GET /api/admin/submissions/[submissionId]/documents` — list + revision history
+- [x] `GET /api/admin/submissions/[submissionId]/export` — ZIP of submitted/approved/waived docs + manifest.csv
+- [x] `POST /api/admin/form-submissions/[id]/regenerate-token` — new tenant_access_token
+- [x] Guard on `PATCH /api/admin/form-submissions/[id]` — blocks status/denial/revision_notes write for per_document submissions
+- [x] `lib/stantonFilename.ts` — Stanton filename builder (P{slot} logic included)
+- [x] `lib/memberFilter.ts` — applies_to / member_filter evaluator
+- [x] `scripts/test-foundation-review.ts` — integration test script (T1–T10 coverage)
+
+**Route deviation from PRD:** Tenant upload uses `[documentId]` (the UUID) rather than `[doc_type]` + person_slot. Rationale: `doc_type` alone is ambiguous with multiple per-person slots. The frontend already has document UUIDs from the status GET endpoint.
+
+**Awaiting Phase 2 checkpoint:** Alex runs `scripts/test-foundation-review.ts` or verifies curl examples. Seed `form_document_templates` first.
 
 ---
 
