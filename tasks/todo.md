@@ -5,7 +5,7 @@
 ## Phase 0 — Reconnaissance ✅ COMPLETE
 
 **Deliverable:** `tasks/foundation-review-audit.md`  
-**Status:** Written. Awaiting Alex's review.
+**Status:** Approved by Alex — Phase 0 checkpoint passed.
 
 ### What was established:
 - Full `form_submissions` schema audited (live DB + migrations)
@@ -17,15 +17,16 @@
 - Identified storage buckets (no `form-submissions` bucket exists)
 - Documented i18n pattern from `lib/portalTranslations.ts`
 
-### Assumptions requiring Alex's approval before Phase 1:
-- **[A1]** Per-document filename convention confirmed as PRD's underscore format
-- **[A2]** Phase 4 will CREATE a new tenant status page (no existing one to extend)
-- **[A3]** New `form-submissions` storage bucket to be created in Phase 2
-- **[A4]** Workflow migration must be applied in Phase 2 before new columns
+### Resolutions (Phase 0 checkpoint):
+- **[A1 → resolved]** Filename convention: `{AssetID}_{Unit} - {DocType} - {LastName} - {YYYYMMDD} - v{N}.{ext}`. Extends existing compliance dash format.
+- **[A2 → resolved]** Phase 4 builds a new tenant page at `/t/[token]`. Token stored as `tenant_access_token` on `form_submissions`. Magic-link only, no account.
+- **[A3 → resolved]** New `form-submissions` storage bucket created in Phase 2 migration.
+- **[A4 → resolved]** Workflow migration `20260314220000` applied as Phase 2's first step. If it fails, stop and flag.
+- **[ref file]** Alex will place `pbv-document-tracker.jsx` at `tasks/reference/pbv-document-tracker.jsx` before Phase 3. If absent when Phase 3 starts, stop and flag.
 
 ---
 
-## Phase 1 — Schema Design ⏳ WAITING (awaiting Phase 0 approval)
+## Phase 1 — Schema Design 🔄 IN PROGRESS
 
 **Deliverables:**
 - [ ] `tasks/foundation-review-schema-decision.md` — 3 alternatives + recommendation
@@ -34,7 +35,8 @@
 **Scope:**
 - Evaluate: child table model (PRD proposal) vs. JSONB-per-submission vs. polymorphic reviewable_items
 - Analyze: query ergonomics, indexing, RLS complexity, bulk export difficulty, future Section 8 reuse
-- Write migration for chosen approach (includes workflow fields catch-up + new tables)
+- Write migration for chosen approach (new tables only — workflow fields catch-up is Phase 2 step 1)
+- New `form_submissions` columns to add: `review_granularity`, `document_review_summary`, `tenant_access_token`
 - Include rollback instructions
 
 ---
@@ -42,7 +44,9 @@
 ## Phase 2 — Schema Execution + API Layer ⏳ WAITING
 
 **Deliverables:**
-- [ ] Migration applied to live DB
+- [ ] **PREREQUISITE:** Apply `20260314220000_add_submission_workflow_fields.sql` to live DB (never applied). Stop and flag if it fails.
+- [ ] Apply new per-document migration to live DB
+- [ ] Create `form-submissions` storage bucket
 - [ ] `POST /api/forms/[form_id]/submissions` — extended (init document rows)
 - [ ] `POST /api/t/[token]/submissions/[submission_id]/documents/[doc_type]` — tenant upload
 - [ ] `POST /api/admin/submissions/[submission_id]/documents/[document_id]/review` — staff action
