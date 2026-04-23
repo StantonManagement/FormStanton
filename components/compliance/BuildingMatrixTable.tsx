@@ -22,6 +22,19 @@ function computeNextAction(row: MatrixRow): RowAction {
     return { text: '⚠ No submission', level: 'red', totalRemaining: 1 };
   }
 
+  if (row.permit_revoked) {
+    const reasonLabel = row.permit_revoked_reason
+      ? ` (${row.permit_revoked_reason.replace('_', ' ')})`
+      : '';
+    return {
+      text: row.tow_flagged
+        ? `⚠ Revoked${reasonLabel} — on tow list`
+        : `⚠ Permit revoked${reasonLabel}`,
+      level: 'red',
+      totalRemaining: 1,
+    };
+  }
+
   const actions = COMPLIANCE_COLUMNS
     .map(col => col.getAction(row))
     .filter((a): a is { text: string; level: 'red' | 'blue' | 'amber' } => a !== null);
@@ -391,6 +404,53 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
                       }
                       case 'status': {
                         const sp = col.getStatusCellProps(row);
+                        // Wire up interactive AppFolio-entry status cells
+                        let onMark: (() => Promise<void>) | undefined;
+                        let onUndo: (() => Promise<void>) | undefined;
+                        let actionLabel: string | undefined;
+                        if (row.submission_id && !isMissing) {
+                          if (col.id === 'permit_in_appfolio') {
+                            actionLabel = 'Permit entered in AppFolio';
+                            onMark = async () => {
+                              const res = await fetch('/api/admin/compliance/mark-permit-entered', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ submissionId: row.submission_id }),
+                              });
+                              const data = await res.json();
+                              if (data.success) { onRefresh(); onToast?.(`Permit marked entered in AppFolio for ${getTenantName(row)}`); }
+                            };
+                            onUndo = async () => {
+                              const res = await fetch('/api/admin/compliance/mark-permit-entered', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ submissionId: row.submission_id, undo: true }),
+                              });
+                              const data = await res.json();
+                              if (data.success) { onRefresh(); onToast?.(`Permit AppFolio entry cleared for ${getTenantName(row)}`); }
+                            };
+                          } else if (col.id === 'pickup_id_in_appfolio') {
+                            actionLabel = 'Pickup ID uploaded to AppFolio';
+                            onMark = async () => {
+                              const res = await fetch('/api/admin/compliance/mark-pickup-id-uploaded', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ submissionId: row.submission_id }),
+                              });
+                              const data = await res.json();
+                              if (data.success) { onRefresh(); onToast?.(`Pickup ID marked uploaded for ${getTenantName(row)}`); }
+                            };
+                            onUndo = async () => {
+                              const res = await fetch('/api/admin/compliance/mark-pickup-id-uploaded', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ submissionId: row.submission_id, undo: true }),
+                              });
+                              const data = await res.json();
+                              if (data.success) { onRefresh(); onToast?.(`Pickup ID upload cleared for ${getTenantName(row)}`); }
+                            };
+                          }
+                        }
                         return (
                           <MatrixStatusCell
                             key={col.id}
@@ -401,6 +461,9 @@ export default function BuildingMatrixTable({ rows, onSelectTenant, onRefresh, s
                             pendingLabel={sp.pendingLabel}
                             auditBy={sp.auditBy}
                             auditAt={sp.auditAt}
+                            onMark={onMark}
+                            onUndo={onUndo}
+                            actionLabel={actionLabel}
                           />
                         );
                       }

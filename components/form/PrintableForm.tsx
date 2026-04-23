@@ -10,6 +10,7 @@ interface PrintableFormProps {
   formPath?: string;
   showPrintButton?: boolean;
   onClose?: () => void;
+  onPrint?: () => void;
 }
 
 export default function PrintableForm({
@@ -19,6 +20,7 @@ export default function PrintableForm({
   formPath,
   showPrintButton = false,
   onClose,
+  onPrint,
 }: PrintableFormProps) {
   useEffect(() => {
     if (onClose) {
@@ -30,7 +32,7 @@ export default function PrintableForm({
   }, [onClose]);
 
   const handlePrint = () => {
-    window.print();
+    if (onPrint) { onPrint(); } else { window.print(); }
   };
 
   const formattedContent = formatFormContent(content);

@@ -270,7 +270,7 @@ export default function TenantAssessmentPage() {
     return (
       <SuccessScreen
         title="Assessment Submitted"
-        message="The tenant assessment has been submitted successfully."
+        message="The applicant assessment has been submitted successfully."
         language={language}
         onLanguageChange={setLanguage}
       />
@@ -284,7 +284,7 @@ export default function TenantAssessmentPage() {
       <FormLayout>
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
           <div className="border-l-4 border-[var(--accent)] bg-[var(--bg-section)] p-4 sm:p-6 rounded-sm">
-            <h1 className="font-serif text-xl text-[var(--primary)] mb-2">Tenant Assessment</h1>
+            <h1 className="font-serif text-xl text-[var(--primary)] mb-2">Applicant Assessment</h1>
             <p className="text-sm text-[var(--ink)]">Hartford Market — Quick Assessment Guide</p>
             <p className="text-sm text-[var(--muted)] mt-3">Complete all sections, keep notes factual, and submit your final recommendation.</p>
           </div>

@@ -154,9 +154,8 @@
     margin-bottom: 8pt;
   }
 
-  /* Company Header Styling */
-  .form-content strong:first-child,
-  .form-content > p:first-child strong {
+  /* Company Header Styling — target only a strong that is the sole child of the first paragraph */
+  .form-content > p:first-child > strong:only-child {
     font-size: 16pt;
     display: block;
     text-align: center;

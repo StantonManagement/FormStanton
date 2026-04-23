@@ -23,6 +23,11 @@ export interface ComplianceRecord {
   pet_fee_added_to_appfolio: boolean;
   permit_fee_added_to_appfolio: boolean;
   permit_issued: boolean;
+  tenant_picked_up: boolean;
+  permit_entered_in_appfolio: boolean;
+  pickup_id_photo: string | null;
+  pickup_id_uploaded_to_appfolio: boolean;
+  permit_revoked: boolean;
   insurance_verified: boolean;
   calculated_pet_fee: number | null;
   calculated_permit_fee: number | null;
@@ -202,7 +207,7 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
   // --- Fees (priority 2 = blue) ---
   {
     id: 'pet_fee',
-    label: 'Pet Fee',
+    label: 'Pet Rent',
     cellType: 'fee',
     feeType: 'pet_rent',
     priority: 2,
@@ -212,7 +217,7 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
       if (!rec.has_pets) return null;
       if (!rec.pet_fee_added_to_appfolio) {
         const amt = rec.calculated_pet_fee;
-        return { text: amt != null ? `Load pet fee $${amt} in AppFolio` : 'Load pet fee in AppFolio (amount TBD)', level: 'blue' };
+        return { text: amt != null ? `Load pet rent $${amt} in AppFolio` : 'Load pet rent in AppFolio (amount TBD)', level: 'blue' };
       }
       return null;
     },
@@ -226,7 +231,7 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
   },
   {
     id: 'permit_fee',
-    label: 'Permit Fee',
+    label: 'Parking Fee',
     cellType: 'fee',
     feeType: 'permit_fee',
     priority: 2,
@@ -236,7 +241,7 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
       if (!rec.requires_parking_permit) return null;
       if (!rec.permit_fee_added_to_appfolio) {
         const amt = rec.calculated_permit_fee;
-        return { text: amt != null ? `Load permit fee $${amt} in AppFolio` : 'Load permit fee in AppFolio (amount TBD)', level: 'blue' };
+        return { text: amt != null ? `Load parking fee $${amt} in AppFolio` : 'Load parking fee in AppFolio (amount TBD)', level: 'blue' };
       }
       return null;
     },
@@ -255,10 +260,10 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
     label: 'Permit',
     cellType: 'status',
     priority: 3,
-    isApplicable: (rec) => rec.requires_parking_permit,
+    isApplicable: (rec) => rec.requires_parking_permit && !rec.permit_revoked,
     isComplete: (rec) => rec.permit_issued,
     getAction: (rec) => {
-      if (!rec.requires_parking_permit) return null;
+      if (!rec.requires_parking_permit || rec.permit_revoked) return null;
       if (!rec.permit_issued) return { text: 'Issue permit', level: 'amber' };
       return null;
     },
@@ -268,6 +273,69 @@ export const COMPLIANCE_COLUMNS: ComplianceColumnDef[] = [
       pendingLabel: 'Pending',
       auditBy: row.permit_issued_by,
       auditAt: row.permit_issued_at,
+    }),
+  },
+  {
+    id: 'permit_pickup',
+    label: 'Pickup',
+    cellType: 'status',
+    priority: 3,
+    isApplicable: (rec) => rec.requires_parking_permit && !rec.permit_revoked,
+    isComplete: (rec) => rec.tenant_picked_up,
+    getAction: (rec) => {
+      if (!rec.requires_parking_permit || rec.permit_revoked) return null;
+      if (!rec.permit_issued) return null;
+      if (!rec.tenant_picked_up) return { text: 'Tenant to pick up permit', level: 'amber' };
+      return null;
+    },
+    getStatusCellProps: (row) => ({
+      done: row.tenant_picked_up,
+      doneLabel: row.pickup_count > 1 ? `✓ x${row.pickup_count}` : '✓ Picked up',
+      pendingLabel: 'Pending',
+      auditBy: null,
+      auditAt: row.tenant_picked_up_at,
+    }),
+  },
+  {
+    id: 'permit_in_appfolio',
+    label: 'Permit → AF',
+    cellType: 'status',
+    priority: 3,
+    isApplicable: (rec) => rec.requires_parking_permit && !rec.permit_revoked,
+    isComplete: (rec) => rec.permit_entered_in_appfolio,
+    getAction: (rec) => {
+      if (!rec.requires_parking_permit || rec.permit_revoked) return null;
+      if (!rec.permit_issued) return null;
+      if (!rec.permit_entered_in_appfolio) return { text: 'Enter permit in AppFolio', level: 'blue' };
+      return null;
+    },
+    getStatusCellProps: (row) => ({
+      done: row.permit_entered_in_appfolio,
+      doneLabel: '✓',
+      pendingLabel: 'Enter',
+      auditBy: row.permit_entered_in_appfolio_by,
+      auditAt: row.permit_entered_in_appfolio_at,
+    }),
+  },
+  {
+    id: 'pickup_id_in_appfolio',
+    label: 'ID → AF',
+    cellType: 'status',
+    priority: 3,
+    isApplicable: (rec) => rec.requires_parking_permit && !rec.permit_revoked && !!rec.pickup_id_photo,
+    isComplete: (rec) => rec.pickup_id_uploaded_to_appfolio,
+    getAction: (rec) => {
+      if (!rec.requires_parking_permit || rec.permit_revoked) return null;
+      if (!rec.pickup_id_photo) return null;
+      if (!rec.pickup_id_uploaded_to_appfolio) return { text: 'Upload pickup ID to AppFolio', level: 'blue' };
+      return null;
+    },
+    getStatusCellProps: (row) => ({
+      done: row.pickup_id_uploaded_to_appfolio,
+      doneLabel: '✓',
+      pendingLabel: 'Upload',
+      auditBy: row.pickup_id_uploaded_to_appfolio_by,
+      auditAt: row.pickup_id_uploaded_to_appfolio_at,
     }),
   },
 ];

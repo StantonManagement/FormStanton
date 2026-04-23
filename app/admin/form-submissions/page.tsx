@@ -24,6 +24,7 @@ interface FormSubmission {
   assigned_to: string | null;
   priority: FormPriority | null;
   form_data: any;
+  review_granularity?: 'atomic' | 'per_document' | null;
 }
 
 type QuickView = 'all' | 'my_queue' | 'needs_action' | 'approved_not_sent' | 'ready_for_appfolio' | 'waiting_on_tenant';
@@ -176,6 +177,42 @@ export default function FormSubmissionsPage() {
     }
   };
 
+  const handleBulkExport = async () => {
+    const exportIds = Array.from(selectedIds).filter((id) => {
+      const sub = sortedSubmissions.find((s) => s.id === id);
+      return sub?.review_granularity === 'per_document';
+    });
+    if (exportIds.length === 0) return;
+
+    setIsBulkActionProcessing(true);
+    try {
+      const response = await fetch('/api/admin/submissions/bulk-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionIds: exportIds }),
+      });
+
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        throw new Error((json as any).message || `Export failed (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = response.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? 'bulk_export.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`Export failed: ${e.message}`);
+    } finally {
+      setIsBulkActionProcessing(false);
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectedIds.size === sortedSubmissions.length) {
       setSelectedIds(new Set());
@@ -251,6 +288,10 @@ export default function FormSubmissionsPage() {
     { id: 'ready_for_appfolio', label: 'Ready for Appfolio', count: statusCounts.approved },
     { id: 'waiting_on_tenant', label: 'Waiting on Tenant', count: statusCounts.revision_requested },
   ];
+
+  const hasPerDocSelection = Array.from(selectedIds).some(
+    (id) => sortedSubmissions.find((s) => s.id === id)?.review_granularity === 'per_document'
+  );
 
   return (
     <>
@@ -466,6 +507,15 @@ export default function FormSubmissionsPage() {
               >
                 Mark Sent to Appfolio
               </button>
+              {hasPerDocSelection && (
+                <button
+                  onClick={handleBulkExport}
+                  disabled={isBulkActionProcessing}
+                  className="px-4 py-2 bg-gray-700 text-white rounded-none hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
+                >
+                  Export ZIP
+                </button>
+              )}
             </div>
           )}
         </div>

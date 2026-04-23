@@ -4,7 +4,7 @@ import { llcTable } from './policyContent';
 // Do NOT use Unicode characters: → • — " " ' '
 // Use ASCII equivalents: -> - -- " ' instead
 
-export type Department = 'property_management' | 'maintenance' | 'compliance' | 'finance';
+export type Department = 'leasing' | 'property_management' | 'maintenance' | 'compliance' | 'housing_programs' | 'collections' | 'hr';
 
 export interface TenantForm {
   id: number;
@@ -16,10 +16,13 @@ export interface TenantForm {
 }
 
 export const departmentLabels: Record<Department, string> = {
+  leasing: 'Leasing',
   property_management: 'Property Management',
   maintenance: 'Maintenance',
   compliance: 'Compliance',
-  finance: 'Finance',
+  housing_programs: 'Housing Programs',
+  collections: 'Collections',
+  hr: 'HR',
 };
 
 // Canonical registry for forms shown in Admin > Forms Library.
@@ -40,116 +43,66 @@ export const tenantForms: TenantForm[] = [
 
 **Tenant Name(s):** _______________________________________________
 
-**Unit Address:** _________________________________________________
+**Property Address:** _____________________________________________
 
-**Move-In Date:** _________________________________________________
+**Apartment No.:** ________________ **Unit Size:** ________________
 
-**Keys Received:** Unit Keys _____ Mailbox Keys _____ Fobs _____
-
----
-
-## Instructions
-
-Walk through your entire unit and note the condition of each item below. Use the following codes:
-
-- **G** = Good / No issues
-- **D** = Damaged (describe)
-- **M** = Missing
-- **N/A** = Not applicable to this unit
-
-Take photos of any damage and attach them to this form. **Return this form to the office within 7 days of move-in.** If we do not receive it within that window, the unit will be considered accepted in its delivered condition.
+**Move-In Inspection Date:** ______________ **Keys:** Unit _____ Mailbox _____ Fobs _____
 
 ---
 
-## Living Room / Common Areas
-
-| Item | Condition | Notes |
+| Item | Condition | Notes / Description |
 |---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors / Carpet | | |
-| Windows | | |
-| Window Screens | | |
-| Blinds / Shades | | |
-| Doors | | |
-| Door Hardware / Locks | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
-| Baseboards / Heaters | | |
+| **ENTRANCE / HALLS** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **BEDROOM(S)** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **KITCHEN** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **LIVING ROOM** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **BATHROOM(S)** | | |
+| | | |
+| | | |
+| | | |
+| | | |
+| **OTHER** | | |
+| | | |
+| | | |
 
 ---
 
-## Kitchen
-
-| Item | Condition | Notes |
-|---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors | | |
-| Cabinets | | |
-| Countertops | | |
-| Sink / Faucet | | |
-| Stove / Oven | | |
-| Refrigerator | | |
-| Dishwasher (if applicable) | | |
-| Microwave (if applicable) | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
+**Condition codes:** Good -- Damage Present -- Immediate Repair Required -- Missing -- N/A
 
 ---
 
-## Bathroom(s)
+**MANAGEMENT ACKNOWLEDGMENT**
 
-| Item | Condition | Notes |
-|---|---|---|
-| Walls / Tiles | | |
-| Ceiling | | |
-| Floor | | |
-| Toilet | | |
-| Sink / Faucet | | |
-| Shower / Tub | | |
-| Shower Curtain / Door | | |
-| Mirror / Medicine Cabinet | | |
-| Exhaust Fan | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
+This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.
+
+Manager's Signature _________________________________________________ Date __________
 
 ---
 
-## Bedroom(s)
+**TENANT ACKNOWLEDGMENT**
 
-| Item | Condition | Notes |
-|---|---|---|
-| Walls | | |
-| Ceiling | | |
-| Floors / Carpet | | |
-| Windows | | |
-| Window Screens | | |
-| Blinds / Shades | | |
-| Closet Doors | | |
-| Light Fixtures | | |
-| Outlets / Switches | | |
-| Baseboards / Heaters | | |
+I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear.
 
----
+**Resident Signature:** _________________________ Date: __________
 
-## Additional Notes
-
-_______________________________________________
-_______________________________________________
-_______________________________________________
-
----
-
-## Signatures
-
-By signing below, both parties acknowledge the condition of the unit as documented above.
-
-**Tenant Signature:** _________________________ Date: __________
-
-**Tenant Signature (if applicable):** _________________________ Date: __________
-
-**Stanton Management Representative:** _________________________ Date: __________`,
+**Resident Signature (if applicable):** _________________________ Date: __________`,
   },
   {
     id: 2,
@@ -618,7 +571,7 @@ Scheduled pickup: __________ Notes: _____________________________
 Staff initials: __________`,
   },
 
-  // COMPLIANCE FORMS
+  // COMPLIANCE FORMS (id 12-15 stay compliance; 16 moves to housing_programs below)
   {
     id: 12,
     title: 'Pet Approval Request / Pet Addendum',
@@ -836,7 +789,7 @@ Complete and submit a Pet Approval Request (Form 4) within **5 business days** o
   {
     id: 16,
     title: 'Section 8 Recertification Checklist',
-    department: 'compliance',
+    department: 'housing_programs',
     description: 'Annual recertification requirements for Section 8 tenants',
     path: '/section8-recertification',
     content: `**Stanton Management LLC**
@@ -917,11 +870,11 @@ _______________________________________________
 *Copy provided to tenant:* [ ] Yes Date: __________`,
   },
 
-  // FINANCE FORMS
+  // COLLECTIONS FORMS (tenant payment / billing)
   {
     id: 17,
     title: 'Cash Payment Appointment Request',
-    department: 'finance',
+    department: 'collections',
     description: 'Schedule appointment for cash rent payment (no walk-ins)',
     path: '/cash-payment-appointment',
     content: `**Stanton Management LLC**
@@ -954,7 +907,7 @@ Receipt issued: [ ] Yes Receipt #: __________`,
   {
     id: 18,
     title: 'PaySlip Request',
-    department: 'finance',
+    department: 'collections',
     description: 'Request PaySlip barcode to pay rent at retail locations',
     path: '/payslip-request',
     content: `**Stanton Management LLC**
@@ -986,7 +939,7 @@ Delivered to tenant: [ ] Yes Method: __________ Date: __________`,
   {
     id: 19,
     title: 'Tenant Billing Dispute Form',
-    department: 'finance',
+    department: 'collections',
     description: 'Formally dispute charges or security deposit deductions',
     path: '/billing-dispute',
     content: `**Stanton Management LLC**
@@ -1044,10 +997,11 @@ _______________________________________________
 *Response due by:* __________
 *Outcome:* ___________________________________________________`,
   },
+  // HR FORMS (internal / employee-facing)
   {
     id: 20,
     title: 'Reimbursement Request',
-    department: 'finance',
+    department: 'hr',
     description: 'Submit reimbursement details and supporting documentation',
     path: '/reimbursement',
     content: `**Stanton Management LLC**
@@ -1082,18 +1036,19 @@ _______________________________________________
 
 *For office use:* Approved [ ] Denied [ ] Amount: $__________ Date: __________`,
   },
+  // LEASING FORMS
   {
     id: 21,
-    title: 'Tenant Assessment',
-    department: 'property_management',
-    description: 'Hartford market quick assessment for prospective tenants',
+    title: 'Applicant Assessment',
+    department: 'leasing',
+    description: 'Hartford market quick assessment for prospective applicants',
     path: '/tenant-assessment',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
 ---
 
-**Tenant Assessment**
+**Applicant Assessment**
 
 Use the live form for full submission workflow and voice notes.
 
@@ -1337,7 +1292,7 @@ After you add it:
   {
     id: 25,
     title: 'Apartment Inquiry',
-    department: 'property_management',
+    department: 'leasing',
     description: 'Lead capture form for prospective tenants via QR code, flyers, and banners',
     path: '/apartment-inquiry',
     content: `**Stanton Management LLC**
@@ -1403,6 +1358,115 @@ _______________________________________________
 *For office use:*
 Received: __________ Contacted: __________ By: __________
 Outcome: ___________________________________________________`,
+  },
+
+  // PROPERTY MANAGEMENT — ADDITIONAL
+  {
+    id: 26,
+    title: 'Move-Out Inspection',
+    department: 'property_management',
+    description: 'Staff inspection form documenting unit condition at move-out with damage catalog',
+    path: '/move-out-inspection',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**MOVE-OUT INSPECTION**
+
+Staff-completed inspection form. Use the live form for full damage catalog, photo upload, and digital signature.
+
+Route: /move-out-inspection
+
+---
+
+**Summary Fields**
+- Building address and unit number
+- Move-out date and forwarding address
+- Room-by-room condition with damage catalog (categorized charges)
+- Photo upload for each damage item
+- Inspector signature and tenant acknowledgment`,
+  },
+
+  // COMPLIANCE — ADDITIONAL
+  {
+    id: 27,
+    title: 'Pet Fee Exemption',
+    department: 'compliance',
+    description: 'Request exemption from the monthly pet fee with supporting documentation',
+    path: '/pet-fee-exemption',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**PET FEE EXEMPTION REQUEST**
+
+Use the live form for full submission including document upload and signature.
+
+Route: /pet-fee-exemption
+
+---
+
+**Summary Fields**
+- Tenant name, unit address, pet details
+- Reason for exemption (e.g. assistance animal, emotional support animal)
+- Supporting documentation upload
+- Signature and date`,
+  },
+
+  // HOUSING PROGRAMS — ADDITIONAL
+  {
+    id: 28,
+    title: 'PBV Pre-Application',
+    department: 'housing_programs',
+    description: 'Project-Based Voucher pre-application submitted via tenant magic link',
+    path: '/pbv-preapp',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**PBV PRE-APPLICATION**
+
+This form is completed by tenants via their individual compliance portal link. It is not a standalone web form.
+
+---
+
+**Summary Fields**
+- Head of household name, date of birth, building and unit
+- Household members (name, DOB, relationship, income, income sources)
+- Total household income vs. income limit
+- Citizenship / eligible immigration status
+- Qualification result (likely qualifies / over income / citizenship issue)
+- Signature and date`,
+  },
+
+  // LEASING — ADDITIONAL
+  {
+    id: 29,
+    title: 'Applicant Onboarding Form',
+    department: 'leasing',
+    description: 'Full lease onboarding form covering insurance, pet addendum, vehicle addendum, and acknowledgments',
+    path: '/form',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**APPLICANT ONBOARDING FORM**
+
+Use the live form for full multi-section submission with signature capture.
+
+Route: /form
+
+---
+
+**Summary Sections**
+- Renters insurance acknowledgment and Additional Insured setup
+- Pet addendum (if applicable)
+- Vehicle and parking addendum (if applicable)
+- Policy acknowledgments and signatures`,
   },
 ];
 

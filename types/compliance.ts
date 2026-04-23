@@ -1,5 +1,18 @@
 // Shared types for the compliance page redesign (Phase 1)
 
+/** Permit pickup event — one entry per pickup (1st, 2nd, ...) */
+export interface PickupEvent {
+  at: string;
+  by: string;
+  id_photo_path: string | null;
+  reason: 'initial' | 'lost' | 'replacement' | 'additional_vehicle' | 'other';
+  reason_notes?: string | null;
+  event_number: number;
+}
+
+/** Reason a permit was revoked */
+export type RevokeReason = 'moved_out' | 'nonpayment' | 'lost' | 'other';
+
 /** One row per unit in the building matrix — computed server-side */
 export interface MatrixRow {
   unit_number: string;
@@ -51,6 +64,39 @@ export interface MatrixRow {
   permit_issued_at: string | null;
   permit_issued_by: string | null;
   tenant_picked_up: boolean;
+  tenant_picked_up_at: string | null;
+
+  // AppFolio permit entry tracking
+  permit_entered_in_appfolio: boolean;
+  permit_entered_in_appfolio_at: string | null;
+  permit_entered_in_appfolio_by: string | null;
+
+  // Pickup ID photo + AppFolio upload tracking
+  pickup_id_photo: string | null;
+  pickup_id_uploaded_to_appfolio: boolean;
+  pickup_id_uploaded_to_appfolio_at: string | null;
+  pickup_id_uploaded_to_appfolio_by: string | null;
+
+  // Pickup history
+  pickup_count: number;
+  pickup_events: PickupEvent[];
+
+  // Permit revoke + tow
+  permit_revoked: boolean;
+  permit_revoked_at: string | null;
+  permit_revoked_by: string | null;
+  permit_revoked_reason: RevokeReason | null;
+  permit_revoked_notes: string | null;
+  tow_flagged: boolean;
+  towed_at: string | null;
+  towed_by: string | null;
+
+  // Vehicle identity (for tow list)
+  vehicle_plate: string | null;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_year: string | number | null;
+  vehicle_color: string | null;
 
   // Verification status
   vehicle_verified: boolean;
@@ -220,6 +266,25 @@ export interface TenantSubmission {
   esa_doc_uploaded_to_appfolio_by?: string;
   pet_fee_added_to_appfolio?: boolean;
   permit_fee_added_to_appfolio?: boolean;
+  // AppFolio permit entry + pickup ID upload tracking
+  permit_entered_in_appfolio?: boolean;
+  permit_entered_in_appfolio_at?: string;
+  permit_entered_in_appfolio_by?: string;
+  pickup_id_uploaded_to_appfolio?: boolean;
+  pickup_id_uploaded_to_appfolio_at?: string;
+  pickup_id_uploaded_to_appfolio_by?: string;
+  // Pickup history
+  pickup_events?: PickupEvent[];
+  pickup_count?: number;
+  // Revoke + tow
+  permit_revoked?: boolean;
+  permit_revoked_at?: string;
+  permit_revoked_by?: string;
+  permit_revoked_reason?: RevokeReason | null;
+  permit_revoked_notes?: string | null;
+  tow_flagged?: boolean;
+  towed_at?: string;
+  towed_by?: string;
 }
 
 /** Tenant occupancy data for a building — from tenant lookup API */
@@ -396,4 +461,54 @@ export interface ProjectBuildingStats {
   total_units: number
   complete_units: number
   columns: Record<string, { complete: number; total: number }>
+}
+
+// ---------------------------------------------------------------------------
+// PBV Pre-Application types
+// ---------------------------------------------------------------------------
+
+export interface HouseholdMember {
+  name: string
+  dob: string
+  relationship: string
+  annual_income: number
+  income_sources: string[]
+}
+
+export type QualificationResult =
+  | 'likely_qualifies'
+  | 'over_income'
+  | 'citizenship_issue'
+  | 'over_income_and_citizenship'
+
+export type PbvReviewStatus = 'pending' | 'approved' | 'denied' | 'needs_info'
+
+export interface PbvPreapplication {
+  id: string
+  created_at: string
+  updated_at: string
+  created_by: string | null
+  project_unit_id: string | null
+  task_completion_id: string | null
+  hoh_name: string
+  hoh_dob: string
+  building_address: string
+  unit_number: string
+  household_members: HouseholdMember[]
+  household_size: number
+  total_household_income: number
+  hoh_is_citizen: boolean
+  other_adult_citizen: boolean | null
+  bedroom_count: number | null
+  income_limit: number | null
+  qualification_result: QualificationResult
+  signature_data: string
+  signature_date: string
+  stanton_review_status: PbvReviewStatus
+  stanton_reviewer: string | null
+  stanton_review_date: string | null
+  stanton_review_notes: string | null
+  language: string
+  unit_not_in_canonical_list: boolean
+  submission_source: 'magic_link' | 'open_enrollment'
 }

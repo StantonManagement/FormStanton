@@ -185,6 +185,13 @@ export async function POST(request: NextRequest) {
         updateData.vehicle_addendum_file_uploaded_by = sessionUser?.displayName || 'Admin';
       }
 
+      // If pickup_id_photo, reset the AppFolio upload flag (new ID → must re-upload)
+      if (documentType === 'pickup_id_photo') {
+        updateData.pickup_id_uploaded_to_appfolio = false;
+        updateData.pickup_id_uploaded_to_appfolio_at = null;
+        updateData.pickup_id_uploaded_to_appfolio_by = null;
+      }
+
       const { data, error } = await supabaseAdmin
         .from('submissions')
         .update(updateData)

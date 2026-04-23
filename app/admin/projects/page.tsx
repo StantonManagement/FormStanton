@@ -8,7 +8,7 @@ import type { ProjectStatus } from '@/types/compliance';
 
 export default function ProjectsListPage() {
   const router = useRouter();
-  const { projects, loading, error, createProject } = useProjects();
+  const { projects, loading, error, createProject, deleteProject } = useProjects();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -17,6 +17,23 @@ export default function ProjectsListPage() {
   const [newParentId, setNewParentId] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteProject(confirmDeleteId);
+      setConfirmDeleteId(null);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete project');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -102,9 +119,23 @@ export default function ProjectsListPage() {
                   <tr
                     key={p.id}
                     onClick={() => router.push(`/admin/projects/${p.id}`)}
-                    className="border-b border-[var(--divider)] hover:bg-[var(--bg-section)] cursor-pointer transition-colors"
+                    className="group border-b border-[var(--divider)] hover:bg-[var(--bg-section)] cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-[var(--ink)]">{p.name}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--ink)]">
+                      <div className="flex items-center gap-2">
+                        <span>{p.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); setDeleteError(''); }}
+                          className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--error)] transition-colors duration-200"
+                          title="Delete project"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <ProjectStatusBadge status={p.status as ProjectStatus} />
                     </td>
@@ -130,6 +161,47 @@ export default function ProjectsListPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirm Modal */}
+      {confirmDeleteId && (() => {
+        const proj = projects.find((p) => p.id === confirmDeleteId);
+        return (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+            <div className="bg-white border border-gray-300 w-full max-w-sm p-6">
+              <h3 className="font-serif text-xl mb-2">Delete Project?</h3>
+              <p className="text-sm text-[var(--ink)] mb-1">
+                <strong>{proj?.name}</strong>
+              </p>
+              <p className="text-sm text-[var(--muted)] mb-4">
+                This will permanently delete all units, task completions, and data associated with this project. This cannot be undone.
+              </p>
+
+              {deleteError && (
+                <div className="mb-3 border border-red-200 bg-red-50 p-2 text-sm text-red-700">{deleteError}</div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setConfirmDeleteId(null); setDeleteError(''); }}
+                  disabled={deleting}
+                  className="px-4 py-2 border border-[var(--border)] text-[var(--ink)] text-sm hover:bg-[var(--bg-section)] transition-colors rounded-none disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-700 text-white text-sm font-medium rounded-none hover:bg-red-800 transition-colors duration-200 disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Project'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Create Modal */}
       {showCreate && (

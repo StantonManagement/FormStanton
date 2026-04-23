@@ -12,7 +12,7 @@ export default function FormsLibraryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [activeDepartment, setActiveDepartment] = useState<Department>('property_management');
+  const [activeDepartment, setActiveDepartment] = useState<Department>('leasing');
   const [searchQuery, setSearchQuery] = useState('');
   const [forms, setForms] = useState<TenantForm[]>([]);
   const [formsError, setFormsError] = useState('');
@@ -145,7 +145,7 @@ export default function FormsLibraryPage() {
     }
   };
 
-  const departments: Department[] = ['property_management', 'maintenance', 'compliance', 'finance'];
+  const departments: Department[] = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr'];
 
   const displayedForms = useMemo(() => {
     if (searchQuery.trim()) {

@@ -1,8 +1,13 @@
-'use client';
+﻿'use client';
 
 import { TaskComponentProps } from './types';
+import PbvPreappForm from './PbvPreappForm';
 
-export default function FormTask({ task, language, t }: TaskComponentProps) {
+export default function FormTask({ task, token, language, t, onComplete }: TaskComponentProps) {
+  if (task.task_type.form_id === 'pbv-preapp') {
+    return <PbvPreappForm task={task} token={token} language={language} t={t} onComplete={onComplete} />;
+  }
+
   const formPath = task.task_type.form_id
     ? `/form?lang=${language}`
     : null;

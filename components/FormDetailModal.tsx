@@ -79,6 +79,7 @@ export default function FormDetailModal({ form, onClose }: FormDetailModalProps)
       formPath={form.path}
       showPrintButton
       onClose={onClose}
+      onPrint={() => window.open(`/forms/${form.id}/print`, '_blank')}
     />
   );
 }

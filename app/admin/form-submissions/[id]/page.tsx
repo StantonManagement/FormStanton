@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import PerDocumentReviewPanel from '@/components/form/PerDocumentReviewPanel';
 import {
   FormSubmissionStatus,
   FormPriority,
@@ -46,6 +47,9 @@ interface FormSubmission {
   sent_to_appfolio_at: string | null;
   sent_to_appfolio_by: string | null;
   pdf_url: string | null;
+  review_granularity: 'atomic' | 'per_document' | null;
+  document_review_summary: any | null;
+  tenant_access_token: string | null;
 }
 
 interface RelatedSubmission {
@@ -347,6 +351,15 @@ export default function FormSubmissionDetailPage() {
           </div>
         </div>
 
+        {submission.review_granularity === 'per_document' && (
+          <div className="mb-6">
+            <PerDocumentReviewPanel
+              submissionId={submission.id}
+              tenantAccessToken={submission.tenant_access_token}
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-none shadow-md p-6">
@@ -460,47 +473,55 @@ export default function FormSubmissionDetailPage() {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Update Submission</h2>
 
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      value={selectedStatus}
-                      onChange={(e) => setSelectedStatus(e.target.value as FormSubmissionStatus)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="pending_review">Pending Review</option>
-                      <option value="under_review">Under Review</option>
-                      <option value="approved">Approved</option>
-                      <option value="denied">Denied</option>
-                      <option value="revision_requested">Revision Requested</option>
-                      <option value="sent_to_appfolio">Sent to Appfolio</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
-
-                  {selectedStatus === 'denied' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Denial Reason</label>
-                      <textarea
-                        value={denialReason}
-                        onChange={(e) => setDenialReason(e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Explain why this was denied..."
-                      />
+                  {submission.review_granularity === 'per_document' ? (
+                    <div className="rounded-none bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-800">
+                      Status is derived from per-document review. Use the document actions above to approve, reject, or waive individual documents.
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select
+                          value={selectedStatus}
+                          onChange={(e) => setSelectedStatus(e.target.value as FormSubmissionStatus)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="pending_review">Pending Review</option>
+                          <option value="under_review">Under Review</option>
+                          <option value="approved">Approved</option>
+                          <option value="denied">Denied</option>
+                          <option value="revision_requested">Revision Requested</option>
+                          <option value="sent_to_appfolio">Sent to Appfolio</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
 
-                  {selectedStatus === 'revision_requested' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Revision Notes</label>
-                      <textarea
-                        value={revisionNotes}
-                        onChange={(e) => setRevisionNotes(e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="What needs to be corrected..."
-                      />
-                    </div>
+                      {selectedStatus === 'denied' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Denial Reason</label>
+                          <textarea
+                            value={denialReason}
+                            onChange={(e) => setDenialReason(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Explain why this was denied..."
+                          />
+                        </div>
+                      )}
+
+                      {selectedStatus === 'revision_requested' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Revision Notes</label>
+                          <textarea
+                            value={revisionNotes}
+                            onChange={(e) => setRevisionNotes(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="What needs to be corrected..."
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div>
@@ -532,16 +553,18 @@ export default function FormSubmissionDetailPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status Change Notes</label>
-                    <textarea
-                      value={statusChangeNotes}
-                      onChange={(e) => setStatusChangeNotes(e.target.value)}
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Optional notes about this change..."
-                    />
-                  </div>
+                  {submission.review_granularity !== 'per_document' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Status Change Notes</label>
+                      <textarea
+                        value={statusChangeNotes}
+                        onChange={(e) => setStatusChangeNotes(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Optional notes about this change..."
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes</label>

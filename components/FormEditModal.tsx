@@ -19,7 +19,7 @@ interface FormEditModalProps {
   }) => Promise<void>;
 }
 
-const departments: Department[] = ['property_management', 'maintenance', 'compliance', 'finance'];
+const departments: Department[] = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr'];
 
 export default function FormEditModal({ form, isSaving, saveError, onClose, onSave }: FormEditModalProps) {
   const [title, setTitle] = useState('');

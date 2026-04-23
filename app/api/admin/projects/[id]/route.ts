@@ -64,6 +64,81 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await context.params;
+
+    const { error: fetchError } = await supabaseAdmin
+      .from('projects')
+      .select('id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return NextResponse.json({ success: false, message: 'Project not found' }, { status: 404 });
+      }
+      throw fetchError;
+    }
+
+    // Collect unit IDs for cascade
+    const { data: units, error: unitFetchError } = await supabaseAdmin
+      .from('project_units')
+      .select('id')
+      .eq('project_id', id);
+
+    if (unitFetchError) throw unitFetchError;
+
+    const unitIds = (units || []).map((u: any) => u.id);
+
+    if (unitIds.length > 0) {
+      const { error: tcError } = await supabaseAdmin
+        .from('task_completions')
+        .delete()
+        .in('project_unit_id', unitIds);
+      if (tcError) throw tcError;
+
+      // Unlink pbv_preapplications rather than delete them
+      const { error: pbvError } = await supabaseAdmin
+        .from('pbv_preapplications')
+        .update({ project_unit_id: null })
+        .in('project_unit_id', unitIds);
+      if (pbvError) throw pbvError;
+    }
+
+    const { error: unitsError } = await supabaseAdmin
+      .from('project_units')
+      .delete()
+      .eq('project_id', id);
+    if (unitsError) throw unitsError;
+
+    const { error: tasksError } = await supabaseAdmin
+      .from('project_tasks')
+      .delete()
+      .eq('project_id', id);
+    if (tasksError) throw tasksError;
+
+    const { error: deleteError } = await supabaseAdmin
+      .from('projects')
+      .delete()
+      .eq('id', id);
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Project delete error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }

@@ -261,6 +261,34 @@ export async function GET(request: NextRequest) {
         permit_issued_at: sub?.permit_issued_at || null,
         permit_issued_by: sub?.permit_issued_by || null,
         tenant_picked_up: sub?.tenant_picked_up ?? false,
+        tenant_picked_up_at: sub?.tenant_picked_up_at || null,
+
+        permit_entered_in_appfolio: sub?.permit_entered_in_appfolio ?? false,
+        permit_entered_in_appfolio_at: sub?.permit_entered_in_appfolio_at || null,
+        permit_entered_in_appfolio_by: sub?.permit_entered_in_appfolio_by || null,
+
+        pickup_id_photo: sub?.pickup_id_photo || null,
+        pickup_id_uploaded_to_appfolio: sub?.pickup_id_uploaded_to_appfolio ?? false,
+        pickup_id_uploaded_to_appfolio_at: sub?.pickup_id_uploaded_to_appfolio_at || null,
+        pickup_id_uploaded_to_appfolio_by: sub?.pickup_id_uploaded_to_appfolio_by || null,
+
+        pickup_count: sub?.pickup_count ?? 0,
+        pickup_events: Array.isArray(sub?.pickup_events) ? sub.pickup_events : [],
+
+        permit_revoked: sub?.permit_revoked ?? false,
+        permit_revoked_at: sub?.permit_revoked_at || null,
+        permit_revoked_by: sub?.permit_revoked_by || null,
+        permit_revoked_reason: sub?.permit_revoked_reason || null,
+        permit_revoked_notes: sub?.permit_revoked_notes || null,
+        tow_flagged: sub?.tow_flagged ?? false,
+        towed_at: sub?.towed_at || null,
+        towed_by: sub?.towed_by || null,
+
+        vehicle_plate: sub?.vehicle_plate || null,
+        vehicle_make: sub?.vehicle_make || null,
+        vehicle_model: sub?.vehicle_model || null,
+        vehicle_year: sub?.vehicle_year ?? null,
+        vehicle_color: sub?.vehicle_color || null,
 
         vehicle_verified: sub?.vehicle_verified ?? false,
         pet_verified: sub?.pet_verified ?? false,

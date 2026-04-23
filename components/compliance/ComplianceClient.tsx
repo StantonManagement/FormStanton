@@ -9,6 +9,7 @@ import AddTenantModal from '@/components/AddTenantModal';
 import SubmissionEditModal from '@/components/SubmissionEditModal';
 import { DashboardHeader, ComplianceSidebar, BuildingDetailView, PortfolioTable, TenantSidePanel, BuildingMatrixTable } from '@/components/compliance';
 import ReviewMode from '@/components/compliance/ReviewMode';
+import AppFolioQueueBadges from '@/components/compliance/AppFolioQueueBadges';
 import Toast from '@/components/kit/Toast';
 import type { TenantSubmission } from '@/types/compliance';
 
@@ -173,6 +174,7 @@ export default function ComplianceClient({ initialProject }: ComplianceClientPro
                   }
                 </p>
               </div>
+              {!isProjectMode && <AppFolioQueueBadges />}
               <PortfolioTable
                 rows={data.portfolioBuildingStats}
                 selectedPortfolio={selectedPortfolio}

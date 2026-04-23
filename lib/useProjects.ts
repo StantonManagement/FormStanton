@@ -13,6 +13,7 @@ export interface UseProjectsReturn {
   loading: boolean;
   error: string | null;
   createProject: (data: { name: string; description?: string; deadline?: string; sequential?: boolean; parent_project_id?: string }) => Promise<Project | null>;
+  deleteProject: (id: string) => Promise<void>;
   refresh: () => void;
 }
 
@@ -95,5 +96,12 @@ export function useProjects(): UseProjectsReturn {
     }
   }, [fetchProjects]);
 
-  return { projects, loading, error, createProject, refresh: fetchProjects };
+  const deleteProject = useCallback(async (id: string): Promise<void> => {
+    const res = await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.message || 'Failed to delete project');
+    await fetchProjects();
+  }, [fetchProjects]);
+
+  return { projects, loading, error, createProject, deleteProject, refresh: fetchProjects };
 }

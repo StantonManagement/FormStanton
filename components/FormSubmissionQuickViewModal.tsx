@@ -21,6 +21,7 @@ interface FormSubmission {
   assigned_to: string | null;
   priority: FormPriority | null;
   form_data: any;
+  review_granularity?: 'atomic' | 'per_document' | null;
 }
 
 interface Props {
@@ -188,20 +189,26 @@ export default function FormSubmissionQuickViewModal({
                 </button>
               )}
 
-              <select
-                value={submission.status}
-                onChange={(e) => handleStatusChange(e.target.value as FormSubmissionStatus)}
-                disabled={isUpdating}
-                className="px-4 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
-              >
-                <option value="pending_review">Pending Review</option>
-                <option value="under_review">Under Review</option>
-                <option value="approved">Approved</option>
-                <option value="denied">Denied</option>
-                <option value="revision_requested">Revision Requested</option>
-                <option value="sent_to_appfolio">Sent to Appfolio</option>
-                <option value="completed">Completed</option>
-              </select>
+              {submission.review_granularity === 'per_document' ? (
+                <span className="px-3 py-2 text-sm text-gray-500 border border-gray-200 bg-gray-50">
+                  Status derived from per-document review
+                </span>
+              ) : (
+                <select
+                  value={submission.status}
+                  onChange={(e) => handleStatusChange(e.target.value as FormSubmissionStatus)}
+                  disabled={isUpdating}
+                  className="px-4 py-2 border border-gray-300 rounded-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-sm"
+                >
+                  <option value="pending_review">Pending Review</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="denied">Denied</option>
+                  <option value="revision_requested">Revision Requested</option>
+                  <option value="sent_to_appfolio">Sent to Appfolio</option>
+                  <option value="completed">Completed</option>
+                </select>
+              )}
             </div>
           </div>
 

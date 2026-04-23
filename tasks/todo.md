@@ -66,41 +66,101 @@
 
 ---
 
-## Phase 3 — Admin UI ⏳ WAITING
+## Phase 3 — Admin UI ✅ COMPLETE
 
 **Deliverables:**
-- [ ] `app/admin/form-submissions/[id]/page.tsx` — branch on `review_granularity`
-- [ ] Per-document table component (doc label, status badge, file, reviewer, revision, rejection reason, actions)
-- [ ] Approve/reject/waive action per row with rejection-reason input
-- [ ] Rollup summary at top (X/Y approved, Z rejected, W missing)
-- [ ] Regression: atomic-review submissions still render correctly
-- [ ] Guard on `FormSubmissionQuickViewModal` — suppress status dropdown for per-document
+- [x] `components/form/PerDocumentReviewPanel.tsx` — new component: rollup summary, progress bar, tenant access link + regenerate, filter pills, per-document table with inline approve/reject/waive action panels and revision history toggle
+- [x] `app/admin/form-submissions/[id]/page.tsx` — extended: `review_granularity`, `document_review_summary`, `tenant_access_token` added to interface; `PerDocumentReviewPanel` rendered full-width before the 2-col grid when `per_document`; status/denial/revision controls suppressed in edit sidebar for `per_document` (replaced with informational callout)
+- [x] Regression: atomic-review submissions render identically — all changes are behind `review_granularity === 'per_document'` conditions
+- [x] Guard on `FormSubmissionQuickViewModal` — `review_granularity` added to interface; status dropdown suppressed for `per_document` submissions (shows "Status derived from per-document review" label instead)
+- [x] Export ZIP button wired from detail page (calls `GET /api/admin/submissions/[id]/export`)
+- [x] Tenant access link with Copy + Regenerate (calls `POST /api/admin/form-submissions/[id]/regenerate-token`)
 
-**Note:** `pbv-document-tracker.jsx` visual reference does not exist — Alex must provide or clarify before Phase 3.
+**Visual language:** Adapted from `tasks/reference/pbv-document-tracker.jsx` — segmented progress bar, status badges with colored dots, filter pills with count badges, rejected rows highlighted red.
+
+**Awaiting Phase 3 checkpoint:** Alex reviews in browser. Approves Phase 4.
 
 ---
 
-## Phase 4 — Tenant UI ⏳ WAITING
+## Phase 4 — Tenant UI ✅ COMPLETE
 
 **Deliverables:**
-- [ ] New tenant-facing page for per-document submission status
-- [ ] Per-document status display (EN/ES/PT)
-- [ ] Upload button per document (enabled only for `rejected` or `missing`)
-- [ ] Rejection reason visible to tenant
-- [ ] Approved documents read-only
-- [ ] Trilingual via `lib/submissionStatusTranslations.ts` (to create, following `portalTranslations` pattern)
+- [x] `lib/submissionStatusTranslations.ts` — EN/ES/PT strings following `portalTranslations` pattern
+- [x] `components/SubmissionStatusPortal.tsx` — tenant-facing per-document status page: submission info card, progress bar + counts, per-doc list with status badges, rejection reason inline, upload button (rejected/missing only), read-only state for approved/waived
+- [x] `components/TokenRouter.tsx` — detects token type by probing `/api/t/${token}/status`; routes to `SubmissionStatusPortal` (200) or `TenantPortal` (404/error)
+- [x] `app/t/[token]/page.tsx` — updated to render `TokenRouter` instead of `TenantPortal` directly; existing compliance portal unchanged
+- [x] Trilingual language switcher (EN/ES/PT) in `SubmissionStatusPortal` header; language seeded from `submission.language`
+- [x] Upload via `POST /api/t/${token}/documents/${doc.id}` (multipart); per-doc upload state (idle/uploading/error/success); auto-refetch after success
+- [x] Approved documents: read-only, no upload button; API also blocks (409) as second layer
+- [x] Waived documents: "not required" note, no upload
+- [x] All-done banner when all required docs are approved or waived
 
-**Blocked on:** Alex's decision on tenant access mechanism (A2)
+**Regression:** Compliance project portal unchanged — `TenantPortal` still rendered for project-unit tokens (compliance API returns 404 for submission tokens)
+
+**Awaiting Phase 4 checkpoint:** Alex reviews in browser with a test per_document submission token.
 
 ---
 
-## Phase 5 — Bulk Export ⏳ WAITING
+## Phase 5 — Bulk Export ✅ COMPLETE
 
 **Deliverables:**
-- [ ] Export button wired on admin detail page (Phase 2 delivers API)
-- [ ] Per-form bulk export: select N submissions → single ZIP
-- [ ] Manifest.csv at ZIP root
-- [ ] Files use Stanton naming (already at rest from Phase 2 uploads)
+- [x] Export ZIP button on admin detail page — wired in Phase 3 via `PerDocumentReviewPanel.tsx` (calls `GET /api/admin/submissions/[id]/export`)
+- [x] `POST /api/admin/submissions/bulk-export` — accepts `submissionIds[]`, skips non-per_document rows, downloads all submitted/approved/waived files, organizes into per-submission subfolders `{TenantName}_{submissionId[0..8]}/`, returns ZIP
+- [x] `manifest.csv` at ZIP root — columns: submission_id, tenant_name, doc_type, label, person_slot, revision, status, file_name, reviewer, reviewed_at, rejection_reason
+- [x] Files use Stanton naming at rest (unchanged from Phase 2 uploads)
+- [x] "Export ZIP" button in list page bulk toolbar — appears only when ≥1 selected submission is per_document; calls bulk-export endpoint and triggers browser download
+
+**Regression:** Atomic submissions unaffected — bulk-export button is hidden when none of the selected submissions are per_document; existing bulk-assign and bulk-mark-sent-to-appfolio actions unchanged.
+
+---
+
+## Foundation Review Layer — COMPLETE
+
+---
+
+---
+
+## PBV Application Layer (PRD 2) — Task Tracking
+
+---
+
+## Phase 0 — Close Phase 1 Gaps ✅ COMPLETE
+
+**Deliverables:**
+- [x] `lib/pbvPreappPdf.ts` — PDF generation using pdf-lib; Stanton header, HoH info, qualification math, household member table, citizenship, reviewer decision, signature line
+- [x] `POST /api/admin/pbv/preapps/[id]/summary-pdf` — generates and streams PDF for download
+- [x] `app/admin/pbv/preapps/page.tsx` — "Generate Summary PDF" button added to detail drawer (with loading + error states)
+- [x] `GET /api/admin/pbv/thresholds` — returns all pbv_income_thresholds ordered by household_size
+- [x] `POST /api/admin/pbv/thresholds` — accepts `{ thresholds: [...] }` array, validates, delete+inserts by household_size
+- [x] `app/admin/pbv/thresholds/page.tsx` — inline-edit table for income limits + effective dates; save/discard; changed-row highlighting
+- [x] `components/AdminSidebar.tsx` — "PBV Thresholds" link added under Audits
+
+**Awaiting Phase 0 checkpoint:** Alex confirms PDF generation works and thresholds UI is editable.
+
+### Phase 0 Addendum — Open Enrollment Pre-App ✅ COMPLETE
+
+**Decision:** PBV pre-app is open enrollment, not magic-link-only. Standalone tenant URL added.
+
+**Deliverables:**
+- [x] Migration `20260423100000` — adds `unit_not_in_canonical_list boolean`, `submission_source text` to `pbv_preapplications`; back-fills existing rows as `magic_link`
+- [x] `lib/rateLimiter.ts` — in-memory IP rate limiter (10 req / IP / hour)
+- [x] `POST /api/forms/pbv-preapp` — open enrollment submission endpoint; validates building/unit vs canonical list; sets `unit_not_in_canonical_list` flag; rate-limited
+- [x] `app/pbv-preapp/page.tsx` — standalone tenant form; building dropdown + unit text input with canonical hint; consent checkbox at top; full form (HoH, members, citizenship, cert, signature); posts to `/api/forms/pbv-preapp`
+- [x] `lib/formsData.ts` Form 28 — path updated to `/pbv-preapp` (Copy Link now links to live tenant form)
+- [x] `app/admin/pbv/preapps/page.tsx` — duplicate badge (orange) when multiple submissions share building+unit; "Unit?" badge (amber) when `unit_not_in_canonical_list = true`
+- [x] `app/api/admin/pbv/preapps/route.ts` — select updated to include `unit_not_in_canonical_list` and `submission_source`
+
+**Notes:**
+- Consent text is a placeholder; final wording from Dan pending
+- Language selector not yet added to open enrollment form (token-based form already handles multilingual via `preferred_language`; open enrollment defaults to `en`)
+- No captcha for round 1; revisit if abuse appears
+- Tenant access token work for per-document review (full app, recert) is separate; pre-app open enrollment does not generate or consume tokens
+
+---
+
+## Phase 1 — Reconnaissance
+
+**Status:** Not started. Awaiting Phase 0 checkpoint approval.
 
 ---
 

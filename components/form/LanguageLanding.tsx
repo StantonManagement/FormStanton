@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Language } from '@/lib/translations';
 import Footer from '@/components/Footer';
 
@@ -8,6 +9,7 @@ interface LanguageLandingProps {
   subtitle?: string;
   description?: string;
   onSelect: (lang: Language) => void;
+  bottomSlot?: React.ReactNode;
 }
 
 export default function LanguageLanding({
@@ -15,6 +17,7 @@ export default function LanguageLanding({
   subtitle = 'Stanton Management LLC',
   description,
   onSelect,
+  bottomSlot,
 }: LanguageLandingProps) {
   return (
     <>
@@ -66,6 +69,7 @@ export default function LanguageLanding({
                 Continuar em Português
               </button>
             </div>
+            {bottomSlot}
           </div>
 
           <div className="flex items-center justify-center gap-2 text-xs text-[var(--muted)]">

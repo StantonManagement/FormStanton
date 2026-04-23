@@ -3,7 +3,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { tenantForms } from '@/lib/formsData';
 
-const VALID_DEPARTMENTS = ['property_management', 'maintenance', 'compliance', 'finance'] as const;
+const VALID_DEPARTMENTS = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr'] as const;
 type Department = (typeof VALID_DEPARTMENTS)[number];
 
 type FormUpdatePayload = {

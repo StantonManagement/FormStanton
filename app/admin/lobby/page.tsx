@@ -77,6 +77,29 @@ interface TenantSubmission {
   tenant_picked_up_at?: string;
   pickup_id_photo?: string;
   pickup_id_photo_at?: string;
+  pickup_id_uploaded_to_appfolio?: boolean;
+  pickup_id_uploaded_to_appfolio_at?: string;
+  pickup_id_uploaded_to_appfolio_by?: string;
+  pickup_count?: number;
+  pickup_events?: Array<{
+    at: string;
+    by: string;
+    id_photo_path: string | null;
+    reason: 'initial' | 'lost' | 'replacement' | 'additional_vehicle' | 'other';
+    reason_notes?: string | null;
+    event_number: number;
+  }>;
+  permit_entered_in_appfolio?: boolean;
+  permit_entered_in_appfolio_at?: string;
+  permit_entered_in_appfolio_by?: string;
+  permit_revoked?: boolean;
+  permit_revoked_at?: string;
+  permit_revoked_by?: string;
+  permit_revoked_reason?: 'moved_out' | 'nonpayment' | 'lost' | 'other' | null;
+  permit_revoked_notes?: string | null;
+  tow_flagged?: boolean;
+  towed_at?: string;
+  towed_by?: string;
   merged_into?: string;
   created_at: string;
 }
@@ -182,6 +205,12 @@ export default function LobbyPage() {
   const [showIntakePanel, setShowIntakePanel] = useState(false);
   const [pickupIdFile, setPickupIdFile] = useState<File | null>(null);
   const [pickupIdPreview, setPickupIdPreview] = useState<string | null>(null);
+  const [repickupReason, setRepickupReason] = useState<'lost' | 'replacement' | 'additional_vehicle' | 'other' | ''>('');
+  const [repickupNotes, setRepickupNotes] = useState<string>('');
+  const [showRepickupPanel, setShowRepickupPanel] = useState<boolean>(false);
+  const [revokeReason, setRevokeReason] = useState<'moved_out' | 'nonpayment' | 'lost' | 'other' | ''>('');
+  const [revokeNotes, setRevokeNotes] = useState<string>('');
+  const [showRevokePanel, setShowRevokePanel] = useState<boolean>(false);
   const [selectedCanonicalSubmissionId, setSelectedCanonicalSubmissionId] = useState<string>('');
 
   useEffect(() => {
@@ -687,10 +716,27 @@ export default function LobbyPage() {
     }
   };
 
+  const applySubmissionUpdate = (data: any) => {
+    if (!activeTenant) return;
+    setActiveTenant({ ...activeTenant, submissionData: data });
+    const index = allTenants.findIndex((t) => t.key === activeTenant.key);
+    if (index !== -1) {
+      const updated = [...allTenants];
+      updated[index] = { ...updated[index], submissionData: data };
+      setAllTenants(updated);
+    }
+  };
+
   const handleMarkPickedUp = async () => {
     if (!activeTenant || !activeTenant.submissionData) return;
 
-    if (!pickupIdFile) {
+    const sub = activeTenant.submissionData;
+    const pickupCount = sub.pickup_count ?? 0;
+    const hasExistingId = !!sub.pickup_id_photo;
+    const isRepeat = pickupCount >= 1;
+
+    // First pickup requires an ID photo. Repeat pickups may re-use existing ID.
+    if (!isRepeat && !pickupIdFile) {
       setAlertDialog({
         isOpen: true,
         title: 'ID Photo Required',
@@ -700,59 +746,86 @@ export default function LobbyPage() {
       return;
     }
 
+    if (isRepeat && !hasExistingId && !pickupIdFile) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'ID Photo Required',
+        message: 'No ID on file — please attach a photo before recording this pickup.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (isRepeat && !repickupReason) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Pickup Reason Required',
+        message: 'Please select a reason for this repeat pickup.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    if (isRepeat && repickupReason === 'other' && !repickupNotes.trim()) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Reason Notes Required',
+        message: 'Please describe the reason when "Other" is selected.',
+        variant: 'error'
+      });
+      return;
+    }
+
     setUpdatingField('mark_picked_up');
 
     try {
-      // Upload ID photo first via attach-document API
-      const fileFormData = new FormData();
-      fileFormData.append('submissionId', activeTenant.submissionData.id);
-      fileFormData.append('documentType', 'pickup_id_photo');
-      fileFormData.append('file', pickupIdFile);
+      let idPhotoPath: string | undefined;
 
-      const uploadResponse = await fetch('/api/admin/compliance/attach-document', {
-        method: 'POST',
-        body: fileFormData,
-      });
+      if (pickupIdFile) {
+        const fileFormData = new FormData();
+        fileFormData.append('submissionId', sub.id);
+        fileFormData.append('documentType', 'pickup_id_photo');
+        fileFormData.append('file', pickupIdFile);
 
-      const uploadResult = await uploadResponse.json();
-      if (!uploadResult.success) {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Upload Failed',
-          message: `ID photo upload failed: ${uploadResult.message}`,
-          variant: 'error'
+        const uploadResponse = await fetch('/api/admin/compliance/attach-document', {
+          method: 'POST',
+          body: fileFormData,
         });
-        setUpdatingField(null);
-        return;
+
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResult.success) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Upload Failed',
+            message: `ID photo upload failed: ${uploadResult.message}`,
+            variant: 'error'
+          });
+          setUpdatingField(null);
+          return;
+        }
+        idPhotoPath = uploadResult.filePath;
       }
 
       const response = await fetch('/api/admin/compliance/permit', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          submissionId: activeTenant.submissionData.id,
-          idPhotoPath: uploadResult.filePath,
+          submissionId: sub.id,
+          idPhotoPath,
+          reason: isRepeat ? repickupReason : undefined,
+          reasonNotes: isRepeat && repickupReason === 'other' ? repickupNotes.trim() : undefined,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setActiveTenant({
-          ...activeTenant,
-          submissionData: result.data,
-        });
-        const index = allTenants.findIndex((t) => t.key === activeTenant.key);
-        if (index !== -1) {
-          const updated = [...allTenants];
-          updated[index] = {
-            ...updated[index],
-            submissionData: result.data,
-          };
-          setAllTenants(updated);
-        }
+        applySubmissionUpdate(result.data);
         setPickupIdFile(null);
         setPickupIdPreview(null);
+        setRepickupReason('');
+        setRepickupNotes('');
+        setShowRepickupPanel(false);
       } else {
         setAlertDialog({
           isOpen: true,
@@ -769,6 +842,106 @@ export default function LobbyPage() {
         message: 'Update failed',
         variant: 'error'
       });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleUndoPickup = async () => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+    setUpdatingField('undo_pickup');
+    try {
+      const res = await fetch('/api/admin/compliance/permit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: activeTenant.submissionData.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        applySubmissionUpdate(data.data);
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Undo Failed', message: data.message, variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Undo Failed', message: 'Undo failed', variant: 'error' });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleAttachLegacyId = async (file: File) => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+    setUpdatingField('attach_legacy_id');
+    try {
+      const fd = new FormData();
+      fd.append('submissionId', activeTenant.submissionData.id);
+      fd.append('documentType', 'pickup_id_photo');
+      fd.append('file', file);
+      const up = await fetch('/api/admin/compliance/attach-document', { method: 'POST', body: fd });
+      const upRes = await up.json();
+      if (!upRes.success) {
+        setAlertDialog({ isOpen: true, title: 'Upload Failed', message: upRes.message, variant: 'error' });
+        return;
+      }
+      // attach-document returns the updated submission row
+      applySubmissionUpdate(upRes.data);
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Save Failed', message: 'Attach failed', variant: 'error' });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleRevokePermit = async () => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+    if (!revokeReason) {
+      setAlertDialog({ isOpen: true, title: 'Reason Required', message: 'Select a reason to revoke the permit.', variant: 'error' });
+      return;
+    }
+    if (revokeReason === 'other' && !revokeNotes.trim()) {
+      setAlertDialog({ isOpen: true, title: 'Notes Required', message: 'Notes are required when reason is "Other".', variant: 'error' });
+      return;
+    }
+    setUpdatingField('revoke_permit');
+    try {
+      const res = await fetch('/api/admin/compliance/revoke-permit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: activeTenant.submissionData.id, reason: revokeReason, notes: revokeNotes.trim() || null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        applySubmissionUpdate(data.data);
+        setRevokeReason('');
+        setRevokeNotes('');
+        setShowRevokePanel(false);
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Revoke Failed', message: data.message, variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Revoke Failed', message: 'Revoke failed', variant: 'error' });
+    } finally {
+      setUpdatingField(null);
+    }
+  };
+
+  const handleUndoRevoke = async () => {
+    if (!activeTenant || !activeTenant.submissionData) return;
+    setUpdatingField('undo_revoke');
+    try {
+      const res = await fetch('/api/admin/compliance/revoke-permit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: activeTenant.submissionData.id, undo: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        applySubmissionUpdate(data.data);
+      } else {
+        setAlertDialog({ isOpen: true, title: 'Undo Failed', message: data.message, variant: 'error' });
+      }
+    } catch (e) {
+      setAlertDialog({ isOpen: true, title: 'Undo Failed', message: 'Undo failed', variant: 'error' });
     } finally {
       setUpdatingField(null);
     }
@@ -1608,6 +1781,35 @@ export default function LobbyPage() {
                 <div className="p-4 bg-[var(--bg-section)] border border-[var(--divider)]">
                   <h3 className="font-serif text-[var(--primary)] mb-3">Parking Permit</h3>
 
+                  {sub.permit_revoked && (
+                    <div className="mb-3 p-3 bg-[var(--error)]/10 border border-[var(--error)]/40">
+                      <div className="text-sm text-[var(--error)] font-medium">
+                        ⚠ Permit Revoked
+                        {sub.permit_revoked_reason && (
+                          <span className="ml-2 font-normal">
+                            — {sub.permit_revoked_reason.replace('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-[var(--muted)] mt-1">
+                        {sub.permit_revoked_by && <>by {sub.permit_revoked_by}</>}
+                        {sub.permit_revoked_at && <> on {new Date(sub.permit_revoked_at).toLocaleDateString()}</>}
+                        {sub.tow_flagged && <span className="ml-2 text-[var(--error)]">· on tow list</span>}
+                        {sub.towed_at && <span className="ml-2">· towed {new Date(sub.towed_at).toLocaleDateString()}</span>}
+                      </div>
+                      {sub.permit_revoked_notes && (
+                        <div className="text-xs text-[var(--ink)] mt-1 italic">"{sub.permit_revoked_notes}"</div>
+                      )}
+                      <button
+                        onClick={handleUndoRevoke}
+                        disabled={updatingField === 'undo_revoke'}
+                        className="mt-2 text-xs text-blue-600 hover:underline disabled:text-gray-400"
+                      >
+                        {updatingField === 'undo_revoke' ? 'Undoing…' : 'Undo revoke'}
+                      </button>
+                    </div>
+                  )}
+
                   {sub.permit_issued ? (
                     <div>
                       <div className="text-sm text-[var(--success)] mb-3">
@@ -1619,6 +1821,7 @@ export default function LobbyPage() {
                         )}
                       </div>
 
+                      {/* First pickup OR legacy (picked up but no pickup_events history) */}
                       {!sub.tenant_picked_up ? (
                         <div className="space-y-3">
                           <div>
@@ -1662,32 +1865,274 @@ export default function LobbyPage() {
                           </div>
                           <button
                             onClick={handleMarkPickedUp}
-                            disabled={updatingField === 'mark_picked_up' || !pickupIdFile}
+                            disabled={updatingField === 'mark_picked_up' || !pickupIdFile || !!sub.permit_revoked}
                             className="px-4 py-2 bg-purple-600 text-white rounded-none hover:bg-purple-700 transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
                           >
                             {updatingField === 'mark_picked_up' ? 'Uploading & Saving...' : 'Mark Picked Up'}
                           </button>
                         </div>
                       ) : (
-                        <div className="text-sm text-[var(--success)]">
-                          ✓ Picked up
-                          {sub.tenant_picked_up_at && (
-                            <span className="text-[var(--muted)] ml-2">
-                              on {new Date(sub.tenant_picked_up_at).toLocaleDateString()}
-                            </span>
-                          )}
-                          {sub.pickup_id_photo && (
+                        <div className="space-y-2">
+                          <div className="text-sm text-[var(--success)]">
+                            ✓ Picked up
+                            {(sub.pickup_count ?? 0) > 1 && (
+                              <span className="ml-1 text-[var(--primary)] font-medium">
+                                (×{sub.pickup_count})
+                              </span>
+                            )}
+                            {sub.tenant_picked_up_at && (
+                              <span className="text-[var(--muted)] ml-2">
+                                on {new Date(sub.tenant_picked_up_at).toLocaleDateString()}
+                              </span>
+                            )}
+                            {sub.pickup_id_photo && (
+                              <button
+                                onClick={() => setDocumentViewer({
+                                  isOpen: true,
+                                  documentPath: sub.pickup_id_photo || null,
+                                  documentType: 'photo',
+                                  title: 'Tenant ID Photo'
+                                })}
+                                className="ml-2 text-blue-600 hover:underline text-sm"
+                              >
+                                View ID
+                              </button>
+                            )}
                             <button
-                              onClick={() => setDocumentViewer({
-                                isOpen: true,
-                                documentPath: sub.pickup_id_photo || null,
-                                documentType: 'photo',
-                                title: 'Tenant ID Photo'
-                              })}
-                              className="ml-2 text-blue-600 hover:underline text-sm"
+                              onClick={handleUndoPickup}
+                              disabled={updatingField === 'undo_pickup'}
+                              className="ml-3 text-xs text-gray-500 hover:text-gray-700 underline disabled:text-gray-300"
                             >
-                              View ID
+                              {updatingField === 'undo_pickup' ? 'Undoing…' : 'Undo last pickup'}
                             </button>
+                          </div>
+
+                          {/* Legacy ID backfill: picked up but no ID on file */}
+                          {!sub.pickup_id_photo && (
+                            <div className="p-2 bg-[var(--warning)]/10 border border-[var(--warning)]/40">
+                              <div className="text-xs text-[var(--warning)] mb-1">
+                                ⚠ No ID photo on file (legacy pickup). Attach now to enable AppFolio upload tracking.
+                              </div>
+                              <label className="px-2 py-1 text-xs bg-[var(--warning)] text-white rounded-none hover:bg-[var(--warning)]/90 transition-colors duration-200 ease-out cursor-pointer inline-block">
+                                {updatingField === 'attach_legacy_id' ? 'Uploading…' : '📎 Attach ID (retroactive)'}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  capture="environment"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleAttachLegacyId(file);
+                                    e.target.value = '';
+                                  }}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Pickup history log */}
+                          {Array.isArray(sub.pickup_events) && sub.pickup_events.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-[var(--divider)]">
+                              <div className="text-xs font-medium text-[var(--primary)] mb-1">Pickup history</div>
+                              <ul className="space-y-0.5">
+                                {sub.pickup_events.map((ev, idx) => {
+                                  const ordinal = ev.event_number === 1 ? '1st' : ev.event_number === 2 ? '2nd' : ev.event_number === 3 ? '3rd' : `${ev.event_number}th`;
+                                  return (
+                                    <li key={idx} className="text-xs text-[var(--muted)]">
+                                      <span className="font-medium text-[var(--ink)]">{ordinal}</span>
+                                      {' — '}{new Date(ev.at).toLocaleDateString()}{' by '}{ev.by}
+                                      {' ('}{ev.reason}{')'}
+                                      {ev.reason_notes && <span className="italic"> — {ev.reason_notes}</span>}
+                                      {ev.id_photo_path && (
+                                        <button
+                                          onClick={() => setDocumentViewer({
+                                            isOpen: true,
+                                            documentPath: ev.id_photo_path,
+                                            documentType: 'photo',
+                                            title: `Tenant ID Photo (${ordinal} pickup)`,
+                                          })}
+                                          className="ml-2 text-blue-600 hover:underline"
+                                        >
+                                          view ID
+                                        </button>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Repeat pickup trigger */}
+                          {!sub.permit_revoked && (
+                            <div className="mt-2 pt-2 border-t border-[var(--divider)]">
+                              {!showRepickupPanel ? (
+                                <button
+                                  onClick={() => setShowRepickupPanel(true)}
+                                  className="text-xs px-2 py-1 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out"
+                                >
+                                  🎫 Record another pickup
+                                </button>
+                              ) : (
+                                <div className="space-y-2">
+                                  <div>
+                                    <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                                      Reason <span className="text-[var(--error)]">*</span>
+                                    </label>
+                                    <select
+                                      value={repickupReason}
+                                      onChange={(e) => setRepickupReason(e.target.value as any)}
+                                      className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white"
+                                    >
+                                      <option value="">Select a reason…</option>
+                                      <option value="lost">Lost permit</option>
+                                      <option value="replacement">Replacement</option>
+                                      <option value="additional_vehicle">Additional vehicle</option>
+                                      <option value="other">Other</option>
+                                    </select>
+                                  </div>
+                                  {repickupReason === 'other' && (
+                                    <div>
+                                      <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                                        Notes <span className="text-[var(--error)]">*</span>
+                                      </label>
+                                      <textarea
+                                        value={repickupNotes}
+                                        onChange={(e) => setRepickupNotes(e.target.value)}
+                                        rows={2}
+                                        className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm"
+                                        placeholder="Describe the reason…"
+                                      />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                                      New ID photo (optional — existing ID will be reused)
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                      <label className="px-2 py-1 text-xs bg-gray-600 text-white rounded-none hover:bg-gray-700 transition-colors duration-200 ease-out cursor-pointer">
+                                        {pickupIdFile ? '✓ New photo' : '📷 Take new ID'}
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          capture="environment"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              setPickupIdFile(file);
+                                              setPickupIdPreview(URL.createObjectURL(file));
+                                            }
+                                          }}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                      {pickupIdFile && (
+                                        <button
+                                          onClick={() => { setPickupIdFile(null); setPickupIdPreview(null); }}
+                                          className="text-xs text-gray-500 hover:text-gray-700 underline"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                    {pickupIdPreview && (
+                                      <img src={pickupIdPreview} alt="ID Preview" className="mt-2 max-h-32 border border-[var(--border)]" />
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={handleMarkPickedUp}
+                                      disabled={updatingField === 'mark_picked_up' || !repickupReason}
+                                      className="px-3 py-1 text-sm bg-purple-600 text-white rounded-none hover:bg-purple-700 transition-colors duration-200 ease-out disabled:bg-gray-300"
+                                    >
+                                      {updatingField === 'mark_picked_up' ? 'Saving…' : 'Record pickup'}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setShowRepickupPanel(false);
+                                        setRepickupReason('');
+                                        setRepickupNotes('');
+                                        setPickupIdFile(null);
+                                        setPickupIdPreview(null);
+                                      }}
+                                      className="px-3 py-1 text-sm border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Revoke panel */}
+                      {!sub.permit_revoked && (
+                        <div className="mt-3 pt-3 border-t border-[var(--divider)]">
+                          {!showRevokePanel ? (
+                            <button
+                              onClick={() => setShowRevokePanel(true)}
+                              className="text-xs px-2 py-1 border border-[var(--error)]/50 text-[var(--error)] rounded-none hover:bg-[var(--error)]/5 transition-colors duration-200 ease-out"
+                            >
+                              Revoke permit
+                            </button>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-xs font-medium text-[var(--error)]">Revoke permit</div>
+                              <div>
+                                <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                                  Reason <span className="text-[var(--error)]">*</span>
+                                </label>
+                                <select
+                                  value={revokeReason}
+                                  onChange={(e) => setRevokeReason(e.target.value as any)}
+                                  className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white"
+                                >
+                                  <option value="">Select a reason…</option>
+                                  <option value="moved_out">Moved out</option>
+                                  <option value="nonpayment">Nonpayment</option>
+                                  <option value="lost">Lost / unreturned</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-[var(--primary)] mb-1">
+                                  Notes{revokeReason === 'other' && <span className="text-[var(--error)]"> *</span>}
+                                </label>
+                                <textarea
+                                  value={revokeNotes}
+                                  onChange={(e) => setRevokeNotes(e.target.value)}
+                                  rows={2}
+                                  className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm"
+                                  placeholder="Optional context for the revoke…"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleRevokePermit}
+                                  disabled={updatingField === 'revoke_permit' || !revokeReason}
+                                  className="px-3 py-1 text-sm bg-[var(--error)] text-white rounded-none hover:bg-[var(--error)]/90 transition-colors duration-200 ease-out disabled:bg-gray-300"
+                                >
+                                  {updatingField === 'revoke_permit' ? 'Revoking…' : 'Confirm revoke'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowRevokePanel(false);
+                                    setRevokeReason('');
+                                    setRevokeNotes('');
+                                  }}
+                                  className="px-3 py-1 text-sm border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                              {sub.vehicle_plate && revokeReason && (
+                                <div className="text-xs text-[var(--muted)]">
+                                  Plate <span className="font-mono font-medium">{sub.vehicle_plate}</span> will be added to the tow list.
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
@@ -1696,7 +2141,7 @@ export default function LobbyPage() {
                     <div>
                       <button
                         onClick={() => handleIssuePermit()}
-                        disabled={updatingField === 'permit_issue'}
+                        disabled={updatingField === 'permit_issue' || !!sub.permit_revoked}
                         className="px-4 py-2 bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 ease-out disabled:bg-gray-300 disabled:cursor-not-allowed"
                       >
                         {updatingField === 'permit_issue' ? 'Issuing...' : '🎫 Issue Permit'}

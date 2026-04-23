@@ -13,20 +13,26 @@ import {
   Car,
   LayoutGrid,
   FolderKanban,
+  ClipboardCheck,
   History,
   Users,
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Inbox,
+  AlertTriangle,
+  Home,
   type LucideIcon,
 } from 'lucide-react';
 
 interface NavItem {
   label: string;
   href: string;
+  beta?: boolean;
 }
 
 const iconMap: Record<string, LucideIcon> = {
+  'Home': Home,
   'Form Submissions': FileText,
   'Onboarding Submissions': ClipboardList,
   'Reimbursement Requests': Receipt,
@@ -34,8 +40,11 @@ const iconMap: Record<string, LucideIcon> = {
   'Forms Library': FolderOpen,
   'Lobby (Permit Distribution)': DoorOpen,
   'Phone Vehicle Entry': Car,
-  'Compliance Dashboard': LayoutGrid,
+  'All Buildings': LayoutGrid,
+  'AppFolio Queue': Inbox,
+  'Tow List': AlertTriangle,
   'Projects': FolderKanban,
+  'PBV Pre-Apps': ClipboardCheck,
   'Audit Log': History,
   'User Management': Users,
 };
@@ -47,37 +56,54 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    title: 'Forms & Submissions',
+    title: 'Overview',
+    items: [
+      { label: 'Home', href: '/admin/home' },
+    ],
+  },
+  {
+    title: 'Audits',
+    items: [
+      { label: 'All Buildings', href: '/admin/compliance' },
+      { label: 'Projects', href: '/admin/projects' },
+      { label: 'PBV Pre-Apps', href: '/admin/pbv/preapps' },
+    ],
+  },
+  {
+    title: 'Workflows',
+    items: [
+      { label: 'Lobby (Permit Distribution)', href: '/admin/lobby' },
+      { label: 'Phone Vehicle Entry', href: '/admin/phone-entry' },
+      { label: 'AppFolio Queue', href: '/admin/appfolio-queue' },
+      { label: 'Scan Import', href: '/admin/scan-import' },
+    ],
+  },
+  {
+    title: 'Intake',
     items: [
       { label: 'Form Submissions', href: '/admin/form-submissions' },
       { label: 'Onboarding Submissions', href: '/admin/onboarding' },
       { label: 'Reimbursement Requests', href: '/admin/reimbursements' },
-      { label: 'Scan Import', href: '/admin/scan-import' },
       { label: 'Forms Library', href: '/admin/forms-library' },
-    ],
-  },
-  {
-    title: 'Tenant Services',
-    items: [
-      { label: 'Lobby (Permit Distribution)', href: '/admin/lobby' },
-      { label: 'Phone Vehicle Entry', href: '/admin/phone-entry' },
-    ],
-  },
-  {
-    title: 'Compliance & Reports',
-    items: [
-      { label: 'Compliance Dashboard', href: '/admin/compliance' },
-      { label: 'Projects', href: '/admin/projects' },
     ],
   },
   {
     title: 'Administration',
     items: [
       { label: 'Audit Log', href: '/admin/audit-log' },
+      { label: 'Tow List', href: '/admin/tow-list', beta: true },
       { label: 'User Management', href: '/admin/users' },
     ],
   },
 ];
+
+// Routes where exact match is required (otherwise shorter prefixes like "/admin" would match everything)
+const EXACT_MATCH_HREFS = new Set(['/admin', '/admin/home']);
+
+function isRouteActive(pathname: string, href: string): boolean {
+  if (EXACT_MATCH_HREFS.has(href)) return pathname === href;
+  return pathname === href || pathname.startsWith(href + '/');
+}
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -175,7 +201,7 @@ export default function AdminSidebar() {
             )}
             <ul className="space-y-1">
               {section.items.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = isRouteActive(pathname, item.href);
                 const Icon = iconMap[item.label];
                 return (
                   <li key={item.href} className={isCollapsed ? 'group relative' : ''}>
@@ -190,7 +216,14 @@ export default function AdminSidebar() {
                       {isCollapsed && Icon ? (
                         <Icon size={20} />
                       ) : (
-                        item.label
+                        <span className="flex items-center gap-2">
+                          {item.label}
+                          {item.beta && (
+                            <span className={`text-[10px] font-medium px-1 py-px leading-none rounded-none ${
+                              isActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                            }`}>BETA</span>
+                          )}
+                        </span>
                       )}
                     </Link>
                     {isCollapsed && (

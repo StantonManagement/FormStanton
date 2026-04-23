@@ -286,3 +286,92 @@ export function formatFormContent(content: string): string {
 
   return html;
 }
+
+/**
+ * Converts markdown-style form content to self-contained HTML for the /forms/[id]/print route.
+ * Uses inline-compatible class names only — no CSS variables, no Tailwind.
+ * Handles all markup patterns present in formsData.ts including inline [ ] checkboxes,
+ * *italic*, numbered lists, and {{placeholder}} template variables.
+ */
+export function formatFormForPrint(content: string): string {
+  let html = content;
+
+  // Escape HTML
+  html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Template placeholders {{llc_name}} etc
+  html = html.replace(/\{\{[^}]+\}\}/g, '<span class="placeholder">[___________________]</span>');
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3 class="pf-h3">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="pf-h2">$1</h2>');
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic (single asterisk)
+  html = html.replace(/\*([^*\n]+)\*/g, '<em class="pf-em">$1</em>');
+
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr class="pf-hr" />');
+
+  // Tables
+  const tableRegex = /\|(.+)\|\n\|[-\s|]+\|\n((\|.+\|\n?)+)/gm;
+  html = html.replace(tableRegex, (_match, headerRow, bodyRows) => {
+    const headers = headerRow.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim());
+    const rows = bodyRows.trim().split('\n').map((row: string) =>
+      row.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim())
+    );
+    let t = '<table class="pf-table">';
+    if (headers.length) {
+      t += '<thead><tr>' + headers.map((h: string) => `<th class="pf-th">${h || '&nbsp;'}</th>`).join('') + '</tr></thead>';
+    }
+    t += '<tbody>' + rows.filter((r: string[]) => r.length).map((row: string[]) =>
+      '<tr>' + row.map((cell: string) => `<td class="pf-td">${cell || '&nbsp;'}</td>`).join('') + '</tr>'
+    ).join('') + '</tbody></table>';
+    return t;
+  });
+
+  // Blockquotes (already escaped to &gt;)
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="pf-blockquote">$1</blockquote>');
+
+  // Checkbox list items: - [ ] text
+  html = html.replace(/^- \[ \] (.+)$/gm,
+    '<div class="pf-cb-row"><span class="pf-cb-box"></span><span>$1</span></div>'
+  );
+
+  // Plain list items (not checkboxes): - text
+  html = html.replace(/^- (.+)$/gm, '<div class="pf-list-item">$1</div>');
+
+  // Numbered lists: lines starting with digit + period
+  html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
+    const items = block.trim().split('\n').map(line => line.replace(/^\d+\. /, ''));
+    return '<ol class="pf-ol">' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+  });
+
+  // Inline [ ] checkboxes (mid-sentence, not at line start)
+  html = html.replace(/\[ \]/g, '<span class="pf-cb-inline"></span>');
+
+  // Signature lines: **Label Signature:** ______ Date: ______
+  html = html.replace(/\*\*([^*]+Signature[^*]*):\*\*\s*_{5,}.*?Date:\s*_{4,}/g, (_m, label) =>
+    `<div class="pf-sig-block"><div class="pf-sig-item"><div class="pf-sig-line"></div><div class="pf-sig-label">${label}</div></div><div class="pf-sig-date"><div class="pf-sig-line"></div><div class="pf-sig-label">Date</div></div></div>`
+  );
+
+  // Field lines: Label: _____  (5+ underscores)
+  html = html.replace(/([A-Z][^:\n<]{0,60}):\s*_{5,}/g, (_m, label) =>
+    `<div class="pf-field"><strong>${label}:</strong><span class="pf-field-blank"></span></div>`
+  );
+
+  // Office use sections
+  html = html.replace(/<em class="pf-em">For office use[^<]*<\/em>/gi, (m) =>
+    `<div class="pf-office-use">${m}</div>`
+  );
+
+  // Paragraphs
+  html = html.replace(/\n\n/g, '</p><p class="pf-p">');
+  html = html.replace(/\n/g, '<br />');
+  html = '<p class="pf-p">' + html + '</p>';
+  html = html.replace(/<p class="pf-p">\s*<\/p>/g, '');
+
+  return html;
+}

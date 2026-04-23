@@ -132,7 +132,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Mark as picked up
+const VALID_PICKUP_REASONS = ['initial', 'lost', 'replacement', 'additional_vehicle', 'other'] as const;
+type PickupReason = typeof VALID_PICKUP_REASONS[number];
+
+// Mark as picked up (supports repeat pickups)
 export async function PUT(request: NextRequest) {
   try {
     const authenticated = await isAuthenticated();
@@ -144,7 +147,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { submissionId, idPhotoPath } = body;
+    const { submissionId, idPhotoPath, reason, reasonNotes } = body;
 
     if (!submissionId) {
       return NextResponse.json(
@@ -153,14 +156,73 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const sessionUser = await getSessionUser();
+    const by = sessionUser?.displayName || body.by || 'Admin';
+
+    // Fetch existing submission to know pickup_count / existing ID
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('submissions')
+      .select('pickup_count, pickup_events, pickup_id_photo, pickup_id_uploaded_to_appfolio')
+      .eq('id', submissionId)
+      .single();
+
+    if (fetchErr || !existing) {
+      return NextResponse.json(
+        { success: false, message: 'Submission not found' },
+        { status: 404 }
+      );
+    }
+
+    const currentCount = existing.pickup_count ?? 0;
+    const events: any[] = Array.isArray(existing.pickup_events) ? [...existing.pickup_events] : [];
+    const newEventNumber = currentCount + 1;
+
+    // Repeat pickup must have a valid reason. First pickup defaults to 'initial'.
+    let finalReason: PickupReason = 'initial';
+    if (newEventNumber > 1) {
+      if (!reason || !VALID_PICKUP_REASONS.includes(reason)) {
+        return NextResponse.json(
+          { success: false, message: 'Reason is required for repeat pickups (lost, replacement, additional_vehicle, other)' },
+          { status: 400 }
+        );
+      }
+      finalReason = reason;
+    } else if (reason && VALID_PICKUP_REASONS.includes(reason)) {
+      finalReason = reason;
+    }
+
+    // ID photo required on first pickup; optional on subsequent (re-uses existing if none provided)
+    const effectiveIdPath = idPhotoPath || existing.pickup_id_photo || null;
+    if (newEventNumber === 1 && !effectiveIdPath) {
+      return NextResponse.json(
+        { success: false, message: 'ID photo is required for the first pickup' },
+        { status: 400 }
+      );
+    }
+
+    const nowIso = new Date().toISOString();
+    events.push({
+      at: nowIso,
+      by,
+      id_photo_path: effectiveIdPath,
+      reason: finalReason,
+      reason_notes: typeof reasonNotes === 'string' && reasonNotes.trim() ? reasonNotes.trim() : null,
+      event_number: newEventNumber,
+    });
+
     const updateData: Record<string, any> = {
       tenant_picked_up: true,
-      tenant_picked_up_at: new Date().toISOString(),
+      tenant_picked_up_at: nowIso,
+      pickup_events: events,
+      pickup_count: newEventNumber,
     };
 
     if (idPhotoPath) {
+      // New ID uploaded — overwrite and reset AppFolio upload flag
       updateData.pickup_id_photo = idPhotoPath;
-      updateData.pickup_id_photo_at = new Date().toISOString();
+      updateData.pickup_id_uploaded_to_appfolio = false;
+      updateData.pickup_id_uploaded_to_appfolio_at = null;
+      updateData.pickup_id_uploaded_to_appfolio_by = null;
     }
 
     const { data, error } = await supabaseAdmin
@@ -178,18 +240,112 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const sessionUser2 = await getSessionUser();
-    await logAudit(sessionUser2, 'permit.pickup', 'submission', submissionId, { hasIdPhoto: !!idPhotoPath }, getClientIp(request));
+    await logAudit(sessionUser, 'permit.pickup', 'submission', submissionId, {
+      event_number: newEventNumber,
+      reason: finalReason,
+      new_id_supplied: !!idPhotoPath,
+    }, getClientIp(request));
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json({ success: true, data });
 
   } catch (error: any) {
     console.error('Mark picked up error:', error);
     return NextResponse.json(
       { success: false, message: error.message || 'Failed to mark as picked up' },
+      { status: 500 }
+    );
+  }
+}
+
+// Undo the most recent pickup event
+export async function DELETE(request: NextRequest) {
+  try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { submissionId } = body;
+
+    if (!submissionId) {
+      return NextResponse.json(
+        { success: false, message: 'Submission ID required' },
+        { status: 400 }
+      );
+    }
+
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('submissions')
+      .select('pickup_count, pickup_events')
+      .eq('id', submissionId)
+      .single();
+
+    if (fetchErr || !existing) {
+      return NextResponse.json(
+        { success: false, message: 'Submission not found' },
+        { status: 404 }
+      );
+    }
+
+    const events: any[] = Array.isArray(existing.pickup_events) ? [...existing.pickup_events] : [];
+    if (events.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'No pickup events to undo' },
+        { status: 400 }
+      );
+    }
+
+    events.pop();
+    const newCount = events.length;
+    const last = events[events.length - 1];
+
+    const updateData: Record<string, any> = {
+      pickup_events: events,
+      pickup_count: newCount,
+    };
+
+    if (newCount === 0) {
+      updateData.tenant_picked_up = false;
+      updateData.tenant_picked_up_at = null;
+      updateData.pickup_id_photo = null;
+      updateData.pickup_id_uploaded_to_appfolio = false;
+      updateData.pickup_id_uploaded_to_appfolio_at = null;
+      updateData.pickup_id_uploaded_to_appfolio_by = null;
+    } else {
+      updateData.tenant_picked_up_at = last?.at || null;
+      updateData.pickup_id_photo = last?.id_photo_path || null;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('submissions')
+      .update(updateData)
+      .eq('id', submissionId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error undoing pickup:', error);
+      return NextResponse.json(
+        { success: false, message: 'Failed to undo pickup' },
+        { status: 500 }
+      );
+    }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'permit.pickup_undo', 'submission', submissionId, {
+      events_remaining: newCount,
+    }, getClientIp(request));
+
+    return NextResponse.json({ success: true, data });
+
+  } catch (error: any) {
+    console.error('Undo pickup error:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to undo pickup' },
       { status: 500 }
     );
   }

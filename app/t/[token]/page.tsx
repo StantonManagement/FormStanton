@@ -1,4 +1,4 @@
-import TenantPortal from '@/components/TenantPortal';
+import TokenRouter from '@/components/TokenRouter';
 
 export default async function TenantPortalPage({
   params,
@@ -7,5 +7,5 @@ export default async function TenantPortalPage({
 }) {
   const { token } = await params;
 
-  return <TenantPortal token={token} />;
+  return <TokenRouter token={token} />;
 }
