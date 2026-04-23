@@ -26,18 +26,19 @@
 
 ---
 
-## Phase 1 — Schema Design 🔄 IN PROGRESS
+## Phase 1 — Schema Design ✅ COMPLETE
 
 **Deliverables:**
-- [ ] `tasks/foundation-review-schema-decision.md` — 3 alternatives + recommendation
-- [ ] Migration file in `supabase/migrations/` — written, not applied
+- [x] `tasks/foundation-review-schema-decision.md` — 3 alternatives evaluated, child table model selected
+- [x] `supabase/migrations/20260423180000_foundation_review_per_document.sql` — written, not applied
 
-**Scope:**
-- Evaluate: child table model (PRD proposal) vs. JSONB-per-submission vs. polymorphic reviewable_items
-- Analyze: query ergonomics, indexing, RLS complexity, bulk export difficulty, future Section 8 reuse
-- Write migration for chosen approach (new tables only — workflow fields catch-up is Phase 2 step 1)
-- New `form_submissions` columns to add: `review_granularity`, `document_review_summary`, `tenant_access_token`
-- Include rollback instructions
+**Decision:** Child table model. JSONB eliminated (no indexing, concurrent write collision risk, PRD anti-slop rule). Polymorphic eliminated (no FK enforcement, speculative generalization, Section 8 reuse doesn't need it).
+
+**New tables:** `form_document_templates`, `form_submission_documents`, `form_submission_document_revisions`
+
+**New columns on `form_submissions`:** `review_granularity`, `document_review_summary`, `tenant_access_token`
+
+**Rollback:** Documented at bottom of migration file. Safe to run while new tables are empty.
 
 ---
 
