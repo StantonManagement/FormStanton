@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "validate-env": "ts-node scripts/validate-env.ts",
     "generate-admin-password-hash": "ts-node scripts/generate-admin-password-hash.ts",
     "predev": "npm run validate-env"
@@ -20,7 +22,9 @@
     "docxtemplater-image-module-free": "^1.1.1",
     "dotenv": "^17.3.1",
     "framer-motion": "^12.31.0",
+    "heic2any": "^0.0.4",
     "iron-session": "^8.0.4",
+    "jscanify": "^1.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.577.0",
     "next": "^16.1.6",
@@ -48,6 +52,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^1.6.1"
   }
 }
