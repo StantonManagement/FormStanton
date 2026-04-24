@@ -1,8 +1,9 @@
-'use client';
+ï»¿'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import DocumentViewer from '@/components/hach/DocumentViewer';
 
 const COLORS = {
   accent: '#0f4c5c',
@@ -89,11 +90,11 @@ function Button({
   style?: React.CSSProperties;
 }) {
   const vars = {
-    primary:   { bg: COLORS.accent,  color: '#fff',        border: COLORS.accent,       hover: '#0a3a47' },
-    approve:   { bg: COLORS.approve, color: '#fff',        border: COLORS.approve,      hover: '#166534' },
-    reject:    { bg: '#fff',         color: COLORS.reject, border: COLORS.reject,       hover: COLORS.rejectLight },
-    secondary: { bg: '#fff',         color: COLORS.text,   border: COLORS.borderStrong, hover: '#f5f5f4' },
-    ghost:     { bg: 'transparent',  color: COLORS.textMuted, border: 'transparent',    hover: '#f5f5f4' },
+    primary:   { bg: COLORS.accent,  color: '#fff',          border: COLORS.accent,       hover: '#0a3a47' },
+    approve:   { bg: COLORS.approve, color: '#fff',          border: COLORS.approve,      hover: '#166534' },
+    reject:    { bg: '#fff',         color: COLORS.reject,   border: COLORS.reject,       hover: COLORS.rejectLight },
+    secondary: { bg: '#fff',         color: COLORS.text,     border: COLORS.borderStrong, hover: '#f5f5f4' },
+    ghost:     { bg: 'transparent',  color: COLORS.textMuted, border: 'transparent',      hover: '#f5f5f4' },
   }[variant];
   const sz = { sm: { padding: '5px 10px', fontSize: 12 }, md: { padding: '7px 14px', fontSize: 13 }, lg: { padding: '10px 18px', fontSize: 14 } }[size];
   const [h, setH] = useState(false);
@@ -157,15 +158,15 @@ function IncomePanel({ applicationId }: { applicationId: string }) {
   }, [applicationId]);
   return (
     <Panel title="Income Eligibility">
-      {loading && <span style={{ fontSize: 13, color: COLORS.textMuted }}>Computing…</span>}
+      {loading && <span style={{ fontSize: 13, color: COLORS.textMuted }}>Computing...</span>}
       {!loading && !income && <span style={{ fontSize: 13, color: COLORS.textMuted }}>No income data available.</span>}
       {!loading && income && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {[
-            { label: 'Total Income', value: income.total_household_income != null ? `$${Number(income.total_household_income).toLocaleString()}` : '—' },
-            { label: `${income.ami_pct}% AMI (${income.household_size}-person)`, value: income.ami_limit != null ? `$${Number(income.ami_limit).toLocaleString()}` : '—' },
-            { label: 'Delta', value: income.delta != null ? `${income.delta >= 0 ? '+' : ''}$${Math.abs(income.delta).toLocaleString()}` : '—' },
-            { label: 'Within Tolerance', value: income.within_tolerance == null ? '—' : income.within_tolerance ? '? Yes' : '? No' },
+            { label: 'Total Income', value: income.total_household_income != null ? `$${Number(income.total_household_income).toLocaleString()}` : '-' },
+            { label: `${income.ami_pct}% AMI (${income.household_size}-person)`, value: income.ami_limit != null ? `$${Number(income.ami_limit).toLocaleString()}` : '-' },
+            { label: 'Delta', value: income.delta != null ? `${income.delta >= 0 ? '+' : ''}$${Math.abs(income.delta).toLocaleString()}` : '-' },
+            { label: 'Within Tolerance', value: income.within_tolerance == null ? '-' : income.within_tolerance ? 'Yes' : 'No' },
           ].map((item) => (
             <div key={item.label}>
               <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{item.label}</div>
@@ -241,7 +242,7 @@ function DocumentRow({
           )}
           {canApprove && (
             <Button size="sm" variant="approve" disabled={isApproving} onClick={(e) => { e.stopPropagation(); onApprove(doc.id); }}>
-              {isApproving ? '…' : 'Approve'}
+              {isApproving ? '...' : 'Approve'}
             </Button>
           )}
         </div>
@@ -249,7 +250,7 @@ function DocumentRow({
       {doc.latest_action && (
         <div style={{ fontSize: 11, color: COLORS.textSubtle, marginTop: 6 }}>
           {doc.latest_action.action.charAt(0).toUpperCase() + doc.latest_action.action.slice(1)} by {doc.latest_action.reviewer_name}
-          {doc.latest_action.created_at ? ` · ${new Date(doc.latest_action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+          {doc.latest_action.created_at ? ` - ${new Date(doc.latest_action.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
         </div>
       )}
     </div>
@@ -283,7 +284,7 @@ export default function HachPacketPage() {
         if (d.success) { setPacket(d.data); setDocuments(d.data.documents ?? []); }
         else setError(d.message || 'Failed to load packet');
       })
-      .catch(() => setError('Network error — could not load packet'))
+      .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -303,22 +304,22 @@ export default function HachPacketPage() {
         showToast(data.message || 'Approval failed', 'error');
         return;
       }
-      showToast(`? Approved · ${doc.label}`, 'success');
+      showToast(`Approved - ${doc.label}`, 'success');
     } catch {
       setDocuments(snapshot);
-      showToast('Network error — approval not saved', 'error');
+      showToast('Network error - approval not saved', 'error');
     } finally {
       setApprovingId(null);
     }
   }, [documents, showToast]);
 
-  if (loading) return <div style={{ padding: '48px 32px', fontFamily: FONT, color: COLORS.textMuted, fontSize: 14 }}>Loading packet…</div>;
+  if (loading) return <div style={{ padding: '48px 32px', fontFamily: FONT, color: COLORS.textMuted, fontSize: 14 }}>Loading packet...</div>;
 
   if (error || !packet) {
     return (
       <div style={{ padding: '48px 32px', fontFamily: FONT }}>
         <div style={{ background: COLORS.errorBg, color: COLORS.error, padding: '12px 16px', fontSize: 13, border: '1px solid #fecaca', maxWidth: 600 }}>{error || 'Application not found'}</div>
-        <Link href="/hach" style={{ display: 'inline-block', marginTop: 16, fontSize: 13, color: COLORS.accent }}>? Back to queue</Link>
+        <Link href="/hach" style={{ display: 'inline-block', marginTop: 16, fontSize: 13, color: COLORS.accent }}>Back to queue</Link>
       </div>
     );
   }
@@ -352,14 +353,14 @@ export default function HachPacketPage() {
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px 80px', fontFamily: FONT }}>
       <Link href="/hach" style={{ fontSize: 12, color: COLORS.textMuted, textDecoration: 'none', display: 'inline-block', marginBottom: 20 }}>
-        ? Review Queue
+        Back to queue
       </Link>
 
       <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.border}`, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, margin: 0 }}>{app.head_of_household_name}</h1>
           <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
-            {app.building_address}, Unit {app.unit_number} &middot; {app.household_size}-person household &middot; Submitted {submittedDate}
+            {app.building_address}, Unit {app.unit_number} - {app.household_size}-person household - Submitted {submittedDate}
           </div>
         </div>
         <div style={{ flexShrink: 0, paddingTop: 4 }}><HachStatusBadge status={app.hach_review_status} /></div>
@@ -403,12 +404,12 @@ export default function HachPacketPage() {
                   <td style={{ padding: '8px', fontWeight: 500, color: COLORS.text }}>{m.name}</td>
                   <td style={{ padding: '8px', color: COLORS.text, textTransform: 'capitalize' as const }}>{m.relationship}</td>
                   <td style={{ padding: '8px', color: COLORS.text, fontFamily: FONT_MONO, fontSize: 12 }}>
-                    {m.date_of_birth ? new Date(m.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    {m.date_of_birth ? new Date(m.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
                     {m.age != null ? ` (${m.age})` : ''}
                   </td>
-                  <td style={{ padding: '8px', color: COLORS.text }}>{(m.income_sources ?? []).length > 0 ? (m.income_sources as string[]).join(', ') : '—'}</td>
+                  <td style={{ padding: '8px', color: COLORS.text }}>{(m.income_sources ?? []).length > 0 ? (m.income_sources as string[]).join(', ') : '-'}</td>
                   <td style={{ padding: '8px', fontFamily: FONT_MONO, fontSize: 12, color: COLORS.text }}>
-                    {m.annual_income != null && m.annual_income > 0 ? `$${Number(m.annual_income).toLocaleString()}` : '—'}
+                    {m.annual_income != null && m.annual_income > 0 ? `$${Number(m.annual_income).toLocaleString()}` : '-'}
                   </td>
                 </tr>
               ))}
@@ -444,6 +445,13 @@ export default function HachPacketPage() {
       ))}
 
       <ToastBar toast={toast} />
+
+      {viewingDoc && (
+        <DocumentViewer
+          document={viewingDoc}
+          onClose={() => setViewingDoc(null)}
+        />
+      )}
     </div>
   );
 }
