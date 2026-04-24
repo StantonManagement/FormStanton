@@ -27,8 +27,6 @@ const COLORS = {
   waivedLight: '#e0e7ff',
   success: '#16a34a',
   successBg: '#f0fdf4',
-  warning: '#d97706',
-  warningBg: '#fffbeb',
   error: '#dc2626',
   errorBg: '#fef2f2',
   infoBg: '#eff6ff',
@@ -36,6 +34,21 @@ const COLORS = {
 };
 const FONT = "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 const FONT_MONO = "'IBM Plex Mono', 'Courier New', monospace";
+
+// ---- Primitives ----
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 6px', borderRadius: 3,
+      backgroundColor: '#f5f5f4', border: `1px solid ${COLORS.border}`,
+      fontFamily: FONT_MONO, fontSize: 11, fontWeight: 600,
+      color: COLORS.text, lineHeight: '16px', minWidth: 16, textAlign: 'center' as const,
+    }}>
+      {children}
+    </span>
+  );
+}
 
 function StatusBadge({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' }) {
   const config: Record<string, { label: string; bg: string; color: string }> = {
@@ -146,6 +159,102 @@ function ToastBar({ toast }: { toast: ToastData | null }) {
   );
 }
 
+// ---- Shortcuts bar (fixed bottom) ----
+
+function ShortcutsBar({ toast, onShowHelp }: { toast: ToastData | null; onShowHelp: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed' as const, bottom: 0, left: 0, right: 0,
+      height: 36, backgroundColor: COLORS.panel,
+      borderTop: `1px solid ${COLORS.border}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 24px', zIndex: 100, fontSize: 11, color: COLORS.textMuted,
+    }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <span><Kbd>J</Kbd> <Kbd>K</Kbd> next/prev</span>
+        <span><Kbd>A</Kbd> approve</span>
+        <span><Kbd>R</Kbd> reject</span>
+        <span><Kbd>V</Kbd> view</span>
+        <span
+          onClick={onShowHelp}
+          style={{ cursor: 'pointer' }}
+        >
+          <Kbd>?</Kbd> help
+        </span>
+      </div>
+      <div style={{
+        opacity: toast ? 1 : 0, transition: 'opacity 0.3s',
+        color: toast?.type === 'success' ? COLORS.approve : COLORS.reject,
+        fontWeight: 600,
+      }}>
+        {toast?.message ?? ''}
+      </div>
+    </div>
+  );
+}
+
+// ---- Shortcuts help modal ----
+
+function ShortcutsHelpModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const shortcuts = [
+    { key: 'J / ArrowDown', desc: 'Focus next document row' },
+    { key: 'K / ArrowUp',   desc: 'Focus previous document row' },
+    { key: 'A',             desc: 'Approve focused document (if pending)' },
+    { key: 'V',             desc: 'Open document viewer for focused row' },
+    { key: 'R',             desc: 'Reject (Phase 4 — not yet available)' },
+    { key: '?',             desc: 'Show this help dialog' },
+    { key: 'Esc',           desc: 'Close modals / dialogs' },
+  ];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed' as const, inset: 0, backgroundColor: 'rgba(28,25,23,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 160, padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: COLORS.panel, width: '100%', maxWidth: 420,
+          boxShadow: '0 20px 50px rgba(0,0,0,0.2)', fontFamily: FONT,
+        }}
+      >
+        <div style={{ padding: '16px 22px', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>Keyboard Shortcuts</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: COLORS.textMuted, fontFamily: FONT, padding: '2px 6px' }}>x</button>
+        </div>
+        <div style={{ padding: '12px 22px 20px' }}>
+          {shortcuts.map((s) => (
+            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderBottom: `1px solid ${COLORS.border}` }}>
+              <div style={{ width: 130, flexShrink: 0 }}>
+                {s.key.split(' / ').map((k, i) => (
+                  <span key={k}>{i > 0 && <span style={{ color: COLORS.textSubtle, margin: '0 4px' }}>/</span>}<Kbd>{k}</Kbd></span>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: COLORS.textMuted }}>{s.desc}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: '10px 22px', borderTop: `1px solid ${COLORS.border}`, backgroundColor: COLORS.bg, textAlign: 'right' as const }}>
+          <button onClick={onClose} style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, backgroundColor: COLORS.accent, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: FONT }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Income panel ----
+
 function IncomePanel({ applicationId }: { applicationId: string }) {
   const [income, setIncome] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -190,10 +299,12 @@ function getEffectiveStatus(doc: any): string {
   return doc.status ?? 'pending';
 }
 
+// ---- Document row ----
+
 function DocumentRow({
-  doc, isFocused, isApproving, onApprove, onView, onClick, rowRef,
+  doc, isFocused, isFlashing, isApproving, onApprove, onView, onClick, rowRef,
 }: {
-  doc: any; isFocused: boolean; isApproving: boolean;
+  doc: any; isFocused: boolean; isFlashing: boolean; isApproving: boolean;
   onApprove: (id: string) => void; onView: (doc: any) => void;
   onClick: () => void; rowRef?: (el: HTMLDivElement | null) => void;
 }) {
@@ -201,6 +312,12 @@ function DocumentRow({
   const eff = getEffectiveStatus(doc);
   const canApprove = eff !== 'approved' && eff !== 'waived' && eff !== 'missing';
   const canView = !!(doc.storage_path || doc.file_name);
+
+  let bg = 'transparent';
+  let borderLeft = '3px solid transparent';
+  if (isFlashing) { bg = '#fff7ed'; borderLeft = `3px solid ${COLORS.pending}`; }
+  else if (isFocused) { bg = COLORS.accentLight; borderLeft = `3px solid ${COLORS.accent}`; }
+  else if (hover) { bg = '#fafaf9'; }
 
   return (
     <div
@@ -211,8 +328,7 @@ function DocumentRow({
       data-doc-row="true"
       style={{
         padding: '12px 16px', borderTop: `1px solid ${COLORS.border}`, cursor: 'pointer',
-        backgroundColor: isFocused ? COLORS.accentLight : (hover ? '#fafaf9' : 'transparent'),
-        borderLeft: isFocused ? `3px solid ${COLORS.accent}` : '3px solid transparent',
+        backgroundColor: bg, borderLeft,
         transition: 'all 0.1s ease',
       }}
     >
@@ -221,6 +337,11 @@ function DocumentRow({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <span style={{ fontWeight: 600, fontSize: 13, color: COLORS.text }}>{doc.label}</span>
             <StatusBadge status={eff} size="sm" />
+            {isFlashing && (
+              <span style={{ fontSize: 11, color: COLORS.pending, fontWeight: 500 }}>
+                Reject coming soon
+              </span>
+            )}
           </div>
           {doc.file_name && (
             <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: FONT_MONO, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
@@ -257,6 +378,8 @@ function DocumentRow({
   );
 }
 
+// ---- Main page ----
+
 export default function HachPacketPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -268,12 +391,19 @@ export default function HachPacketPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [focusedDocIdx, setFocusedDocIdx] = useState<number>(-1);
+  const [flashDocIdx, setFlashDocIdx] = useState<number>(-1);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const docRowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const showToast = useCallback((message: string, type: ToastData['type'] = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  const flashRow = useCallback((idx: number) => {
+    setFlashDocIdx(idx);
+    setTimeout(() => setFlashDocIdx(-1), 600);
   }, []);
 
   useEffect(() => {
@@ -312,6 +442,83 @@ export default function HachPacketPage() {
       setApprovingId(null);
     }
   }, [documents, showToast]);
+
+  // Keyboard handler
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't intercept when typing in form fields
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        (el instanceof HTMLElement && el.isContentEditable)
+      ) return;
+
+      // Don't intercept when modals are open (they handle their own Esc)
+      if (e.key === 'Escape') {
+        if (showShortcuts) { setShowShortcuts(false); return; }
+        if (viewingDoc) { setViewingDoc(null); return; }
+        return;
+      }
+
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(true);
+        return;
+      }
+
+      // Navigation
+      if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedDocIdx((prev) => {
+          const next = Math.min(prev + 1, documents.length - 1);
+          docRowRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          return next;
+        });
+        return;
+      }
+
+      if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedDocIdx((prev) => {
+          const next = Math.max(prev - 1, 0);
+          docRowRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          return next;
+        });
+        return;
+      }
+
+      if (focusedDocIdx < 0 || focusedDocIdx >= documents.length) return;
+      const focusedDoc = documents[focusedDocIdx];
+      if (!focusedDoc) return;
+
+      if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        const eff = getEffectiveStatus(focusedDoc);
+        if (eff !== 'approved' && eff !== 'waived' && eff !== 'missing') {
+          handleApprove(focusedDoc.id);
+        }
+        return;
+      }
+
+      if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault();
+        if (focusedDoc.storage_path || focusedDoc.file_name) {
+          setViewingDoc(focusedDoc);
+        }
+        return;
+      }
+
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        flashRow(focusedDocIdx);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [documents, focusedDocIdx, handleApprove, flashRow, viewingDoc, showShortcuts]);
 
   if (loading) return <div style={{ padding: '48px 32px', fontFamily: FONT, color: COLORS.textMuted, fontSize: 14 }}>Loading packet...</div>;
 
@@ -433,6 +640,7 @@ export default function HachPacketPage() {
                 key={doc.id}
                 doc={doc}
                 isFocused={focusedDocIdx === gIdx}
+                isFlashing={flashDocIdx === gIdx}
                 isApproving={approvingId === doc.id}
                 onApprove={handleApprove}
                 onView={setViewingDoc}
@@ -446,11 +654,17 @@ export default function HachPacketPage() {
 
       <ToastBar toast={toast} />
 
+      <ShortcutsBar toast={toast} onShowHelp={() => setShowShortcuts(true)} />
+
       {viewingDoc && (
         <DocumentViewer
           document={viewingDoc}
           onClose={() => setViewingDoc(null)}
         />
+      )}
+
+      {showShortcuts && (
+        <ShortcutsHelpModal onClose={() => setShowShortcuts(false)} />
       )}
     </div>
   );
