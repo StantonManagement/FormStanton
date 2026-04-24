@@ -170,7 +170,10 @@ export default function PbvFullApplicationsPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold font-serif text-[var(--primary)]">PBV Full Applications</h1>
+        <div>
+          <h1 className="text-xl font-bold font-serif text-[var(--primary)]">PBV Full Applications</h1>
+          <Link href="/admin/pbv/pipeline" className="text-sm text-[var(--primary)] underline">Pipeline view →</Link>
+        </div>
         <button
           type="button"
           onClick={() => { setShowInvite(true); setInviteResult(null); setInviteError(''); }}

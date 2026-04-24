@@ -202,3 +202,41 @@
 - `app/api/admin/auth/route.ts` selects `role` column from `admin_users` — this column appears to be a legacy field from before the RBAC system. No migration drops it, so it still exists. Low risk but worth cleaning up eventually.
 - `lib/audit.ts` uses `username` column on `audit_log`, but the PRD schema calls it without `username`. The existing column was preserved; new `user_type` added alongside. The audit log now has both old-style and new-style columns — a minor inconsistency to address in a future cleanup migration.
 - No Vitest was configured in the project before Build 2. Added it as a devDependency with minimal config in `vitest.config.ts`.
+
+---
+
+## Session 2 — Builds 0–3
+
+### Build 0: Pre-flight fix — file_name in packet API (commit: `hach-reviewer-portal: include file_name in packet API response`)
+
+- `app/api/hach/applications/[id]/route.ts`: After building `latestActionByDoc`, now fetches all revisions from `form_submission_document_revisions` ordered by `revision DESC`, builds `latestRevFileName` map (first-seen wins per `document_id`), and overrides `file_name` in `enrichedDocs` with `latestRevFileName[doc.id] ?? doc.file_name`. This unblocks the `canView` check in the UI.
+- Closed open question from Session 1 re: `file_name` in document viewer.
+
+### Build 1: New since last visit badges (commit: `hach-reviewer-portal: new-since-last-visit badges (phase 6)`)
+
+- **`lib/hach/view-tracking.ts`**: `recordApplicationView(applicationId, reviewerId, reviewerName)` — inserts into `application_view_events` using columns `full_application_id`, `reviewer_id`, `reviewer_name`, `viewed_at`. Fire-and-forget.
+- **`app/api/hach/applications/[id]/view/route.ts`**: `POST` endpoint, requires HACH auth. Called from packet page on mount.
+- **`app/api/hach/applications/[id]/route.ts`**: Added `getSessionUser()` call; after enrichedDocs, queries `application_view_events` for `max(viewed_at)` for current reviewer, then counts revisions in `form_submission_document_revisions` created after that timestamp. Returns `last_viewed_at` and `new_since_last_view` in the response body.
+- **`app/api/hach/applications/route.ts`**: Added `getSessionUser()`; changed docCounts select to include `id`; builds `docIdToSubmId` and `submIdToAppId` maps; queries view events and all revisions; computes `newRevsByApp` (only counts revisions after `last_viewed_at`, never-viewed → 0); includes `last_viewed_at` and `documents_uploaded_since_last_view` in each queue row.
+- **`app/hach/page.tsx`**: `QueueApp` interface extended with `last_viewed_at` and `documents_uploaded_since_last_view`. `AppRow` shows teal `N new` badge inline with applicant name when count > 0.
+- **`app/hach/applications/[id]/page.tsx`**: Added `newSinceLastView` + `lastViewedAt` state; `useEffect` fires `POST /api/hach/applications/[id]/view` on mount; `formatRelativeTime(iso)` helper added; blue info banner renders below the header card when `newSinceLastView > 0 && lastViewedAt`.
+
+### Build 2: User management UI + invitation acceptance (commit: `hach-auth: user management UI + invitation acceptance (phase 3)`)
+
+- **`middleware.ts`**: Whitelisted `/hach/accept-invite` and `/api/hach/accept-invite` as public routes (same pattern as `/hach/login`).
+- **`app/hach/layout.tsx`**: Added `userType` state (populated from `/api/admin/auth`); `hach_admin` sees "Users" and "Audit Log" nav links in the header with active-state highlight. Added `isAcceptInvitePage` bypass for auth check and header visibility.
+- **`app/api/hach/admin/users/route.ts`**: `GET` returns HACH users + pending invitations (with inviter display names). `POST` creates invitation — validates email + user_type, checks for existing account by username, generates `crypto.randomUUID()` token, 7-day expiry, logs invite URL to console, calls `logAudit`.
+- **`app/api/hach/admin/users/[id]/deactivate/route.ts`**: `POST` — validates target is HACH user, blocks self-deactivation, sets `deactivated_at` + `is_active = false`, calls `logAudit`.
+- **`app/api/hach/accept-invite/route.ts`**: `GET` validates token (checks expiry + accepted_at). `POST` validates full form, creates `admin_users` row with bcrypt-hashed password, marks invitation accepted, creates session (same flow as login), logs `user.account_created` audit event.
+- **`app/hach/admin/users/page.tsx`**: Invite modal (email + role select) → on success shows URL-copy dialog with copyable invite link. User table with deactivate action (optimistic UI + revert on failure). Pending invitations table. Admin-only via 403 guard.
+- **`app/hach/accept-invite/page.tsx`**: Token validated on mount via `GET /api/hach/accept-invite`. Form collects display_name + password (12-char min, letter+number required). On success, auto-redirects to `/hach`. Wrapped in `<Suspense>` for `useSearchParams()`. Full-page layout (layout header hidden on this page).
+
+### Build 3: Audit log viewer (commit: `hach-auth: audit log viewer for hach admins (phase 4)`)
+
+- **`app/api/hach/admin/audit-log/route.ts`**: `GET` — resolves HACH user IDs from `admin_users` WHERE user_type IN ('hach_admin','hach_reviewer'), filters `audit_log` by those IDs. Supports `date_from`, `date_to`, `user_id`, `action` query params. `dateTo` is inclusive (adds 1 day). Offset-based pagination (50/page). Returns distinct action list + HACH user list for filter dropdowns.
+- **`app/hach/admin/audit-log/page.tsx`**: Filter bar with preset buttons (7d/30d/90d/All), date range inputs, user dropdown, action dropdown. AbortController cancels in-flight requests on filter change. Table columns: timestamp, user (with user_type sub-line), action badge (color-coded: amber=auth, purple=write, gray=read), entity type+ID (application entity_ids are linked to `/hach/applications/[id]`), expandable JSON details, IP address. Offset pagination with Prev/Next. Admin-only via 403 check.
+
+### Open questions / deferred
+- Password reset action in user management table currently shows "coming soon" toast — no reset-by-admin flow implemented.
+- `logAudit()` helper does not set the `user_type` column on `audit_log` rows. Existing HACH audit entries will have `user_type = null` unless `logAudit` is extended. The audit log viewer filters by `user_id IN (hach_user_ids)` rather than by `user_type` to work around this.
+- Email delivery for invitations is deferred — invite URL is logged to console only.

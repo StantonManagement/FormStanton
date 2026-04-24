@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import DocumentViewer from '@/components/hach/DocumentViewer';
+import RejectDialog from '@/components/hach/RejectDialog';
 
 const COLORS = {
   accent: '#0f4c5c',
@@ -207,7 +208,7 @@ function ShortcutsHelpModal({ onClose }: { onClose: () => void }) {
     { key: 'K / ArrowUp',   desc: 'Focus previous document row' },
     { key: 'A',             desc: 'Approve focused document (if pending)' },
     { key: 'V',             desc: 'Open document viewer for focused row' },
-    { key: 'R',             desc: 'Reject (Phase 4 — not yet available)' },
+    { key: 'R',             desc: 'Reject focused document (if pending)' },
     { key: '?',             desc: 'Show this help dialog' },
     { key: 'Esc',           desc: 'Close modals / dialogs' },
   ];
@@ -312,15 +313,16 @@ function getEffectiveStatus(doc: any): string {
 // ---- Document row ----
 
 function DocumentRow({
-  doc, isFocused, isFlashing, isApproving, onApprove, onView, onClick, rowRef,
+  doc, isFocused, isFlashing, isApproving, onApprove, onReject, onView, onClick, rowRef,
 }: {
   doc: any; isFocused: boolean; isFlashing: boolean; isApproving: boolean;
-  onApprove: (id: string) => void; onView: (doc: any) => void;
+  onApprove: (id: string) => void; onReject: (doc: any) => void; onView: (doc: any) => void;
   onClick: () => void; rowRef?: (el: HTMLDivElement | null) => void;
 }) {
   const [hover, setHover] = useState(false);
   const eff = getEffectiveStatus(doc);
   const canApprove = eff !== 'approved' && eff !== 'waived' && eff !== 'missing';
+  const canReject = eff !== 'approved' && eff !== 'waived' && eff !== 'missing';
   const canView = !!(doc.storage_path || doc.file_name);
 
   let bg = 'transparent';
@@ -376,6 +378,11 @@ function DocumentRow({
               {isApproving ? '...' : 'Approve'}
             </Button>
           )}
+          {canReject && !isApproving && (
+            <Button size="sm" variant="reject" onClick={(e) => { e.stopPropagation(); onReject(doc); }}>
+              Reject
+            </Button>
+          )}
         </div>
       </div>
       {doc.latest_action && (
@@ -403,6 +410,7 @@ export default function HachPacketPage() {
   const [focusedDocIdx, setFocusedDocIdx] = useState<number>(-1);
   const [flashDocIdx, setFlashDocIdx] = useState<number>(-1);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [rejectingDoc, setRejectingDoc] = useState<any>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [newSinceLastView, setNewSinceLastView] = useState(0);
   const [lastViewedAt, setLastViewedAt] = useState<string | null>(null);
@@ -441,6 +449,34 @@ export default function HachPacketPage() {
       .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleRejectSubmit = useCallback(async (docId: string, reasonCode: string, reasonText: string | undefined) => {
+    const doc = documents.find((d) => d.id === docId);
+    if (!doc) return;
+    const snapshot = documents;
+    setDocuments((prev) => prev.map((d) =>
+      d.id === docId
+        ? { ...d, latest_action: { action: 'rejected', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: reasonText ?? reasonCode } }
+        : d
+    ));
+    try {
+      const res = await fetch(`/api/hach/documents/${docId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason_code: reasonCode, reason_text: reasonText }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setDocuments(snapshot);
+        throw new Error(data.message || 'Rejection failed');
+      }
+      setRejectingDoc(null);
+      showToast(`\u2717 Rejected \xB7 ${doc.label} (notification deferred)`, 'error');
+    } catch (e: any) {
+      setDocuments(snapshot);
+      throw e;
+    }
+  }, [documents, showToast]);
 
   const handleApprove = useCallback(async (docId: string) => {
     const doc = documents.find((d) => d.id === docId);
@@ -481,6 +517,7 @@ export default function HachPacketPage() {
       // Don't intercept when modals are open (they handle their own Esc)
       if (e.key === 'Escape') {
         if (showShortcuts) { setShowShortcuts(false); return; }
+        if (rejectingDoc) { setRejectingDoc(null); return; }
         if (viewingDoc) { setViewingDoc(null); return; }
         return;
       }
@@ -535,14 +572,17 @@ export default function HachPacketPage() {
 
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
-        flashRow(focusedDocIdx);
+        const eff = getEffectiveStatus(focusedDoc);
+        if (eff !== 'approved' && eff !== 'waived' && eff !== 'missing') {
+          setRejectingDoc(focusedDoc);
+        }
         return;
       }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [documents, focusedDocIdx, handleApprove, flashRow, viewingDoc, showShortcuts]);
+  }, [documents, focusedDocIdx, handleApprove, flashRow, viewingDoc, rejectingDoc, showShortcuts]);
 
   if (loading) return <div style={{ padding: '48px 32px', fontFamily: FONT, color: COLORS.textMuted, fontSize: 14 }}>Loading packet...</div>;
 
@@ -684,6 +724,7 @@ export default function HachPacketPage() {
                 isFlashing={flashDocIdx === gIdx}
                 isApproving={approvingId === doc.id}
                 onApprove={handleApprove}
+                onReject={setRejectingDoc}
                 onView={setViewingDoc}
                 onClick={() => setFocusedDocIdx(gIdx)}
                 rowRef={(el) => { docRowRefs.current[gIdx] = el; }}
@@ -706,6 +747,20 @@ export default function HachPacketPage() {
 
       {showShortcuts && (
         <ShortcutsHelpModal onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {rejectingDoc && packet && (
+        <RejectDialog
+          document={rejectingDoc}
+          application={{
+            head_of_household_name: packet.application.head_of_household_name,
+            building_address: packet.application.building_address,
+            unit_number: packet.application.unit_number,
+            preferred_language: packet.application.preferred_language,
+          }}
+          onClose={() => setRejectingDoc(null)}
+          onSubmit={handleRejectSubmit}
+        />
       )}
     </div>
   );
