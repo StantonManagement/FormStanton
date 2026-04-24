@@ -177,6 +177,7 @@ export default function FormSubmissionDetailPage() {
   const [error, setError] = useState('');
 
   const [editMode, setEditMode] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [notes, setNotes] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<FormSubmissionStatus>('pending_review');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
@@ -197,6 +198,9 @@ export default function FormSubmissionDetailPage() {
       setSelectedPriority(submission.priority || 'medium');
       setDenialReason(submission.denial_reason || '');
       setRevisionNotes(submission.revision_notes || '');
+      const typeLabel = getFormTypeInfo(submission.form_type).label;
+      const tenant = submission.tenant_name ? ` — ${submission.tenant_name}` : '';
+      document.title = `${typeLabel}${tenant} - Stanton Management`;
     }
   }, [submission]);
 
@@ -216,6 +220,28 @@ export default function FormSubmissionDetailPage() {
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleExportZip = async () => {
+    if (!submission) return;
+    setIsExporting(true);
+    try {
+      const res = await fetch(`/api/admin/submissions/${id}/export`);
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? 'submission_export.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(e.message || 'Export failed');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -328,6 +354,18 @@ export default function FormSubmissionDetailPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              {submission.review_granularity === 'per_document' && (
+                <button
+                  onClick={handleExportZip}
+                  disabled={isExporting}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-none hover:bg-gray-200 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {isExporting ? 'Exporting...' : 'Export ZIP'}
+                </button>
+              )}
               {submission.pdf_url && (
                 <a
                   href={submission.pdf_url}

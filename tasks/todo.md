@@ -158,9 +158,92 @@
 
 ---
 
-## Phase 1 — Reconnaissance
+## Phase 1 — Reconnaissance ✅ COMPLETE
 
-**Status:** Not started. Awaiting Phase 0 checkpoint approval.
+**Deliverable:** `tasks/pbv-app-audit.md`
+
+### What was established:
+
+**Pre-app reusable pieces (with file:line):**
+- `PbvPreappForm.tsx` — `PageState` union, `MemberCard`, section layout, `validate()`, `handleSubmit()`, income-source toggle, HoH→member[0] sync
+- `lib/pbvFormTranslations.ts` — `PbvFormStrings` interface + `Record<PreferredLanguage, PbvFormStrings>` pattern; function-valued strings
+- Signature canvas: `react-signature-canvas`, `useRef<SignatureCanvas>`, `toDataURL('image/png')`, `clear()`, 140px container with `touchAction: none`
+- Qualification logic: inline in `app/api/t/[token]/pbv-preapp/route.ts` lines 164–186; income check + citizenship check only; full-app uses staff-assisted panel instead (no auto-denial)
+
+**Foundation endpoints confirmed ready (Phase 2–5 of foundation PRD, all complete):**
+- `POST /api/forms/[formId]/submissions` — creates submission + seeds document slots
+- `GET /api/t/[token]/status` — tenant views per-doc status
+- `POST /api/t/[token]/documents/[documentId]` — tenant uploads file
+- `POST /api/admin/submissions/[submissionId]/documents/[documentId]/review` — staff review action
+- `GET /api/admin/submissions/[submissionId]/documents` — list + history
+- `GET /api/admin/submissions/[submissionId]/export` — ZIP export
+- `POST /api/admin/form-submissions/[id]/regenerate-token` — token regeneration
+
+**Foundation document template shape confirmed** — `form_document_templates` table with `applies_to`, `member_filter`, `conditional_on`, `per_person`, `label_es`, `label_pt` columns.
+
+**Full document seed list mapped** — 35 document types across income, assets, medical, citizenship, and signed forms categories; `applies_to` and `member_filter` planned for each.
+
+### Decisions made:
+- Full-app admin detail will be a full page at `/admin/pbv/full-applications/[id]`, not a drawer (volume too large for 480px panel) [ASSUMPTION A-1 — Alex to confirm]
+- Tenant invitation for full app uses a new token on `pbv_full_applications` (not `project_units.tenant_link_token`) [ASSUMPTION A-2]
+- `each_adult` documents will use `applies_to = 'each_member_matching_rule'` with `member_filter = { "age_gte": 18 }` — requires `lib/memberFilter.ts` age computation support [ASSUMPTION A-3 — must verify before Phase 2 seed]
+- `conditional_on` for VAWA/RA forms evaluates against `form_data`; intake form must write `dv_status` and `reasonable_accommodation_requested` into `form_data` at matching keys [ASSUMPTION A-4]
+- Training / digital payment docs filed under `income_sources: 'other'` pending Alex confirmation [ASSUMPTION A-5]
+
+### What was deferred:
+- Reading `lib/memberFilter.ts` to confirm `age_gte` support — needed before Phase 2 seed write
+- HUD form version confirmation (Alex/HACH) — needed before Phase 4 signature forms
+- `pbv_reviewer` role definition — Phase 7
+- Full-app tenant invitation token design — Phase 2 schema decision
+
+### Alex needs to verify:
+1. Confirm A-1: full-app admin detail is a full page, not a drawer
+2. Confirm A-2: new invitation token on `pbv_full_applications` (not reusing project_unit token)
+3. Confirm A-3 / A-5: `each_adult` via age_gte filter; training/digital docs under 'other'
+4. Confirm Phase 2 is approved to proceed (foundation Phase 2+ is already complete)
+
+---
+
+## Phase 2 — Data Layer 🔄 IN PROGRESS
+
+**Foundation dependency:** Foundation PRD Phases 1–5 complete. ✅  
+**A-1 through A-5:** All confirmed.
+
+### Phase plan checkboxes:
+- [x] Write encryption decision doc → `tasks/pbv-app-encryption-decision.md`
+- [x] Create `lib/ssnEncryption.ts` (AES-256-GCM, Node.js crypto)
+- [x] Create `scripts/test-ssn-encryption.ts` (round-trip + wrong-key tests)
+- [x] Migration `supabase/migrations/20260423210000_pbv_full_application_tables.sql` — `pbv_full_applications`, `pbv_household_members`, `pbv_access_log`
+- [x] Migration `supabase/migrations/20260423220000_pbv_full_app_document_templates.sql` — seed 33 doc types for `form_id = 'pbv-full-application'`
+- [x] Append `PbvFullApplication`, `PbvHouseholdMember`, `PbvAccessLog` to `types/compliance.ts`
+- [x] Update `.env.local.example` with `PBV_SSN_ENCRYPTION_KEY`
+
+### Key decisions made in Phase 2:
+- **SSN encryption:** Application-level AES-256-GCM via Node.js `crypto`. Key in `PBV_SSN_ENCRYPTION_KEY` env var (64 hex chars = 32 bytes). Justified in `tasks/pbv-app-encryption-decision.md`.
+- **`each_adult` filtering:** Uses native `applies_to = 'each_adult'` case in `getApplicableMembers` which checks `member.age >= 18`. Phase 3 intake form must compute age from dob and write it into `form_data.household_members[n].age`.
+- **Income-source filtering:** Normalized boolean flags per member (`employed`, `has_ssi`, `has_ss`, etc.) evaluated by `member_filter = {"field": "employed", "value": true}`. Phase 3 intake form must derive these flags from `income_sources` array before writing `form_data`.
+- **Tenant invitation token:** `pbv_full_applications.tenant_access_token` TEXT UNIQUE — 32-byte hex token generated at application creation. Same length as `generateToken()` in `lib/generateToken.ts`.
+- **`conditional_on` evaluated in UI, not at seeding:** Foundation seeding route seeds ALL template rows; `conditional_on` JSONB is filtered client-side in Phase 5 tenant UI and Phase 6 admin UI.
+
+### Alex needs to verify before Phase 3:
+1. Apply migration `20260423210000` to production Supabase
+2. Apply migration `20260423220000` to production Supabase
+3. Add `PBV_SSN_ENCRYPTION_KEY` to Vercel env vars (generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
+4. Run `npx ts-node scripts/test-ssn-encryption.ts` and confirm all assertions pass
+5. Confirm the 33-document seed matches the HACH document checklist (especially signed forms list)
+
+---
+
+## Phase 7A — HHA Template Upload + End-to-End Flow 🔄 IN PROGRESS
+
+**Deliverables:**
+- [x] `POST /api/admin/pbv/full-applications/[id]/hha?action=upload-template` — upload `.docx` template to `hha-templates/hca-application.docx` (upsert)
+- [x] `app/admin/pbv/full-applications/[id]/page.tsx` — HHA Template upload controls + status messaging in Actions panel
+- [x] `GET /api/admin/pbv/full-applications/[id]` — includes `hha_application_file` in payload for UI state
+- [x] `GET /api/admin/pbv/full-applications/[id]/export` — includes generated HHA `.docx` in ZIP under `hha/`
+- [x] `scripts/test-pbv-full-application-phase7.ts` — integration flow: upload template → document readiness normalization → approve review status → generate HHA → verify export ZIP includes HHA file
+
+**Awaiting checkpoint:** Alex runs `npx ts-node scripts/test-pbv-full-application-phase7.ts` with `ADMIN_COOKIE`, `PBV_APP_ID`, and optional `HHA_TEMPLATE_FILE`.
 
 ---
 

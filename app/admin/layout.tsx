@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
 import { AdminAuthProvider } from '@/lib/adminAuthContext';
+import CommandPalette from '@/components/admin/CommandPalette';
+import AuditFooter from '@/components/admin/AuditFooter';
+import ImpersonationBanner from '@/components/admin/ImpersonationBanner';
 
 export default function AdminLayout({
   children,
@@ -16,6 +19,17 @@ export default function AdminLayout({
 
   useEffect(() => {
     checkAuth();
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!pathname || pathname === '/admin') return;
+    const RECENT_KEY = 'adminRecentNav';
+    const MAX = 8;
+    try {
+      const stored = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') as string[];
+      const updated = [pathname, ...stored.filter((p) => p !== pathname)].slice(0, MAX);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+    } catch { /* ignore */ }
   }, [pathname]);
 
   const checkAuth = async () => {
@@ -47,11 +61,16 @@ export default function AdminLayout({
 
   return (
     <AdminAuthProvider>
+      <CommandPalette />
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <AdminSidebar />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ImpersonationBanner />
+          <main className="flex-1 overflow-y-auto pb-10">
+            {children}
+          </main>
+          <AuditFooter />
+        </div>
       </div>
     </AdminAuthProvider>
   );

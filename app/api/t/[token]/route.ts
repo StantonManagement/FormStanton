@@ -81,6 +81,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
+        project_unit_id: unit.id,
         project_name: project?.name ?? null,
         deadline: project?.deadline ?? null,
         sequential: project?.sequential ?? false,

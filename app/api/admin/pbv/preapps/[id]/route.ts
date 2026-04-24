@@ -27,3 +27,24 @@ export async function GET(
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    const { error } = await supabaseAdmin
+      .from('pbv_preapplications')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('PBV preapp DELETE error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}

@@ -76,6 +76,8 @@ interface QueueApp {
   created_at: string;
   hach_review_status: string;
   doc_summary: { total: number; approved: number; rejected: number; missing: number; submitted: number };
+  last_viewed_at: string | null;
+  documents_uploaded_since_last_view: number;
 }
 
 interface QueueData {
@@ -111,8 +113,21 @@ function AppRow({ app }: { app: QueueApp }) {
       >
         {/* Name + address */}
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.text }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.text, display: 'flex', alignItems: 'center', gap: 8 }}>
             {app.head_of_household_name}
+            {app.documents_uploaded_since_last_view > 0 && (
+              <span style={{
+                display: 'inline-block',
+                padding: '1px 7px',
+                background: COLORS.accent,
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+              }}>
+                {app.documents_uploaded_since_last_view} new
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
             {app.building_address}, Unit {app.unit_number} &middot; {app.household_size} person household

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { PreferredLanguage } from '@/types/compliance';
 import { submissionStatusTranslations } from '@/lib/submissionStatusTranslations';
 import { getFormTypeInfo } from '@/lib/formTypeLabels';
+import { evaluateImageQuality } from '@/components/DocumentScanner/quality';
 
 type DocStatus = 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived';
 
@@ -19,6 +20,14 @@ interface SubmissionDocument {
   file_name: string | null;
   rejection_reason: string | null;
   reviewed_at: string | null;
+  scan_metadata?: {
+    quality_flags?: string[];
+    quality_scores?: {
+      blur?: number;
+      brightness?: number;
+      resolution?: number;
+    };
+  } | null;
 }
 
 interface SubmissionData {
@@ -125,6 +134,47 @@ function ProgressBar({ counts }: { counts: Record<DocStatus, number> }) {
   );
 }
 
+function resolveTranslations(language: PreferredLanguage) {
+  return submissionStatusTranslations[language];
+}
+
+function qualityFlagLabel(flag: string, t: ReturnType<typeof resolveTranslations>) {
+  if (flag === 'blurry') return t.scan_blurry;
+  if (flag === 'dark') return t.scan_dark;
+  if (flag === 'low_resolution') return t.scan_low_resolution;
+  return flag;
+}
+
+async function evaluateUploadQuality(file: File): Promise<Record<string, unknown> | null> {
+  if (!file.type.startsWith('image/')) {
+    return null;
+  }
+
+  const imageUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = imageUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Could not decode image for quality check'));
+    });
+
+    const quality = evaluateImageQuality(image, image.width, image.height);
+
+    return {
+      capture_method: 'file_upload',
+      page_count: 1,
+      quality_flags: quality.flags,
+      quality_scores: quality.scores,
+      format: 'jpeg',
+      heic_converted: false,
+    };
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
 export default function SubmissionStatusPortal({ token }: { token: string }) {
   const [data, setData] = useState<StatusPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +184,7 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
 
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
-  const t = submissionStatusTranslations[language];
+  const t = resolveTranslations(language);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -172,8 +222,12 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
     }
     setDocUploadState(doc.id, { status: 'uploading' });
     try {
+      const scanMetadata = await evaluateUploadQuality(file);
       const form = new FormData();
       form.append('file', file);
+      if (scanMetadata) {
+        form.append('scan_metadata', JSON.stringify(scanMetadata));
+      }
       const res = await fetch(`/api/t/${token}/documents/${doc.id}`, {
         method: 'POST',
         body: form,
@@ -237,6 +291,10 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
     (d) => d.status === 'approved' || d.status === 'waived'
   ).length;
   const allDone = requiredDocs.length > 0 && approvedRequired === requiredDocs.length;
+  const docsNeedingRetake = documents.filter((doc) => {
+    const flags = doc.scan_metadata?.quality_flags ?? [];
+    return flags.length > 0 && (doc.status === 'submitted' || doc.status === 'rejected');
+  }).length;
 
   const formTypeInfo = getFormTypeInfo(submission.form_type);
 
@@ -322,6 +380,14 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
             </div>
           )}
 
+          {docsNeedingRetake > 0 && (
+            <div className="bg-amber-50 border border-amber-200 p-4">
+              <p className="text-sm font-semibold text-amber-900">
+                {t.scan_needs_retake_summary(docsNeedingRetake)}
+              </p>
+            </div>
+          )}
+
           {/* Progress */}
           <div className="bg-white border border-[var(--border)] shadow-sm p-5">
             <p className="text-sm text-[var(--muted)] mb-2">
@@ -373,7 +439,9 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
                 const personLabel = getPersonLabel(doc.person_slot, t);
                 const cfg = DOC_STATUS_CONFIG[doc.status] ?? DOC_STATUS_CONFIG.missing;
                 const uploadState = uploadStates.get(doc.id) ?? { status: 'idle' };
-                const canUpload = doc.status === 'rejected' || doc.status === 'missing';
+                const canUpload = doc.status !== 'approved' && doc.status !== 'waived';
+                const qualityFlags = doc.scan_metadata?.quality_flags ?? [];
+                const showQualityWarning = qualityFlags.length > 0 && (doc.status === 'submitted' || doc.status === 'rejected');
 
                 return (
                   <div
@@ -407,6 +475,19 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
                           {t.rejection_reason_label}
                         </p>
                         <p className="text-sm text-red-900 leading-snug">{doc.rejection_reason}</p>
+                      </div>
+                    )}
+
+                    {showQualityWarning && (
+                      <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200">
+                        <p className="text-xs font-semibold text-amber-900 mb-1">{t.scan_quality_label}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {qualityFlags.map((flag) => (
+                            <span key={`${doc.id}-${flag}`} className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-900">
+                              {qualityFlagLabel(flag, t)}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -445,15 +526,17 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
                         <button
                           onClick={() => fileInputRefs.current.get(doc.id)?.click()}
                           disabled={uploadState.status === 'uploading'}
-                          className={`px-4 py-2 text-sm font-medium transition-colors rounded-none disabled:opacity-50 ${
-                            doc.status === 'rejected'
+                          className={`w-full sm:w-auto px-4 py-2 text-sm font-medium transition-colors rounded-none disabled:opacity-50 ${
+                            doc.status === 'rejected' || showQualityWarning || doc.status === 'submitted'
                               ? 'bg-[var(--primary)] text-white hover:opacity-90'
                               : 'border border-[var(--border)] text-[var(--ink)] hover:bg-gray-50'
                           }`}
                         >
                           {uploadState.status === 'uploading'
                             ? t.uploading
-                            : doc.status === 'rejected'
+                            : showQualityWarning
+                            ? t.scan_retake_btn
+                            : doc.status === 'rejected' || doc.status === 'submitted'
                             ? t.replace_btn
                             : t.upload_btn}
                         </button>

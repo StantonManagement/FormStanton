@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 interface CompletionWithRelations {
   id: string;
@@ -236,6 +237,15 @@ export async function POST(
       .update({ overall_status: overallStatus })
       .eq('id', unitId);
 
+    await logAudit(
+      sessionUser,
+      'project.task_complete',
+      'project_task',
+      taskId,
+      { project_id: projectId, unit_id: unitId, status: targetStatus, completed_by: completedByName },
+      getClientIp(request)
+    );
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     console.error('Staff task completion error:', error);
@@ -405,6 +415,16 @@ export async function DELETE(
       .from('project_units')
       .update({ overall_status: overallStatus })
       .eq('id', unitId);
+
+    const sessionUser = await getSessionUser();
+    await logAudit(
+      sessionUser,
+      'project.task_uncomplete',
+      'project_task',
+      taskId,
+      { project_id: projectId, unit_id: unitId },
+      getClientIp(_request)
+    );
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {

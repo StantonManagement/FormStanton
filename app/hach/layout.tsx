@@ -11,6 +11,7 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [authState, setAuthState] = useState<'loading' | 'ready' | 'redirecting'>('loading');
   const [displayName, setDisplayName] = useState('');
+  const [userType, setUserType] = useState('');
 
   useEffect(() => {
     // Load IBM Plex Sans if not already present
@@ -27,7 +28,9 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const isLoginPage =
       pathname === '/hach/login' || pathname.startsWith('/hach/login');
-    if (isLoginPage) {
+    const isAcceptInvite =
+      pathname === '/hach/accept-invite' || pathname.startsWith('/hach/accept-invite');
+    if (isLoginPage || isAcceptInvite) {
       setAuthState('ready');
       return;
     }
@@ -50,6 +53,7 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
         return;
       }
       setDisplayName(data.displayName || '');
+      setUserType(data.user_type || '');
       setAuthState('ready');
     } catch {
       setAuthState('redirecting');
@@ -64,6 +68,8 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
 
   const isLoginPage =
     pathname === '/hach/login' || pathname.startsWith('/hach/login');
+  const isAcceptInvitePage =
+    pathname === '/hach/accept-invite' || pathname.startsWith('/hach/accept-invite');
 
   if (authState === 'loading') {
     return (
@@ -86,7 +92,7 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div style={{ minHeight: '100vh', background: '#fafaf9', fontFamily: FONT }}>
-      {!isLoginPage && (
+      {!isLoginPage && !isAcceptInvitePage && (
         <header
           style={{
             height: 52,
@@ -113,6 +119,30 @@ export default function HachLayout({ children }: { children: React.ReactNode }) 
           >
             HACH · Reviewer Portal
           </a>
+          {userType === 'hach_admin' && (
+            <div style={{ display: 'flex', gap: 2, marginLeft: 24 }}>
+              <a
+                href="/hach/admin/users"
+                style={{
+                  color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 500,
+                  textDecoration: 'none', padding: '4px 10px',
+                  background: pathname.startsWith('/hach/admin/users') ? 'rgba(255,255,255,0.15)' : 'transparent',
+                }}
+              >
+                Users
+              </a>
+              <a
+                href="/hach/admin/audit-log"
+                style={{
+                  color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 500,
+                  textDecoration: 'none', padding: '4px 10px',
+                  background: pathname.startsWith('/hach/admin/audit-log') ? 'rgba(255,255,255,0.15)' : 'transparent',
+                }}
+              >
+                Audit Log
+              </a>
+            </div>
+          )}
           <div style={{ flex: 1 }} />
           {displayName && (
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProjectDetail } from '@/lib/useProjectDetail';
 import { ProjectStatusBadge, SetupTab, UnitsTab, SendLinksTab } from '@/components/projects';
@@ -18,6 +18,12 @@ export default function ProjectDetailPage() {
   const [selectedUnits, setSelectedUnits] = useState<{ building: string; unit_number: string }[]>([]);
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [activating, setActivating] = useState(false);
+
+  useEffect(() => {
+    if (detail.project?.name) {
+      document.title = `${detail.project.name} — Projects - Stanton Management`;
+    }
+  }, [detail.project?.name]);
 
   const handleActivate = async () => {
     setShowActivateConfirm(false);

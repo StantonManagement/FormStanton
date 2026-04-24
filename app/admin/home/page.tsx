@@ -10,10 +10,49 @@ import {
   DoorOpen,
   AlertTriangle,
   ArrowRight,
+  Home,
+  Car,
+  LayoutGrid,
+  ScanLine,
+  ClipboardList,
+  Receipt,
+  Inbox,
+  ClipboardCheck,
+  ListChecks,
+  FolderOpen,
+  History,
+  Users,
+  ShieldCheck,
+  Building2,
+  type LucideIcon,
 } from 'lucide-react';
 import PageHeader from '@/components/admin/PageHeader';
 import { ProjectStatusBadge } from '@/components/projects';
 import type { ProjectStatus } from '@/types/compliance';
+import { adminNavSections, allNavItems } from '@/lib/adminNav';
+import { NAV_PERMISSION_MAP } from '@/lib/permissions';
+import { useAdminAuth } from '@/lib/adminAuthContext';
+
+const toolIconMap: Record<string, LucideIcon> = {
+  'Home': Home,
+  'Lobby (Permit Distribution)': DoorOpen,
+  'Phone Vehicle Entry': Car,
+  'Tow List': AlertTriangle,
+  'All Buildings': LayoutGrid,
+  'Projects': FolderKanban,
+  'Scan Import': ScanLine,
+  'Form Submissions': FileText,
+  'Onboarding Submissions': ClipboardList,
+  'Reimbursement Requests': Receipt,
+  'AppFolio Queue': Inbox,
+  'PBV Pre-Apps': ClipboardCheck,
+  'PBV Full Applications': ListChecks,
+  'Forms Library': FolderOpen,
+  'Audit Log': History,
+  'User Management': Users,
+  'Roles': ShieldCheck,
+  'Departments': Building2,
+};
 
 interface HomeSummary {
   submissions: {
@@ -33,9 +72,27 @@ interface HomeSummary {
 }
 
 export default function AdminHomePage() {
+  const { hasPermission } = useAdminAuth();
   const [summary, setSummary] = useState<HomeSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [recentNav, setRecentNav] = useState<string[]>([]);
+
+  // A destination is accessible if either no permission is mapped to it, or
+  // the current user has the required read permission. Super admins pass via hasPermission.
+  const canAccess = (href: string): boolean => {
+    if (href === '/admin/home') return true;
+    const required = NAV_PERMISSION_MAP[href];
+    if (!required) return true;
+    return hasPermission(required.resource, required.action);
+  };
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('adminRecentNav') || '[]') as string[];
+      setRecentNav(stored.filter((p) => p !== '/admin/home'));
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,41 +230,73 @@ export default function AdminHomePage() {
             )}
           </div>
 
-          {/* Quick actions */}
+          {/* Recent destinations */}
           <div className="bg-white border border-[var(--border)]">
             <div className="px-5 py-3 border-b border-[var(--divider)]">
-              <h2 className="font-serif text-lg text-[var(--primary)]">Quick Actions</h2>
+              <h2 className="font-serif text-lg text-[var(--primary)]">Recent</h2>
             </div>
-            <ul className="divide-y divide-[var(--divider)]">
-              <QuickAction
-                href="/admin/lobby"
-                icon={DoorOpen}
-                label="Open Lobby"
-                sublabel={
-                  summary?.lobby.pickups_today
-                    ? `${summary.lobby.pickups_today} pickup${summary.lobby.pickups_today === 1 ? '' : 's'} today`
-                    : 'Permit distribution'
-                }
-              />
-              <QuickAction
-                href="/admin/compliance"
-                icon={FileText}
-                label="All Buildings"
-                sublabel="Legacy compliance dashboard"
-              />
-              <QuickAction
-                href="/admin/form-submissions"
-                icon={FileText}
-                label="Form Submissions"
-                sublabel="Review incoming forms"
-              />
-              <QuickAction
-                href="/admin/appfolio-queue"
-                icon={Send}
-                label="AppFolio Queue"
-                sublabel="Pending uploads"
-              />
-            </ul>
+            {recentNav.length > 0 ? (
+              <ul className="divide-y divide-[var(--divider)]">
+                {recentNav.filter(canAccess).slice(0, 5).map((href) => {
+                  const navItem = allNavItems.find((n) => n.href === href);
+                  if (!navItem) return null;
+                  const Icon = toolIconMap[navItem.label] ?? FileText;
+                  return (
+                    <QuickAction
+                      key={href}
+                      href={href}
+                      icon={Icon}
+                      label={navItem.label}
+                      sublabel={navItem.section}
+                    />
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="px-5 py-4 text-sm text-[var(--muted)]">
+                Your recently visited pages will appear here.
+              </p>
+            )}
+          </div>
+        </section>
+
+        {/* All Tools */}
+        <section>
+          <h2 className="font-serif text-xl text-[var(--primary)] mb-4">All Tools</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {adminNavSections
+              .filter((s) => s.title !== 'Home')
+              .map((section) => ({ ...section, items: section.items.filter((i) => canAccess(i.href)) }))
+              .filter((s) => s.items.length > 0)
+              .map((section) => (
+                <div key={section.title} className="bg-white border border-[var(--border)]">
+                  <div className="px-5 py-3 border-b border-[var(--divider)]">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
+                      {section.title}
+                    </h3>
+                  </div>
+                  <ul className="divide-y divide-[var(--divider)]">
+                    {section.items.map((item) => {
+                      const Icon = toolIconMap[item.label] ?? FileText;
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-section)] transition-colors group"
+                          >
+                            <Icon className="w-4 h-4 text-[var(--muted)] shrink-0 group-hover:text-[var(--ink)] transition-colors" />
+                            <span className="text-sm text-[var(--ink)] flex-1">{item.label}</span>
+                            {item.beta && (
+                              <span className="text-[10px] font-medium bg-amber-100 text-amber-700 px-1 py-px">BETA</span>
+                            )}
+                            <ArrowRight className="w-3.5 h-3.5 text-[var(--muted)] shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
           </div>
         </section>
       </div>

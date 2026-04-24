@@ -33,6 +33,12 @@ export interface SubmissionStatusStrings {
   person_label: (n: number) => string;
 
   rejection_reason_label: string;
+  scan_quality_label: string;
+  scan_blurry: string;
+  scan_dark: string;
+  scan_low_resolution: string;
+  scan_retake_btn: string;
+  scan_needs_retake_summary: (count: number) => string;
   approved_locked: string;
   waived_note: string;
   missing_hint: string;
@@ -82,6 +88,12 @@ export const submissionStatusTranslations: Record<PreferredLanguage, SubmissionS
     person_label: (n) => `Person ${n}`,
 
     rejection_reason_label: 'What to fix:',
+    scan_quality_label: 'Scan quality issue:',
+    scan_blurry: 'Blurry',
+    scan_dark: 'Too dark',
+    scan_low_resolution: 'Low resolution',
+    scan_retake_btn: 'Retake',
+    scan_needs_retake_summary: (count) => `${count} document${count === 1 ? '' : 's'} may need to be retaken`,
     approved_locked: 'Approved — no changes needed',
     waived_note: 'Not required for your household',
     missing_hint: 'Not yet uploaded',
@@ -130,6 +142,12 @@ export const submissionStatusTranslations: Record<PreferredLanguage, SubmissionS
     person_label: (n) => `Persona ${n}`,
 
     rejection_reason_label: 'Qué corregir:',
+    scan_quality_label: 'Problema de calidad del escaneo:',
+    scan_blurry: 'Borroso',
+    scan_dark: 'Demasiado oscuro',
+    scan_low_resolution: 'Baja resolución',
+    scan_retake_btn: 'Volver a tomar',
+    scan_needs_retake_summary: (count) => `${count} documento${count === 1 ? '' : 's'} podría${count === 1 ? '' : 'n'} necesitar volver a tomarse`,
     approved_locked: 'Aprobado — no se necesitan cambios',
     waived_note: 'No requerido para su hogar',
     missing_hint: 'Aún no enviado',
@@ -178,6 +196,12 @@ export const submissionStatusTranslations: Record<PreferredLanguage, SubmissionS
     person_label: (n) => `Pessoa ${n}`,
 
     rejection_reason_label: 'O que corrigir:',
+    scan_quality_label: 'Problema de qualidade da digitalização:',
+    scan_blurry: 'Borrado',
+    scan_dark: 'Muito escuro',
+    scan_low_resolution: 'Baixa resolução',
+    scan_retake_btn: 'Refazer foto',
+    scan_needs_retake_summary: (count) => `${count} documento${count === 1 ? '' : 's'} pode${count === 1 ? '' : 'm'} precisar ser reenviado${count === 1 ? '' : 's'}`,
     approved_locked: 'Aprovado — sem alterações necessárias',
     waived_note: 'Não obrigatório para sua família',
     missing_hint: 'Ainda não enviado',

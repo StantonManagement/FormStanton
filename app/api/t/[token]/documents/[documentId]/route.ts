@@ -43,6 +43,16 @@ export async function POST(
     // Parse multipart form
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
+    const scanMetadataRaw = formData.get('scan_metadata');
+
+    let scanMetadata: Record<string, unknown> | null = null;
+    if (typeof scanMetadataRaw === 'string' && scanMetadataRaw.trim().length > 0) {
+      try {
+        scanMetadata = JSON.parse(scanMetadataRaw) as Record<string, unknown>;
+      } catch {
+        return NextResponse.json({ success: false, message: 'Invalid scan_metadata JSON' }, { status: 400 });
+      }
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, message: 'Missing file field in form data' }, { status: 400 });
@@ -106,6 +116,7 @@ export async function POST(
         rejection_reason: null, // clear previous rejection
         reviewed_at: null,
         reviewer: null,
+        scan_metadata: scanMetadata,
       })
       .eq('id', documentId);
 

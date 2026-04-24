@@ -294,7 +294,7 @@ This uses the foundation's bulk export endpoint with PBV-specific metadata added
 - Does not yet collect signatures (Phase 4)
 - Does not yet collect documents (Phase 5)
 
-**Checkpoint:** Alex runs through the intake.
+
 
 ### Phase 4 — Multi-Signer Signature Flow
 - After intake form, signature section
@@ -303,7 +303,6 @@ This uses the foundation's bulk export endpoint with PBV-specific metadata added
 - Saves signature images, dates, and attestation flags
 - Creates `form_submission_documents` rows for each signed form (status: `submitted`)
 
-**Checkpoint:** Alex runs through multi-signer on a test household with 3 adults.
 
 ### Phase 5 — Document Collection
 - Integrates with foundation per-document upload flow
@@ -311,7 +310,7 @@ This uses the foundation's bulk export endpoint with PBV-specific metadata added
 - Tenant uploads per document
 - Tenant sees per-document status (handled by foundation)
 
-**Checkpoint:** End-to-end tenant submission works.
+
 
 ### Phase 6 — Admin: Qualification Math Panel + HHA Generation
 - Admin detail view for `pbv_full_applications` (separate from pre-app)
@@ -319,7 +318,6 @@ This uses the foundation's bulk export endpoint with PBV-specific metadata added
 - HHA application generation button (disabled until all required docs approved)
 - HACH handoff package generation button (bulk export wrapper)
 
-**Checkpoint:** Alex + Dan review a test application end-to-end.
 
 ### Phase 7 — Access Controls + Audit Log
 - Role-based read access for full SSN

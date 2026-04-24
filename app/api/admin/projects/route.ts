@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function GET() {
   try {
@@ -61,6 +62,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.create', 'project', data.id, { name: data.name }, getClientIp(request));
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

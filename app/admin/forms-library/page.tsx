@@ -7,6 +7,14 @@ import FormCard from '@/components/FormCard';
 import FormDetailModal from '@/components/FormDetailModal';
 import FormEditModal from '@/components/FormEditModal';
 
+const WORKFLOW_DEPT_MAP: Array<{ workflow: string; departments: Department[] }> = [
+  { workflow: 'Front Desk / Lobby', departments: ['compliance'] },
+  { workflow: 'Field Operations',   departments: ['property_management', 'maintenance'] },
+  { workflow: 'Back Office',        departments: ['leasing', 'collections'] },
+  { workflow: 'Program Compliance', departments: ['housing_programs'] },
+  { workflow: 'Administration',     departments: ['hr'] },
+];
+
 export default function FormsLibraryPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +29,7 @@ export default function FormsLibraryPage() {
   const [editingForm, setEditingForm] = useState<TenantForm | null>(null);
   const [isSavingForm, setIsSavingForm] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [viewMode, setViewMode] = useState<'workflow' | 'department'>('workflow');
 
   useEffect(() => {
     checkAuth();
@@ -146,6 +155,16 @@ export default function FormsLibraryPage() {
   };
 
   const departments: Department[] = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr'];
+
+  const workflowGroups = useMemo(() => {
+    if (searchQuery.trim()) return [];
+    return WORKFLOW_DEPT_MAP
+      .map(({ workflow, departments: depts }) => ({
+        workflow,
+        forms: forms.filter((f) => depts.includes(f.department)),
+      }))
+      .filter((g) => g.forms.length > 0);
+  }, [forms, searchQuery]);
 
   const displayedForms = useMemo(() => {
     if (searchQuery.trim()) {
@@ -287,25 +306,51 @@ export default function FormsLibraryPage() {
           </div>
         </div>
 
-        {/* Department Tabs */}
+        {/* View Mode Toggle */}
         {!searchQuery && (
+          <div className="mb-4 flex items-center gap-1">
+            <button
+              onClick={() => setViewMode('workflow')}
+              className={`px-4 py-2 text-sm transition-colors rounded-none border ${
+                viewMode === 'workflow'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'text-gray-600 border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              By Workflow
+            </button>
+            <button
+              onClick={() => setViewMode('department')}
+              className={`px-4 py-2 text-sm transition-colors rounded-none border ${
+                viewMode === 'department'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'text-gray-600 border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              By Department
+            </button>
+          </div>
+        )}
+
+        {/* Department Tabs — department mode only */}
+        {!searchQuery && viewMode === 'department' && (
           <div className="mb-6 border-b border-gray-200">
-            <nav className="flex space-x-1">
+            <nav className="flex space-x-1 overflow-x-auto">
               {departments.map((dept) => {
                 const count = forms.filter((form) => form.department === dept).length;
                 return (
                   <button
                     key={dept}
                     onClick={() => setActiveDepartment(dept)}
-                    className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                       activeDepartment === dept
-                        ? 'border-blue-600 text-blue-600'
+                        ? 'border-gray-900 text-gray-900'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
                     {departmentLabels[dept]}
-                    <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                      activeDepartment === dept ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                    <span className={`ml-2 px-1.5 py-0.5 text-xs ${
+                      activeDepartment === dept ? 'bg-gray-100 text-gray-700' : 'bg-gray-100 text-gray-500'
                     }`}>
                       {count}
                     </span>
@@ -316,42 +361,68 @@ export default function FormsLibraryPage() {
           </div>
         )}
 
-        {/* Results Header */}
-        <div className="mb-4">
-          {searchQuery ? (
-            <h2 className="text-lg font-semibold text-gray-900">
-              Search Results ({displayedForms.length} {displayedForms.length === 1 ? 'form' : 'forms'})
-            </h2>
+        {/* Workflow mode */}
+        {!searchQuery && viewMode === 'workflow' && (
+          isFormsLoading ? (
+            <div className="py-12 text-center text-sm text-gray-500">Loading forms...</div>
+          ) : workflowGroups.length === 0 ? (
+            <div className="py-12 text-center text-sm text-gray-500">No forms available.</div>
           ) : (
-            <h2 className="text-lg font-semibold text-gray-900">
-              {departmentLabels[activeDepartment]} ({displayedForms.length} {displayedForms.length === 1 ? 'form' : 'forms'})
-            </h2>
-          )}
-        </div>
+            <>
+              {workflowGroups.map(({ workflow, forms: wForms }) => (
+                <div key={workflow} className="mb-8">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-3 pb-2 border-b border-gray-200">
+                    {workflow}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {wForms.map((form) => (
+                      <FormCard
+                        key={form.id}
+                        form={form}
+                        onView={setSelectedForm}
+                        onEdit={setEditingForm}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )
+        )}
 
-        {/* Forms Grid */}
-        {isFormsLoading ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <p className="text-gray-500">Loading forms...</p>
-          </div>
-        ) : displayedForms.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedForms.map((form) => (
-              <FormCard 
-                key={form.id} 
-                form={form} 
-                onView={setSelectedForm}
-                onEdit={setEditingForm}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-gray-500">No forms found matching your search.</p>
-          </div>
+        {/* Department mode or search results */}
+        {(searchQuery || viewMode === 'department') && (
+          <>
+            <div className="mb-4">
+              {searchQuery ? (
+                <p className="text-sm text-gray-500">
+                  {displayedForms.length} {displayedForms.length === 1 ? 'form' : 'forms'} matching &ldquo;{searchQuery}&rdquo;
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {departmentLabels[activeDepartment]} &mdash; {displayedForms.length} {displayedForms.length === 1 ? 'form' : 'forms'}
+                </p>
+              )}
+            </div>
+            {isFormsLoading ? (
+              <div className="py-12 text-center text-sm text-gray-500">Loading forms...</div>
+            ) : displayedForms.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayedForms.map((form) => (
+                  <FormCard
+                    key={form.id}
+                    form={form}
+                    onView={setSelectedForm}
+                    onEdit={setEditingForm}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="py-12 text-center text-sm text-gray-500">
+                No forms found{searchQuery ? ` matching "${searchQuery}"` : ''}.
+              </div>
+            )}
+          </>
         )}
       </div>
 

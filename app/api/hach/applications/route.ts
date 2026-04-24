@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireHachUser } from '@/lib/auth';
+import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 /**
@@ -47,7 +47,7 @@ export async function GET() {
 
     const { data: docCounts } = await supabaseAdmin
       .from('form_submission_documents')
-      .select('form_submission_id, status')
+      .select('id, form_submission_id, status')
       .in('form_submission_id', submissionIds);
 
     // Build doc summary per form_submission_id
@@ -67,6 +67,19 @@ export async function GET() {
       }
     }
 
+    // Build document ID → submission ID → app ID maps for revision counting
+    const docIdToSubmId: Record<string, string> = {};
+    const submIdToAppId: Record<string, string> = {};
+    for (const doc of docCounts ?? []) {
+      const d = doc as any;
+      if (d.id) docIdToSubmId[d.id] = d.form_submission_id;
+    }
+    for (const app of apps) {
+      const a = app as any;
+      if (a.form_submission_id) submIdToAppId[a.form_submission_id] = a.id;
+    }
+    const allDocIds = Object.keys(docIdToSubmId);
+
     // Fetch review action counts to determine "first review" vs "awaiting response"
     const appIds = apps.map((a: any) => a.id);
     const { data: actionCounts } = await supabaseAdmin
@@ -77,6 +90,45 @@ export async function GET() {
     const reviewedAppIds = new Set(
       (actionCounts ?? []).map((r: any) => r.full_application_id)
     );
+
+    // Get current reviewer for view tracking
+    const currentUser = await getSessionUser();
+    const currentUserId = currentUser!.userId;
+
+    // Fetch last-viewed timestamps per application for current reviewer
+    const { data: viewEvents } = await supabaseAdmin
+      .from('application_view_events')
+      .select('full_application_id, viewed_at')
+      .eq('reviewer_id', currentUserId)
+      .in('full_application_id', appIds);
+
+    const lastViewedByApp: Record<string, string> = {};
+    for (const ev of viewEvents ?? []) {
+      const aid = (ev as any).full_application_id;
+      const vat = (ev as any).viewed_at;
+      if (!lastViewedByApp[aid] || vat > lastViewedByApp[aid]) {
+        lastViewedByApp[aid] = vat;
+      }
+    }
+
+    // Count document revisions uploaded since last view per application
+    const newRevsByApp: Record<string, number> = {};
+    if (allDocIds.length > 0) {
+      const { data: recentRevs } = await supabaseAdmin
+        .from('form_submission_document_revisions')
+        .select('document_id, created_at')
+        .in('document_id', allDocIds);
+      for (const rev of recentRevs ?? []) {
+        const docId = (rev as any).document_id;
+        const appId = submIdToAppId[docIdToSubmId[docId]] ?? null;
+        if (!appId) continue;
+        const lastViewed = lastViewedByApp[appId];
+        if (!lastViewed) continue; // never viewed → 0 new
+        if ((rev as any).created_at > lastViewed) {
+          newRevsByApp[appId] = (newRevsByApp[appId] ?? 0) + 1;
+        }
+      }
+    }
 
     // Enrich and group
     const enriched = apps.map((a: any) => ({
@@ -89,6 +141,8 @@ export async function GET() {
       hach_review_status: a.hach_review_status,
       doc_summary: docSummary[a.form_submission_id] ?? { total: 0, approved: 0, rejected: 0, missing: 0, submitted: 0 },
       has_review_actions: reviewedAppIds.has(a.id),
+      last_viewed_at: lastViewedByApp[a.id] ?? null,
+      documents_uploaded_since_last_view: newRevsByApp[a.id] ?? 0,
     }));
 
     const needsFirstReview = enriched.filter(

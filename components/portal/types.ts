@@ -25,6 +25,7 @@ export interface PortalTask {
 export interface TaskComponentProps {
   task: PortalTask;
   token: string;
+  projectUnitId: string;
   language: PreferredLanguage;
   t: PortalStrings;
   onComplete: () => void;

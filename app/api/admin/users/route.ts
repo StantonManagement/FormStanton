@@ -1,40 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { isAuthenticated, getSessionUser, requireRole } from '@/lib/auth';
+import { requirePermission, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 
-// List all users (admin only)
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const roleCheck = await requireRole('admin');
-    if (roleCheck) return roleCheck;
+    const guard = await requirePermission('user-management', 'read');
+    if (guard) return guard;
 
-    const { data, error } = await supabaseAdmin
+    const { data: users, error } = await supabaseAdmin
       .from('admin_users')
-      .select('id, username, display_name, role, is_active, last_login_at, created_at')
+      .select(`
+        id, username, display_name, is_active, is_super_admin, last_login_at, created_at,
+        department_id,
+        departments(id, name, code),
+        user_roles(role_id, roles(id, name, code))
+      `)
       .order('display_name', { ascending: true });
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data: data || [] });
+    return NextResponse.json({ success: true, data: users ?? [] });
   } catch (error: any) {
     console.error('Users list error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
-// Create a new user (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const roleCheck = await requireRole('admin');
-    if (roleCheck) return roleCheck;
+    const guard = await requirePermission('user-management', 'write');
+    if (guard) return guard;
 
     const body = await request.json();
-    const { username, displayName, password, role } = body;
+    const { username, displayName, password, department_id, roleIds } = body;
 
     if (!username || !displayName || !password) {
       return NextResponse.json(
@@ -43,119 +43,139 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (role && !['admin', 'staff'].includes(role)) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { success: false, message: 'Role must be admin or staff' },
+        { success: false, message: 'Password must be at least 8 characters' },
         { status: 400 }
       );
     }
 
-    // Check for duplicate username
     const { data: existing } = await supabaseAdmin
       .from('admin_users')
       .select('id')
-      .eq('username', username.toLowerCase())
+      .eq('username', username.trim())
       .single();
 
     if (existing) {
-      return NextResponse.json(
-        { success: false, message: 'A user with this username already exists' },
-        { status: 409 }
-      );
+      return NextResponse.json({ success: false, message: 'Username already exists' }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const { data, error } = await supabaseAdmin
+    const { data: user, error: userError } = await supabaseAdmin
       .from('admin_users')
       .insert({
-        username: username.toLowerCase(),
-        display_name: displayName,
+        username: username.trim(),
+        display_name: displayName.trim(),
         password_hash: passwordHash,
-        role: role || 'staff',
         is_active: true,
+        department_id: department_id || null,
       })
-      .select('id, username, display_name, role, is_active, created_at')
+      .select('id, username, display_name, is_active, created_at')
       .single();
 
-    if (error) throw error;
+    if (userError) throw userError;
+
+    // Assign roles if provided
+    if (roleIds && Array.isArray(roleIds) && roleIds.length > 0) {
+      const sessionUser = await getSessionUser();
+      await supabaseAdmin
+        .from('user_roles')
+        .insert(roleIds.map((roleId: string) => ({
+          user_id: user.id,
+          role_id: roleId,
+          assigned_by: sessionUser?.userId ?? null,
+        })));
+    }
 
     const sessionUser = await getSessionUser();
-    await logAudit(sessionUser, 'user.create', 'admin_user', data?.id, {
-      username: username.toLowerCase(), displayName, role: role || 'staff',
-    }, getClientIp(request));
+    await logAudit(
+      sessionUser,
+      'user.create',
+      'admin_user',
+      user.id,
+      { username: user.username, roleIds: roleIds ?? [] },
+      getClientIp(request)
+    );
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: user });
   } catch (error: any) {
     console.error('User create error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
-// Update a user (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    const roleCheck = await requireRole('admin');
-    if (roleCheck) return roleCheck;
+    const guard = await requirePermission('user-management', 'write');
+    if (guard) return guard;
 
     const body = await request.json();
-    const { userId, displayName, role, isActive, newPassword } = body;
+    const { userId, displayName, newPassword, department_id, isActive, roleIds } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: 'User ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'userId is required' }, { status: 400 });
     }
 
     const updates: Record<string, any> = {};
+    if (displayName !== undefined) updates.display_name = displayName.trim();
+    if (department_id !== undefined) updates.department_id = department_id || null;
+    if (isActive !== undefined) updates.is_active = isActive;
 
-    if (displayName !== undefined) updates.display_name = displayName;
-    if (role !== undefined) {
-      if (!['admin', 'staff'].includes(role)) {
+    if (newPassword) {
+      if (newPassword.length < 8) {
         return NextResponse.json(
-          { success: false, message: 'Role must be admin or staff' },
+          { success: false, message: 'Password must be at least 8 characters' },
           { status: 400 }
         );
       }
-      updates.role = role;
-    }
-    if (isActive !== undefined) updates.is_active = isActive;
-    if (newPassword) {
       updates.password_hash = await bcrypt.hash(newPassword, 12);
     }
 
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'No updates provided' },
-        { status: 400 }
-      );
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabaseAdmin.from('admin_users').update(updates).eq('id', userId);
+      if (error) throw error;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('admin_users')
-      .update(updates)
-      .eq('id', userId)
-      .select('id, username, display_name, role, is_active, last_login_at, created_at')
-      .single();
-
-    if (error) throw error;
+    // Replace roles if provided
+    if (roleIds !== undefined && Array.isArray(roleIds)) {
+      await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+      if (roleIds.length > 0) {
+        const sessionUser = await getSessionUser();
+        await supabaseAdmin
+          .from('user_roles')
+          .insert(roleIds.map((roleId: string) => ({
+            user_id: userId,
+            role_id: roleId,
+            assigned_by: sessionUser?.userId ?? null,
+          })));
+      }
+    }
 
     const sessionUser = await getSessionUser();
-    await logAudit(sessionUser, 'user.update', 'admin_user', userId, {
-      updatedFields: Object.keys(updates).filter(k => k !== 'password_hash'),
-      passwordChanged: !!newPassword,
-    }, getClientIp(request));
+    await logAudit(
+      sessionUser,
+      'user.update',
+      'admin_user',
+      userId,
+      { updatedFields: Object.keys(updates), rolesReplaced: roleIds !== undefined },
+      getClientIp(request)
+    );
 
-    return NextResponse.json({ success: true, data });
+    const { data: updated } = await supabaseAdmin
+      .from('admin_users')
+      .select(`
+        id, username, display_name, is_active, last_login_at,
+        department_id,
+        departments(id, name, code),
+        user_roles(role_id, roles(id, name, code))
+      `)
+      .eq('id', userId)
+      .single();
+
+    return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     console.error('User update error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }

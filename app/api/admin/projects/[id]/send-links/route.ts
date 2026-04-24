@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { sendPortalSMS, sendPortalEmail } from '@/lib/sendPortalLink';
 import { PreferredLanguage } from '@/types/compliance';
@@ -18,6 +20,11 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: projectId } = await context.params;
     const body = await request.json();
     const { unit_ids, method = 'auto' } = body as {
@@ -157,6 +164,16 @@ export async function POST(
     const sent = results.filter((r) => r.status === 'sent').length;
     const failed = results.filter((r) => r.status === 'failed').length;
     const noContact = results.filter((r) => r.status === 'no_contact').length;
+
+    const sessionUser = await getSessionUser();
+    await logAudit(
+      sessionUser,
+      'project.send_links',
+      'project',
+      projectId,
+      { sent, failed, no_contact: noContact, method },
+      getClientIp(request)
+    );
 
     return NextResponse.json({
       success: true,

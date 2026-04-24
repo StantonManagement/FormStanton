@@ -132,6 +132,22 @@ export default function PbvPreappsPage() {
     setReviewError('');
   };
 
+  const deleteApplication = async () => {
+    if (!selectedId) return;
+    try {
+      const res = await fetch(`/api/admin/pbv/preapps/${selectedId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || 'Delete failed');
+      }
+      closeDetail();
+      await loadList();
+    } catch (err: any) {
+      // Surface error inside the detail panel via reviewError state
+      setReviewError(err.message || 'Failed to delete application');
+    }
+  };
+
   const submitReview = async () => {
     if (!reviewAction || !selectedId) return;
     setReviewing(true);
@@ -348,6 +364,7 @@ export default function PbvPreappsPage() {
                   onActionChange={setReviewAction}
                   onNotesChange={setReviewNotes}
                   onSubmitReview={submitReview}
+                  onDelete={deleteApplication}
                 />
               )}
             </div>
@@ -534,6 +551,7 @@ function DetailContent({
   onActionChange,
   onNotesChange,
   onSubmitReview,
+  onDelete,
 }: {
   detail: PbvPreapplication;
   reviewAction: 'approved' | 'denied' | 'needs_info' | '';
@@ -543,7 +561,9 @@ function DetailContent({
   onActionChange: (a: 'approved' | 'denied' | 'needs_info' | '') => void;
   onNotesChange: (n: string) => void;
   onSubmitReview: () => void;
+  onDelete: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const incomeOk = detail.income_limit === null || detail.total_household_income <= detail.income_limit;
   const citizenshipOk = detail.hoh_is_citizen || detail.other_adult_citizen;
   const [pdfGenerating, setPdfGenerating] = useState(false);
@@ -745,6 +765,40 @@ function DetailContent({
             {reviewing ? 'Saving...' : 'Save Review'}
           </button>
         </div>
+      </section>
+
+      {/* Delete */}
+      <section className="border-t border-[var(--divider)] pt-5">
+        {!confirmDelete ? (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="w-full py-2 text-sm text-red-600 border border-red-200 hover:bg-red-50 rounded-none transition-colors duration-200"
+          >
+            Delete Application
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-red-700 font-medium">Delete this pre-application permanently?</p>
+            <p className="text-xs text-[var(--muted)]">This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg-section)] rounded-none transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="flex-1 py-2 text-sm bg-red-600 text-white hover:bg-red-700 rounded-none transition-colors duration-200"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

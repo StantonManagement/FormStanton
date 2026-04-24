@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 import { generateToken } from '@/lib/generateToken';
 import { buildingToAssetId } from '@/lib/buildings';
 
@@ -148,6 +149,16 @@ export async function POST(
       .eq('id', id);
 
     if (statusError) throw statusError;
+
+    const sessionUser = await getSessionUser();
+    await logAudit(
+      sessionUser,
+      'project.activate',
+      'project',
+      id,
+      { units_activated: (insertedUnits || []).length },
+      getClientIp(request)
+    );
 
     return NextResponse.json({
       success: true,

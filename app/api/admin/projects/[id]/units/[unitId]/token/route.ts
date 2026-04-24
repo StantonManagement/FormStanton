@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateToken } from '@/lib/generateToken';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function PATCH(
   _request: NextRequest,
@@ -53,6 +54,9 @@ export async function PATCH(
       }
       throw error;
     }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.token_regen', 'project_unit', unitId, { project_id: id }, getClientIp(_request));
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function GET(
   _request: NextRequest,
@@ -132,6 +133,9 @@ export async function DELETE(
       .eq('id', id);
     if (deleteError) throw deleteError;
 
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.delete', 'project', id, {}, getClientIp(_request));
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Project delete error:', error);
@@ -183,6 +187,9 @@ export async function PATCH(
       }
       throw error;
     }
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.update', 'project', id, { updatedFields: Object.keys(allowed) }, getClientIp(request));
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

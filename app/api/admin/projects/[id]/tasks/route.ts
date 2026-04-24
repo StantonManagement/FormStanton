@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function GET(
   _request: NextRequest,
@@ -83,6 +84,9 @@ export async function POST(
       parent_task_id: data.parent_task_id || null,
       task_type: (data as any).task_types as unknown,
     };
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.task_add', 'project_task', data.id, { project_id: id, task_type_id }, getClientIp(request));
 
     return NextResponse.json({ success: true, data: task });
   } catch (error: any) {

@@ -244,8 +244,6 @@ export default function LobbyPage() {
       const data = await res.json();
       if (data.success) {
         setAvailableUsers(data.data);
-        // Default to current user
-        setSelectedStaffName(adminName);
       }
     } catch (e) {
       console.error('Failed to fetch users:', e);
@@ -253,6 +251,18 @@ export default function LobbyPage() {
       setLoadingUsers(false);
     }
   };
+
+  // Default the intake selection to the logged-in user once both the auth
+  // context and the staff list have resolved. Match by display_name (case
+  // insensitive), falling back to adminName so the select always has a value.
+  useEffect(() => {
+    if (loadingUsers) return;
+    if (!user?.displayName) return;
+    const match = availableUsers.find(
+      (u) => u.display_name.toLowerCase() === user.displayName.toLowerCase()
+    );
+    setSelectedStaffName(match ? match.display_name : user.displayName);
+  }, [loadingUsers, availableUsers, user?.displayName]);
 
   const openLobbyIntakePanel = () => {
     if (!activeTenant) return;

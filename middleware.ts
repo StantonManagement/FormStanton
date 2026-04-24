@@ -50,8 +50,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/hach/') || pathname === '/hach' ||
     pathname.startsWith('/api/hach/');
   const isHachLoginPage = pathname === '/hach/login' || pathname.startsWith('/hach/login');
+  const isHachAcceptInvite =
+    pathname === '/hach/accept-invite' ||
+    pathname.startsWith('/hach/accept-invite') ||
+    pathname === '/api/hach/accept-invite' ||
+    pathname.startsWith('/api/hach/accept-invite');
 
-  if (isHachRoute && !isHachLoginPage) {
+  if (isHachRoute && !isHachLoginPage && !isHachAcceptInvite) {
     if (!session.isAdmin) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });

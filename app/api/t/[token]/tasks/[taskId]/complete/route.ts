@@ -17,6 +17,19 @@ interface UnitWithProject {
   };
 }
 
+interface EvidenceMetadataPayload {
+  capture_method: 'scanner' | 'file_upload';
+  page_count: number;
+  quality_flags: string[];
+  quality_scores: {
+    blur: number;
+    brightness: number;
+    resolution: number;
+  };
+  format: 'pdf' | 'jpeg';
+  heic_converted: boolean;
+}
+
 interface CompletionWithTask {
   id: string;
   project_unit_id: string;
@@ -142,6 +155,7 @@ export async function POST(
     const evidenceType = taskType?.evidence_type;
     let evidenceUrl: string | null = null;
     let notes: string | null = null;
+    let evidenceMetadata: EvidenceMetadataPayload | null = null;
 
     const contentType = request.headers.get('content-type') || '';
 
@@ -183,6 +197,11 @@ export async function POST(
       const body = await request.json().catch(() => ({}));
       notes = body.notes || null;
 
+      if ((evidenceType === 'file_upload' || evidenceType === 'photo') && body.evidence_url) {
+        evidenceUrl = body.evidence_url;
+        evidenceMetadata = body.evidence_metadata || null;
+      }
+
       if (evidenceType === 'signature' && body.signature_data) {
         // Store signature as a PNG in storage
         const base64 = body.signature_data.replace(/^data:image\/\w+;base64,/, '');
@@ -222,6 +241,7 @@ export async function POST(
         completed_by: 'tenant',
         completed_at: new Date().toISOString(),
         evidence_url: evidenceUrl,
+        evidence_metadata: evidenceMetadata,
         notes: notes,
       })
       .eq('id', completion.id);

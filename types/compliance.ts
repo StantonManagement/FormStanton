@@ -512,3 +512,101 @@ export interface PbvPreapplication {
   unit_not_in_canonical_list: boolean
   submission_source: 'magic_link' | 'open_enrollment'
 }
+
+// ── PBV Full Application ──────────────────────────────────────────────────────
+
+export type PbvFullApplicationStatus =
+  | 'pending'
+  | 'under_review'
+  | 'approved'
+  | 'denied'
+  | 'needs_info'
+
+export interface PbvFullApplication {
+  id: string
+  preapp_id: string | null
+  form_submission_id: string
+  building_address: string
+  unit_number: string
+  head_of_household_name: string
+  household_size: number
+  bedroom_count: number | null
+  total_annual_income: number | null
+  dv_status: boolean
+  homeless_at_admission: boolean
+  claiming_medical_deduction: boolean
+  has_childcare_expense: boolean
+  reasonable_accommodation_requested: boolean
+  stanton_review_status: PbvFullApplicationStatus
+  stanton_reviewer: string | null
+  stanton_review_date: string | null
+  stanton_review_notes: string | null
+  hha_application_file: string | null
+  summary_pdf_file: string | null
+  tenant_access_token: string | null
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+export type CitizenshipStatus =
+  | 'citizen'
+  | 'eligible_non_citizen'
+  | 'ineligible'
+  | 'not_reported'
+
+export interface PbvHouseholdMember {
+  id: string
+  full_application_id: string
+  slot: number
+  name: string
+  date_of_birth: string | null
+  age: number | null
+  relationship: 'head' | 'spouse' | 'partner' | 'child' | 'other'
+  ssn_encrypted: string | null
+  ssn_last_four: string | null
+  annual_income: number
+  income_sources: string[]
+  employed: boolean
+  has_ssi: boolean
+  has_ss: boolean
+  has_pension: boolean
+  has_tanf: boolean
+  has_child_support: boolean
+  has_unemployment: boolean
+  has_self_employment: boolean
+  has_other_income: boolean
+  disability: boolean
+  student: boolean
+  citizenship_status: CitizenshipStatus
+  criminal_history: boolean | null
+  signature_required: boolean
+  signature_image: string | null
+  signature_date: string | null
+  signed_forms: string[]
+  created_at: string
+  created_by: string | null
+}
+
+export type PbvAccessAction =
+  | 'read_ssn'
+  | 'export_application'
+  | 'generate_hha'
+  | 'admin_view_ssn'
+
+export type PbvAccessResourceType =
+  | 'pbv_household_member'
+  | 'pbv_full_application'
+
+export interface PbvAccessLog {
+  id: string
+  accessed_at: string
+  user_id: string
+  action: PbvAccessAction
+  resource_type: PbvAccessResourceType
+  resource_id: string
+  ip_address: string | null
+  notes: string | null
+  created_at: string
+  created_by: string | null
+}

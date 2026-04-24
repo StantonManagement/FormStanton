@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { logAudit, getClientIp } from '@/lib/audit';
 
 export async function PATCH(
   request: NextRequest,
@@ -38,6 +39,9 @@ export async function PATCH(
       throw error;
     }
 
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.task_update', 'project_task', taskId, { project_id: id, updatedFields: Object.keys(allowed) }, getClientIp(request));
+
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Project task update error:', error);
@@ -64,6 +68,9 @@ export async function DELETE(
       .eq('project_id', id);
 
     if (error) throw error;
+
+    const sessionUser = await getSessionUser();
+    await logAudit(sessionUser, 'project.task_delete', 'project_task', taskId, { project_id: id }, getClientIp(_request));
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

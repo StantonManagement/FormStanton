@@ -16,6 +16,7 @@ import {
 import type { PortalTask } from '@/components/portal';
 
 interface PortalData {
+  project_unit_id: string;
   project_name: string | null;
   deadline: string | null;
   sequential: boolean;
@@ -389,6 +390,7 @@ export default function TenantPortal({ token }: { token: string }) {
                         <TaskRenderer
                           task={task}
                           token={token}
+                          projectUnitId={data.project_unit_id}
                           language={language}
                           t={portalTranslations[language]}
                           onComplete={handleTaskComplete}
@@ -411,17 +413,19 @@ export default function TenantPortal({ token }: { token: string }) {
 function TaskRenderer({
   task,
   token,
+  projectUnitId,
   language,
   t,
   onComplete,
 }: {
   task: PortalTask;
   token: string;
+  projectUnitId: string;
   language: PreferredLanguage;
   t: PortalStrings;
   onComplete: () => void;
 }) {
-  const props = { task, token, language, t, onComplete };
+  const props = { task, token, projectUnitId, language, t, onComplete };
 
   switch (task.task_type.evidence_type) {
     case 'acknowledgment':

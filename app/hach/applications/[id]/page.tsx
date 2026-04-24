@@ -290,6 +290,16 @@ function IncomePanel({ applicationId }: { applicationId: string }) {
   );
 }
 
+function formatRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+}
+
 function getEffectiveStatus(doc: any): string {
   const la = doc.latest_action;
   if (!la) return doc.status ?? 'pending';
@@ -394,7 +404,15 @@ export default function HachPacketPage() {
   const [flashDocIdx, setFlashDocIdx] = useState<number>(-1);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [newSinceLastView, setNewSinceLastView] = useState(0);
+  const [lastViewedAt, setLastViewedAt] = useState<string | null>(null);
   const docRowRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Record this view (fire-and-forget; runs once per page load)
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/hach/applications/${id}/view`, { method: 'POST' }).catch(() => {});
+  }, [id]);
 
   const showToast = useCallback((message: string, type: ToastData['type'] = 'success') => {
     setToast({ message, type });
@@ -411,8 +429,14 @@ export default function HachPacketPage() {
     fetch(`/api/hach/applications/${id}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.success) { setPacket(d.data); setDocuments(d.data.documents ?? []); }
-        else setError(d.message || 'Failed to load packet');
+        if (d.success) {
+          setPacket(d.data);
+          setDocuments(d.data.documents ?? []);
+          setNewSinceLastView(d.data.new_since_last_view ?? 0);
+          setLastViewedAt(d.data.last_viewed_at ?? null);
+        } else {
+          setError(d.message || 'Failed to load packet');
+        }
       })
       .catch(() => setError('Network error'))
       .finally(() => setLoading(false));
@@ -572,6 +596,23 @@ export default function HachPacketPage() {
         </div>
         <div style={{ flexShrink: 0, paddingTop: 4 }}><HachStatusBadge status={app.hach_review_status} /></div>
       </div>
+
+      {newSinceLastView > 0 && lastViewedAt && (
+        <div style={{
+          background: COLORS.infoBg,
+          border: '1px solid #bfdbfe',
+          padding: '8px 16px',
+          marginBottom: 16,
+          fontSize: 12,
+          color: COLORS.info,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span style={{ fontWeight: 700 }}>{newSinceLastView} new upload{newSinceLastView !== 1 ? 's' : ''}</span>
+          <span>since your last visit &middot; {formatRelativeTime(lastViewedAt)}</span>
+        </div>
+      )}
 
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>

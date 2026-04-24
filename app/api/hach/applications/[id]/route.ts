@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireHachUser } from '@/lib/auth';
+import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 /**
@@ -78,11 +78,52 @@ export async function GET(
       }
     }
 
-    // Enrich documents with latest review action
+    // Fetch latest revision file_name per document (viewer canView detection)
+    const docIds = (documents ?? []).map((d: any) => d.id);
+    const latestRevFileName: Record<string, string | null> = {};
+    if (docIds.length > 0) {
+      const { data: revisions } = await supabaseAdmin
+        .from('form_submission_document_revisions')
+        .select('document_id, file_name, revision')
+        .in('document_id', docIds)
+        .order('revision', { ascending: false });
+      for (const rev of revisions ?? []) {
+        const docId = (rev as any).document_id;
+        if (!(docId in latestRevFileName)) {
+          latestRevFileName[docId] = (rev as any).file_name ?? null;
+        }
+      }
+    }
+
+    // Enrich documents with latest review action and revision file_name
     const enrichedDocs = (documents ?? []).map((doc: any) => ({
       ...doc,
       latest_action: latestActionByDoc[doc.id] ?? null,
+      file_name: latestRevFileName[doc.id] ?? doc.file_name ?? null,
     }));
+
+    // Compute new-since-last-view for the current reviewer (for the detail page banner)
+    let last_viewed_at: string | null = null;
+    let new_since_last_view = 0;
+    const currentUser = await getSessionUser();
+    if (currentUser && docIds.length > 0) {
+      const { data: viewEvs } = await supabaseAdmin
+        .from('application_view_events')
+        .select('viewed_at')
+        .eq('full_application_id', id)
+        .eq('reviewer_id', currentUser.userId)
+        .order('viewed_at', { ascending: false })
+        .limit(1);
+      last_viewed_at = (viewEvs?.[0] as any)?.viewed_at ?? null;
+      if (last_viewed_at) {
+        const { data: newRevs } = await supabaseAdmin
+          .from('form_submission_document_revisions')
+          .select('id')
+          .in('document_id', docIds)
+          .gt('created_at', last_viewed_at);
+        new_since_last_view = (newRevs ?? []).length;
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -91,6 +132,8 @@ export async function GET(
         members: members ?? [],
         documents: enrichedDocs,
         review_action_log: reviewActions ?? [],
+        last_viewed_at,
+        new_since_last_view,
       },
     });
   } catch (error: any) {

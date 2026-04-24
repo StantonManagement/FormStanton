@@ -24,7 +24,7 @@ export async function GET(
 
     const { data: documents, error: docsError } = await supabaseAdmin
       .from('form_submission_documents')
-      .select('id, doc_type, label, required, display_order, person_slot, revision, status, file_name, rejection_reason, reviewed_at')
+      .select('id, doc_type, label, required, display_order, person_slot, revision, status, file_name, rejection_reason, reviewed_at, scan_metadata')
       .eq('form_submission_id', submission.id)
       .order('display_order', { ascending: true })
       .order('person_slot', { ascending: true });
