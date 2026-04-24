@@ -167,6 +167,36 @@
 
 ---
 
+---
+
+## Session 2 — hach-reviewer-portal phases 2, 3, 5
+
+### Commits
+- `hach-reviewer-portal: approve action with optimistic UI (phase 2)` (fe73079)
+- `hach-reviewer-portal: document viewer modal with version nav (phase 3)` (0ba0951)
+- `hach-reviewer-portal: keyboard shortcuts + ShortcutsBar + help modal (phase 5)` (a67f4ea)
+
+### Files changed
+- `app/api/hach/documents/[id]/approve/route.ts` — new POST endpoint. Guards with `requireHachUser()`. Scope-checks document belongs to a HACH-accessible application via `pbv_full_applications.hach_review_status NOT NULL`. Inserts `document_review_actions` row, calls `logAudit()`. Returns effective_status + progress summary.
+- `app/api/hach/documents/[id]/signed-url/route.ts` — new GET endpoint. Guards with `requireHachUser()`. Scope-checks same as above. Fetches `form_submission_document_revisions` for version history. Batch-signs all paths via Supabase Storage `form-submissions` bucket (TTL 300s). Returns signed URL list + current version.
+- `components/hach/DocumentViewer.tsx` — new client component. Props: `{ document, onClose }`. Fetches signed URL on mount, renders PDFs in iframe, images in `<img>`, unknown types via download link. Version tabs when >1 revision. Keyboard: Esc closes, ArrowLeft/Right navigate versions. Click-outside closes.
+- `app/hach/applications/[id]/page.tsx` — full rewrite (Build 2 was encoding-fixed Build 1). Added: Approve button with optimistic UI + revert on error + toast. View button wired to DocumentViewer. Keyboard handler (J/K/A/V/R/?/Esc). ShortcutsBar fixed at bottom. ShortcutsHelpModal on `?`. Flash-row state for R key.
+
+### Assumptions
+- Storage bucket name is `form-submissions` — confirmed from `app/api/admin/submissions/[submissionId]/documents/route.ts`.
+- `form_submission_document_revisions` table exists (from prior migration 20260423180000) and is used to populate the version navigator in the document viewer.
+- `last_activity_at` column on `pbv_full_applications` does NOT exist — the approve route attempts the update in a try/catch and silently skips on error.
+- The sync `{ params }: { params: { id: string } }` pattern is used to match the existing codebase convention (same as `app/api/hach/applications/[id]/route.ts`). The `.next/dev/types/validator.ts` type errors for this are pre-existing and not new.
+- Phase 4 (reject dialog) was explicitly skipped. The `R` keyboard key flashes the row with "Reject coming soon" label and does no API call.
+- Phases 6–7 were explicitly skipped.
+
+### Open questions
+- Should the Approve action also update `pbv_full_applications.hach_review_status` to `under_hach_review` if it was `pending_hach`? Currently it does not.
+- When ALL documents are approved, should `hach_review_status` auto-advance to `approved_by_hach`? Deferred to Phase 4+ decision.
+- The `canView` condition on DocumentRow checks `doc.storage_path || doc.file_name`. For documents where only `storage_path` is stored (not returned to client from the GET route for security), the View button may be hidden. The GET route at `app/api/hach/applications/[id]/route.ts` should be verified to confirm it returns `storage_path` or at least `file_name`.
+
+---
+
 ## Existing code observations (things to flag)
 
 - `app/api/admin/auth/route.ts` selects `role` column from `admin_users` — this column appears to be a legacy field from before the RBAC system. No migration drops it, so it still exists. Low risk but worth cleaning up eventually.
