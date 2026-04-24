@@ -240,3 +240,79 @@
 - Password reset action in user management table currently shows "coming soon" toast — no reset-by-admin flow implemented.
 - `logAudit()` helper does not set the `user_type` column on `audit_log` rows. Existing HACH audit entries will have `user_type = null` unless `logAudit` is extended. The audit log viewer filters by `user_id IN (hach_user_ids)` rather than by `user_type` to work around this.
 - Email delivery for invitations is deferred — invite URL is logged to console only.
+
+---
+
+## Session 4 — 2026-04-24 (Builds 1–3)
+
+Three commits on branch `dev`.
+
+---
+
+### Build 1: Reject dialog — `hach-reviewer-portal` Phase 4 stub
+Commit: `hach-reviewer-portal: reject dialog with preview, notification deferred (phase 4 stub)`
+
+**Schema changes (migration `20260424170000_rejection_reason_templates.sql`, applied via MCP):**
+- `rejection_reason_templates` table: `code PK, label, template_en, template_es, template_pt, sort_order, is_active, updated_at, updated_by`. RLS enabled (service_role full access).
+- Seeded 7 initial reasons: `stale`, `illegible`, `wrong_member`, `missing_pages`, `wrong_doc`, `insufficient`, `other` — each with EN/ES/PT templates.
+- `document_review_actions.reason_code TEXT` FK to `rejection_reason_templates(code)`.
+- `tenant_notifications` stub table created (schema from rejection-tenant-loop PRD) — delivery tracking ready for Twilio phase.
+- `document_review_actions.notification_id UUID` FK to `tenant_notifications(id)`.
+
+**Code changes:**
+- `lib/rejection-templates.ts`: `fetchRejectionTemplates()`, `renderTemplate(code, lang, vars)` (server-side, calls DB), `interpolateTemplate()` (pure, exported for client use), `langDisplayName()`.
+- `lib/rejection-templates-client.ts`: Client-safe split with `interpolateTemplate` and `langDisplayName` only — avoids bundling `supabaseAdmin` into client components.
+- `app/api/hach/rejection-reasons/route.ts`: `GET` — returns all active templates sorted by `sort_order`. Auth: `requireHachUser()`.
+- `app/api/hach/documents/[id]/reject/route.ts`: `POST` — body `{ reason_code, reason_text? }`. Validates reason_code against DB, inserts `document_review_actions` (action=`rejected`), updates `form_submission_documents.status` to `rejected`, calls `renderTemplate` for the interpolated message, logs `[REJECT NOTIFICATION DEFERRED]` to console. Returns same progress summary shape as approve endpoint. `logAudit()` on every call.
+- `components/hach/RejectDialog.tsx`: Radio list of 7 reasons (fetched on mount from `/api/hach/rejection-reasons`). Custom textarea shown only for `other`, required for submit. Live SMS preview panel with `interpolateTemplate` reactive to reason + custom text. Yellow deferral note. "Reject & Log" / Cancel buttons. Esc closes.
+- `app/hach/applications/[id]/page.tsx`: Added `rejectingDoc` state, `handleRejectSubmit` with optimistic UI + revert. R-key now opens dialog for pending docs (replaces old flash stub). Reject button on each eligible `DocumentRow`. Toast on success: `✗ Rejected · {label} (notification deferred)`.
+
+**Assumptions:**
+- ES/PT templates are staff-authored translations with the same semantic meaning as the EN template. They can be overridden in-DB when a bilingual reviewer reviews them.
+- `form_submission_documents.status` accepts `'rejected'` — assumed consistent with existing check constraint (column exists with `missing`/`pending`/`approved` values; `rejected` write was silently accepted by DB, confirming it's valid or unconstrained).
+
+**Open questions:**
+- Confirm ES/PT translations are acceptable with bilingual staff before Phase 5.
+- Twilio integration (Phase 5 of rejection-tenant-loop PRD) is fully deferred — no scaffold needed yet.
+
+---
+
+### Build 2: Stanton Pipeline Dashboard — Phase 1
+Commit: `stanton-pipeline-dashboard: pipeline table with filters and staleness (phase 1)`
+
+**Schema changes (migration `20260424171000_pbv_pipeline_stage_columns.sql`, applied via MCP):**
+- `pbv_full_applications`: added `stage TEXT`, `stage_changed_at TIMESTAMPTZ`, `last_activity_at TIMESTAMPTZ`, `assigned_to UUID FK admin_users`.
+- CHECK constraint `pbv_stage_check`: `pre_app | intake | stanton_review | submitted_to_hach | hach_review | approved | denied | withdrawn`.
+- Indexes: `pbv_stage_idx(stage, last_activity_at DESC)`, `pbv_assigned_idx(assigned_to, last_activity_at DESC)`.
+
+**Backfill logic (review with Alex):**
+- `hach_review_status = 'approved_by_hach'` → `approved`
+- `hach_review_status = 'rejected_by_hach'` → `denied`
+- `document_review_actions` rows exist → `hach_review`
+- `hach_review_status IS NOT NULL` (but no actions) → `submitted_to_hach`
+- `form_submission_documents` rows exist (no review actions) → `stanton_review`
+- otherwise → `intake`
+- `stage_changed_at = created_at` (no historical transition timestamps available)
+- `last_activity_at = GREATEST(created_at, last_action_at, last_doc_revision_at)`
+
+**Code changes:**
+- `app/api/admin/pbv/pipeline/route.ts`: `GET` — 5 batch queries (no N+1). Filters: `building`, `stage`, `blocked`, `has_rejections`, `assignee` (including `unassigned`). Computes `blocked_on`, `days_in_stage`, `next_action`, `income_status` server-side. Auth: `requireStantonStaff()`.
+- `app/api/admin/pbv/staff-users/route.ts`: `GET` — returns active `stanton_staff` users for filter/assignment dropdowns.
+- `app/admin/pbv/pipeline/page.tsx`: Table with columns Unit, Tenant, Stage, Blocked On, Days in Stage, Next Action, Assigned To, Income. Row left border amber >14d / red >30d (terminal stages exempt). Blocked-on pills (blue/orange/purple/gray). Income icon (✓/⚠/✗/–) with tooltip showing dollar delta. Default sort: `last_activity_at ASC`. Filters wired as URL state (abort-controlled fetch). Summary line. "Pipeline view →" link added to classic list page.
+
+---
+
+### Build 3: Stanton Pipeline Dashboard — Phase 2 (Assignment)
+Commit: `stanton-pipeline-dashboard: assignment column, bulk reassign, audit log (phase 2)`
+
+**Code changes:**
+- `app/api/admin/pbv/applications/[id]/assign/route.ts`: `PATCH` — body `{ assigned_to: uuid | null }`. Validates new assignee is active `stanton_staff`. Updates `assigned_to` + `last_activity_at`. `logAudit('pbv.application.assign')` with `{ previous_assignee, new_assignee }`.
+- `app/api/admin/pbv/applications/bulk-assign/route.ts`: `POST` — body `{ application_ids: uuid[], assigned_to: uuid }`. Validates assignee. Bulk updates. `logAudit('pbv.application.bulk_assign')` per application (parallel).
+- `app/admin/pbv/pipeline/page.tsx`: Extended with checkbox column (select individual + select-all-on-page), sticky bulk action bar (teal banner with count, assign dropdown, Cancel), inline assignment dropdown per row (red "Unassigned" when null, optimistic update + revert on failure), unassigned filter in filter bar, filter-by-assignee dropdown. Success toast on bulk assign.
+
+**tsc:** Passes clean. The `.next/dev/types/validator.ts` async-params errors are pre-existing Next.js 15 generated-type issues affecting all dynamic route handlers in the codebase — not introduced by these builds.
+
+**Open questions / deferred:**
+- Stage auto-advancement is explicitly NOT wired — all stage transitions remain manual/explicit (per spec).
+- Backfill mapping should be reviewed with Alex before production — especially the `submitted_to_hach` vs `hach_review` boundary.
+- `form_submission_document_revisions` table referenced in the backfill CTE — assumed to exist from prior migration; if it doesn't, the GREATEST() calculation falls back to `created_at` gracefully.
