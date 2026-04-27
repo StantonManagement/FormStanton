@@ -32,8 +32,7 @@ export async function POST(request: NextRequest) {
       hoh_name,
       hoh_dob,
       household_members,
-      hoh_is_citizen,
-      other_adult_citizen,
+      citizenship_answer,
       signature_data,
     } = body;
 
@@ -53,8 +52,8 @@ export async function POST(request: NextRequest) {
     if (!household_members || !Array.isArray(household_members) || household_members.length === 0) {
       return NextResponse.json({ success: false, message: 'At least one household member is required' }, { status: 400 });
     }
-    if (typeof hoh_is_citizen !== 'boolean') {
-      return NextResponse.json({ success: false, message: 'Citizenship status is required' }, { status: 400 });
+    if (!citizenship_answer || !['yes', 'no', 'unsure'].includes(citizenship_answer)) {
+      return NextResponse.json({ success: false, message: 'Citizenship answer is required' }, { status: 400 });
     }
     if (!signature_data) {
       return NextResponse.json({ success: false, message: 'Signature is required' }, { status: 400 });
@@ -98,19 +97,24 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     const income_limit = thresholdRow?.income_limit ?? null;
-    const citizenship_ok = hoh_is_citizen === true || other_adult_citizen === true;
     const income_ok = income_limit === null || total_household_income <= income_limit;
 
+    // Map citizenship_answer to qualification result
+    // yes -> citizenship_ok = true
+    // no -> citizenship_ok = false
+    // unsure -> citizenship_ok = null (needs review)
     let qualification_result: string;
-    if (income_ok && citizenship_ok) {
-      qualification_result = 'likely_qualifies';
-    } else if (!income_ok && !citizenship_ok) {
-      qualification_result = 'over_income_and_citizenship';
-    } else if (!income_ok) {
-      qualification_result = 'over_income';
+    if (citizenship_answer === 'yes') {
+      qualification_result = income_ok ? 'likely_qualifies' : 'over_income';
+    } else if (citizenship_answer === 'unsure') {
+      qualification_result = income_ok ? 'needs_citizenship_review' : 'over_income';
     } else {
-      qualification_result = 'citizenship_issue';
+      // citizenship_answer === 'no'
+      qualification_result = income_ok ? 'citizenship_issue' : 'over_income_and_citizenship';
     }
+
+    // Map to existing database columns
+    const hoh_is_citizen = citizenship_answer === 'yes' ? true : citizenship_answer === 'no' ? false : null;
 
     // --- Insert ---
     const { data: preapp, error } = await supabaseAdmin
@@ -124,7 +128,7 @@ export async function POST(request: NextRequest) {
         household_size,
         total_household_income,
         hoh_is_citizen,
-        other_adult_citizen: hoh_is_citizen ? null : (other_adult_citizen ?? null),
+        other_adult_citizen: null,
         income_limit,
         qualification_result,
         signature_data,

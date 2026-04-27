@@ -52,6 +52,11 @@ export interface PbvFormStrings {
   // Section 3 citizenship
   citizen_question_hoh: string;
   citizen_question_other: string;
+  citizenship_question: string;
+  citizenship_examples: string;
+  citizenship_yes: string;
+  citizenship_no: string;
+  citizenship_unsure: string;
   yes: string;
   no: string;
 
@@ -135,6 +140,11 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
 
     citizen_question_hoh: 'Is the head of household a U.S. citizen or eligible non-citizen?',
     citizen_question_other: 'Is there another adult in the household who is a U.S. citizen or eligible non-citizen?',
+    citizenship_question: 'Does at least one adult in your household have eligible immigration status?',
+    citizenship_examples: 'Examples: U.S. citizen, permanent resident (green card), refugee, asylee',
+    citizenship_yes: 'Yes',
+    citizenship_no: 'No',
+    citizenship_unsure: 'Not sure',
     yes: 'Yes',
     no: 'No',
 
@@ -211,6 +221,11 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
 
     citizen_question_hoh: '¿El jefe del hogar es ciudadano estadounidense o no ciudadano elegible?',
     citizen_question_other: '¿Hay otro adulto en el hogar que sea ciudadano estadounidense o no ciudadano elegible?',
+    citizenship_question: '¿Al menos un adulto en su hogar tiene estatus migratorio elegible?',
+    citizenship_examples: 'Ejemplos: ciudadano estadounidense, residente permanente (green card), refugiado, asilado',
+    citizenship_yes: 'Sí',
+    citizenship_no: 'No',
+    citizenship_unsure: 'No estoy seguro/a',
     yes: 'Sí',
     no: 'No',
 
@@ -287,6 +302,11 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
 
     citizen_question_hoh: 'O chefe de família é cidadão americano ou não cidadão elegível?',
     citizen_question_other: 'Há outro adulto na família que seja cidadão americano ou não cidadão elegível?',
+    citizenship_question: 'Pelo menos um adulto em sua família tem status de imigração elegível?',
+    citizenship_examples: 'Exemplos: cidadão americano, residente permanente (green card), refugiado, asilado',
+    citizenship_yes: 'Sim',
+    citizenship_no: 'Não',
+    citizenship_unsure: 'Não tenho certeza',
     yes: 'Sim',
     no: 'Não',
 

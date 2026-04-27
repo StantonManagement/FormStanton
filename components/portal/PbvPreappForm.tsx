@@ -33,12 +33,13 @@ function emptyMember(relationship = 'other'): HouseholdMember {
   return { name: '', dob: '', relationship, annual_income: 0, income_sources: [] };
 }
 
+type CitizenshipAnswer = 'yes' | 'no' | 'unsure' | null;
+
 interface FormData {
   hohName: string;
   hohDob: string;
   members: HouseholdMember[];
-  hohIsCitizen: boolean | null;
-  otherAdultCitizen: boolean | null;
+  citizenshipAnswer: CitizenshipAnswer;
   certChecked: boolean;
   signatureData: string;
 }
@@ -58,8 +59,7 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
     hohName: '',
     hohDob: '',
     members: [emptyMember('self')],
-    hohIsCitizen: null,
-    otherAdultCitizen: null,
+    citizenshipAnswer: null,
     certChecked: false,
     signatureData: '',
   });
@@ -171,8 +171,7 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
       }
     });
 
-    if (form.hohIsCitizen === null) errs['citizenship'] = t.err_citizenship;
-    if (form.hohIsCitizen === false && form.otherAdultCitizen === null) errs['citizenship_other'] = t.err_citizenship;
+    if (form.citizenshipAnswer === null) errs['citizenship'] = t.err_citizenship;
 
     if (!form.certChecked) errs['cert'] = t.err_cert;
     if (!form.signatureData) errs['signature'] = t.err_signature;
@@ -194,8 +193,7 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
           hoh_name: form.hohName.trim(),
           hoh_dob: form.hohDob,
           household_members: form.members,
-          hoh_is_citizen: form.hohIsCitizen,
-          other_adult_citizen: form.hohIsCitizen === false ? form.otherAdultCitizen : null,
+          citizenship_answer: form.citizenshipAnswer,
           signature_data: form.signatureData,
           task_id: task.id,
         }),
@@ -355,60 +353,46 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
         </h3>
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-[var(--ink)] mb-3 leading-relaxed">{t.citizen_question_hoh} <span className="text-[var(--error)]">*</span></p>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <p className="text-sm text-[var(--ink)] mb-2 leading-relaxed">
+              {t.citizenship_question} <span className="text-[var(--error)]">*</span>
+            </p>
+            <p className="text-xs text-[var(--muted)] mb-4">
+              {t.citizenship_examples}
+            </p>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer p-3 border border-[var(--border)] hover:border-[var(--primary)] transition-colors">
                 <input
                   type="radio"
-                  name="hoh_citizen"
-                  checked={form.hohIsCitizen === true}
-                  onChange={() => setForm((p) => ({ ...p, hohIsCitizen: true, otherAdultCitizen: null }))}
-                  className="w-5 h-5"
+                  name="citizenship"
+                  checked={form.citizenshipAnswer === 'yes'}
+                  onChange={() => setForm((p) => ({ ...p, citizenshipAnswer: 'yes' }))}
+                  className="w-5 h-5 flex-shrink-0"
                 />
-                <span className="text-sm font-medium text-[var(--ink)]">{t.yes}</span>
+                <span className="text-sm font-medium text-[var(--ink)]">{t.citizenship_yes}</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-3 cursor-pointer p-3 border border-[var(--border)] hover:border-[var(--primary)] transition-colors">
                 <input
                   type="radio"
-                  name="hoh_citizen"
-                  checked={form.hohIsCitizen === false}
-                  onChange={() => setForm((p) => ({ ...p, hohIsCitizen: false }))}
-                  className="w-5 h-5"
+                  name="citizenship"
+                  checked={form.citizenshipAnswer === 'no'}
+                  onChange={() => setForm((p) => ({ ...p, citizenshipAnswer: 'no' }))}
+                  className="w-5 h-5 flex-shrink-0"
                 />
-                <span className="text-sm font-medium text-[var(--ink)]">{t.no}</span>
+                <span className="text-sm font-medium text-[var(--ink)]">{t.citizenship_no}</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer p-3 border border-[var(--border)] hover:border-[var(--primary)] transition-colors">
+                <input
+                  type="radio"
+                  name="citizenship"
+                  checked={form.citizenshipAnswer === 'unsure'}
+                  onChange={() => setForm((p) => ({ ...p, citizenshipAnswer: 'unsure' }))}
+                  className="w-5 h-5 flex-shrink-0"
+                />
+                <span className="text-sm font-medium text-[var(--ink)]">{t.citizenship_unsure}</span>
               </label>
             </div>
             {errors['citizenship'] && <p className="text-xs text-[var(--error)] mt-2">{errors['citizenship']}</p>}
           </div>
-
-          {form.hohIsCitizen === false && (
-            <div>
-              <p className="text-sm text-[var(--ink)] mb-3 leading-relaxed">{t.citizen_question_other} <span className="text-[var(--error)]">*</span></p>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="other_citizen"
-                    checked={form.otherAdultCitizen === true}
-                    onChange={() => setForm((p) => ({ ...p, otherAdultCitizen: true }))}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm font-medium text-[var(--ink)]">{t.yes}</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="other_citizen"
-                    checked={form.otherAdultCitizen === false}
-                    onChange={() => setForm((p) => ({ ...p, otherAdultCitizen: false }))}
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm font-medium text-[var(--ink)]">{t.no}</span>
-                </label>
-              </div>
-              {errors['citizenship_other'] && <p className="text-xs text-[var(--error)] mt-2">{errors['citizenship_other']}</p>}
-            </div>
-          )}
         </div>
       </section>
 
