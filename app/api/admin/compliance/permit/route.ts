@@ -191,14 +191,8 @@ export async function PUT(request: NextRequest) {
       finalReason = reason;
     }
 
-    // ID photo required on first pickup; optional on subsequent (re-uses existing if none provided)
+    // ID photo is optional evidence. Re-use existing when no new photo is supplied.
     const effectiveIdPath = idPhotoPath || existing.pickup_id_photo || null;
-    if (newEventNumber === 1 && !effectiveIdPath) {
-      return NextResponse.json(
-        { success: false, message: 'ID photo is required for the first pickup' },
-        { status: 400 }
-      );
-    }
 
     const nowIso = new Date().toISOString();
     events.push({

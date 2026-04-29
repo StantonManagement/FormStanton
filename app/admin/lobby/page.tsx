@@ -762,29 +762,7 @@ export default function LobbyPage() {
 
     const sub = activeTenant.submissionData;
     const pickupCount = sub.pickup_count ?? 0;
-    const hasExistingId = !!sub.pickup_id_photo;
     const isRepeat = pickupCount >= 1;
-
-    // First pickup requires an ID photo. Repeat pickups may re-use existing ID.
-    if (!isRepeat && !pickupIdFile) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'ID Photo Required',
-        message: 'Please take a photo of the tenant\'s ID before marking as picked up.',
-        variant: 'error'
-      });
-      return;
-    }
-
-    if (isRepeat && !hasExistingId && !pickupIdFile) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'ID Photo Required',
-        message: 'No ID on file — please attach a photo before recording this pickup.',
-        variant: 'error'
-      });
-      return;
-    }
 
     if (isRepeat && !repickupReason) {
       setAlertDialog({
@@ -826,14 +804,13 @@ export default function LobbyPage() {
         if (!uploadResult.success) {
           setAlertDialog({
             isOpen: true,
-            title: 'Upload Failed',
-            message: `ID photo upload failed: ${uploadResult.message}`,
-            variant: 'error'
+            title: 'ID Upload Failed',
+            message: `Pickup will still be recorded, but ID photo was not saved: ${uploadResult.message}`,
+            variant: 'info'
           });
-          setUpdatingField(null);
-          return;
+        } else {
+          idPhotoPath = uploadResult.filePath;
         }
-        idPhotoPath = uploadResult.filePath;
       }
 
       const response = await fetch('/api/admin/compliance/permit', {
