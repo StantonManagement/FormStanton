@@ -12,7 +12,7 @@ import { logAudit, getClientIp } from '@/lib/audit';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
@@ -22,7 +22,7 @@ export async function POST(
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const documentId = params.id;
+  const { id: documentId } = await params;
 
   try {
     // 1. Fetch the document and scope-check it belongs to a HACH-accessible application

@@ -18,7 +18,7 @@ import { renderTemplate } from '@/lib/rejection-templates';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
@@ -28,7 +28,7 @@ export async function POST(
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const documentId = params.id;
+  const { id: documentId } = await params;
 
   let body: { reason_code?: string; reason_text?: string } = {};
   try {

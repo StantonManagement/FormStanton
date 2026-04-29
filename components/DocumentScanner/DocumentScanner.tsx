@@ -159,7 +159,7 @@ async function ensureJscanifyLoaded(): Promise<any> {
     return window.jscanify;
   }
 
-  const mod = await import('jscanify');
+  const mod = await import('jscanify/client');
   const Jscanify = (mod as any).default ?? mod;
   window.jscanify = Jscanify;
   return Jscanify;

@@ -1,8 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { TaskComponentProps } from './types';
-import DocumentScanner, { Metadata } from '@/components/DocumentScanner/DocumentScanner';
+import type { Metadata } from '@/components/DocumentScanner/DocumentScanner';
+
+const DocumentScanner = dynamic(
+  () => import('@/components/DocumentScanner/DocumentScanner'),
+  { ssr: false }
+);
 
 export default function FileUploadTask({ task, token, projectUnitId, language, onComplete }: TaskComponentProps) {
   const [submitting, setSubmitting] = useState(false);

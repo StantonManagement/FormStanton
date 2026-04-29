@@ -9,7 +9,7 @@ import { recordApplicationView } from '@/lib/hach/view-tracking';
  */
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
@@ -19,6 +19,7 @@ export async function POST(
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  await recordApplicationView(params.id, user.userId, user.displayName);
+  const { id } = await params;
+  await recordApplicationView(id, user.userId, user.displayName);
   return NextResponse.json({ success: true });
 }

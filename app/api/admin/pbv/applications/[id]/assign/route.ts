@@ -12,7 +12,7 @@ import { logAudit, getClientIp } from '@/lib/audit';
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireStantonStaff();
   if (guard) return guard;
@@ -22,7 +22,7 @@ export async function PATCH(
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
-  const applicationId = params.id;
+  const { id: applicationId } = await params;
 
   let body: { assigned_to?: string | null } = {};
   try {

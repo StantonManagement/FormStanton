@@ -9,12 +9,12 @@ import { supabaseAdmin } from '@/lib/supabase';
  */
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     // Application

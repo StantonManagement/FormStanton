@@ -10,7 +10,7 @@ import { logAudit, getClientIp } from '@/lib/audit';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
@@ -19,7 +19,7 @@ export async function POST(
     return NextResponse.json({ success: false, message: 'HACH admin access required' }, { status: 403 });
   }
 
-  const { id } = params;
+  const { id } = await params;
 
   if (id === sessionUser.userId) {
     return NextResponse.json(

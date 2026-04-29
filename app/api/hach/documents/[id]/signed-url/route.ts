@@ -12,12 +12,12 @@ const TTL = 300; // 5 minutes
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireHachUser();
   if (guard) return guard;
 
-  const documentId = params.id;
+  const { id: documentId } = await params;
   const versionParam = request.nextUrl.searchParams.get('version');
   const requestedRevision = versionParam ? parseInt(versionParam, 10) : null;
 

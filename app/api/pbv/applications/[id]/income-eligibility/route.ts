@@ -12,7 +12,7 @@ import { computeHouseholdIncome } from '@/lib/pbv/income-eligibility';
  */
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getSessionUser();
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const applicationId = params.id;
+    const { id: applicationId } = await params;
     if (!applicationId) {
       return NextResponse.json(
         { success: false, message: 'Application ID required' },
