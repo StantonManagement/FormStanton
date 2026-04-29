@@ -435,7 +435,9 @@ export default function TenantProcessingDrawer({
                   )}
                   <div className="flex-1 min-w-0">
                     <div className={row.tenant_picked_up ? 'text-[var(--muted)]' : 'text-[var(--ink)]'}>
-                      {row.tenant_picked_up ? 'Permit picked up' : 'Permit not yet picked up'}
+                      {row.tenant_picked_up
+                        ? 'Permit picked up: YES — Charge parking fee'
+                        : 'Permit picked up: NO — Do not charge parking fee'}
                     </div>
                     {row.tenant_picked_up && row.tenant_picked_up_at && (
                       <div className="text-xs text-[var(--muted)] truncate">
