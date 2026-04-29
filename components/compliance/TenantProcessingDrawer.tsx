@@ -420,33 +420,31 @@ export default function TenantProcessingDrawer({
           {/* Vehicle & Parking */}
           {vehicle && (row.has_vehicle || row.permit_issued) && (
             <DomainSection icon={Car} title="Vehicle & Parking" summary={row.vehicle_summary}>
-              {row.permit_issued && (
-                <div
-                  className={`px-3 py-2 border rounded-none flex items-center gap-2 text-sm ${
-                    row.tenant_picked_up
-                      ? 'border-[var(--success)]/40 bg-[var(--success)]/5'
-                      : 'border-[var(--border)] bg-[var(--bg-section)]'
-                  }`}
-                >
-                  {row.tenant_picked_up ? (
-                    <CheckCircle2 className="w-5 h-5 text-[var(--success)] shrink-0" />
-                  ) : (
-                    <Car className="w-5 h-5 text-[var(--muted)] shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className={row.tenant_picked_up ? 'text-[var(--muted)]' : 'text-[var(--ink)]'}>
-                      {row.tenant_picked_up
-                        ? 'Permit picked up: YES — Charge parking fee'
-                        : 'Permit picked up: NO — Do not charge parking fee'}
-                    </div>
-                    {row.tenant_picked_up && row.tenant_picked_up_at && (
-                      <div className="text-xs text-[var(--muted)] truncate">
-                        {new Date(row.tenant_picked_up_at).toLocaleDateString()}
-                      </div>
-                    )}
+              <div
+                className={`px-3 py-2 border rounded-none flex items-center gap-2 text-sm ${
+                  row.tenant_picked_up
+                    ? 'border-[var(--success)]/40 bg-[var(--success)]/5'
+                    : 'border-[var(--border)] bg-[var(--bg-section)]'
+                }`}
+              >
+                {row.tenant_picked_up ? (
+                  <CheckCircle2 className="w-5 h-5 text-[var(--success)] shrink-0" />
+                ) : (
+                  <Car className="w-5 h-5 text-[var(--muted)] shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className={row.tenant_picked_up ? 'text-[var(--muted)]' : 'text-[var(--ink)]'}>
+                    {row.tenant_picked_up
+                      ? 'Permit picked up: YES — Charge parking fee'
+                      : 'Permit picked up: NO — Do not charge parking fee'}
                   </div>
+                  {row.tenant_picked_up && row.tenant_picked_up_at && (
+                    <div className="text-xs text-[var(--muted)] truncate">
+                      {new Date(row.tenant_picked_up_at).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
               {vehicle.addendum && (
                 <ChecklistItem
                   status={vehicle.addendum}
