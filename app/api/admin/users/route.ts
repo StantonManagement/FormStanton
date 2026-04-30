@@ -15,7 +15,7 @@ export async function GET() {
         id, username, display_name, is_active, is_super_admin, last_login_at, created_at,
         department_id,
         departments(id, name, code),
-        user_roles(role_id, roles(id, name, code))
+        user_roles!user_roles_user_id_fkey(role_id, roles(id, name, code))
       `)
       .order('display_name', { ascending: true });
 
@@ -168,7 +168,7 @@ export async function PUT(request: NextRequest) {
         id, username, display_name, is_active, last_login_at,
         department_id,
         departments(id, name, code),
-        user_roles(role_id, roles(id, name, code))
+        user_roles!user_roles_user_id_fkey(role_id, roles(id, name, code))
       `)
       .eq('id', userId)
       .single();
