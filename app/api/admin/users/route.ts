@@ -4,6 +4,28 @@ import { requirePermission, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 
+const DEFAULT_NEW_USER_ROLE_CODES = ['read_only', 'front_desk', 'back_office'] as const;
+
+async function resolveDefaultNewUserRoleIds(): Promise<string[]> {
+  const { data: roles, error } = await supabaseAdmin
+    .from('roles')
+    .select('id, code')
+    .in('code', [...DEFAULT_NEW_USER_ROLE_CODES]);
+
+  if (error) throw error;
+
+  const roleIdByCode = new Map((roles ?? []).map((role) => [role.code, role.id]));
+  const resolved = DEFAULT_NEW_USER_ROLE_CODES
+    .map((code) => roleIdByCode.get(code))
+    .filter((id): id is string => Boolean(id));
+
+  if (resolved.length !== DEFAULT_NEW_USER_ROLE_CODES.length) {
+    throw new Error('Default role bundle is not fully configured');
+  }
+
+  return resolved;
+}
+
 export async function GET() {
   try {
     const guard = await requirePermission('user-management', 'read');
@@ -76,25 +98,31 @@ export async function POST(request: NextRequest) {
 
     if (userError) throw userError;
 
-    // Assign roles if provided
-    if (roleIds && Array.isArray(roleIds) && roleIds.length > 0) {
-      const sessionUser = await getSessionUser();
+    const requestedRoleIds = Array.isArray(roleIds)
+      ? roleIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)
+      : [];
+    const effectiveRoleIds = requestedRoleIds.length > 0
+      ? requestedRoleIds
+      : await resolveDefaultNewUserRoleIds();
+
+    const sessionUser = await getSessionUser();
+
+    if (effectiveRoleIds.length > 0) {
       await supabaseAdmin
         .from('user_roles')
-        .insert(roleIds.map((roleId: string) => ({
+        .insert(effectiveRoleIds.map((roleId: string) => ({
           user_id: user.id,
           role_id: roleId,
           assigned_by: sessionUser?.userId ?? null,
         })));
     }
 
-    const sessionUser = await getSessionUser();
     await logAudit(
       sessionUser,
       'user.create',
       'admin_user',
       user.id,
-      { username: user.username, roleIds: roleIds ?? [] },
+      { username: user.username, roleIds: effectiveRoleIds },
       getClientIp(request)
     );
 
