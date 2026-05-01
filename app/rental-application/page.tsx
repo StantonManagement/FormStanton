@@ -23,7 +23,7 @@ import SectionHeader from '@/components/SectionHeader';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
 import { useFormSection, useFormSubmit, useFieldValidation, useFormData } from '@/lib/formHooks';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface Occupant {
   name: string;
@@ -41,7 +41,6 @@ interface IncomeSource {
   phone: string;
   title: string;
   duration: string;
-  proofAttached: 'yes' | 'no' | '';
 }
 
 interface RentalAppFormData {
@@ -53,8 +52,7 @@ interface RentalAppFormData {
   addressDuration: string;
   householdSize: string;
   occupants: Occupant[];
-  incomeSource1: IncomeSource;
-  incomeSource2: IncomeSource;
+  incomeSources: IncomeSource[];
   monthlyIncomeRange: string;
   bedroomsNeeded: string;
   areasOfInterest: string[];
@@ -73,18 +71,18 @@ interface RentalAppFormData {
   caseworkerName: string;
   caseworkerPhone: string;
   caseworkerEmail: string;
-  docsVoucher: boolean;
-  docsMovingPacket: boolean;
-  docsBankStatement: boolean;
+  docsVoucherConfirm: boolean;
+  docsMovingPacketConfirm: boolean;
+  docsBankStatementConfirm: boolean;
   s8Auth: boolean;
   ssnOrTaxId: string;
-  docsPhotoId: boolean;
-  docsSsnCard: boolean;
+  docsPhotoIdConfirm: boolean;
+  docsSsnCardConfirm: boolean;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
-const blankIncome = (): IncomeSource => ({ employer: '', phone: '', title: '', duration: '', proofAttached: '' });
+const blankIncome = (): IncomeSource => ({ employer: '', phone: '', title: '', duration: '' });
 const blankOccupant = (): Occupant => ({ name: '', dob: '', relationship: '' });
 const blankPet = (): Pet => ({ type: '', weight: '' });
 
@@ -97,8 +95,7 @@ const initialFormData: RentalAppFormData = {
   addressDuration: '',
   householdSize: '',
   occupants: [],
-  incomeSource1: blankIncome(),
-  incomeSource2: blankIncome(),
+  incomeSources: [],
   monthlyIncomeRange: '',
   bedroomsNeeded: '',
   areasOfInterest: [],
@@ -117,13 +114,13 @@ const initialFormData: RentalAppFormData = {
   caseworkerName: '',
   caseworkerPhone: '',
   caseworkerEmail: '',
-  docsVoucher: false,
-  docsMovingPacket: false,
-  docsBankStatement: false,
+  docsVoucherConfirm: false,
+  docsMovingPacketConfirm: false,
+  docsBankStatementConfirm: false,
   s8Auth: false,
   ssnOrTaxId: '',
-  docsPhotoId: false,
-  docsSsnCard: false,
+  docsPhotoIdConfirm: false,
+  docsSsnCardConfirm: false,
 };
 
 const BEDROOM_OPTIONS = [
@@ -142,7 +139,70 @@ const AREA_OPTIONS = [
   { value: 'no_preference', labelKey: 'noPreference' as const },
 ];
 
-// ── Form Component ─────────────────────────────────────────────────────────────
+const ACCEPTED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+// -- Native file input ---------------------------------------------------------
+
+function FileInput({
+  label,
+  helperText,
+  file,
+  onChange,
+}: {
+  label: string;
+  helperText: string;
+  file: File | null;
+  onChange: (f: File | null) => void;
+}) {
+  const [error, setError] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    if (f) {
+      if (!ACCEPTED_FILE_TYPES.includes(f.type)) {
+        setError('Only PDF, JPG, or PNG files are accepted.');
+        onChange(null);
+        return;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        setError('File must be 10 MB or smaller.');
+        onChange(null);
+        return;
+      }
+    }
+    setError('');
+    onChange(f);
+  };
+
+  return (
+    <div className="mt-2">
+      <label className="block text-xs font-medium text-[var(--ink)] mb-1">{label}</label>
+      <p className="text-xs text-[var(--muted)] mb-1">{helperText}</p>
+      <input
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        onChange={handleChange}
+        className="block w-full text-sm text-[var(--ink)] file:mr-3 file:py-1.5 file:px-3 file:rounded-none file:border file:border-[var(--border)] file:text-xs file:font-medium file:bg-[var(--bg-section)] file:text-[var(--ink)] hover:file:bg-[var(--primary)]/5 cursor-pointer"
+      />
+      {file && (
+        <div className="flex items-center justify-between mt-1 px-2 py-1 bg-[var(--bg-section)] border border-[var(--border)] text-xs">
+          <span className="text-[var(--ink)] truncate">{file.name}</span>
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="ml-2 text-[var(--muted)] hover:text-red-600 flex-shrink-0"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// -- Form Component -------------------------------------------------------------
 
 function RentalApplicationContent() {
   const searchParams = useSearchParams();
@@ -154,13 +214,33 @@ function RentalApplicationContent() {
   const { formData, updateField } = useFormData(initialFormData);
   const [signature, setSignature] = useState('');
 
+  // File state � not serialized in formData
+  const [incomeProofFiles, setIncomeProofFiles] = useState<(File | null)[]>([]);
+  const [docFiles, setDocFiles] = useState<Record<string, File | null>>({
+    docsVoucher: null,
+    docsMovingPacket: null,
+    docsBankStatement: null,
+    docsPhotoId: null,
+    docsSsnCard: null,
+  });
+
   const { currentSection, nextSection, previousSection, goToSection, completedSections } = useFormSection(3);
   const { errors, setFieldError, clearAllErrors } = useFieldValidation<RentalAppFormData & { signature: string }>();
   const { submit, isSubmitting, submitError, submitSuccess } = useFormSubmit(async (data) => {
+    const fd = new FormData();
+    fd.append('formData', JSON.stringify(data));
+    fd.append('language', language);
+    fd.append('signature', signature);
+    incomeProofFiles.forEach((file, idx) => {
+      if (file) fd.append(`incomeProof_${idx}`, file);
+    });
+    Object.entries(docFiles).forEach(([key, file]) => {
+      if (file) fd.append(key, file);
+    });
+
     const response = await fetch('/api/forms/rental-application', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, signature, language }),
+      body: fd,
     });
     if (!response.ok) {
       const err = await response.json();
@@ -170,6 +250,7 @@ function RentalApplicationContent() {
   });
 
   const t = rentalApplicationTranslations[language];
+  const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   if (!showForm) {
     return (
@@ -194,15 +275,27 @@ function RentalApplicationContent() {
     );
   }
 
-  // ── Helpers ──
+  // -- Helpers --
 
   const toggleArea = (area: string) => {
     const curr = formData.areasOfInterest;
     updateField('areasOfInterest', curr.includes(area) ? curr.filter((a) => a !== area) : [...curr, area]);
   };
 
-  const updateIncome = (field: 'incomeSource1' | 'incomeSource2', key: keyof IncomeSource, value: string) => {
-    updateField(field, { ...formData[field], [key]: value });
+  const updateIncomeSource = (idx: number, key: keyof IncomeSource, value: string) => {
+    const next = [...formData.incomeSources];
+    next[idx] = { ...next[idx], [key]: value };
+    updateField('incomeSources', next);
+  };
+
+  const addIncomeSource = () => {
+    updateField('incomeSources', [...formData.incomeSources, blankIncome()]);
+    setIncomeProofFiles((prev) => [...prev, null]);
+  };
+
+  const removeIncomeSource = (idx: number) => {
+    updateField('incomeSources', formData.incomeSources.filter((_, i) => i !== idx));
+    setIncomeProofFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const updateOccupant = (idx: number, key: keyof Occupant, value: string) => {
@@ -215,6 +308,10 @@ function RentalApplicationContent() {
     const next = [...formData.pets];
     next[idx] = { ...next[idx], [key]: value };
     updateField('pets', next);
+  };
+
+  const setDocFile = (key: string, file: File | null) => {
+    setDocFiles((prev) => ({ ...prev, [key]: file }));
   };
 
   const validateTab1 = (): boolean => {
@@ -242,49 +339,6 @@ function RentalApplicationContent() {
     { id: 3, label: t.tab3 },
   ];
 
-  const inputCls = 'w-full px-3 py-2 text-sm border border-[var(--border)] rounded-none bg-white text-[var(--ink)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20';
-
-  const incomeSourceBlock = (field: 'incomeSource1' | 'incomeSource2', label: string) => {
-    const src = formData[field];
-    return (
-      <div className="border border-[var(--border)] p-4 bg-[var(--bg-section)] mb-4">
-        <h4 className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mb-3">{label}</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label={t.employerName}>
-            <FormInput type="text" value={src.employer} onChange={(e) => updateIncome(field, 'employer', e.target.value)} />
-          </FormField>
-          <FormField label={t.employerPhone}>
-            <FormInput type="tel" value={src.phone} onChange={(e) => updateIncome(field, 'phone', e.target.value)} />
-          </FormField>
-          <FormField label={t.jobTitle}>
-            <FormInput type="text" value={src.title} onChange={(e) => updateIncome(field, 'title', e.target.value)} />
-          </FormField>
-          <FormField label={t.howLong}>
-            <FormInput type="text" value={src.duration} onChange={(e) => updateIncome(field, 'duration', e.target.value)} />
-          </FormField>
-        </div>
-        <div className="mt-3">
-          <p className="text-xs font-medium text-[var(--ink)] mb-2">{t.proofAttached}</p>
-          <div className="flex gap-6">
-            {(['yes', 'no'] as const).map((v) => (
-              <label key={v} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="radio"
-                  name={`${field}_proof`}
-                  value={v}
-                  checked={src.proofAttached === v}
-                  onChange={() => updateIncome(field, 'proofAttached', v)}
-                  className="accent-[var(--primary)]"
-                />
-                {v === 'yes' ? t.yes : t.no}
-              </label>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <Header language={language} onLanguageChange={setLanguage} />
@@ -307,7 +361,7 @@ function RentalApplicationContent() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              {/* ── TAB 1: About You ── */}
+              {/* -- TAB 1: About You -- */}
               {currentSection === 1 && (
                 <FormSection>
                   <SectionHeader title={t.sectionPersonal} sectionNumber={1} totalSections={3} />
@@ -372,13 +426,14 @@ function RentalApplicationContent() {
                     <SectionHeader title={t.sectionHousehold} sectionNumber={2} totalSections={3} />
 
                     <FormField label={t.householdSize} required error={errors.householdSize}>
-                      <input
+                      <FormInput
                         type="number"
                         min="1"
                         max="20"
                         value={formData.householdSize}
                         onChange={(e) => updateField('householdSize', e.target.value)}
-                        className={`${inputCls} w-32 ${errors.householdSize ? 'border-red-400' : ''}`}
+                        error={!!errors.householdSize}
+                        className="w-32"
                       />
                     </FormField>
 
@@ -406,15 +461,13 @@ function RentalApplicationContent() {
                           </FormField>
                         </div>
                       ))}
-                      {formData.occupants.length < 6 && (
-                        <button
-                          type="button"
-                          onClick={() => updateField('occupants', [...formData.occupants, blankOccupant()])}
-                          className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium transition-colors"
-                        >
-                          + {t.addOccupant}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => updateField('occupants', [...formData.occupants, blankOccupant()])}
+                        className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium transition-colors"
+                      >
+                        + {t.addOccupant}
+                      </button>
                     </div>
                   </div>
 
@@ -428,13 +481,59 @@ function RentalApplicationContent() {
                 </FormSection>
               )}
 
-              {/* ── TAB 2: Income & Needs ── */}
+              {/* -- TAB 2: Income & Needs -- */}
               {currentSection === 2 && (
                 <FormSection>
                   <SectionHeader title={t.sectionIncome} sectionNumber={2} totalSections={3} />
 
-                  {incomeSourceBlock('incomeSource1', t.incomeSource1)}
-                  {incomeSourceBlock('incomeSource2', t.incomeSource2)}
+                  {formData.incomeSources.map((src, idx) => (
+                    <div key={idx} className="border border-[var(--border)] p-4 bg-[var(--bg-section)] mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest">
+                          {t.incomeSourceLabel(idx + 1)}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => removeIncomeSource(idx)}
+                          className="text-xs text-[var(--muted)] hover:text-red-600 transition-colors"
+                        >
+                          {t.removeIncomeSource}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField label={t.employerName}>
+                          <FormInput type="text" value={src.employer} onChange={(e) => updateIncomeSource(idx, 'employer', e.target.value)} />
+                        </FormField>
+                        <FormField label={t.employerPhone}>
+                          <FormInput type="tel" value={src.phone} onChange={(e) => updateIncomeSource(idx, 'phone', e.target.value)} />
+                        </FormField>
+                        <FormField label={t.jobTitle}>
+                          <FormInput type="text" value={src.title} onChange={(e) => updateIncomeSource(idx, 'title', e.target.value)} />
+                        </FormField>
+                        <FormField label={t.howLong}>
+                          <FormInput type="text" value={src.duration} onChange={(e) => updateIncomeSource(idx, 'duration', e.target.value)} />
+                        </FormField>
+                      </div>
+                      <FileInput
+                        label={t.uploadProofOfIncome}
+                        helperText={t.uploadOptional}
+                        file={incomeProofFiles[idx] ?? null}
+                        onChange={(f) => setIncomeProofFiles((prev) => {
+                          const next = [...prev];
+                          next[idx] = f;
+                          return next;
+                        })}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addIncomeSource}
+                    className="text-sm text-[var(--primary)] hover:text-[var(--primary-light)] font-medium transition-colors mb-6"
+                  >
+                    {t.addIncomeSource}
+                  </button>
 
                   <FormField label={t.monthlyIncome}>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
@@ -542,7 +641,7 @@ function RentalApplicationContent() {
                 </FormSection>
               )}
 
-              {/* ── TAB 3: Details & Sign ── */}
+              {/* -- TAB 3: Details & Sign -- */}
               {currentSection === 3 && (
                 <FormSection>
                   <SectionHeader title={t.sectionPets} sectionNumber={3} totalSections={3} />
@@ -586,15 +685,13 @@ function RentalApplicationContent() {
                           </FormField>
                         </div>
                       ))}
-                      {formData.pets.length < 4 && (
-                        <button
-                          type="button"
-                          onClick={() => updateField('pets', [...formData.pets, blankPet()])}
-                          className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium transition-colors"
-                        >
-                          + {t.addPet}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => updateField('pets', [...formData.pets, blankPet()])}
+                        className="text-xs text-[var(--primary)] hover:text-[var(--primary-light)] font-medium transition-colors"
+                      >
+                        + {t.addPet}
+                      </button>
                     </div>
                   )}
 
@@ -618,7 +715,7 @@ function RentalApplicationContent() {
                     </FormField>
                   </div>
 
-                  {/* Payment-type conditional block */}
+                  {/* Market rate authorization */}
                   {formData.paymentType === 'market_rate' && (
                     <div className="border-t border-[var(--border)] pt-6 mt-6">
                       <p className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mb-4">{t.sectionMarketRate}</p>
@@ -630,6 +727,7 @@ function RentalApplicationContent() {
                     </div>
                   )}
 
+                  {/* Section 8 details */}
                   {formData.paymentType === 'section8' && (
                     <div className="border-t border-[var(--border)] pt-6 mt-6">
                       <p className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mb-4">{t.sectionSection8}</p>
@@ -656,11 +754,52 @@ function RentalApplicationContent() {
                           <FormInput type="email" value={formData.caseworkerEmail} onChange={(e) => updateField('caseworkerEmail', e.target.value)} />
                         </FormField>
                       </div>
-                      <div className="mt-4 space-y-2">
-                        <p className="text-xs font-medium text-[var(--ink)] mb-2">Documents attached:</p>
-                        <FormCheckbox label={t.docsVoucher} checked={formData.docsVoucher} onChange={(e) => updateField('docsVoucher', e.target.checked)} />
-                        <FormCheckbox label={t.docsMovingPacket} checked={formData.docsMovingPacket} onChange={(e) => updateField('docsMovingPacket', e.target.checked)} />
-                        <FormCheckbox label={t.docsBankStatement} checked={formData.docsBankStatement} onChange={(e) => updateField('docsBankStatement', e.target.checked)} />
+                      <div className="mt-5 space-y-4">
+                        <div className="p-3 border border-[var(--border)] bg-[var(--bg-section)]">
+                          <FileInput
+                            label={t.docsVoucher}
+                            helperText={t.uploadOptional}
+                            file={docFiles.docsVoucher}
+                            onChange={(f) => setDocFile('docsVoucher', f)}
+                          />
+                          <div className="mt-2">
+                            <FormCheckbox
+                              label="I confirm I have this document"
+                              checked={formData.docsVoucherConfirm}
+                              onChange={(e) => updateField('docsVoucherConfirm', e.target.checked)}
+                            />
+                          </div>
+                        </div>
+                        <div className="p-3 border border-[var(--border)] bg-[var(--bg-section)]">
+                          <FileInput
+                            label={t.docsMovingPacket}
+                            helperText={t.uploadOptional}
+                            file={docFiles.docsMovingPacket}
+                            onChange={(f) => setDocFile('docsMovingPacket', f)}
+                          />
+                          <div className="mt-2">
+                            <FormCheckbox
+                              label="I confirm I have this document"
+                              checked={formData.docsMovingPacketConfirm}
+                              onChange={(e) => updateField('docsMovingPacketConfirm', e.target.checked)}
+                            />
+                          </div>
+                        </div>
+                        <div className="p-3 border border-[var(--border)] bg-[var(--bg-section)]">
+                          <FileInput
+                            label={t.docsBankStatement}
+                            helperText={t.uploadOptional}
+                            file={docFiles.docsBankStatement}
+                            onChange={(f) => setDocFile('docsBankStatement', f)}
+                          />
+                          <div className="mt-2">
+                            <FormCheckbox
+                              label="I confirm I have this document"
+                              checked={formData.docsBankStatementConfirm}
+                              onChange={(e) => updateField('docsBankStatementConfirm', e.target.checked)}
+                            />
+                          </div>
+                        </div>
                       </div>
                       <div className="mt-4">
                         <FormCheckbox label={t.s8Auth} checked={formData.s8Auth} onChange={(e) => updateField('s8Auth', e.target.checked)} />
@@ -668,10 +807,10 @@ function RentalApplicationContent() {
                     </div>
                   )}
 
-                  {/* Section J - Additional */}
+                  {/* Additional info */}
                   <div className="border-t border-[var(--border)] pt-6 mt-6">
                     <p className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mb-1">{t.sectionAdditional}</p>
-                    <p className="text-xs text-[var(--muted)] mb-4">Not required — helps speed up processing</p>
+                    <p className="text-xs text-[var(--muted)] mb-4">Not required � helps speed up processing</p>
                     <FormField label={t.ssnOrTaxId}>
                       <FormInput
                         type="text"
@@ -680,10 +819,37 @@ function RentalApplicationContent() {
                         placeholder="XXX-XX-XXXX"
                       />
                     </FormField>
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs font-medium text-[var(--ink)] mb-2">Documents attached:</p>
-                      <FormCheckbox label={t.docsPhotoId} checked={formData.docsPhotoId} onChange={(e) => updateField('docsPhotoId', e.target.checked)} />
-                      <FormCheckbox label={t.docsSsnCard} checked={formData.docsSsnCard} onChange={(e) => updateField('docsSsnCard', e.target.checked)} />
+                    <div className="mt-4 space-y-4">
+                      <div className="p-3 border border-[var(--border)] bg-[var(--bg-section)]">
+                        <FileInput
+                          label={t.docsPhotoId}
+                          helperText={t.uploadOptional}
+                          file={docFiles.docsPhotoId}
+                          onChange={(f) => setDocFile('docsPhotoId', f)}
+                        />
+                        <div className="mt-2">
+                          <FormCheckbox
+                            label="I confirm I have this document"
+                            checked={formData.docsPhotoIdConfirm}
+                            onChange={(e) => updateField('docsPhotoIdConfirm', e.target.checked)}
+                          />
+                        </div>
+                      </div>
+                      <div className="p-3 border border-[var(--border)] bg-[var(--bg-section)]">
+                        <FileInput
+                          label={t.docsSsnCard}
+                          helperText={t.uploadOptional}
+                          file={docFiles.docsSsnCard}
+                          onChange={(f) => setDocFile('docsSsnCard', f)}
+                        />
+                        <div className="mt-2">
+                          <FormCheckbox
+                            label="I confirm I have this document"
+                            checked={formData.docsSsnCardConfirm}
+                            onChange={(e) => updateField('docsSsnCardConfirm', e.target.checked)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -698,27 +864,9 @@ function RentalApplicationContent() {
                         onSave={setSignature}
                       />
                     </FormField>
-                    <FormField label={t.signatureDate}>
-                      <FormInput
-                        type="date"
-                        value={new Date().toISOString().split('T')[0]}
-                        onChange={() => {}}
-                      />
-                    </FormField>
-                  </div>
-
-                  {/* Office use block (display only) */}
-                  <div className="border border-[var(--border)] mt-8 p-4 bg-[var(--bg-section)]">
-                    <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-widest mb-3">For Office Use Only</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-[var(--muted)]">
-                      <div><span className="font-medium">Received:</span> ___________</div>
-                      <div><span className="font-medium">Contacted:</span> ___________</div>
-                      <div><span className="font-medium">By:</span> ___________</div>
-                      <div><span className="font-medium">Showing date:</span> ___________</div>
-                      <div><span className="font-medium">Unit(s):</span> ___________</div>
-                      <div><span className="font-medium">Background check:</span> ___________</div>
-                      <div><span className="font-medium">Credit check:</span> ___________</div>
-                      <div><span className="font-medium">Outcome:</span> ___________</div>
+                    <div className="mt-3">
+                      <span className="text-xs font-medium text-[var(--ink)]">{t.signatureDate}: </span>
+                      <span className="text-sm text-[var(--ink)]">{todayStr}</span>
                     </div>
                   </div>
 

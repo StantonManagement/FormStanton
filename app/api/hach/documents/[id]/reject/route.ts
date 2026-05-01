@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
-import { renderTemplate } from '@/lib/rejection-templates';
+import { sendRejectionNotification } from '@/lib/notifications';
 
 /**
  * POST /api/hach/documents/[id]/reject
@@ -13,7 +13,7 @@ import { renderTemplate } from '@/lib/rejection-templates';
  * - Auth: requireHachUser() + scope check (document must belong to a HACH-accessible application)
  * - Inserts document_review_actions row (action='rejected')
  * - Updates form_submission_documents.status to 'rejected'
- * - Logs deferred notification to console (Twilio not wired yet)
+ * - Sends SMS notification via Twilio (lib/notifications.ts)
  * - Returns recomputed packet progress summary (same shape as approve endpoint)
  */
 export async function POST(
@@ -128,32 +128,27 @@ export async function POST(
       // Non-fatal — column may not exist yet
     }
 
-    // 6. Build the interpolated message for the deferred notification log
-    const lang = (['en', 'es', 'pt'].includes(app.preferred_language ?? '')
-      ? app.preferred_language
-      : 'en') as 'en' | 'es' | 'pt';
+    // 6. Send rejection notification via Twilio (non-blocking on failure)
+    const notificationResult = await sendRejectionNotification({
+      documentId,
+      reasonCode: reason_code,
+      customNote: reason_text,
+      reviewerId: user.userId,
+    });
 
-    const tenantFirstName = (app.head_of_household_name ?? 'Tenant').split(' ')[0];
-    const docShort = (doc.label ?? 'document').split(' ')[0].toLowerCase();
-
-    let interpolatedMessage = '';
-    try {
-      interpolatedMessage = await renderTemplate(reason_code, lang, {
-        tenant: tenantFirstName,
-        doc: doc.label ?? 'document',
-        doc_short: docShort,
-        custom: reason_text,
-      });
-    } catch (e) {
-      console.warn('[hach/reject] renderTemplate failed (non-fatal):', e);
+    // Update document_review_actions row with notification_id if available
+    if (notificationResult.notificationId) {
+      await supabaseAdmin
+        .from('document_review_actions')
+        .update({ notification_id: notificationResult.notificationId })
+        .eq('document_id', documentId)
+        .eq('full_application_id', applicationId)
+        .eq('action', 'rejected')
+        .order('created_at', { ascending: false })
+        .limit(1);
     }
 
-    // 7. Deferred notification — log to console, do NOT send
-    console.log(
-      `[REJECT NOTIFICATION DEFERRED] Would send SMS to tenant (lang: ${lang}): "${interpolatedMessage}"`
-    );
-
-    // 8. Recompute packet progress summary
+    // 7. Recompute packet progress summary
     const { data: allDocs } = await supabaseAdmin
       .from('form_submission_documents')
       .select('id, status')
@@ -194,7 +189,8 @@ export async function POST(
         document_label: doc.label,
         reason_code,
         reason_text: reason_text ?? null,
-        notification_deferred: true,
+        notification_status: notificationResult.status,
+        notification_id: notificationResult.notificationId || null,
       },
       getClientIp(request)
     );
@@ -209,7 +205,13 @@ export async function POST(
         reason_code,
         reason_label: template.label,
         reason_text: reason_text ?? null,
-        notification_deferred: true,
+        notification: {
+          status: notificationResult.status,
+          notification_id: notificationResult.notificationId || null,
+          twilio_sid: notificationResult.status === 'sent' ? (notificationResult as any).twilioSid : null,
+          reason: notificationResult.status === 'blocked' ? (notificationResult as any).reason : null,
+          error: notificationResult.status === 'failed' ? (notificationResult as any).error : null,
+        },
         progress,
       },
     });

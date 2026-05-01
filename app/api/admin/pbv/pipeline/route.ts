@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       .select(
         `id, created_at, head_of_household_name, building_address, unit_number,
          household_size, stage, stage_changed_at, last_activity_at, assigned_to,
-         hach_review_status, preferred_language, form_submission_id`
+         hach_review_status, preferred_language, language_confirmed_at, phone, form_submission_id`
       )
       .order('last_activity_at', { ascending: true });
 
@@ -218,6 +218,8 @@ export async function GET(request: NextRequest) {
       const lastActivityAt = app.last_activity_at ?? app.created_at;
       const days_stale = Math.floor((now - new Date(lastActivityAt).getTime()) / 86400000);
 
+      const missing_contact_info = !app.phone || !app.preferred_language || !app.language_confirmed_at;
+
       return {
         id: app.id,
         head_of_household_name: app.head_of_household_name,
@@ -238,6 +240,7 @@ export async function GET(request: NextRequest) {
         ami_limit: amiLimit,
         has_rejections: hasRejections,
         hach_review_status: app.hach_review_status,
+        missing_contact_info,
       };
     });
 

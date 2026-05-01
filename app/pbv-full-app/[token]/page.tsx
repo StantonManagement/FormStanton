@@ -13,6 +13,7 @@ import {
   LanguageLanding,
   SuccessScreen,
 } from '@/components/form';
+import FormPhoneInput from '@/components/form/FormPhoneInput';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TabNavigation from '@/components/TabNavigation';
@@ -33,6 +34,12 @@ const CITIZENSHIP_OPTIONS: Array<{ value: string; key: keyof PbvFullAppStrings }
   { value: 'ineligible',            key: 'cs_ineligible' },
   { value: 'not_reported',          key: 'cs_not_reported' },
 ];
+
+const LANG_DISPLAY_NAMES: Record<string, string> = {
+  en: 'English',
+  es: 'Español',
+  pt: 'Português',
+};
 
 const ADD_MEMBER_RELATIONSHIPS: Array<{ value: string; key: keyof PbvFullAppStrings }> = [
   { value: 'spouse',  key: 'rel_spouse' },
@@ -177,6 +184,8 @@ export default function PbvFullAppPage() {
   const [form, setForm] = useState<FullAppFormData>(emptyForm());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [phone, setPhone] = useState('');
+  const [langConfirmed, setLangConfirmed] = useState(false);
 
   // Phase 4 — Signature flow
   const [formSubmissionToken, setFormSubmissionToken] = useState('');
@@ -249,6 +258,10 @@ export default function PbvFullAppPage() {
         setSignatureProgress(Array.isArray(data.signature_progress) ? data.signature_progress : []);
         setDocumentSummary(data.document_summary ?? null);
         setNextStep((data.next_step as 'intake' | 'signatures' | 'documents' | 'complete') ?? 'intake');
+        if (data.phone_hint) {
+          const digits = (data.phone_hint as string).replace(/\D/g, '').slice(-10);
+          if (digits.length === 10) setPhone(digits);
+        }
         if (data.intake_submitted) {
           setPageState('docs_ready');
           return;
@@ -325,6 +338,13 @@ export default function PbvFullAppPage() {
         minAge.setFullYear(minAge.getFullYear() - 18);
         if (new Date(form.hohDob) > minAge) { setFieldError('hohDob', t.err_hoh_age); ok = false; }
       }
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (!phone.trim()) {
+        setFieldError('phone', t.err_phone_required); ok = false;
+      } else if (phoneDigits.length !== 10) {
+        setFieldError('phone', t.err_phone_invalid); ok = false;
+      }
+      if (!langConfirmed) { setFieldError('langConfirm', t.err_lang_not_confirmed); ok = false; }
       form.members.slice(1).forEach((m, i) => {
         const num = i + 2;
         if (!m.name.trim())    { setFieldError(`m${i + 1}name`, t.err_member_name(num)); ok = false; }
@@ -393,6 +413,8 @@ export default function PbvFullAppPage() {
               : m.criminal_history_answer === 'no' ? false
               : null,
           })),
+          phone: phone.replace(/\D/g, ''),
+          preferred_language: language,
           has_insurance_settlement: form.has_insurance_settlement,
           has_cd_trust_bond: form.has_cd_trust_bond,
           has_life_insurance: form.has_life_insurance,
@@ -852,6 +874,52 @@ export default function PbvFullAppPage() {
                       className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-1"
                     />
                   </FormField>
+
+                  <div className="space-y-1">
+                    <FormField label={t.phone_label} required error={errors['phone']}>
+                      <FormPhoneInput
+                        value={phone}
+                        onChange={setPhone}
+                        error={!!errors['phone']}
+                        errorMessage={errors['phone']}
+                      />
+                    </FormField>
+                    <p className="text-xs text-[var(--muted)] px-0.5">{t.phone_helper}</p>
+                  </div>
+
+                  {!langConfirmed ? (
+                    <div className="border border-[var(--border)] bg-[var(--bg-section)] px-4 py-4 space-y-3">
+                      <p className="text-sm font-medium text-[var(--ink)]">
+                        {t.lang_confirm_label(LANG_DISPLAY_NAMES[language] ?? language)}
+                      </p>
+                      {errors['langConfirm'] && (
+                        <p className="text-xs text-[var(--error)]">{errors['langConfirm']}</p>
+                      )}
+                      <FormButton type="button" onClick={() => setLangConfirmed(true)} fullWidth>
+                        {t.lang_confirm_btn}
+                      </FormButton>
+                      <button
+                        type="button"
+                        onClick={() => { clearAllErrors(); setPageState('landing'); }}
+                        className="w-full text-center text-xs text-[var(--muted)] underline"
+                      >
+                        {t.lang_change_label}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between border border-[var(--divider)] bg-[var(--bg-section)] px-4 py-3">
+                      <span className="text-sm text-[var(--ink)]">
+                        {t.lang_confirm_label(LANG_DISPLAY_NAMES[language] ?? language)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setLangConfirmed(false); clearAllErrors(); setPageState('landing'); }}
+                        className="text-xs text-[var(--muted)] underline ml-4 flex-shrink-0"
+                      >
+                        {t.lang_change_label}
+                      </button>
+                    </div>
+                  )}
 
                   <FullMemberCard
                     index={0}

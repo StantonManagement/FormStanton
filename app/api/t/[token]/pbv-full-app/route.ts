@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { encryptSsn, ssnLastFour } from '@/lib/ssnEncryption';
 import { getApplicableMembers } from '@/lib/memberFilter';
+import { parsePhoneToE164 } from '@/lib/phoneParser';
 
 function computeAge(dob: string): number | null {
   if (!dob) return null;
@@ -25,7 +26,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, form_submission_id')
+      .select('id, building_address, unit_number, preapp_id, form_submission_id, phone, preferred_language, language_confirmed_at')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -43,15 +44,33 @@ export async function GET(
 
     const intake_submitted = (count ?? 0) > 0;
 
-    // Language hint from linked pre-application
-    let preferred_language = 'en';
-    if (app.preapp_id) {
+    // Language: use confirmed value from pbv_full_applications if set, else fall back to preapp
+    let preferred_language: string = app.preferred_language ?? 'en';
+    if (!app.preferred_language && app.preapp_id) {
       const { data: preapp } = await supabaseAdmin
         .from('pbv_preapplications')
         .select('language')
         .eq('id', app.preapp_id)
         .maybeSingle();
       if (preapp?.language) preferred_language = preapp.language;
+    }
+
+    // Phone hint from tenant_lookup (AppFolio sync source)
+    let phone_hint: string | null = null;
+    if (app.phone) {
+      phone_hint = app.phone;
+    } else {
+      const { data: tlRow } = await supabaseAdmin
+        .from('tenant_lookup')
+        .select('phone')
+        .eq('building_address', app.building_address)
+        .eq('unit_number', app.unit_number)
+        .eq('is_current', true)
+        .maybeSingle();
+      if (tlRow?.phone) {
+        const parsed = parsePhoneToE164(tlRow.phone);
+        if (parsed) phone_hint = parsed;
+      }
     }
 
     // Document portal token + summary (form_submissions)
@@ -143,6 +162,8 @@ export async function GET(
         building_address: app.building_address,
         unit_number: app.unit_number,
         preferred_language,
+        language_confirmed_at: app.language_confirmed_at ?? null,
+        phone_hint,
         intake_submitted,
         signatures_complete,
         form_submission_token,
@@ -198,6 +219,8 @@ export async function POST(
       hoh_name,
       hoh_dob,
       household_members,
+      phone,
+      preferred_language,
       has_insurance_settlement = false,
       has_cd_trust_bond = false,
       has_life_insurance = false,
@@ -348,6 +371,7 @@ export async function POST(
     );
 
     // Update pbv_full_applications with intake summary
+    const validLang = ['en', 'es', 'pt'].includes(preferred_language ?? '') ? preferred_language : null;
     const { error: updateError } = await supabaseAdmin
       .from('pbv_full_applications')
       .update({
@@ -359,6 +383,9 @@ export async function POST(
         claiming_medical_deduction: claiming_medical_deduction === true,
         has_childcare_expense: has_childcare_expense === true,
         reasonable_accommodation_requested: reasonable_accommodation_requested === true,
+        phone: phone?.trim() || null,
+        preferred_language: validLang ?? null,
+        language_confirmed_at: validLang ? new Date().toISOString() : null,
         intake_submitted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

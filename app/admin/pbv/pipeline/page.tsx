@@ -25,6 +25,7 @@ interface PipelineRow {
   ami_limit: number | null;
   has_rejections: boolean;
   hach_review_status: string | null;
+  missing_contact_info: boolean;
 }
 
 interface StaffUser {
@@ -462,6 +463,19 @@ export default function PipelinePage() {
                       {row.head_of_household_name}
                     </Link>
                     <div style={{ fontSize: 10, color: C.textSubtle }}>HH {row.household_size}</div>
+                    {row.missing_contact_info && (
+                      <div title="No confirmed phone or language — SMS notifications will be blocked">
+                        <span style={{
+                          display: 'inline-block', marginTop: 3, padding: '1px 5px',
+                          fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+                          textTransform: 'uppercase' as const,
+                          background: C.warnBg, color: C.warn,
+                          border: `1px solid ${C.warn}55`,
+                        }}>
+                          Needs contact info
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Stage */}

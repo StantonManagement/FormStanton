@@ -153,6 +153,17 @@ export interface PbvFullAppStrings {
   err_member_income_sources: (n: number) => string;
   err_background_required: (name: string) => string;
   err_cert: string;
+
+  // Phase 4 — Phone + Language confirmation
+  phone_label: string;
+  phone_helper: string;
+  phone_prefill_prompt: string;
+  err_phone_required: string;
+  err_phone_invalid: string;
+  lang_confirm_label: (langName: string) => string;
+  lang_confirm_btn: string;
+  lang_change_label: string;
+  err_lang_not_confirmed: string;
 }
 
 export const pbvFullAppTranslations: Record<PreferredLanguage, PbvFullAppStrings> = {
@@ -285,6 +296,16 @@ export const pbvFullAppTranslations: Record<PreferredLanguage, PbvFullAppStrings
     err_background_required: (name) =>
       `Please answer the background question for ${name}.`,
     err_cert: 'You must check the certification box before submitting.',
+
+    phone_label: 'Phone Number',
+    phone_helper: "We'll use this number to send you important updates about your application.",
+    phone_prefill_prompt: 'Is this your current phone number?',
+    err_phone_required: 'A phone number is required.',
+    err_phone_invalid: 'Please enter a valid 10-digit US phone number.',
+    lang_confirm_label: (langName) => `We\'ll send you messages in ${langName}. Is that correct?`,
+    lang_confirm_btn: 'Yes, that is correct',
+    lang_change_label: 'Change language',
+    err_lang_not_confirmed: 'Please confirm your preferred language before continuing.',
 
     tab_signatures: 'Signatures',
     sig_section_title: 'Signature Collection',
@@ -444,6 +465,16 @@ export const pbvFullAppTranslations: Record<PreferredLanguage, PbvFullAppStrings
     err_background_required: (name) =>
       `Por favor responda la pregunta de antecedentes para ${name}.`,
     err_cert: 'Debe marcar la casilla de certificación antes de enviar.',
+
+    phone_label: 'Número de Teléfono',
+    phone_helper: 'Usaremos este número para enviarle actualizaciones importantes sobre su solicitud.',
+    phone_prefill_prompt: '¿Es este su número de teléfono actual?',
+    err_phone_required: 'Se requiere un número de teléfono.',
+    err_phone_invalid: 'Por favor ingrese un número de teléfono de EE. UU. de 10 dígitos válido.',
+    lang_confirm_label: (langName) => `Le enviaremos mensajes en ${langName}. ¿Es correcto?`,
+    lang_confirm_btn: 'Sí, es correcto',
+    lang_change_label: 'Cambiar idioma',
+    err_lang_not_confirmed: 'Por favor confirme su idioma preferido antes de continuar.',
 
     tab_signatures: 'Firmas',
     sig_section_title: 'Recopilación de Firmas',
@@ -606,6 +637,16 @@ export const pbvFullAppTranslations: Record<PreferredLanguage, PbvFullAppStrings
     err_background_required: (name) =>
       `Por favor, responda a pergunta de antecedentes para ${name}.`,
     err_cert: 'Você deve marcar a caixa de certificação antes de enviar.',
+
+    phone_label: 'Número de Telefone',
+    phone_helper: 'Usaremos este número para enviar atualizações importantes sobre sua solicitação.',
+    phone_prefill_prompt: 'Este é o seu número de telefone atual?',
+    err_phone_required: 'Um número de telefone é obrigatório.',
+    err_phone_invalid: 'Por favor, insira um número de telefone americano válido com 10 dígitos.',
+    lang_confirm_label: (langName) => `Enviaremos mensagens para você em ${langName}. Está correto?`,
+    lang_confirm_btn: 'Sim, está correto',
+    lang_change_label: 'Alterar idioma',
+    err_lang_not_confirmed: 'Por favor, confirme seu idioma preferido antes de continuar.',
 
     tab_signatures: 'Assinaturas',
     sig_section_title: 'Coleta de Assinaturas',

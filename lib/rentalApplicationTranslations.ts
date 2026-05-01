@@ -35,13 +35,15 @@ export interface RentalApplicationStrings {
 
   // Section B - Employment
   sectionIncome: string;
-  incomeSource1: string;
-  incomeSource2: string;
+  incomeSourceLabel: (n: number) => string;
+  addIncomeSource: string;
+  removeIncomeSource: string;
   employerName: string;
   employerPhone: string;
   jobTitle: string;
   howLong: string;
-  proofAttached: string;
+  uploadProofOfIncome: string;
+  uploadOptional: string;
   yes: string;
   no: string;
   monthlyIncome: string;
@@ -170,13 +172,15 @@ export const rentalApplicationTranslations: Record<Language, RentalApplicationSt
     removeOccupant: 'Remove',
 
     sectionIncome: 'Employment & Income',
-    incomeSource1: 'Income Source 1',
-    incomeSource2: 'Income Source 2',
+    incomeSourceLabel: (n: number) => `Income Source ${n}`,
+    addIncomeSource: '+ Add Income Source',
+    removeIncomeSource: 'Remove',
     employerName: 'Employer / Source Name',
     employerPhone: 'Phone Number',
     jobTitle: 'Position / Job Title',
     howLong: 'How long?',
-    proofAttached: 'Proof of income attached',
+    uploadProofOfIncome: 'Upload proof of income (optional)',
+    uploadOptional: 'Optional — PDF, JPG, or PNG up to 10 MB',
     yes: 'Yes',
     no: 'No',
     monthlyIncome: 'Approximate total monthly household income',
@@ -293,13 +297,15 @@ export const rentalApplicationTranslations: Record<Language, RentalApplicationSt
     removeOccupant: 'Eliminar',
 
     sectionIncome: 'Empleo e Ingresos',
-    incomeSource1: 'Fuente de Ingresos 1',
-    incomeSource2: 'Fuente de Ingresos 2',
+    incomeSourceLabel: (n: number) => `Fuente de Ingresos ${n}`,
+    addIncomeSource: '+ Agregar Fuente de Ingresos',
+    removeIncomeSource: 'Eliminar',
     employerName: 'Empleador / Nombre de la Fuente',
     employerPhone: 'Numero de Telefono',
     jobTitle: 'Puesto / Titulo del Trabajo',
     howLong: 'Cuanto tiempo?',
-    proofAttached: 'Comprobante de ingresos adjunto',
+    uploadProofOfIncome: 'Subir comprobante de ingresos (opcional)',
+    uploadOptional: 'Opcional — PDF, JPG o PNG hasta 10 MB',
     yes: 'Si',
     no: 'No',
     monthlyIncome: 'Ingresos mensuales aproximados del hogar',
@@ -416,13 +422,15 @@ export const rentalApplicationTranslations: Record<Language, RentalApplicationSt
     removeOccupant: 'Remover',
 
     sectionIncome: 'Emprego e Renda',
-    incomeSource1: 'Fonte de Renda 1',
-    incomeSource2: 'Fonte de Renda 2',
+    incomeSourceLabel: (n: number) => `Fonte de Renda ${n}`,
+    addIncomeSource: '+ Adicionar Fonte de Renda',
+    removeIncomeSource: 'Remover',
     employerName: 'Empregador / Nome da Fonte',
     employerPhone: 'Numero de Telefone',
     jobTitle: 'Cargo / Titulo do Trabalho',
     howLong: 'Ha quanto tempo?',
-    proofAttached: 'Comprovante de renda anexado',
+    uploadProofOfIncome: 'Enviar comprovante de renda (opcional)',
+    uploadOptional: 'Opcional — PDF, JPG ou PNG ate 10 MB',
     yes: 'Sim',
     no: 'Nao',
     monthlyIncome: 'Renda mensal total aproximada do domicilio',
