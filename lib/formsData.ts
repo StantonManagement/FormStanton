@@ -1444,6 +1444,38 @@ This form is completed by tenants via their individual compliance portal link. I
 
   // LEASING — ADDITIONAL
   {
+    id: 30,
+    title: 'Full Tenant Application',
+    department: 'leasing',
+    description: 'Complete rental application for prospective tenants -- market rate and Section 8/voucher, EN/ES/PT',
+    path: '/rental-application',
+    content: `**Stanton Management LLC**
+421 Park Street, Hartford, CT 06106 | (860) 993-3401
+
+---
+
+**FULL TENANT APPLICATION**
+
+Complete this application after your showing. All information is kept confidential.
+
+Route: /rental-application
+Languages: English, Spanish, Portuguese
+
+---
+
+**Sections**
+- Section A: Personal Information (name*, phone* required only)
+- Section B: Employment & Income (2 sources, income range)
+- Section C: Household (occupant count, additional occupants)
+- Section D: Pets
+- Section E: Rental History
+- Section F: What Are You Applying For? (bedrooms, areas, move-in date)
+- Section G: Payment Type (Market Rate or Section 8/Voucher)
+- Section H/I: Payment-type-specific details and authorization
+- Section J: Additional documents (optional)
+- Signature & Certification`,
+  },
+  {
     id: 29,
     title: 'Applicant Onboarding Form',
     department: 'leasing',
