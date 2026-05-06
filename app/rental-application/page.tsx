@@ -214,7 +214,7 @@ function RentalApplicationContent() {
   const { formData, updateField } = useFormData(initialFormData);
   const [signature, setSignature] = useState('');
 
-  // File state — not serialized in formData
+  // File state â€” not serialized in formData
   const [incomeProofFiles, setIncomeProofFiles] = useState<(File | null)[]>([]);
   const [docFiles, setDocFiles] = useState<Record<string, File | null>>({
     docsVoucher: null,
@@ -810,7 +810,7 @@ function RentalApplicationContent() {
                   {/* Additional info */}
                   <div className="border-t border-[var(--border)] pt-6 mt-6">
                     <p className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mb-1">{t.sectionAdditional}</p>
-                    <p className="text-xs text-[var(--muted)] mb-4">Not required — helps speed up processing</p>
+                    <p className="text-xs text-[var(--muted)] mb-4">Not required â€” helps speed up processing</p>
                     <FormField label={t.ssnOrTaxId}>
                       <FormInput
                         type="text"
