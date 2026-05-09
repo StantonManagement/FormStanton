@@ -5,54 +5,28 @@ _Last updated: 2026-05-09_
 ---
 
 ## Phase Status
-- **Phase 6 (Admin detail + HHA generation):** UI + API compiled, HHA template upload wired, bulk export wired. Needs live data check and template in storage.
-- **Phase 7 (Access controls + audit log):** **Not started.** No access-log writes, no role gating beyond default session check.
+- **Phase 6 (Admin detail + HHA generation):** Complete. All UI + API routes verified. `appfolio_update_queue` view applied. 33 document templates seeded.
+- **Phase 7 (Access controls + audit log):** **Complete.** `pbv_access_log` writes on HHA generation and HACH export. `read_ssn` permission + gated SSN endpoint at `/api/admin/pbv/full-applications/[id]/ssn/[memberId]`. Conditional doc filtering confirmed wired at intake time.
 
 ---
 
 ## What Works Right Now
-1. **Admin List (`/admin/pbv/full-applications`)**  
-   - Filters by status/building/intake-needed  
-   - Invitations via modal  
-   - Row click + action links navigate to detail
-2. **Admin Detail (`/admin/pbv/full-applications/[id]`)**  
-   - Household + income math panel (claimed vs documented)  
-   - Document status summary + per-slot indicators  
-   - Stanton review panel (status/reviewer/notes)  
-   - Actions: HHA generation (requires template), HACH package download, magic link copy/regenerate  
-   - Link to per-document review (`/admin/form-submissions/[form_submission_id]`)
-3. **Per-Document Review (`/admin/form-submissions/[id]`)**  
-   - Approve / reject / waive per slot  
-   - Revision history + document download  
-   - Tenant token regenerate + ZIP export
-4. **Tenant Intake (`/pbv-full-app/[token]`)**  
-   - 7-section trilingual form  
-   - Household repeating groups  
-   - Income/assets/expenses/background/circumstances  
-   - Multi-signer flow (per adult)  
-   - `docs_ready` state links to submission portal
-5. **Tenant Document Portal (`/t/[formSubmissionToken]`)**  
-   - Per-document status  
-   - Upload for missing/rejected docs  
-   - Auto-refresh after upload  
-   - Language toggle EN/ES/PT
+1. **Admin List (`/admin/pbv/full-applications`)** — filters, invite modal, navigation
+2. **Admin Detail (`/admin/pbv/full-applications/[id]`)** — household/income panel, doc status, review panel, HHA + export actions
+3. **Per-Document Review (`/admin/form-submissions/[id]`)** — approve/reject/waive, revision history, ZIP export
+4. **Tenant Intake (`/pbv-full-app/[token]`)** — 7-section trilingual form, multi-signer flow, conditional doc seeding
+5. **Tenant Document Portal (`/t/[formSubmissionToken]`)** — per-doc upload, auto-refresh, language toggle
+6. **AppFolio Queue (`/admin/pbv/appfolio-queue`)** — shows phone/language diffs vs AppFolio
 
 ---
 
-## Immediate Follow-Ups
-1. **Seed check:** Confirm `form_document_templates` contains rows for `form_id = 'pbv-full-application'` in the target environment.
-2. **HHA template:** Upload `hha-templates/hca-application.docx` (supabase storage) before testing generation/export.
-3. **QA pass:** Walk through invite → intake → signatures → document upload → admin review on dev data.
-4. **Phase 7 design:** Define access log events + `pbv_reviewer` role gating per PRD §Phase 7.
+## Remaining (Non-Blocking)
+1. **HHA template:** Upload `hca-application.docx` to `hha-templates` bucket in Supabase storage before first live generation.
+2. **`pbv_reviewer` role assignment:** Assign the `pbv-full-applications:read_ssn` permission to the relevant role(s) in the DB, then assign those roles to the appropriate users.
+3. **SSN UI:** Optionally surface the SSN reveal button on the admin detail page (calls `/api/admin/pbv/full-applications/[id]/ssn/[memberId]`).
 
 ---
 
-## Open Questions / Blockers
-- Do we have final HHA template copy from HACH? (PRD §Open Questions)
-- Who is assigned the `pbv_reviewer` role? Need list before access-control work.
-- Conditional document filtering (`conditional_on`) — confirm tenant portal applies project rules once templates seeded.
-
----
-
-## Next Check-In
-- After QA run-through and HHA template upload, decide whether to start Phase 7 or address conditional-doc logic first.
+## Open Questions
+- Do we have final HHA template copy from HACH?
+- Who gets `pbv_reviewer` access (SSN read)?

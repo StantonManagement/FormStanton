@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { getRealSessionUser, isAuthenticated } from '@/lib/auth';
 import JSZip from 'jszip';
 
 export async function GET(
@@ -122,6 +122,16 @@ export async function GET(
     zip.file('cover_sheet.txt', coverSheet);
 
     const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+
+    const actor = await getRealSessionUser();
+    await supabaseAdmin.from('pbv_access_log').insert({
+      user_id: actor?.userId ?? 'unknown',
+      action: 'export_application',
+      resource_type: 'pbv_full_application',
+      resource_id: id,
+      notes: `Exported HACH package (${exportable.length} docs)`,
+      created_by: actor?.userId ?? 'unknown',
+    });
 
     const lastName = (app.head_of_household_name ?? 'Unknown')
       .replace(/[^a-zA-Z0-9_-]/g, '_')

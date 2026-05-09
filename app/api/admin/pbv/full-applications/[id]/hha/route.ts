@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { getRealSessionUser, isAuthenticated } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errorMessage';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
@@ -189,6 +189,16 @@ export async function POST(
       .from('pbv_full_applications')
       .update({ hha_application_file: storagePath, updated_at: new Date().toISOString() })
       .eq('id', id);
+
+    const actor = await getRealSessionUser();
+    await supabaseAdmin.from('pbv_access_log').insert({
+      user_id: actor?.userId ?? 'unknown',
+      action: 'generate_hha',
+      resource_type: 'pbv_full_application',
+      resource_id: id,
+      notes: `Generated ${fileName}`,
+      created_by: actor?.userId ?? 'unknown',
+    });
 
     return new NextResponse(outputBuffer, {
       status: 200,
