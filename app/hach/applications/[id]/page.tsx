@@ -280,7 +280,7 @@ function IncomePanel({ applicationId }: { applicationId: string }) {
           ].map((item) => (
             <div key={item.label}>
               <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{item.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: FONT_MONO, color: item.label === 'Within Tolerance' ? (income.within_tolerance ? COLORS.success : COLORS.error) : COLORS.text }}>
+              <div style={{ fontSize: 18, fontWeight: 700, fontFamily: FONT_MONO, color: item.label === 'Within Tolerance' ? (income.within_tolerance === null ? COLORS.textMuted : income.within_tolerance ? COLORS.success : COLORS.error) : COLORS.text }}>
                 {item.value}
               </div>
             </div>

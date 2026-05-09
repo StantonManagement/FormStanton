@@ -16,6 +16,7 @@ import {
   SuccessScreen,
   FormTextarea,
   FormPhoneInput,
+  FormDocumentUpload,
 } from '@/components/form';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -24,46 +25,74 @@ import { useFormSubmit, useFieldValidation, useFormData } from '@/lib/formHooks'
 
 interface ApartmentInquiryFormData {
   fullName: string;
+  dateOfBirth: string;
   phone: string;
   email: string;
   bedrooms: string;
   moveInTimeframe: string;
   voucher: string;
+  voucherBedroomSize: string;
+  voucherHousingAuthority: string;
   areasOfInterest: string[];
+  householdIncome: string;
+  numberOfOccupants: string;
+  additionalOccupants: string;
   referralSource: string;
+  referralOther: string;
   comments: string;
 }
 
 const initialFormData: ApartmentInquiryFormData = {
   fullName: '',
+  dateOfBirth: '',
   phone: '',
   email: '',
   bedrooms: '',
   moveInTimeframe: '',
   voucher: '',
+  voucherBedroomSize: '',
+  voucherHousingAuthority: '',
   areasOfInterest: [],
+  householdIncome: '',
+  numberOfOccupants: '',
+  additionalOccupants: '',
   referralSource: '',
+  referralOther: '',
   comments: '',
 };
 
 const AREA_KEYS = [
-  'areaParkSt',
-  'areaMapleAve',
-  'areaSeymourAffleck',
-  'areaFranklinAve',
-  'areaMainSt',
-  'areaBroadSt',
-  'areaOther',
+  'areaNorthEnd',
+  'areaSouthEnd',
+  'areaWestEnd',
+  'areaParkStreet',
+  'areaNoPreference',
 ] as const;
 
 const AREA_VALUES = [
-  'Park St',
-  'Maple Ave',
-  'Seymour / Affleck',
-  'Franklin Ave',
-  'Main St',
-  'Broad St',
-  'Other / No Preference',
+  'North End',
+  'South End',
+  'West End',
+  'Park Street Corridor',
+  'No Preference',
+];
+
+const INCOME_KEYS = [
+  'incomeUnder1500',
+  'income1500to2500',
+  'income2500to3500',
+  'income3500to5000',
+  'income5000to7500',
+  'income7500plus',
+] as const;
+
+const INCOME_VALUES = [
+  'under_1500',
+  '1500_2500',
+  '2500_3500',
+  '3500_5000',
+  '5000_7500',
+  '7500_plus',
 ];
 
 function ApartmentInquiryFormContent() {
@@ -73,6 +102,7 @@ function ApartmentInquiryFormContent() {
 
   const [language, setLanguage] = useState<Language>(hasLangParam ? langParam : 'en');
   const [showForm, setShowForm] = useState(hasLangParam);
+  const [incomeDocuments, setIncomeDocuments] = useState<File[]>([]);
 
   const t = apartmentInquiryTranslations[language];
 
@@ -80,13 +110,13 @@ function ApartmentInquiryFormContent() {
   const { errors, setFieldError, clearAllErrors } = useFieldValidation<ApartmentInquiryFormData>();
 
   const { submit, isSubmitting, submitError, submitSuccess } = useFormSubmit(async (data) => {
+    const fd = new FormData();
+    fd.append('formData', JSON.stringify({ ...data, language }));
+    incomeDocuments.forEach((f) => fd.append('incomeDocuments', f));
+
     const response = await fetch('/api/forms/apartment-inquiry', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        language,
-      }),
+      body: fd,
     });
 
     if (!response.ok) {
@@ -178,7 +208,7 @@ function ApartmentInquiryFormContent() {
           </div>
 
           <div className="px-6 py-6 space-y-6">
-            {/* Contact Info */}
+            {/* --- About You --- */}
             <FormField label={t.fullName} required error={errors.fullName}>
               <FormInput
                 value={formData.fullName}
@@ -207,7 +237,16 @@ function ApartmentInquiryFormContent() {
               />
             </FormField>
 
-            {/* Divider */}
+            <FormField label={t.dateOfBirth} helperText={t.optional}>
+              <FormInput
+                type="text"
+                value={formData.dateOfBirth}
+                onChange={(e) => updateField('dateOfBirth', e.target.value)}
+                placeholder={t.dateOfBirthPlaceholder}
+              />
+            </FormField>
+
+            {/* --- What Are You Looking For? --- */}
             <div className="border-t border-[var(--divider)] pt-6">
               <h2 className="font-serif text-lg text-[var(--primary)] mb-4">{t.housingNeedsTitle}</h2>
             </div>
@@ -223,7 +262,7 @@ function ApartmentInquiryFormContent() {
                 <option value="1br">{t.bedrooms1}</option>
                 <option value="2br">{t.bedrooms2}</option>
                 <option value="3br">{t.bedrooms3}</option>
-                <option value="not_sure">{t.bedroomsNotSure}</option>
+                <option value="4br">{t.bedrooms4}</option>
               </FormSelect>
             </FormField>
 
@@ -241,6 +280,11 @@ function ApartmentInquiryFormContent() {
               </FormSelect>
             </FormField>
 
+            {/* --- Housing Voucher --- */}
+            <div className="border-t border-[var(--divider)] pt-6">
+              <h2 className="font-serif text-lg text-[var(--primary)] mb-4">Housing Voucher</h2>
+            </div>
+
             <FormField label={t.voucher} required error={errors.voucher}>
               <FormRadioGroup
                 name="voucher"
@@ -255,7 +299,90 @@ function ApartmentInquiryFormContent() {
               />
             </FormField>
 
-            {/* Areas of Interest */}
+            {formData.voucher === 'yes' && (
+              <>
+                <FormField label={t.voucherBedroomSize} helperText={t.optional}>
+                  <FormInput
+                    value={formData.voucherBedroomSize}
+                    onChange={(e) => updateField('voucherBedroomSize', e.target.value)}
+                    placeholder={t.voucherBedroomSizePlaceholder}
+                  />
+                </FormField>
+
+                <FormField label={t.voucherHousingAuthority} helperText={t.optional}>
+                  <FormInput
+                    value={formData.voucherHousingAuthority}
+                    onChange={(e) => updateField('voucherHousingAuthority', e.target.value)}
+                    placeholder={t.voucherHousingAuthorityPlaceholder}
+                  />
+                </FormField>
+              </>
+            )}
+
+            {/* --- Household Income --- */}
+            <div className="border-t border-[var(--divider)] pt-6">
+              <h2 className="font-serif text-lg text-[var(--primary)] mb-4">{t.householdIncomeTitle}</h2>
+            </div>
+
+            <FormField label={t.householdIncomeLabel} helperText={t.optional}>
+              <div className="space-y-2">
+                {INCOME_KEYS.map((key, idx) => (
+                  <label key={key} className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="householdIncome"
+                      value={INCOME_VALUES[idx]}
+                      checked={formData.householdIncome === INCOME_VALUES[idx]}
+                      onChange={() => updateField('householdIncome', INCOME_VALUES[idx])}
+                      className="accent-[var(--primary)]"
+                    />
+                    <span className="text-sm text-[var(--ink)]">{t[key]}</span>
+                  </label>
+                ))}
+              </div>
+            </FormField>
+
+            <FormDocumentUpload
+              label={t.incomeUploadLabel}
+              helperText={t.incomeUploadHelper}
+              maxFiles={5}
+              maxSize={10 * 1024 * 1024}
+              acceptedTypes={['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/heic']}
+              documents={incomeDocuments}
+              onDocumentsChange={setIncomeDocuments}
+              errorMessages={{
+                maxFiles: 'Maximum 5 files',
+                fileSize: 'File must be under 10MB',
+                fileType: 'PDF, JPG, PNG, or HEIC only',
+              }}
+            />
+
+            {/* --- Occupants --- */}
+            <div className="border-t border-[var(--divider)] pt-6">
+              <h2 className="font-serif text-lg text-[var(--primary)] mb-4">{t.occupantsTitle}</h2>
+            </div>
+
+            <FormField label={t.numberOfOccupants} helperText={t.optional}>
+              <FormInput
+                type="number"
+                min="1"
+                max="20"
+                value={formData.numberOfOccupants}
+                onChange={(e) => updateField('numberOfOccupants', e.target.value)}
+                placeholder={t.numberOfOccupantsPlaceholder}
+              />
+            </FormField>
+
+            <FormField label={t.additionalOccupants} helperText={t.optional}>
+              <FormTextarea
+                value={formData.additionalOccupants}
+                onChange={(e) => updateField('additionalOccupants', e.target.value)}
+                placeholder={t.additionalOccupantsPlaceholder}
+                rows={3}
+              />
+            </FormField>
+
+            {/* --- Areas of Interest --- */}
             <div className="border-t border-[var(--divider)] pt-6">
               <h2 className="font-serif text-lg text-[var(--primary)] mb-1">{t.areasTitle}</h2>
               <p className="text-sm text-[var(--muted)] mb-4">{t.areasDescription}</p>
@@ -271,25 +398,38 @@ function ApartmentInquiryFormContent() {
               </div>
             </div>
 
-            {/* Referral */}
+            {/* --- Referral --- */}
             <div className="border-t border-[var(--divider)] pt-6">
-              <FormField label={t.referralSource} helperText={t.optional}>
+              <FormField label={t.referralSource} required error={errors.referralSource}>
                 <FormSelect
                   value={formData.referralSource}
                   onChange={(e) => updateField('referralSource', e.target.value)}
+                  error={!!errors.referralSource}
                 >
                   <option value="">{t.referralPlaceholder}</option>
-                  <option value="flyer">{t.referralFlyer}</option>
-                  <option value="referral">{t.referralReferral}</option>
-                  <option value="truck">{t.referralTruck}</option>
-                  <option value="walk_by">{t.referralWalkBy}</option>
-                  <option value="online">{t.referralOnline}</option>
+                  <option value="vivian">{t.referralVivian}</option>
+                  <option value="maribel">{t.referralMaribel}</option>
+                  <option value="online_listing">{t.referralOnlineListing}</option>
+                  <option value="appfolio">{t.referralAppFolio}</option>
+                  <option value="walk_in">{t.referralWalkIn}</option>
                   <option value="other">{t.referralOther}</option>
                 </FormSelect>
               </FormField>
+
+              {formData.referralSource === 'other' && (
+                <div className="mt-4">
+                  <FormField label={t.referralOther} helperText={t.optional}>
+                    <FormInput
+                      value={formData.referralOther}
+                      onChange={(e) => updateField('referralOther', e.target.value)}
+                      placeholder={t.referralOtherPlaceholder}
+                    />
+                  </FormField>
+                </div>
+              )}
             </div>
 
-            {/* Comments */}
+            {/* --- Comments --- */}
             <FormField label={t.comments} helperText={t.optional}>
               <FormTextarea
                 value={formData.comments}
@@ -301,7 +441,7 @@ function ApartmentInquiryFormContent() {
 
             {/* Submit */}
             {submitError && (
-              <div className="border border-[var(--error)] bg-red-50 p-3 text-sm text-[var(--error)] rounded-none">
+              <div className="border border-[var(--error)] bg-red-50 p-3 text-sm text-[var(--error)]">
                 {submitError}
               </div>
             )}

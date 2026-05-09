@@ -24,6 +24,13 @@ export async function middleware(request: NextRequest) {
   const isHachUser =
     session.user_type === 'hach_admin' || session.user_type === 'hach_reviewer';
 
+  if (pathname.startsWith('/api/admin/pbv/full-applications')) {
+    console.warn('[middleware] admin PBV full-applications hit:', pathname, httpMethod);
+  }
+  if (pathname.startsWith('/pbv-full-app/')) {
+    console.warn('[middleware] public PBV full-app hit:', pathname, httpMethod);
+  }
+
   // ----------------------------------------------------------------
   // HACH user isolation
   // Block HACH users from /admin/* UI pages and /api/admin/* routes.

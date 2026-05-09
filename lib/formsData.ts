@@ -4,7 +4,7 @@ import { llcTable } from './policyContent';
 // Do NOT use Unicode characters: → • — " " ' '
 // Use ASCII equivalents: -> - -- " ' instead
 
-export type Department = 'leasing' | 'property_management' | 'maintenance' | 'compliance' | 'housing_programs' | 'collections' | 'hr';
+export type Department = 'property_management' | 'maintenance' | 'compliance' | 'finance' | 'leasing' | 'collections' | 'housing_programs' | 'hr';
 
 export interface TenantForm {
   id: number;
@@ -16,13 +16,14 @@ export interface TenantForm {
 }
 
 export const departmentLabels: Record<Department, string> = {
-  leasing: 'Leasing',
   property_management: 'Property Management',
   maintenance: 'Maintenance',
   compliance: 'Compliance',
-  housing_programs: 'Housing Programs',
+  leasing: 'Leasing',
   collections: 'Collections',
+  housing_programs: 'Housing Programs',
   hr: 'HR',
+  finance: 'Finance',
 };
 
 // Canonical registry for forms shown in Admin > Forms Library.
@@ -84,7 +85,7 @@ export const tenantForms: TenantForm[] = [
 
 ---
 
-**Condition codes:** Good -- Damage Present -- Immediate Repair Required -- Missing -- N/A
+**Condition codes:** Good | Damage Present | Immediate Repair Required | Missing | N/A
 
 ---
 
@@ -92,17 +93,17 @@ export const tenantForms: TenantForm[] = [
 
 This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.
 
-Manager's Signature _________________________________________________ Date __________
+Manager's Signature _________________________________ Date __________
 
 ---
 
 **TENANT ACKNOWLEDGMENT**
 
-I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear.
+I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear. In the event of damage, I agree to pay the cost to restore the apartment to its original condition.
 
-**Resident Signature:** _________________________ Date: __________
+Resident's Signature _________________________________ Date __________
 
-**Resident Signature (if applicable):** _________________________ Date: __________`,
+Resident's Signature _________________________________ Date __________`,
   },
   {
     id: 2,
@@ -571,7 +572,7 @@ Scheduled pickup: __________ Notes: _____________________________
 Staff initials: __________`,
   },
 
-  // COMPLIANCE FORMS (id 12-15 stay compliance; 16 moves to housing_programs below)
+  // COMPLIANCE FORMS
   {
     id: 12,
     title: 'Pet Approval Request / Pet Addendum',
@@ -789,7 +790,7 @@ Complete and submit a Pet Approval Request (Form 4) within **5 business days** o
   {
     id: 16,
     title: 'Section 8 Recertification Checklist',
-    department: 'housing_programs',
+    department: 'compliance',
     description: 'Annual recertification requirements for Section 8 tenants',
     path: '/section8-recertification',
     content: `**Stanton Management LLC**
@@ -870,11 +871,11 @@ _______________________________________________
 *Copy provided to tenant:* [ ] Yes Date: __________`,
   },
 
-  // COLLECTIONS FORMS (tenant payment / billing)
+  // FINANCE FORMS
   {
     id: 17,
     title: 'Cash Payment Appointment Request',
-    department: 'collections',
+    department: 'finance',
     description: 'Schedule appointment for cash rent payment (no walk-ins)',
     path: '/cash-payment-appointment',
     content: `**Stanton Management LLC**
@@ -907,7 +908,7 @@ Receipt issued: [ ] Yes Receipt #: __________`,
   {
     id: 18,
     title: 'PaySlip Request',
-    department: 'collections',
+    department: 'finance',
     description: 'Request PaySlip barcode to pay rent at retail locations',
     path: '/payslip-request',
     content: `**Stanton Management LLC**
@@ -939,7 +940,7 @@ Delivered to tenant: [ ] Yes Method: __________ Date: __________`,
   {
     id: 19,
     title: 'Tenant Billing Dispute Form',
-    department: 'collections',
+    department: 'finance',
     description: 'Formally dispute charges or security deposit deductions',
     path: '/billing-dispute',
     content: `**Stanton Management LLC**
@@ -997,11 +998,10 @@ _______________________________________________
 *Response due by:* __________
 *Outcome:* ___________________________________________________`,
   },
-  // HR FORMS (internal / employee-facing)
   {
     id: 20,
     title: 'Reimbursement Request',
-    department: 'hr',
+    department: 'finance',
     description: 'Submit reimbursement details and supporting documentation',
     path: '/reimbursement',
     content: `**Stanton Management LLC**
@@ -1036,19 +1036,18 @@ _______________________________________________
 
 *For office use:* Approved [ ] Denied [ ] Amount: $__________ Date: __________`,
   },
-  // LEASING FORMS
   {
     id: 21,
-    title: 'Applicant Assessment',
-    department: 'leasing',
-    description: 'Hartford market quick assessment for prospective applicants',
+    title: 'Tenant Assessment',
+    department: 'property_management',
+    description: 'Hartford market quick assessment for prospective tenants',
     path: '/tenant-assessment',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
 ---
 
-**Applicant Assessment**
+**Tenant Assessment**
 
 Use the live form for full submission workflow and voice notes.
 
@@ -1291,16 +1290,16 @@ After you add it:
   },
   {
     id: 25,
-    title: 'Apartment Inquiry',
-    department: 'leasing',
-    description: 'Lead capture form for prospective tenants via QR code, flyers, and banners',
+    title: 'Apartment Application',
+    department: 'property_management',
+    description: 'Initial application for prospective tenants -- qualifies and schedules showing',
     path: '/apartment-inquiry',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
 ---
 
-**APARTMENT INQUIRY**
+**APARTMENT APPLICATION**
 
 ---
 
@@ -1310,145 +1309,86 @@ After you add it:
 
 **Email Address:** ___________________________________________
 
+**Date of Birth:** ___________________________________________
+
 ---
 
 ## What Are You Looking For?
 
 **Bedrooms Needed:**
-- [ ] Studio
-- [ ] 1 Bedroom
-- [ ] 2 Bedrooms
-- [ ] 3 Bedrooms
-- [ ] Not Sure
+- [ ] Studio  [ ] 1 Bedroom  [ ] 2 Bedrooms  [ ] 3 Bedrooms  [ ] 4 Bedrooms
 
 **Move-In Timeframe:**
-- [ ] ASAP
-- [ ] 1-2 Months
-- [ ] 3-6 Months
-- [ ] Just Looking
+- [ ] ASAP  [ ] 1-2 Months  [ ] 3-6 Months  [ ] Just Looking
 
-**Housing Voucher (Section 8):**
-- [ ] Yes
-- [ ] No
-- [ ] Not Sure
+---
+
+## Housing Voucher
+
+**Do you have a Section 8 or other housing voucher?**
+- [ ] Yes  [ ] No  [ ] Not Sure
+
+*If Yes:*
+
+**Voucher bedroom size:** ______________ **Housing authority:** __________________________
+
+---
+
+## Household Income
+
+**Approximate monthly household income:**
+- [ ] Under $1,500
+- [ ] $1,500 - $2,500
+- [ ] $2,500 - $3,500
+- [ ] $3,500 - $5,000
+- [ ] $5,000 - $7,500
+- [ ] $7,500+
+
+**Proof of income attached:** [ ] Yes  [ ] No  (pay stubs, bank statements, Cash App/Zelle, or other)
+
+---
+
+## Household
+
+**Number of people (including yourself):** __________
+
+**Names of additional occupants:**
+
+_______________________________________________
+
+_______________________________________________
 
 ---
 
 ## Areas of Interest
 
-- [ ] Park St
-- [ ] Maple Ave
-- [ ] Seymour / Affleck
-- [ ] Franklin Ave
-- [ ] Main St
-- [ ] Broad St
-- [ ] Other / No Preference
+- [ ] North End  [ ] South End  [ ] West End  [ ] Park Street Corridor  [ ] No Preference
 
 ---
 
-**How Did You Hear About Us?** ________________________________
+## How Did You Hear About Us?
 
-**Additional Comments:**
+- [ ] Vivian  [ ] Maribel  [ ] Online Listing  [ ] AppFolio  [ ] Walk-in  [ ] Other: ______________
+
+---
+
+**Comments:**
 
 _______________________________________________
+
 _______________________________________________
 
 ---
 
 *For office use:*
-Received: __________ Contacted: __________ By: __________
-Outcome: ___________________________________________________`,
+Received: __________ Contacted: __________ By: __________ Outcome: __________________________`,
   },
-
-  // PROPERTY MANAGEMENT — ADDITIONAL
   {
     id: 26,
-    title: 'Move-Out Inspection',
-    department: 'property_management',
-    description: 'Staff inspection form documenting unit condition at move-out with damage catalog',
-    path: '/move-out-inspection',
-    content: `**Stanton Management LLC**
-421 Park Street, Hartford, CT 06106 | (860) 993-3401
-
----
-
-**MOVE-OUT INSPECTION**
-
-Staff-completed inspection form. Use the live form for full damage catalog, photo upload, and digital signature.
-
-Route: /move-out-inspection
-
----
-
-**Summary Fields**
-- Building address and unit number
-- Move-out date and forwarding address
-- Room-by-room condition with damage catalog (categorized charges)
-- Photo upload for each damage item
-- Inspector signature and tenant acknowledgment`,
-  },
-
-  // COMPLIANCE — ADDITIONAL
-  {
-    id: 27,
-    title: 'Pet Fee Exemption',
-    department: 'compliance',
-    description: 'Request exemption from the monthly pet fee with supporting documentation',
-    path: '/pet-fee-exemption',
-    content: `**Stanton Management LLC**
-421 Park Street, Hartford, CT 06106 | (860) 993-3401
-
----
-
-**PET FEE EXEMPTION REQUEST**
-
-Use the live form for full submission including document upload and signature.
-
-Route: /pet-fee-exemption
-
----
-
-**Summary Fields**
-- Tenant name, unit address, pet details
-- Reason for exemption (e.g. assistance animal, emotional support animal)
-- Supporting documentation upload
-- Signature and date`,
-  },
-
-  // HOUSING PROGRAMS — ADDITIONAL
-  {
-    id: 28,
-    title: 'PBV Pre-Application',
-    department: 'housing_programs',
-    description: 'Project-Based Voucher pre-application submitted via tenant magic link',
-    path: '/pbv-preapp',
-    content: `**Stanton Management LLC**
-421 Park Street, Hartford, CT 06106 | (860) 993-3401
-
----
-
-**PBV PRE-APPLICATION**
-
-This form is completed by tenants via their individual compliance portal link. It is not a standalone web form.
-
----
-
-**Summary Fields**
-- Head of household name, date of birth, building and unit
-- Household members (name, DOB, relationship, income, income sources)
-- Total household income vs. income limit
-- Citizenship / eligible immigration status
-- Qualification result (likely qualifies / over income / citizenship issue)
-- Signature and date`,
-  },
-
-  // LEASING — ADDITIONAL
-  {
-    id: 30,
     title: 'Full Tenant Application',
-    department: 'leasing',
-    description: 'Complete rental application for prospective tenants -- market rate and Section 8/voucher, EN/ES/PT',
-    path: '/rental-application',
+    department: 'property_management',
+    description: 'Complete application after showing -- collects everything needed to process a lease',
+    path: '/tenant-application',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
 
@@ -1456,49 +1396,171 @@ This form is completed by tenants via their individual compliance portal link. I
 
 **FULL TENANT APPLICATION**
 
-Complete this application after your showing. All information is kept confidential.
+---
 
-Route: /rental-application
-Languages: English, Spanish, Portuguese
+## Section A: Personal Information
+
+**Full Name:** _______________________________________________
+
+**Date of Birth:** ____________________________________________
+
+**Phone Number:** ___________________________________________
+
+**Email Address:** ___________________________________________
+
+**Current Address:** _________________________________________
+
+**How long at current address?** _______________________________
 
 ---
 
-**Sections**
-- Section A: Personal Information (name*, phone* required only)
-- Section B: Employment & Income (2 sources, income range)
-- Section C: Household (occupant count, additional occupants)
-- Section D: Pets
-- Section E: Rental History
-- Section F: What Are You Applying For? (bedrooms, areas, move-in date)
-- Section G: Payment Type (Market Rate or Section 8/Voucher)
-- Section H/I: Payment-type-specific details and authorization
-- Section J: Additional documents (optional)
-- Signature & Certification`,
-  },
-  {
-    id: 29,
-    title: 'Applicant Onboarding Form',
-    department: 'leasing',
-    description: 'Full lease onboarding form covering insurance, pet addendum, vehicle addendum, and acknowledgments',
-    path: '/form',
-    content: `**Stanton Management LLC**
-421 Park Street, Hartford, CT 06106 | (860) 993-3401
+## Section B: Employment & Income
+
+**Income Source 1**
+
+Employer / source name: ______________________________________
+
+Phone: _____________________________________________________
+
+Position / job title: ___________________________________________
+
+How long? ___________________________________________________
+
+Proof of income attached: [ ] Yes  [ ] No
 
 ---
 
-**APPLICANT ONBOARDING FORM**
+**Income Source 2**
 
-Use the live form for full multi-section submission with signature capture.
+Employer / source name: ______________________________________
 
-Route: /form
+Phone: _____________________________________________________
+
+Position / job title: ___________________________________________
+
+How long? ___________________________________________________
+
+Proof of income attached: [ ] Yes  [ ] No
 
 ---
 
-**Summary Sections**
-- Renters insurance acknowledgment and Additional Insured setup
-- Pet addendum (if applicable)
-- Vehicle and parking addendum (if applicable)
-- Policy acknowledgments and signatures`,
+**Approximate total monthly household income:**
+- [ ] Under $1,500
+- [ ] $1,500 - $2,500
+- [ ] $2,500 - $3,500
+- [ ] $3,500 - $5,000
+- [ ] $5,000 - $7,500
+- [ ] $7,500+
+
+---
+
+## Section C: Household
+
+**Number of people who will live in the unit (including yourself):** __________
+
+| Full Name | Date of Birth | Relationship |
+|---|---|---|
+| | | |
+| | | |
+| | | |
+
+---
+
+## Section D: Pets
+
+**Do you have any pets?** [ ] Yes  [ ] No
+
+*If Yes:*
+
+| Type | Approximate Weight |
+|---|---|
+| [ ] Dog [ ] Cat [ ] Other: ________ | __________ lbs |
+| [ ] Dog [ ] Cat [ ] Other: ________ | __________ lbs |
+
+---
+
+## Section E: Rental History
+
+**Current or most recent landlord name:** ________________________
+
+**Landlord phone number:** ____________________________________
+
+**Reason for moving:** ________________________________________
+
+---
+
+## Section F: What Are You Applying For?
+
+**Bedrooms needed:**
+- [ ] Studio  [ ] 1 Bedroom  [ ] 2 Bedrooms  [ ] 3 Bedrooms  [ ] 4 Bedrooms
+
+**Areas of interest:**
+- [ ] North End  [ ] South End  [ ] West End  [ ] Park Street Corridor  [ ] No Preference
+
+**Desired move-in date:** ______________________________________
+
+---
+
+## Section G: Payment Type
+
+**How will you be paying rent?**
+- [ ] Market Rate -- *complete Section H*
+- [ ] Section 8 / Housing Voucher -- *complete Section I*
+
+---
+
+## Section H: Market Rate Track
+
+- [ ] I authorize Stanton Management to verify the information provided in this application, including contacting my employer and landlord references.
+
+---
+
+## Section I: Section 8 / Voucher Track
+
+**Housing authority name:** ____________________________________
+
+**Voucher bedroom size:** ________________ **Payment standard:** _________________
+
+**Voucher expiration date:** ___________________________________
+
+**Caseworker name:** _________________________________________
+
+**Caseworker phone:** ________________________________________
+
+**Caseworker email:** _________________________________________
+
+Documents attached:
+- [ ] Voucher or approval letter
+- [ ] Moving packet / moving papers
+- [ ] Most recent bank statement(s)
+
+- [ ] I authorize Stanton Management to verify the information provided in this application, including contacting my employer, landlord references, and housing authority caseworker.
+
+---
+
+## Section J: Additional Information (Optional)
+
+**Social Security Number or Tax ID:** ___________________________
+
+Documents attached:
+- [ ] Government-issued photo ID
+- [ ] Social Security card or Tax ID document
+
+---
+
+## Signature
+
+By submitting this application, I confirm that all information provided is accurate to the best of my knowledge.
+
+**Signature:** _________________________ **Date:** ______________
+
+---
+
+*For office use:*
+Received: __________ Contacted: __________ By: __________
+Showing date: __________ Unit(s): __________________________
+Background check: __________ Credit check: __________________
+Outcome: ___________________________________________________`,
   },
 ];
 

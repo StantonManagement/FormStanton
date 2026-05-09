@@ -28,6 +28,7 @@ export async function GET(
          dv_status, claiming_medical_deduction, has_childcare_expense`
       )
       .eq('id', id)
+      .not('hach_review_status', 'is', null)
       .single();
 
     if (appErr || !app) {

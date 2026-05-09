@@ -65,7 +65,10 @@ export const ROUTE_PERMISSION_MAP: Array<{ prefix: string; permission: RoutePerm
   { prefix: '/api/admin/task-types',                  permission: { resource: RESOURCES.PROJECTS,         read: 'read', write: 'write', delete: 'delete' } },
   { prefix: '/api/admin/tenant-profiles',             permission: { resource: RESOURCES.PROJECTS,         read: 'read', write: 'write' } },
 
-  // PBV Pre-Apps
+  // PBV Full Applications (must be listed before the generic /api/admin/pbv entry — first match wins)
+  { prefix: '/api/admin/pbv/full-applications',       permission: { resource: RESOURCES.PBV_FULL_APPLICATIONS, read: 'read', write: 'write', delete: 'delete' } },
+
+  // PBV Pre-Apps (and all other /api/admin/pbv/* routes not matched above)
   { prefix: '/api/admin/pbv',                         permission: { resource: RESOURCES.PBV_PREAPPS,      read: 'read', write: 'write', delete: 'delete' } },
 
   // Lobby

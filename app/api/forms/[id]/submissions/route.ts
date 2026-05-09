@@ -5,10 +5,10 @@ import { getApplicableMembers, type HouseholdMember } from '@/lib/memberFilter';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ formId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { formId } = await params;
+    const { id: formId } = await params;
     const body = await request.json();
 
     const {
@@ -73,7 +73,6 @@ export async function POST(
 
     for (const template of templates) {
       if (!template.per_person || template.applies_to === 'submission') {
-        // One slot for the whole submission
         documentRows.push({
           form_submission_id: submissionId,
           doc_type: template.doc_type,
@@ -87,7 +86,6 @@ export async function POST(
           created_by: 'system',
         });
       } else {
-        // One slot per applicable household member
         const members = getApplicableMembers(
           householdMembers,
           template.applies_to,
@@ -95,7 +93,6 @@ export async function POST(
         );
 
         if (members.length === 0) {
-          // No matching members — still seed one required slot so staff sees it as missing
           documentRows.push({
             form_submission_id: submissionId,
             doc_type: template.doc_type,
@@ -133,7 +130,6 @@ export async function POST(
 
     if (docsError) throw docsError;
 
-    // Write initial document_review_summary
     const total = documentRows.length;
     await supabaseAdmin
       .from('form_submissions')

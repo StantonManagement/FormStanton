@@ -1,40 +1,38 @@
-﻿import { Language } from './translations';
+import { Language } from './translations';
 
 export const moveInInspectionTranslations: Record<Language, Record<string, string>> = {
   en: {
     formTitle: 'Move-In Inspection Form',
-    formIntro: 'Walk through your unit together with your management representative and document the condition of each area below. Both parties will sign at the end of this inspection.',
-
+    formIntro: 'Document the condition of your unit at move-in to protect your security deposit. Return this form within 7 days of move-in.',
+    
     // Tenant Info
     tenantInfoTitle: 'Tenant Information',
     tenantName: 'Tenant Name(s)',
     tenantNamePlaceholder: 'Enter all tenant names',
-    tenantEmail: 'Email Address',
-    tenantEmailPlaceholder: 'tenant@email.com',
-    building: 'Property Address',
-    unit: 'Apartment No.',
+    building: 'Unit Address',
+    unit: 'Unit Number',
+    moveInDate: 'Move-In Date',
     unitSize: 'Unit Size',
     unitSizePlaceholder: 'e.g. 1BR, 2BR, Studio',
-    moveInDate: 'Move-In Date',
     keysReceived: 'Keys Received',
     unitKeys: 'Unit Keys',
     mailboxKeys: 'Mailbox Keys',
     fobs: 'Fobs',
-
+    
     // Instructions
     instructionsTitle: 'Inspection',
     instructionsText: 'Walk through your entire unit and record the condition of each item. Add rows as needed. Use the condition dropdown — selections are recorded exactly as chosen.',
-    photoNote: 'Take photos of any damage before completing this inspection. Photos will be submitted along with this form.',
+    photoNote: 'Take photos of any damage and upload them in the next step. If we do not receive this form within 7 days of move-in, the unit will be considered accepted in its delivered condition.',
 
     // Condition Dropdown
-    conditionPlaceholder: '— Select —',
+    conditionPlaceholder: '\u2014 Select \u2014',
     conditionGood: 'Good',
     conditionDamage: 'Damage Present',
     conditionImmediateRepair: 'Immediate Repair Required',
     conditionMissing: 'Missing',
     conditionNA: 'N/A',
-
-    // Room Sections
+    
+    // Room Inspection
     entranceHallsTitle: 'ENTRANCE / HALLS',
     bedroomTitle: 'BEDROOM(S)',
     kitchenTitle: 'KITCHEN',
@@ -50,13 +48,13 @@ export const moveInInspectionTranslations: Record<Language, Record<string, strin
     notesPlaceholder: 'Describe condition...',
     addItem: '+ Add Item',
     removeItem: 'Remove',
-
+    
     // Photos
     photosTitle: 'Photos',
     photosIntro: 'Upload photos of any damage or issues noted above (max 20 photos).',
     uploadPhotos: 'Upload Photos',
     uploadHelper: 'JPG, PNG up to 5MB - Max 20 photos',
-
+    
     // Review
     reviewTitle: 'Review & Sign',
     reviewSummary: 'Please review your move-in inspection before signing.',
@@ -69,14 +67,14 @@ export const moveInInspectionTranslations: Record<Language, Record<string, strin
 
     // Legal / Signatures
     managerAckTitle: 'Management Acknowledgment',
-    managerAckText: 'This unit is in decent, safe and sanitary condition. Management will make best efforts to address any deficiencies identified in this report in a timely manner.',
+    managerAckText: 'This unit is in decent, safe and sanitary condition. Any deficiencies identified in this report will be remedied within 30 days of the date the tenant moves into the unit.',
     tenantAckTitle: 'Tenant Acknowledgment',
-    tenantAckText: 'I have walked through this apartment with a management representative and agree that the conditions documented above are accurate as of today. I understand that I may report any additional issues noticed after move-in by contacting the management office in writing within 48 hours. After that period, I acknowledge that I am accepting the unit in the condition documented here, and I agree to be responsible for maintaining it, aside from normal wear and tear.',
+    tenantAckText: 'I have inspected the apartment and found this unit to be in decent, safe, and sanitary condition. Any deficiencies are noted above. I understand that I have 48 hours from the time of move-in to report any additional issues in writing. If I do not report any issues within this timeframe, I acknowledge that I am accepting the unit as-is and will be responsible for maintaining its condition, aside from normal wear and tear. In the event of damage, I agree to pay the cost to restore the apartment to its original condition.',
     signature: 'Resident Signature',
     signatureDate: 'Date',
     signatureRequired: 'Signature is required',
     finalConfirm: 'I confirm that this inspection accurately represents the condition of the unit at move-in.',
-
+    
     // Navigation
     continue: 'Continue',
     submit: 'Submit Inspection',
@@ -84,259 +82,166 @@ export const moveInInspectionTranslations: Record<Language, Record<string, strin
     required: 'Required',
     optional: '(Optional)',
     requiredFieldsMissing: 'Please complete all required fields before continuing',
-
-    // Draft
-    draftFound: 'You have an unfinished inspection. Would you like to resume where you left off?',
-    resumeDraft: 'Resume',
-    startFresh: 'Start Fresh',
-
+    
     // Success
     successTitle: 'Inspection Submitted!',
     successMessage: 'Your move-in inspection has been submitted successfully. This documentation will protect your security deposit. Keep a copy for your records.',
-
+    
     // Tabs
     tabTenantInfo: 'Tenant Info',
     tabInspection: 'Inspection',
     tabPhotos: 'Photos',
     tabReview: 'Review & Sign',
-
-    // Mode picker
-    modePickerLabel: 'Staff',
-    modeJoint: 'Joint Inspection',
-    modeManagerOnly: 'Manager Only',
-    modeBadgeJoint: 'Joint Inspection',
-    modeBadgeManager: 'Manager Only',
-
-    // Mode-specific intros
-    formIntroTenant: 'Document the condition of your unit at move-in. Note any issues below and submit within 48 hours of receiving your keys.',
-    formIntroJoint: 'Walk through your unit together with your management representative and document the condition of each area below. Both parties will sign at the end of this inspection.',
-    formIntroManager: 'Management is completing this inspection in preparation for unit handover. Tenant will acknowledge at key collection.',
-
-    // Pending signatures
-    managerAckPending: 'Management acknowledgment will be completed at the time of key handover.',
-    tenantSigPending: 'Tenant to sign at the time of key handover.',
-
-    // Additional photos
-    additionalPhotosTitle: 'Additional Photos',
-    additionalPhotosIntro: 'Add any further photos not captured per-item above. Photos will be submitted with this form.',
-    rowPhotosLabel: 'row photo(s) attached',
-
+    
     // Select prompts
     selectBuilding: '-- Select your building --',
-    enterUnit: 'Enter your apartment number',
+    selectUnit: '-- Select your unit --',
+    enterUnit: 'Enter your unit number',
   },
   es: {
-    formTitle: 'Formulario de Inspeccion de Mudanza',
-    formIntro: 'Recorra su unidad junto con su representante de administracion y documente la condicion de cada area a continuacion. Ambas partes firmaran al final de esta inspeccion.',
-
-    tenantInfoTitle: 'Informacion del Inquilino',
+    formTitle: 'Formulario de Inspección de Mudanza',
+    formIntro: 'Documente la condición de su unidad al mudarse para proteger su depósito de seguridad. Devuelva este formulario dentro de 7 días de la mudanza.',
+    tenantInfoTitle: 'Información del Inquilino',
     tenantName: 'Nombre(s) del Inquilino',
     tenantNamePlaceholder: 'Ingrese todos los nombres de inquilinos',
-    tenantEmail: 'Correo Electronico',
-    tenantEmailPlaceholder: 'inquilino@correo.com',
-    building: 'Direccion de la Propiedad',
-    unit: 'No. de Apartamento',
-    unitSize: 'Tamano de la Unidad',
-    unitSizePlaceholder: 'ej. 1 hab., 2 hab., Estudio',
+    building: 'Dirección de la Unidad',
+    unit: 'Número de Unidad',
     moveInDate: 'Fecha de Mudanza',
+    unitSize: 'Tamaño de la Unidad',
+    unitSizePlaceholder: 'ej. 1 hab., 2 hab., Estudio',
     keysReceived: 'Llaves Recibidas',
     unitKeys: 'Llaves de Unidad',
-    mailboxKeys: 'Llaves de Buzon',
+    mailboxKeys: 'Llaves de Buzón',
     fobs: 'Llaveros',
-
-    instructionsTitle: 'Inspeccion',
-    instructionsText: 'Recorra toda su unidad y registre la condicion de cada articulo. Agregue filas segun sea necesario.',
-    photoNote: 'Tome fotos de cualquier dano antes de completar esta inspeccion. Las fotos se enviaran junto con este formulario.',
-
-    conditionPlaceholder: '— Seleccionar —',
+    instructionsTitle: 'Inspección',
+    instructionsText: 'Recorra toda su unidad y registre la condición de cada artículo. Agregue filas según sea necesario.',
+    photoNote: 'Tome fotos de cualquier daño y súbalas en el siguiente paso. Si no recibimos este formulario dentro de 7 días, la unidad se considerará aceptada en su condición entregada.',
+    conditionPlaceholder: '\u2014 Seleccionar \u2014',
     conditionGood: 'Bueno',
-    conditionDamage: 'Dano Presente',
-    conditionImmediateRepair: 'Reparacion Inmediata Requerida',
+    conditionDamage: 'Daño Presente',
+    conditionImmediateRepair: 'Reparación Inmediata Requerida',
     conditionMissing: 'Faltante',
     conditionNA: 'N/A',
-
     entranceHallsTitle: 'ENTRADA / PASILLOS',
     bedroomTitle: 'DORMITORIO(S)',
     kitchenTitle: 'COCINA',
     livingRoomTitle: 'SALA',
-    bathroomTitle: 'BANO(S)',
+    bathroomTitle: 'BAÑO(S)',
     otherAreasTitle: 'OTROS',
-
-    itemColumn: 'Articulo',
-    condition: 'Condicion',
-    notes: 'Notas / Descripcion',
+    itemColumn: 'Artículo',
+    condition: 'Condición',
+    notes: 'Notas / Descripción',
     itemPlaceholder: 'ej. Puerta de entrada, Paredes...',
-    notesPlaceholder: 'Describa la condicion...',
-    addItem: '+ Agregar Articulo',
+    notesPlaceholder: 'Describa la condición...',
+    addItem: '+ Agregar Artículo',
     removeItem: 'Eliminar',
-
     photosTitle: 'Fotos',
-    photosIntro: 'Suba fotos de cualquier dano o problema anotado arriba (maximo 20 fotos).',
+    photosIntro: 'Suba fotos de cualquier daño o problema anotado arriba (máximo 20 fotos).',
     uploadPhotos: 'Subir Fotos',
-    uploadHelper: 'JPG, PNG hasta 5MB - Maximo 20 fotos',
-
+    uploadHelper: 'JPG, PNG hasta 5MB - Máximo 20 fotos',
     reviewTitle: 'Revisar y Firmar',
-    reviewSummary: 'Revise su inspeccion de mudanza antes de firmar.',
-    reviewTenantInfo: 'Informacion del Inquilino',
-    reviewInspection: 'Resumen de Inspeccion',
+    reviewSummary: 'Revise su inspección de mudanza antes de firmar.',
+    reviewTenantInfo: 'Información del Inquilino',
+    reviewInspection: 'Resumen de Inspección',
     reviewPhotos: 'Fotos',
     noPhotos: 'No se subieron fotos',
-    itemsInspected: 'articulos registrados',
+    itemsInspected: 'artículos registrados',
     issuesNoted: 'problemas anotados',
-
-    managerAckTitle: 'Reconocimiento de Administracion',
-    managerAckText: 'Esta unidad se encuentra en condiciones decentes, seguras y sanitarias. La administracion hara su mejor esfuerzo para atender cualquier deficiencia identificada en este informe de manera oportuna.',
+    managerAckTitle: 'Reconocimiento de la Administración',
+    managerAckText: 'Esta unidad está en condiciones decentes, seguras y sanitarias. Cualquier deficiencia identificada en este informe será subsanada dentro de los 30 días a partir de la fecha en que el inquilino se mude.',
     tenantAckTitle: 'Reconocimiento del Inquilino',
-    tenantAckText: 'He recorrido este apartamento junto con un representante de administracion y confirmo que las condiciones documentadas arriba son precisas a la fecha de hoy. Entiendo que puedo reportar cualquier problema adicional notado despues de la mudanza dentro de las 48 horas contactando a la administracion por escrito. Pasado ese plazo, acepto la unidad en la condicion aqui documentada y me comprometo a mantenerla, salvo el desgaste normal.',
+    tenantAckText: 'He inspeccionado el apartamento y encontré que esta unidad está en condiciones decentes, seguras y sanitarias. Las deficiencias se anotan arriba. Entiendo que tengo 48 horas desde el momento de la mudanza para reportar problemas adicionales por escrito. Si no reporto ningún problema dentro de este plazo, acepto la unidad tal como está y seré responsable de mantener su condición, aparte del desgaste normal.',
     signature: 'Firma del Residente',
     signatureDate: 'Fecha',
     signatureRequired: 'Se requiere firma',
-    finalConfirm: 'Confirmo que esta inspeccion representa con precision la condicion de la unidad al mudarse.',
-
+    finalConfirm: 'Confirmo que esta inspección representa con precisión la condición de la unidad al mudarse.',
     continue: 'Continuar',
-    submit: 'Enviar Inspeccion',
+    submit: 'Enviar Inspección',
     submitting: 'Enviando...',
     required: 'Requerido',
     optional: '(Opcional)',
     requiredFieldsMissing: 'Complete todos los campos requeridos antes de continuar',
-
-    draftFound: 'Tiene una inspeccion sin terminar. Desea continuar donde lo dejo?',
-    resumeDraft: 'Continuar',
-    startFresh: 'Empezar de nuevo',
-
-    successTitle: 'Inspeccion Enviada!',
-    successMessage: 'Su inspeccion de mudanza ha sido enviada exitosamente. Esta documentacion protegera su deposito de seguridad. Guarde una copia para sus registros.',
-
-    tabTenantInfo: 'Informacion',
-    tabInspection: 'Inspeccion',
+    successTitle: '¡Inspección Enviada!',
+    successMessage: 'Su inspección de mudanza ha sido enviada exitosamente. Esta documentación protegerá su depósito de seguridad. Guarde una copia para sus registros.',
+    tabTenantInfo: 'Información',
+    tabInspection: 'Inspección',
     tabPhotos: 'Fotos',
     tabReview: 'Revisar',
-
-    modePickerLabel: 'Personal',
-    modeJoint: 'Inspeccion Conjunta',
-    modeManagerOnly: 'Solo Administrador',
-    modeBadgeJoint: 'Inspeccion Conjunta',
-    modeBadgeManager: 'Solo Administrador',
-
-    formIntroTenant: 'Documente la condicion de su unidad al mudarse. Anote cualquier problema a continuacion y envie el formulario dentro de las 48 horas de recibir sus llaves.',
-    formIntroJoint: 'Recorra su unidad junto con su representante de administracion y documente la condicion de cada area a continuacion. Ambas partes firmaran al final de esta inspeccion.',
-    formIntroManager: 'La administracion esta completando esta inspeccion en preparacion para la entrega de la unidad. El inquilino firmara al recibir las llaves.',
-
-    managerAckPending: 'El reconocimiento de la administracion se completara en el momento de la entrega de llaves.',
-    tenantSigPending: 'El inquilino firmara en el momento de la entrega de llaves.',
-
-    additionalPhotosTitle: 'Fotos Adicionales',
-    additionalPhotosIntro: 'Agregue cualquier foto adicional no capturada por articulo arriba. Las fotos se enviaran con este formulario.',
-    rowPhotosLabel: 'foto(s) de fila adjuntas',
-
     selectBuilding: '-- Seleccione su edificio --',
-    enterUnit: 'Ingrese el numero de su apartamento',
+    selectUnit: '-- Seleccione su unidad --',
+    enterUnit: 'Ingrese su número de unidad',
   },
   pt: {
-    formTitle: 'Formulario de Inspecao de Mudanca',
-    formIntro: 'Percorra sua unidade junto com seu representante de administracao e documente a condicao de cada area abaixo. Ambas as partes assinarao ao final desta inspecao.',
-
-    tenantInfoTitle: 'Informacoes do Inquilino',
+    formTitle: 'Formulário de Inspeção de Mudança',
+    formIntro: 'Documente a condição de sua unidade na mudança para proteger seu depósito de segurança. Devolva este formulário dentro de 7 dias da mudança.',
+    tenantInfoTitle: 'Informações do Inquilino',
     tenantName: 'Nome(s) do Inquilino',
     tenantNamePlaceholder: 'Digite todos os nomes dos inquilinos',
-    tenantEmail: 'Endereco de E-mail',
-    tenantEmailPlaceholder: 'inquilino@email.com',
-    building: 'Endereco da Propriedade',
-    unit: 'No. do Apartamento',
+    building: 'Endereço da Unidade',
+    unit: 'Número da Unidade',
+    moveInDate: 'Data de Mudança',
     unitSize: 'Tamanho da Unidade',
-    unitSizePlaceholder: 'ex. 1 quarto, 2 quartos, Studio',
-    moveInDate: 'Data de Mudanca',
+    unitSizePlaceholder: 'ex. 1 quarto, 2 quartos, Estúdio',
     keysReceived: 'Chaves Recebidas',
     unitKeys: 'Chaves da Unidade',
     mailboxKeys: 'Chaves da Caixa de Correio',
     fobs: 'Chaveiros',
-
-    instructionsTitle: 'Inspecao',
-    instructionsText: 'Percorra toda a sua unidade e registre a condicao de cada item. Adicione linhas conforme necessario.',
-    photoNote: 'Tire fotos de qualquer dano antes de concluir esta inspecao. As fotos serao enviadas junto com este formulario.',
-
-    conditionPlaceholder: '— Selecionar —',
+    instructionsTitle: 'Inspeção',
+    instructionsText: 'Percorra toda a sua unidade e registre a condição de cada item. Adicione linhas conforme necessário.',
+    photoNote: 'Tire fotos de qualquer dano e carregue-as na próxima etapa. Se não recebermos este formulário dentro de 7 dias, a unidade será considerada aceita em sua condição entregue.',
+    conditionPlaceholder: '\u2014 Selecionar \u2014',
     conditionGood: 'Bom',
     conditionDamage: 'Dano Presente',
-    conditionImmediateRepair: 'Reparo Imediato Necessario',
+    conditionImmediateRepair: 'Reparo Imediato Necessário',
     conditionMissing: 'Faltando',
     conditionNA: 'N/A',
-
     entranceHallsTitle: 'ENTRADA / CORREDORES',
     bedroomTitle: 'QUARTO(S)',
     kitchenTitle: 'COZINHA',
     livingRoomTitle: 'SALA',
     bathroomTitle: 'BANHEIRO(S)',
     otherAreasTitle: 'OUTROS',
-
     itemColumn: 'Item',
-    condition: 'Condicao',
-    notes: 'Notas / Descricao',
+    condition: 'Condição',
+    notes: 'Notas / Descrição',
     itemPlaceholder: 'ex. Porta de entrada, Paredes...',
-    notesPlaceholder: 'Descreva a condicao...',
+    notesPlaceholder: 'Descreva a condição...',
     addItem: '+ Adicionar Item',
     removeItem: 'Remover',
-
     photosTitle: 'Fotos',
-    photosIntro: 'Carregue fotos de qualquer dano ou problema anotado acima (maximo 20 fotos).',
+    photosIntro: 'Carregue fotos de qualquer dano ou problema anotado acima (máximo 20 fotos).',
     uploadPhotos: 'Carregar Fotos',
-    uploadHelper: 'JPG, PNG ate 5MB - Maximo 20 fotos',
-
+    uploadHelper: 'JPG, PNG até 5MB - Máximo 20 fotos',
     reviewTitle: 'Revisar e Assinar',
-    reviewSummary: 'Revise sua inspecao de mudanca antes de assinar.',
-    reviewTenantInfo: 'Informacoes do Inquilino',
-    reviewInspection: 'Resumo da Inspecao',
+    reviewSummary: 'Revise sua inspeção de mudança antes de assinar.',
+    reviewTenantInfo: 'Informações do Inquilino',
+    reviewInspection: 'Resumo da Inspeção',
     reviewPhotos: 'Fotos',
     noPhotos: 'Nenhuma foto carregada',
     itemsInspected: 'itens registrados',
     issuesNoted: 'problemas anotados',
-
-    managerAckTitle: 'Reconhecimento da Administracao',
-    managerAckText: 'Esta unidade esta em condicoes decentes, seguras e sanitarias. A administracao envidara seus melhores esforcos para resolver quaisquer deficiencias identificadas neste relatorio em tempo habil.',
+    managerAckTitle: 'Reconhecimento da Administração',
+    managerAckText: 'Esta unidade está em condições decentes, seguras e sanitárias. Quaisquer deficiências identificadas neste relatório serão corrigidas dentro de 30 dias a partir da data em que o inquilino se mudar.',
     tenantAckTitle: 'Reconhecimento do Inquilino',
-    tenantAckText: 'Percorri este apartamento junto com um representante da administracao e confirmo que as condicoes documentadas acima sao precisas na data de hoje. Entendo que posso relatar quaisquer problemas adicionais notados apos a mudanca dentro de 48 horas, entrando em contato com a administracao por escrito. Apos esse prazo, aceito a unidade na condicao aqui documentada e concordo em mante-la, exceto pelo desgaste normal.',
+    tenantAckText: 'Inspecionei o apartamento e encontrei esta unidade em condições decentes, seguras e sanitárias. As deficiências estão anotadas acima. Entendo que tenho 48 horas a partir do momento da mudança para relatar quaisquer problemas adicionais por escrito. Se não reportar nenhum problema dentro deste prazo, aceito a unidade no estado em que se encontra e serei responsável por manter suas condições, além do desgaste normal.',
     signature: 'Assinatura do Residente',
     signatureDate: 'Data',
-    signatureRequired: 'Assinatura e obrigatoria',
-    finalConfirm: 'Confirmo que esta inspecao representa com precisao a condicao da unidade na mudanca.',
-
+    signatureRequired: 'Assinatura é obrigatória',
+    finalConfirm: 'Confirmo que esta inspeção representa com precisão a condição da unidade na mudança.',
     continue: 'Continuar',
-    submit: 'Enviar Inspecao',
+    submit: 'Enviar Inspeção',
     submitting: 'Enviando...',
-    required: 'Obrigatorio',
+    required: 'Obrigatório',
     optional: '(Opcional)',
-    requiredFieldsMissing: 'Preencha todos os campos obrigatorios antes de continuar',
-
-    draftFound: 'Voce tem uma inspecao nao concluida. Deseja continuar de onde parou?',
-    resumeDraft: 'Continuar',
-    startFresh: 'Comecar do zero',
-
-    successTitle: 'Inspecao Enviada!',
-    successMessage: 'Sua inspecao de mudanca foi enviada com sucesso. Esta documentacao protegera seu deposito de seguranca. Guarde uma copia para seus registros.',
-
-    tabTenantInfo: 'Informacoes',
-    tabInspection: 'Inspecao',
+    requiredFieldsMissing: 'Preencha todos os campos obrigatórios antes de continuar',
+    successTitle: 'Inspeção Enviada!',
+    successMessage: 'Sua inspeção de mudança foi enviada com sucesso. Esta documentação protegerá seu depósito de segurança. Guarde uma cópia para seus registros.',
+    tabTenantInfo: 'Informações',
+    tabInspection: 'Inspeção',
     tabPhotos: 'Fotos',
     tabReview: 'Revisar',
-
-    modePickerLabel: 'Equipe',
-    modeJoint: 'Inspecao Conjunta',
-    modeManagerOnly: 'Somente Administracao',
-    modeBadgeJoint: 'Inspecao Conjunta',
-    modeBadgeManager: 'Somente Administracao',
-
-    formIntroTenant: 'Documente a condicao de sua unidade na mudanca. Anote quaisquer problemas abaixo e envie o formulario dentro de 48 horas apos receber suas chaves.',
-    formIntroJoint: 'Percorra sua unidade junto com seu representante de administracao e documente a condicao de cada area abaixo. Ambas as partes assinarao ao final desta inspecao.',
-    formIntroManager: 'A administracao esta concluindo esta inspecao em preparacao para a entrega da unidade. O inquilino assinar a no recebimento das chaves.',
-
-    managerAckPending: 'O reconhecimento da administracao sera concluido no momento da entrega das chaves.',
-    tenantSigPending: 'O inquilino assinara no momento da entrega das chaves.',
-
-    additionalPhotosTitle: 'Fotos Adicionais',
-    additionalPhotosIntro: 'Adicione fotos nao capturadas por item acima. As fotos serao enviadas com este formulario.',
-    rowPhotosLabel: 'foto(s) de linha anexadas',
-
-    selectBuilding: '-- Selecione seu predio --',
-    enterUnit: 'Digite o numero do seu apartamento',
+    selectBuilding: '-- Selecione seu prédio --',
+    selectUnit: '-- Selecione sua unidade --',
+    enterUnit: 'Digite o número da sua unidade',
   },
 };

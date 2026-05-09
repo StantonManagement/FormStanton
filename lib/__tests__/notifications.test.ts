@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Mocks (must be declared before importing the module under test) ──────────
 
@@ -69,11 +69,21 @@ function setupDocAndApp(app: object | null, doc: object | null = DOC) {
     .mockResolvedValueOnce({ data: app, error: app ? null : { message: 'not found' } });
 }
 
+const ORIGINAL_ENV = { ...process.env };
+
 beforeEach(() => {
+  process.env.PBV_TWILIO_PHONE_NUMBER = '+18005550000';
+  process.env.TWILIO_ACCOUNT_SID = 'AC_test_sid';
+  process.env.TWILIO_AUTH_TOKEN = 'test_token';
+  process.env.NEXT_PUBLIC_APP_URL = 'https://test.example.com';
   vi.clearAllMocks();
   mockInsertSelect.mockResolvedValue({ data: { id: 'notif-1' }, error: null });
   mockTwilioCreate.mockResolvedValue({ sid: 'SM123456789' });
   fromChain.update.mockReturnValue({ eq: vi.fn().mockReturnThis() });
+});
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,10 +190,8 @@ describe('sendRejectionNotification()', () => {
   describe('missing PBV_TWILIO_PHONE_NUMBER', () => {
     it('returns failed if env var not set', async () => {
       setupDocAndApp(APP_COMPLETE);
-      const original = process.env.PBV_TWILIO_PHONE_NUMBER;
       delete process.env.PBV_TWILIO_PHONE_NUMBER;
       const result = await sendRejectionNotification(BASE_PARAMS);
-      if (original) process.env.PBV_TWILIO_PHONE_NUMBER = original;
       expect(result.status).toBe('failed');
     });
   });

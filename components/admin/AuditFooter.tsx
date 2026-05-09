@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useAdminAuth } from '@/lib/adminAuthContext';
 
 interface AuditEntry {
   id: string;
@@ -70,11 +71,22 @@ function shortTime(iso: string): string {
 }
 
 export default function AuditFooter() {
+  const { user, isLoading: authLoading, hasPermission } = useAdminAuth();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Only RBAC users with at least one permission assigned get enforcement.
+  // Legacy sessions (permissions=[]) bypass middleware and can always read the log.
+  // Skip the fetch only when the user is clearly an RBAC user without audit-log:read.
+  const rbacEnforced = !authLoading && !!user && user.permissions.length > 0 && !user.isSuperAdmin;
+  const canReadAuditLog = !rbacEnforced || hasPermission('audit-log', 'read');
+
   const fetchRecent = useCallback(async () => {
+    if (!canReadAuditLog) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch('/api/admin/audit-log?limit=8&page=1');
       const data = await res.json();
@@ -84,13 +96,15 @@ export default function AuditFooter() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canReadAuditLog]);
 
   useEffect(() => {
+    if (authLoading) return;
     fetchRecent();
+    if (!canReadAuditLog) return;
     const interval = setInterval(fetchRecent, 30_000);
     return () => clearInterval(interval);
-  }, [fetchRecent]);
+  }, [authLoading, fetchRecent, canReadAuditLog]);
 
   const latest = entries[0];
 

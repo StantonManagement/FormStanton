@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('@/lib/supabase', () => ({
+  supabaseAdmin: {},
+}));
+
 import { annualize, computeHouseholdIncome, FREQUENCY_MULTIPLIERS } from '../income-eligibility';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,14 +148,12 @@ function makeSupabaseMock(overrides: {
             eq: (_c: string, _v: any) => ({
               eq: (_c: string, _v: any) => ({
                 eq: (_c: string, _v: any) => ({
-                  eq: (_c: string, _v: any) => ({
-                    lte: () => ({
-                      order: () => ({
-                        limit: () => ({
-                          single: async () => ({
-                            data: amiLimit != null ? { annual_limit: amiLimit } : null,
-                            error: amiLimit != null ? null : { message: 'no row' },
-                          }),
+                  lte: () => ({
+                    order: () => ({
+                      limit: () => ({
+                        single: async () => ({
+                          data: amiLimit != null ? { annual_limit: amiLimit } : null,
+                          error: amiLimit != null ? null : { message: 'no row' },
                         }),
                       }),
                     }),
@@ -171,7 +174,7 @@ function makeSupabaseMock(overrides: {
 describe('computeHouseholdIncome()', () => {
   it('returns no_income_sources=true when no sources exist', async () => {
     const client = makeSupabaseMock({
-      app: { id: 'app-1', household_size: 3 },
+      app: { id: 'app-1', household_size: 3, total_annual_income: 0 },
       sources: [],
       amiLimit: 49450,
     });
@@ -179,7 +182,7 @@ describe('computeHouseholdIncome()', () => {
     expect(result.no_income_sources).toBe(true);
     expect(result.total_household_income).toBe(0);
     expect(result.ami_limit).toBe(49450);
-    expect(result.within_tolerance).toBe(true); // 0 income is well within AMI
+    expect(result.within_tolerance).toBe(true); // 0 documented, 0 claimed — delta=0 < $2,400
   });
 
   it('returns error payload when application not found', async () => {
@@ -191,7 +194,7 @@ describe('computeHouseholdIncome()', () => {
 
   it('single member — monthly income annualizes correctly', async () => {
     const client = makeSupabaseMock({
-      app: { id: 'app-2', household_size: 1 },
+      app: { id: 'app-2', household_size: 1, total_annual_income: 24000 },
       sources: [
         {
           id: 's1',
@@ -210,13 +213,15 @@ describe('computeHouseholdIncome()', () => {
     const result = await computeHouseholdIncome('app-2', undefined, client);
     expect(result.total_household_income).toBe(24000); // 2000 × 12
     expect(result.ami_limit).toBe(38450);
-    expect(result.delta).toBe(24000 - 38450);
-    expect(result.within_tolerance).toBe(true); // under the limit
+    expect(result.claimed_annual).toBe(24000);
+    expect(result.delta).toBe(0); // documented matches claimed exactly
+    expect(result.within_tolerance).toBe(true);
+    expect(result.qualifies_under_ami).toBe(true); // 24000 <= 38450
   });
 
   it('multi-member household sums all member incomes', async () => {
     const client = makeSupabaseMock({
-      app: { id: 'app-3', household_size: 4 },
+      app: { id: 'app-3', household_size: 4, total_annual_income: 34092 },
       sources: [
         {
           id: 's1', member_id: 'm1', source_type: 'employment',
@@ -237,51 +242,13 @@ describe('computeHouseholdIncome()', () => {
     // Alice: 2000×12 = 24000; Bob: 841×12 = 10092; total = 34092
     expect(result.total_household_income).toBe(34092);
     expect(result.member_breakdown).toHaveLength(2);
-    expect(result.within_tolerance).toBe(true);
-  });
-
-  it('flags income over AMI limit + tolerance', async () => {
-    const amiLimit = 38450;
-    const monthlyAmount = 4000; // 48000 annualized — 24.9% over limit
-    const client = makeSupabaseMock({
-      app: { id: 'app-4', household_size: 1 },
-      sources: [
-        {
-          id: 's1', member_id: 'm1', source_type: 'employment',
-          frequency: 'monthly', amount: monthlyAmount, paystub_count: null, paystub_amounts: null, annual_amount: null,
-        },
-      ],
-      members: [{ id: 'm1', name: 'Alice' }],
-      amiLimit,
-    });
-    const result = await computeHouseholdIncome('app-4', undefined, client);
-    expect(result.total_household_income).toBe(48000);
-    expect(result.delta).toBeGreaterThan(0);
-    expect(result.within_tolerance).toBe(false);
-  });
-
-  it('income exactly at AMI limit is within tolerance', async () => {
-    const amiLimit = 38450;
-    const client = makeSupabaseMock({
-      app: { id: 'app-5', household_size: 1 },
-      sources: [
-        {
-          id: 's1', member_id: null, source_type: 'pension',
-          frequency: 'annual', amount: amiLimit, paystub_count: null, paystub_amounts: null, annual_amount: null,
-        },
-      ],
-      members: [],
-      amiLimit,
-    });
-    const result = await computeHouseholdIncome('app-5', undefined, client);
-    expect(result.total_household_income).toBe(amiLimit);
-    expect(result.delta).toBe(0);
+    expect(result.delta).toBe(0); // documented matches claimed exactly
     expect(result.within_tolerance).toBe(true);
   });
 
   it('handles zero income from single weekly source', async () => {
     const client = makeSupabaseMock({
-      app: { id: 'app-6', household_size: 2 },
+      app: { id: 'app-6', household_size: 2, total_annual_income: 0 },
       sources: [
         {
           id: 's1', member_id: 'm1', source_type: 'employment',
@@ -294,6 +261,156 @@ describe('computeHouseholdIncome()', () => {
     const result = await computeHouseholdIncome('app-6', undefined, client);
     expect(result.total_household_income).toBe(0);
     expect(result.no_income_sources).toBe(false);
+    expect(result.within_tolerance).toBe(true); // 0 documented, 0 claimed — delta=0 < $2,400
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// qualifies_under_ami — documented income vs AMI limit
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('qualifies_under_ami', () => {
+  it('documented income over AMI limit → qualifies_under_ami: false', async () => {
+    const amiLimit = 38450;
+    const client = makeSupabaseMock({
+      app: { id: 'qa-1', household_size: 1, total_annual_income: 38450 },
+      sources: [
+        {
+          id: 's1', member_id: 'm1', source_type: 'employment',
+          frequency: 'monthly', amount: 4000, paystub_count: null, paystub_amounts: null, annual_amount: null,
+        },
+      ],
+      members: [{ id: 'm1', name: 'Alice' }],
+      amiLimit,
+    });
+    const result = await computeHouseholdIncome('qa-1', undefined, client);
+    expect(result.total_household_income).toBe(48000);
+    expect(result.qualifies_under_ami).toBe(false); // 48000 > 38450
+  });
+
+  it('documented income exactly at AMI limit → qualifies_under_ami: true', async () => {
+    const amiLimit = 38450;
+    const client = makeSupabaseMock({
+      app: { id: 'qa-2', household_size: 1, total_annual_income: 38450 },
+      sources: [
+        {
+          id: 's1', member_id: null, source_type: 'pension',
+          frequency: 'annual', amount: amiLimit, paystub_count: null, paystub_amounts: null, annual_amount: null,
+        },
+      ],
+      members: [],
+      amiLimit,
+    });
+    const result = await computeHouseholdIncome('qa-2', undefined, client);
+    expect(result.total_household_income).toBe(amiLimit);
+    expect(result.qualifies_under_ami).toBe(true); // documented <= AMI limit
+    expect(result.delta).toBe(0); // documented matches claimed
     expect(result.within_tolerance).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUD EIV discrepancy standard — within_tolerance
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeEivMock(
+  applicationId: string,
+  claimedAnnual: number | null,
+  documentedAnnual: number
+) {
+  return makeSupabaseMock({
+    app: {
+      id: applicationId,
+      household_size: 1,
+      total_annual_income: claimedAnnual,
+    },
+    sources:
+      documentedAnnual === 0
+        ? [
+            {
+              id: 's1', member_id: null, source_type: 'other',
+              frequency: 'annual' as const, amount: 0,
+              paystub_count: null, paystub_amounts: null, annual_amount: null,
+            },
+          ]
+        : [
+            {
+              id: 's1', member_id: null, source_type: 'other',
+              frequency: 'annual' as const, amount: documentedAnnual,
+              paystub_count: null, paystub_amounts: null, annual_amount: null,
+            },
+          ],
+    members: [],
+    amiLimit: 99999,
+  });
+}
+
+describe('HUD EIV within_tolerance', () => {
+  it('documented income exactly matches claimed → within_tolerance: true', async () => {
+    const client = makeEivMock('eiv-1', 40000, 40000);
+    const result = await computeHouseholdIncome('eiv-1', undefined, client);
+    expect(result.delta).toBe(0);
+    expect(result.within_tolerance).toBe(true);
+  });
+
+  it('documented exceeds claimed by $2,000 and < 10% → within_tolerance: true (both thresholds pass)', async () => {
+    const client = makeEivMock('eiv-2', 40000, 42000);
+    const result = await computeHouseholdIncome('eiv-2', undefined, client);
+    expect(result.delta).toBe(2000);
+    expect(result.within_tolerance).toBe(true); // |2000| < 2400, |2000/40000|=0.05 < 0.10
+  });
+
+  it('documented exceeds claimed by $3,000 and < 10% → within_tolerance: false (absolute threshold fails)', async () => {
+    const client = makeEivMock('eiv-3', 40000, 43000);
+    const result = await computeHouseholdIncome('eiv-3', undefined, client);
+    expect(result.delta).toBe(3000);
+    expect(result.within_tolerance).toBe(false); // |3000| >= 2400
+  });
+
+  it('documented exceeds claimed by 12% and < $2,400 → within_tolerance: false (percentage threshold fails)', async () => {
+    const client = makeEivMock('eiv-4', 10000, 11200);
+    const result = await computeHouseholdIncome('eiv-4', undefined, client);
+    expect(result.delta).toBe(1200);
+    expect(result.within_tolerance).toBe(false); // |1200/10000|=0.12 >= 0.10
+  });
+
+  it('documented under claimed by $5,000 → within_tolerance: false (under-reporting discrepancy)', async () => {
+    const client = makeEivMock('eiv-5', 40000, 35000);
+    const result = await computeHouseholdIncome('eiv-5', undefined, client);
+    expect(result.delta).toBe(-5000);
+    expect(result.within_tolerance).toBe(false); // |−5000| >= 2400
+  });
+
+  it('claimed = $0, documented = $1,500 → within_tolerance: true (under absolute threshold)', async () => {
+    const client = makeEivMock('eiv-6', 0, 1500);
+    const result = await computeHouseholdIncome('eiv-6', undefined, client);
+    expect(result.delta).toBe(1500);
+    expect(result.delta_pct).toBeNull(); // percentage check skipped for zero claimed
+    expect(result.within_tolerance).toBe(true); // |1500| < 2400
+  });
+
+  it('claimed = $0, documented = $3,000 → within_tolerance: false (over absolute threshold)', async () => {
+    const client = makeEivMock('eiv-7', 0, 3000);
+    const result = await computeHouseholdIncome('eiv-7', undefined, client);
+    expect(result.delta).toBe(3000);
+    expect(result.delta_pct).toBeNull(); // percentage check skipped for zero claimed
+    expect(result.within_tolerance).toBe(false); // |3000| >= 2400
+  });
+
+  it('claimed = $0, documented = $0 → within_tolerance: true', async () => {
+    const client = makeEivMock('eiv-8', 0, 0);
+    const result = await computeHouseholdIncome('eiv-8', undefined, client);
+    expect(result.delta).toBe(0);
+    expect(result.delta_pct).toBeNull();
+    expect(result.within_tolerance).toBe(true); // |0| < 2400
+  });
+
+  it('claimed = null (data missing) → within_tolerance: null', async () => {
+    const client = makeEivMock('eiv-9', null, 40000);
+    const result = await computeHouseholdIncome('eiv-9', undefined, client);
+    expect(result.claimed_annual).toBeNull();
+    expect(result.delta).toBeNull();
+    expect(result.delta_pct).toBeNull();
+    expect(result.within_tolerance).toBeNull();
   });
 });

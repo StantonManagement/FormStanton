@@ -3,6 +3,19 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
 import { generateToken } from '@/lib/generateToken';
 
+function getBaseUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const proto = request.headers.get('x-forwarded-proto') ?? 'http';
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost:3000';
+  return `${proto}://${host}`;
+}
+
+function buildingUnitSlug(building: string, unit: string): string {
+  const clean = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `${clean(building)}-unit-${clean(unit)}`;
+}
+
 export async function GET(request: NextRequest) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
@@ -87,7 +100,7 @@ export async function POST(request: NextRequest) {
           data: {
             id: existing.id,
             tenant_access_token: existing.tenant_access_token,
-            magic_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${existing.tenant_access_token}`,
+            magic_link: `${getBaseUrl(request)}/pbv-full-app/${existing.tenant_access_token}`,
           },
         },
         { status: 409 }
@@ -115,7 +128,8 @@ export async function POST(request: NextRequest) {
     if (subError) throw subError;
 
     // Create pbv_full_applications row
-    const appToken = generateToken();
+    const slug = buildingUnitSlug(building_address.trim(), unit_number.trim());
+    const appToken = `${slug}-${generateToken()}`;
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
       .insert({
@@ -134,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     if (appError) throw appError;
 
-    const magicLink = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${app.tenant_access_token}`;
+    const magicLink = `${getBaseUrl(request)}/pbv-full-app/${app.tenant_access_token}`;
 
     return NextResponse.json({
       success: true,

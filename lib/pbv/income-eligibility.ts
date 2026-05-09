@@ -43,8 +43,10 @@ export interface EligibilityPayload {
   effective_year: number;
   ami_pct: number;
   ami_limit: number | null;
+  claimed_annual: number | null;
   total_household_income: number;
   member_breakdown: MemberIncomeBreakdown[];
+  qualifies_under_ami: boolean | null;
   delta: number | null;
   delta_pct: number | null;
   within_tolerance: boolean | null;
@@ -109,7 +111,8 @@ export function annualize(
 
 const DEFAULT_MSA = '25540';
 const DEFAULT_AMI_PCT = 50;
-const TOLERANCE_PCT = 10; // flag if computed income > AMI limit by more than 10 %
+const ABSOLUTE_THRESHOLD = 2400;    // HUD EIV: flag if |delta| >= $2,400
+const PERCENTAGE_THRESHOLD = 0.10;  // HUD EIV: flag if |delta / claimed| >= 10%
 
 export async function computeHouseholdIncome(
   applicationId: string,
@@ -122,7 +125,7 @@ export async function computeHouseholdIncome(
   // 1. Load application + household size
   const { data: app, error: appErr } = await client
     .from('pbv_full_applications')
-    .select('id, household_size, building_address')
+    .select('id, household_size, building_address, total_annual_income')
     .eq('id', applicationId)
     .single();
 
@@ -135,8 +138,10 @@ export async function computeHouseholdIncome(
       effective_year: effectiveYear,
       ami_pct: DEFAULT_AMI_PCT,
       ami_limit: null,
+      claimed_annual: null,
       total_household_income: 0,
       member_breakdown: [],
+      qualifies_under_ami: null,
       delta: null,
       delta_pct: null,
       within_tolerance: null,
@@ -146,6 +151,7 @@ export async function computeHouseholdIncome(
   }
 
   const householdSize = Math.min(Math.max(app.household_size ?? 1, 1), 8);
+  const claimedAnnual: number | null = app.total_annual_income ?? null;
 
   // 2. Load income sources for this application
   const { data: sources, error: srcErr } = await client
@@ -164,8 +170,10 @@ export async function computeHouseholdIncome(
       effective_year: effectiveYear,
       ami_pct: DEFAULT_AMI_PCT,
       ami_limit: null,
+      claimed_annual: claimedAnnual,
       total_household_income: 0,
       member_breakdown: [],
+      qualifies_under_ami: null,
       delta: null,
       delta_pct: null,
       within_tolerance: null,
@@ -177,6 +185,9 @@ export async function computeHouseholdIncome(
   if (!sources || sources.length === 0) {
     // No income sources — can still look up AMI limit
     const amiLimit = await lookupAmiLimit(client, DEFAULT_MSA, effectiveYear, DEFAULT_AMI_PCT, householdSize);
+    const qualifiesUnderAmi = amiLimit != null ? 0 <= amiLimit : null;
+    const { delta: noSrcDelta, deltaPct: noSrcDeltaPct, withinTolerance: noSrcTolerance } =
+      computeEivDiscrepancy(0, claimedAnnual);
     return {
       application_id: applicationId,
       computed_at: computedAt,
@@ -185,11 +196,13 @@ export async function computeHouseholdIncome(
       effective_year: effectiveYear,
       ami_pct: DEFAULT_AMI_PCT,
       ami_limit: amiLimit,
+      claimed_annual: claimedAnnual,
       total_household_income: 0,
       member_breakdown: [],
-      delta: amiLimit != null ? -(amiLimit) : null,
-      delta_pct: amiLimit != null ? -100 : null,
-      within_tolerance: amiLimit != null ? true : null,
+      qualifies_under_ami: qualifiesUnderAmi,
+      delta: noSrcDelta,
+      delta_pct: noSrcDeltaPct,
+      within_tolerance: noSrcTolerance,
       no_income_sources: true,
     };
   }
@@ -261,20 +274,11 @@ export async function computeHouseholdIncome(
   // 6. Look up AMI limit
   const amiLimit = await lookupAmiLimit(client, DEFAULT_MSA, effectiveYear, DEFAULT_AMI_PCT, householdSize);
 
-  // 7. Compute delta
-  let delta: number | null = null;
-  let deltaPct: number | null = null;
-  let withinTolerance: boolean | null = null;
+  // 7. Qualification check (documented income vs AMI limit)
+  const qualifiesUnderAmi = amiLimit != null ? totalHouseholdIncome <= amiLimit : null;
 
-  if (amiLimit != null) {
-    delta = Math.round((totalHouseholdIncome - amiLimit) * 100) / 100;
-    deltaPct = amiLimit > 0
-      ? Math.round((delta / amiLimit) * 10000) / 100
-      : null;
-    withinTolerance = deltaPct != null
-      ? deltaPct <= TOLERANCE_PCT
-      : totalHouseholdIncome <= amiLimit;
-  }
+  // 8. HUD EIV discrepancy check (documented income vs claimed income)
+  const { delta, deltaPct, withinTolerance } = computeEivDiscrepancy(totalHouseholdIncome, claimedAnnual);
 
   return {
     application_id: applicationId,
@@ -284,8 +288,10 @@ export async function computeHouseholdIncome(
     effective_year: effectiveYear,
     ami_pct: DEFAULT_AMI_PCT,
     ami_limit: amiLimit,
+    claimed_annual: claimedAnnual,
     total_household_income: totalHouseholdIncome,
     member_breakdown: memberBreakdown,
+    qualifies_under_ami: qualifiesUnderAmi,
     delta,
     delta_pct: deltaPct,
     within_tolerance: withinTolerance,
@@ -296,6 +302,32 @@ export async function computeHouseholdIncome(
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+function computeEivDiscrepancy(
+  documentedAnnual: number,
+  claimedAnnual: number | null
+): { delta: number | null; deltaPct: number | null; withinTolerance: boolean | null } {
+  if (claimedAnnual == null) {
+    return { delta: null, deltaPct: null, withinTolerance: null };
+  }
+
+  const delta = Math.round((documentedAnnual - claimedAnnual) * 100) / 100;
+
+  if (claimedAnnual === 0) {
+    return {
+      delta,
+      deltaPct: null,
+      withinTolerance: Math.abs(delta) < ABSOLUTE_THRESHOLD,
+    };
+  }
+
+  const deltaPct = Math.round((delta / claimedAnnual) * 10000) / 10000;
+  const withinTolerance =
+    Math.abs(delta) < ABSOLUTE_THRESHOLD &&
+    Math.abs(deltaPct) < PERCENTAGE_THRESHOLD;
+
+  return { delta, deltaPct, withinTolerance };
+}
 
 async function lookupAmiLimit(
   client: typeof supabaseAdmin,
