@@ -16,7 +16,7 @@ export async function PATCH(
 
     const { data: existing } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, intake_submitted_at')
+      .select('id, intake_submitted_at, form_submission_id')
       .eq('id', id)
       .single();
 
@@ -25,9 +25,33 @@ export async function PATCH(
     }
     if (existing.intake_submitted_at) {
       return NextResponse.json(
-        { success: false, message: 'Cannot regenerate token after intake has been submitted' },
+        {
+          success: false,
+          message:
+            'Cannot regenerate the invite link after the tenant has submitted their intake form. Use the document portal link instead.',
+        },
         { status: 400 }
       );
+    }
+
+    // Also block if documents have already been uploaded — the old token is embedded
+    // in the document portal link that the tenant may already be using.
+    if (existing.form_submission_id) {
+      const { count } = await supabaseAdmin
+        .from('form_submission_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('form_submission_id', existing.form_submission_id)
+        .gt('revision', 0);
+      if ((count ?? 0) > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              'Cannot regenerate the invite link — the tenant has already uploaded documents. Use the document portal link instead.',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const newToken = generateToken();

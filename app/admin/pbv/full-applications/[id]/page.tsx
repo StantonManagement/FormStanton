@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
-interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number; }
+interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean; }
 interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_submitted_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;members:Member[];documents:Doc[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
@@ -116,6 +116,18 @@ export default function PbvFullApplicationDetailPage() {
   const totalClaimed = detail.members.reduce((s,m)=>s+(m.annual_income??0),0);
   const sigRequired = detail.members.filter(m=>m.signature_required).length;
   const signedCount = detail.members.filter(m=>m.signature_required&&m.signed_forms.length>0).length;
+
+  // Fix 9: precise HHA blocking reason
+  const hhaBlockReason = canGenerateHha ? null
+    : reviewStatus !== 'approved' && !allRequiredApproved
+      ? `Review status must be Approved and all required documents must be approved or waived (${requiredDocs.filter(d=>d.status!=='approved'&&d.status!=='waived').length} remaining).`
+      : reviewStatus !== 'approved'
+        ? 'Review status must be set to Approved before generating the HHA application.'
+        : `${requiredDocs.filter(d=>d.status!=='approved'&&d.status!=='waived').length} required document(s) still need to be approved or waived.`;
+
+  // Fix 4: orphaned sig-doc slots — sig required doc exists but person_slot has no adult signer
+  const adultSlots = new Set(detail.members.filter(m=>m.signature_required).map(m=>m.slot));
+  const orphanedSigDocs = detail.documents.filter(d=>d.requires_signature && d.person_slot>0 && !adultSlots.has(d.person_slot));
   const docCounts:Record<string,number>={approved:0,submitted:0,rejected:0,missing:0,waived:0};
   for(const d of detail.documents) docCounts[d.status]=(docCounts[d.status]??0)+1;
 
@@ -152,6 +164,21 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         ))}
       </div>
+
+      {orphanedSigDocs.length > 0 && (
+        <div className="border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-900">
+          <p className="font-semibold mb-1">Signature documents with no assigned signer</p>
+          <p className="text-xs text-amber-800 mb-2">
+            The following signature-required documents are assigned to person slots that have no adult signer on record.
+            They cannot be fulfilled by the tenant. Waive them or investigate the household member data.
+          </p>
+          <ul className="list-disc list-inside text-xs space-y-0.5">
+            {orphanedSigDocs.map(d=>(
+              <li key={d.id}>{d.label} (slot {d.person_slot})</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
@@ -289,7 +316,7 @@ export default function PbvFullApplicationDetailPage() {
                 className="px-5 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
                 {generatingHha?'Generating...':'Generate HHA Application'}
               </button>
-              {!canGenerateHha&&<p className="text-xs text-[var(--muted)]">{!allRequiredApproved?'All required docs must be approved or waived.':'Review status must be Approved.'}</p>}
+              {hhaBlockReason&&<p className="text-xs text-amber-700">{hhaBlockReason}</p>}
               {detail.hha_application_file&&<p className="text-xs text-green-700">HHA previously generated.</p>}
               {hhaMsg&&<p className="text-xs text-[var(--muted)]">{hhaMsg}</p>}
             </div>

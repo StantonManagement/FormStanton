@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { recomputeSubmission } from '@/lib/recomputeSubmission';
 
 type ReviewAction = 'approve' | 'reject' | 'waive';
 
@@ -125,32 +126,3 @@ export async function POST(
   }
 }
 
-async function recomputeSubmission(submissionId: string): Promise<void> {
-  const { data: docs } = await supabaseAdmin
-    .from('form_submission_documents')
-    .select('status, required')
-    .eq('form_submission_id', submissionId);
-
-  if (!docs) return;
-
-  const summary = { total: docs.length, missing: 0, submitted: 0, approved: 0, rejected: 0, waived: 0 };
-  for (const d of docs) {
-    summary[d.status as keyof typeof summary] = (summary[d.status as keyof typeof summary] ?? 0) + 1;
-  }
-
-  const required = docs.filter(d => d.required);
-  let status = 'pending_review';
-  if (required.every(d => d.status === 'approved' || d.status === 'waived')) {
-    status = 'approved';
-  } else if (required.some(d => d.status === 'rejected')) {
-    status = 'revision_requested';
-  } else if (required.some(d => d.status === 'submitted')) {
-    status = 'under_review';
-  }
-
-  await supabaseAdmin
-    .from('form_submissions')
-    .update({ document_review_summary: summary, status })
-    .eq('id', submissionId)
-    .eq('review_granularity', 'per_document');
-}

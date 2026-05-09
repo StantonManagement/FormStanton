@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildStantonFilename, extractLastName } from '@/lib/stantonFilename';
+import { recomputeSubmission } from '@/lib/recomputeSubmission';
 
 export async function GET(
   _request: NextRequest,
@@ -194,9 +195,18 @@ export async function POST(
     }
 
     if (signedDocTypes.length > 0) {
-      const deduped = Array.from(new Set(signedDocTypes));
+      // Fetch existing signed_forms to accumulate across sessions rather than overwrite.
+      const { data: freshMember } = await supabaseAdmin
+        .from('pbv_household_members')
+        .select('signed_forms')
+        .eq('id', member_id)
+        .single();
+
+      const existing: string[] = Array.isArray(freshMember?.signed_forms) ? (freshMember.signed_forms as string[]) : [];
+      const merged = Array.from(new Set([...existing, ...signedDocTypes]));
+
       const memberUpdate: Record<string, unknown> = {
-        signed_forms: deduped,
+        signed_forms: merged,
         signature_date: today,
       };
       if (firstSignaturePath) memberUpdate.signature_image = firstSignaturePath;
@@ -213,33 +223,3 @@ export async function POST(
   }
 }
 
-async function recomputeSubmission(submissionId: string): Promise<void> {
-  const { data: docs } = await supabaseAdmin
-    .from('form_submission_documents')
-    .select('status, required')
-    .eq('form_submission_id', submissionId);
-
-  if (!docs) return;
-
-  const summary = { total: docs.length, missing: 0, submitted: 0, approved: 0, rejected: 0, waived: 0 };
-  for (const d of docs) {
-    const key = d.status as keyof typeof summary;
-    if (key in summary) summary[key] = (summary[key] ?? 0) + 1;
-  }
-
-  const required = docs.filter((d) => d.required);
-  let status = 'pending_review';
-  if (required.every((d) => d.status === 'approved' || d.status === 'waived')) {
-    status = 'approved';
-  } else if (required.some((d) => d.status === 'rejected')) {
-    status = 'revision_requested';
-  } else if (required.some((d) => d.status === 'submitted')) {
-    status = 'under_review';
-  }
-
-  await supabaseAdmin
-    .from('form_submissions')
-    .update({ document_review_summary: summary, status })
-    .eq('id', submissionId)
-    .eq('review_granularity', 'per_document');
-}

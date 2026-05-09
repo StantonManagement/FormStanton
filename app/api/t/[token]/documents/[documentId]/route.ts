@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildStantonFilename, getExtension, extractLastName } from '@/lib/stantonFilename';
+import { recomputeSubmission } from '@/lib/recomputeSubmission';
 
 export async function POST(
   request: NextRequest,
@@ -35,7 +36,18 @@ export async function POST(
 
     if (doc.status === 'approved' || doc.status === 'waived') {
       return NextResponse.json(
-        { success: false, message: `Document is ${doc.status} and cannot be replaced` },
+        { success: false, message: `Document is ${doc.status} and cannot be replaced.` },
+        { status: 409 }
+      );
+    }
+
+    if (doc.status === 'submitted') {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'This document is awaiting review and cannot be replaced. If there is an error, contact your housing manager.',
+        },
         { status: 409 }
       );
     }
@@ -56,6 +68,27 @@ export async function POST(
 
     if (!file) {
       return NextResponse.json({ success: false, message: 'Missing file field in form data' }, { status: 400 });
+    }
+
+    const ALLOWED_MIME_TYPES = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/pdf',
+    ]);
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid file type. Accepted formats: JPEG, PNG, WebP, PDF.' },
+        { status: 400 }
+      );
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { success: false, message: 'File is too large. Maximum allowed size is 20 MB.' },
+        { status: 400 }
+      );
     }
 
     const newRevision = doc.revision + 1;
@@ -135,32 +168,3 @@ export async function POST(
   }
 }
 
-async function recomputeSubmission(submissionId: string): Promise<void> {
-  const { data: docs } = await supabaseAdmin
-    .from('form_submission_documents')
-    .select('status, required')
-    .eq('form_submission_id', submissionId);
-
-  if (!docs) return;
-
-  const summary = { total: docs.length, missing: 0, submitted: 0, approved: 0, rejected: 0, waived: 0 };
-  for (const d of docs) {
-    summary[d.status as keyof typeof summary] = (summary[d.status as keyof typeof summary] ?? 0) + 1;
-  }
-
-  const required = docs.filter(d => d.required);
-  let status = 'pending_review';
-  if (required.every(d => d.status === 'approved' || d.status === 'waived')) {
-    status = 'approved';
-  } else if (required.some(d => d.status === 'rejected')) {
-    status = 'revision_requested';
-  } else if (required.some(d => d.status === 'submitted')) {
-    status = 'under_review';
-  }
-
-  await supabaseAdmin
-    .from('form_submissions')
-    .update({ document_review_summary: summary, status })
-    .eq('id', submissionId)
-    .eq('review_granularity', 'per_document');
-}

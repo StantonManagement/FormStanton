@@ -47,7 +47,7 @@ export async function GET(
 
     const { data: documents } = await supabaseAdmin
       .from('form_submission_documents')
-      .select('id, doc_type, label, person_slot, status, required, display_order')
+      .select('id, doc_type, label, person_slot, status, required, display_order, requires_signature')
       .eq('form_submission_id', app.form_submission_id)
       .order('display_order', { ascending: true });
 
