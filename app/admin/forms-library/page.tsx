@@ -29,7 +29,7 @@ export default function FormsLibraryPage() {
   const [editingForm, setEditingForm] = useState<TenantForm | null>(null);
   const [isSavingForm, setIsSavingForm] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [viewMode, setViewMode] = useState<'workflow' | 'department'>('workflow');
+  const [viewMode, setViewMode] = useState<'workflow' | 'department'>('department');
 
   useEffect(() => {
     checkAuth();

@@ -88,6 +88,14 @@ export async function GET(request: NextRequest) {
       tow_flagged: s.tow_flagged,
       towed_at: s.towed_at,
       vehicle_plate: s.vehicle_plate,
+      // Dismissal fields for move-out auto-flag
+      moveout_flag_dismissed_at: s.moveout_flag_dismissed_at,
+      moveout_flag_dismissed_by: s.moveout_flag_dismissed_by,
+      moveout_flag_dismissed_reason: s.moveout_flag_dismissed_reason,
+      moveout_flag_dismissal_type: s.moveout_flag_dismissal_type,
+      // Warning state fields
+      parking_warned_at: s.parking_warned_at,
+      parking_warned_by: s.parking_warned_by,
       vehicle_make: s.vehicle_make,
       vehicle_model: s.vehicle_model,
       vehicle_year: s.vehicle_year,
@@ -130,10 +138,16 @@ export async function GET(request: NextRequest) {
       s.tenant_picked_up && !s.permit_fee_added_to_appfolio && !s.permit_revoked
     );
 
-    // 5) Auto-flagged move-outs (permit still active, current tenant no longer matches)
+    // 5) Auto-flagged move-outs (permit still active, current tenant no longer matches, not dismissed)
     const moveOutsRaw: Array<{ sub: any; current_tenant_name: string | null }> = [];
     for (const s of subs) {
+      // Skip if permit not issued or already revoked
       if (!s.permit_issued || s.permit_revoked) continue;
+      // Skip if dismissed (decision_to_decline never re-appears; false_positive may re-appear on data change)
+      if (s.moveout_flag_dismissal_type === 'decision_to_decline') continue;
+      // Skip if dismissed as false_positive and not enough time has passed (simple: skip all dismissed)
+      if (s.moveout_flag_dismissed_at) continue;
+      
       const nb = normalizeAddress(s.building_address || '');
       const key = `${nb}|${s.unit_number}`;
       const currentName = currentTenantMap.get(key) ?? null;
@@ -153,6 +167,14 @@ export async function GET(request: NextRequest) {
 
     // 6) Tow list (revoked with plate, not yet towed)
     const towList = subs.filter(s => s.tow_flagged && !s.towed_at);
+
+    // 6b) Warned tenants (parking_warned_at set, not yet on tow list, not towed)
+    const warnedTenants = subs.filter(s => 
+      s.parking_warned_at && 
+      !s.tow_flagged && 
+      !s.towed_at && 
+      !s.permit_revoked
+    );
 
     // 7) Pet addendums awaiting AppFolio upload (file exists, verified, not yet uploaded)
     const petAddendums = subs.filter(s =>
@@ -189,6 +211,7 @@ export async function GET(request: NextRequest) {
       permit_fees_awaiting_appfolio: { count: permitFees.length, rows: permitFees.map(toRow) },
       auto_flagged_moveouts: { count: moveOutsRaw.length, rows: moveOutsRaw.map(m => ({ ...toRow(m.sub), current_tenant_name: m.current_tenant_name })) },
       tow_list: { count: towList.length, rows: towList.map(toRow) },
+      warned_tenants: { count: warnedTenants.length, rows: warnedTenants.map(toRow) },
       pet_addendums_awaiting_upload: { count: petAddendums.length, rows: petAddendums.map(toRow) },
       vehicle_addendums_awaiting_upload: { count: vehicleAddendums.length, rows: vehicleAddendums.map(toRow) },
       insurance_docs_awaiting_upload: { count: insuranceDocs.length, rows: insuranceDocs.map(toRow) },
