@@ -44,6 +44,12 @@ interface PendingInvitation {
   created_at: string;
 }
 
+interface GitInfo {
+  branch: string;
+  lastCommitDate: string;
+  lastCommitHash: string;
+}
+
 interface ToastData { message: string; type: 'success' | 'error' }
 
 function Toast({ toast }: { toast: ToastData | null }) {
@@ -377,6 +383,7 @@ export default function HachUsersPage() {
   const [inviteUrl, setInviteUrl] = useState<{ url: string; email: string } | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<HachUser | null>(null);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
 
   const showToast = useCallback((message: string, type: ToastData['type'] = 'success') => {
     setToast({ message, type });
@@ -403,6 +410,21 @@ export default function HachUsersPage() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    fetch('/api/git-info')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setGitInfo({
+            branch: data.branch,
+            lastCommitDate: data.lastCommitDate,
+            lastCommitHash: data.lastCommitHash
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleDeactivate(user: HachUser) {
     setDeactivateLoading(true);
@@ -459,6 +481,15 @@ export default function HachUsersPage() {
           <Link href="/hach" style={{ fontSize: 12, color: COLORS.textMuted, textDecoration: 'none' }}>← Back to queue</Link>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, margin: '6px 0 4px' }}>User Management</h1>
           <p style={{ fontSize: 13, color: COLORS.textMuted, margin: 0 }}>Manage HACH reviewer and admin accounts</p>
+          {gitInfo && (
+            <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textSubtle, fontFamily: FONT_MONO }}>
+              <span style={{ display: 'inline-block', padding: '2px 6px', background: COLORS.accentLight, color: COLORS.accent, marginRight: 8 }}>
+                {gitInfo.branch}
+              </span>
+              <span>Last commit: {new Date(gitInfo.lastCommitDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <span style={{ marginLeft: 4, color: COLORS.textSubtle }}>({gitInfo.lastCommitHash})</span>
+            </div>
+          )}
         </div>
         <button
           onClick={() => setShowInviteModal(true)}
