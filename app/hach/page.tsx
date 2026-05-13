@@ -69,15 +69,26 @@ function docBadge(label: string, count: number, color: string) {
 
 interface QueueApp {
   id: string;
+  created_at: string;
   head_of_household_name: string;
   building_address: string;
   unit_number: string;
   household_size: number;
-  created_at: string;
-  hach_review_status: string;
-  doc_summary: { total: number; approved: number; rejected: number; missing: number; submitted: number };
-  last_viewed_at: string | null;
+  submitted_at: string;
+  hach_review_status: string | null;
   documents_uploaded_since_last_view: number;
+  last_viewed_at: string | null;
+  doc_summary: {
+    approved: number;
+    rejected: number;
+    missing: number;
+    submitted: number;
+    total: number;
+  };
+  workspace_unread_counts?: {
+    hach: number;
+    shared: number;
+  };
 }
 
 interface QueueData {
@@ -126,6 +137,19 @@ function AppRow({ app }: { app: QueueApp }) {
                 letterSpacing: '0.04em',
               }}>
                 {app.documents_uploaded_since_last_view} new
+              </span>
+            )}
+            {app.workspace_unread_counts && (app.workspace_unread_counts.hach > 0 || app.workspace_unread_counts.shared > 0) && (
+              <span style={{
+                display: 'inline-block',
+                padding: '1px 7px',
+                background: '#dc2626',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+              }}>
+                {app.workspace_unread_counts.hach + app.workspace_unread_counts.shared} unread
               </span>
             )}
           </div>

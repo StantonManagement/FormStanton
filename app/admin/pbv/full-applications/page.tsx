@@ -17,6 +17,10 @@ interface FullAppRow {
   tenant_access_token: string;
   form_submission_id: string | null;
   preapp_id: string | null;
+  workspace_unread_counts?: {
+    stanton: number;
+    shared: number;
+  };
 }
 
 interface InviteForm {
@@ -234,9 +238,16 @@ export default function PbvFullApplicationsPage() {
                     }}
                   >
                     <td className="px-4 py-3 font-medium text-[var(--ink)]">
-                      <Link href={`/admin/pbv/full-applications/${row.id}`} className="hover:underline">
-                        {row.head_of_household_name}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/pbv/full-applications/${row.id}`} className="hover:underline">
+                          {row.head_of_household_name}
+                        </Link>
+                        {row.workspace_unread_counts && (row.workspace_unread_counts.stanton > 0 || row.workspace_unread_counts.shared > 0) && (
+                          <span className="px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
+                            {row.workspace_unread_counts.stanton + row.workspace_unread_counts.shared}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-[var(--muted)]">{row.building_address}</td>
                     <td className="px-4 py-3 text-[var(--muted)]">{row.unit_number}</td>

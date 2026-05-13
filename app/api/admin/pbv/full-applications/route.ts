@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { generateToken } from '@/lib/generateToken';
 
 function getBaseUrl(request: NextRequest): string {
@@ -42,7 +42,82 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data: data ?? [] });
+    const rows = data ?? [];
+
+    // Enrich with workspace unread counts for the current user
+    const sessionUser = await getSessionUser();
+    if (sessionUser && rows.length > 0) {
+      const appIds = rows.map((r: any) => r.id);
+
+      // Fetch workspaces for these applications
+      const { data: workspaces } = await supabaseAdmin
+        .from('review_workspaces')
+        .select('id, anchor_id')
+        .eq('workspace_type', 'pbv')
+        .in('anchor_id', appIds);
+
+      if (workspaces && workspaces.length > 0) {
+        const workspaceIds = workspaces.map((w: any) => w.id);
+        const workspaceByAnchor = new Map(workspaces.map((w: any) => [w.anchor_id, w.id]));
+
+        // Fetch read receipts for this user across all these workspaces
+        const { data: receipts } = await supabaseAdmin
+          .from('workspace_read_receipts')
+          .select('workspace_id, channel, last_read_at')
+          .eq('user_id', sessionUser.userId)
+          .in('workspace_id', workspaceIds)
+          .in('channel', ['stanton', 'shared']);
+
+        const receiptMap = new Map(
+          (receipts ?? []).map((r: any) => [`${r.workspace_id}:${r.channel}`, r.last_read_at])
+        );
+
+        // Batch count unread stanton messages
+        const { data: stantonMsgs } = await supabaseAdmin
+          .from('stanton_workspace_messages')
+          .select('workspace_id, author_user_id, created_at')
+          .in('workspace_id', workspaceIds);
+
+        // Batch count unread shared messages
+        const { data: sharedMsgs } = await supabaseAdmin
+          .from('shared_workspace_messages')
+          .select('workspace_id, author_user_id, created_at')
+          .in('workspace_id', workspaceIds);
+
+        // Compute unread per workspace
+        const unreadByWorkspace = new Map<string, { stanton: number; shared: number }>();
+        for (const wsId of workspaceIds) {
+          const lastReadStanton = receiptMap.get(`${wsId}:stanton`);
+          const lastReadShared = receiptMap.get(`${wsId}:shared`);
+
+          const stantonUnread = (stantonMsgs ?? []).filter((m: any) => {
+            if (m.workspace_id !== wsId) return false;
+            if (m.author_user_id === sessionUser.userId) return false;
+            if (lastReadStanton && m.created_at <= lastReadStanton) return false;
+            return true;
+          }).length;
+
+          const sharedUnread = (sharedMsgs ?? []).filter((m: any) => {
+            if (m.workspace_id !== wsId) return false;
+            if (m.author_user_id === sessionUser.userId) return false;
+            if (lastReadShared && m.created_at <= lastReadShared) return false;
+            return true;
+          }).length;
+
+          unreadByWorkspace.set(wsId, { stanton: stantonUnread, shared: sharedUnread });
+        }
+
+        const enriched = rows.map((r: any) => {
+          const wsId = workspaceByAnchor.get(r.id);
+          if (!wsId) return r;
+          return { ...r, workspace_unread_counts: unreadByWorkspace.get(wsId) ?? { stanton: 0, shared: 0 } };
+        });
+
+        return NextResponse.json({ success: true, data: enriched });
+      }
+    }
+
+    return NextResponse.json({ success: true, data: rows });
   } catch (error: any) {
     console.error('GET /api/admin/pbv/full-applications error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

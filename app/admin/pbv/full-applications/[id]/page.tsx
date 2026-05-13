@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import StantonReviewSurface from '@/components/review/StantonReviewSurface';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean; }
@@ -29,6 +30,51 @@ export default function PbvFullApplicationDetailPage() {
   const [hhaMsg, setHhaMsg] = useState('');
   const [exportingHach, setExportingHach] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Document action handler for unified review surface
+  const handleDocumentAction = useCallback(async (action: string, docId: string, data?: any) => {
+    if (!detail) return;
+    
+    try {
+      let url = '';
+      let body: any = {};
+      
+      switch (action) {
+        case 'approve':
+          url = `/api/admin/submissions/${detail.form_submission_id}/documents/${docId}/approve`;
+          break;
+        case 'reject':
+          url = `/api/admin/submissions/${detail.form_submission_id}/documents/${docId}/reject`;
+          body = {
+            reason_code: data?.reasonCode,
+            reason_text: data?.reasonText,
+            internal_notes: data?.internalNotes,
+          };
+          break;
+        case 'waive':
+          url = `/api/admin/submissions/${detail.form_submission_id}/documents/${docId}/waive`;
+          break;
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
+      
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || `${action} failed`);
+      }
+      
+      // Refresh data to get updated document status
+      await fetchDetail();
+    } catch (error: any) {
+      throw new Error(error.message || `${action} failed`);
+    }
+  }, [detail, fetchDetail]);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true); setFetchError('');
@@ -242,33 +288,13 @@ export default function PbvFullApplicationDetailPage() {
         )}
       </section>
 
-      <section className="bg-white border border-[var(--border)]">
-        <div className="px-5 py-3 border-b border-[var(--divider)] flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Documents</h2>
-          <div className="flex gap-2 text-xs">
-            {Object.entries(docCounts).filter(([,c])=>c>0).map(([s,c])=>(
-              <span key={s} className={'px-2 py-0.5 font-semibold '+(DOC_COLORS[s]??'bg-gray-100 text-gray-600')}>{c} {s}</span>
-            ))}
-          </div>
-        </div>
-        {allRequiredApproved&&<div className="px-5 py-2 bg-green-50 border-b border-green-100 text-xs text-green-800 font-medium">All required documents approved or waived.</div>}
-        <div className="divide-y divide-[var(--divider)]">
-          {detail.documents.map(d=>(
-            <div key={d.id} className="px-5 py-2.5 flex items-center gap-3 text-sm">
-              <span className={'w-2 h-2 rounded-full flex-shrink-0 '+(d.status==='approved'?'bg-green-500':d.status==='submitted'?'bg-yellow-500':d.status==='rejected'?'bg-red-500':d.status==='waived'?'bg-indigo-400':'bg-gray-300')} />
-              <span className="flex-1 text-[var(--ink)]">{d.label}</span>
-              {d.person_slot>0&&<span className="text-xs text-[var(--muted)]">P{d.person_slot}</span>}
-              {!d.required&&<span className="text-xs text-[var(--muted)]">(opt)</span>}
-              <span className={'text-xs px-2 py-0.5 font-semibold '+(DOC_COLORS[d.status]??'bg-gray-100 text-gray-600')}>{d.status}</span>
-            </div>
-          ))}
-        </div>
-        {detail.form_submission_id&&(
-          <div className="px-5 py-3 border-t border-[var(--divider)]">
-            <Link href={'/admin/form-submissions/'+detail.form_submission_id} className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline">Open in Per-Document Review</Link>
-          </div>
-        )}
-      </section>
+      {/* Unified Review Surface - Documents */}
+      <StantonReviewSurface
+        application={detail}
+        documents={detail.documents}
+        workspaceId={detail.id} // Use application ID as workspace ID
+        onDocumentAction={handleDocumentAction}
+      />
 
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">

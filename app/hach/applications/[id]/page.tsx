@@ -1,10 +1,9 @@
 ﻿'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import DocumentViewer from '@/components/hach/DocumentViewer';
-import RejectDialog from '@/components/hach/RejectDialog';
+import HachReviewSurface from '@/components/review/HachReviewSurface';
 
 const COLORS = {
   accent: '#0f4c5c',
@@ -622,146 +621,56 @@ export default function HachPacketPage() {
   const pct = progress.total > 0 ? Math.round((progress.approved / progress.total) * 100) : 0;
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px 80px', fontFamily: FONT }}>
-      <Link href="/hach" style={{ fontSize: 12, color: COLORS.textMuted, textDecoration: 'none', display: 'inline-block', marginBottom: 20 }}>
+    <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px 80px' }}>
+      <Link href="/hach" style={{ fontSize: 12, color: '#78716c', textDecoration: 'none', display: 'inline-block', marginBottom: 20 }}>
         Back to queue
       </Link>
 
-      <div style={{ background: COLORS.panel, border: `1px solid ${COLORS.border}`, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: COLORS.text, margin: 0 }}>{app.head_of_household_name}</h1>
-          <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 4 }}>
-            {app.building_address}, Unit {app.unit_number} - {app.household_size}-person household - Submitted {submittedDate}
-          </div>
-        </div>
-        <div style={{ flexShrink: 0, paddingTop: 4 }}><HachStatusBadge status={app.hach_review_status} /></div>
-      </div>
-
-      {newSinceLastView > 0 && lastViewedAt && (
-        <div style={{
-          background: COLORS.infoBg,
-          border: '1px solid #bfdbfe',
-          padding: '8px 16px',
-          marginBottom: 16,
-          fontSize: 12,
-          color: COLORS.info,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <span style={{ fontWeight: 700 }}>{newSinceLastView} new upload{newSinceLastView !== 1 ? 's' : ''}</span>
-          <span>since your last visit &middot; {formatRelativeTime(lastViewedAt)}</span>
-        </div>
-      )}
-
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>
-          <span style={{ fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Document Completion</span>
-          <span>{progress.approved} / {progress.total} approved</span>
-        </div>
-        <div style={{ height: 6, background: COLORS.border, position: 'relative' as const }}>
-          <div style={{ position: 'absolute' as const, left: 0, top: 0, bottom: 0, width: `${pct}%`, background: pct === 100 ? COLORS.success : COLORS.accent, transition: 'width 300ms ease-out' }} />
-        </div>
-        <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 11, color: COLORS.textMuted }}>
-          <span><strong style={{ color: COLORS.approve }}>{progress.approved}</strong> approved</span>
-          <span><strong style={{ color: COLORS.pending }}>{progress.pending}</strong> awaiting</span>
-          <span><strong style={{ color: COLORS.reject }}>{progress.rejected}</strong> rejected</span>
-          <span><strong style={{ color: COLORS.missing }}>{progress.missing}</strong> missing</span>
-          <span><strong style={{ color: COLORS.waived }}>{progress.waived}</strong> waived</span>
-        </div>
-      </div>
-
-      <IncomePanel applicationId={id} />
-
-      <Panel title="Household Composition">
-        {members.length === 0 ? (
-          <span style={{ fontSize: 13, color: COLORS.textMuted }}>No household members on file</span>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr>
-                {['#', 'Name', 'Relationship', 'Date of Birth', 'Income Sources', 'Annual Income'].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', padding: '6px 8px', fontSize: 11, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase' as const, borderBottom: `1px solid ${COLORS.borderStrong}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m: any) => (
-                <tr key={m.id} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
-                  <td style={{ padding: '8px', color: COLORS.textMuted }}>{m.slot}</td>
-                  <td style={{ padding: '8px', fontWeight: 500, color: COLORS.text }}>{m.name}</td>
-                  <td style={{ padding: '8px', color: COLORS.text, textTransform: 'capitalize' as const }}>{m.relationship}</td>
-                  <td style={{ padding: '8px', color: COLORS.text, fontFamily: FONT_MONO, fontSize: 12 }}>
-                    {m.date_of_birth ? new Date(m.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                    {m.age != null ? ` (${m.age})` : ''}
-                  </td>
-                  <td style={{ padding: '8px', color: COLORS.text }}>{(m.income_sources ?? []).length > 0 ? (m.income_sources as string[]).join(', ') : '-'}</td>
-                  <td style={{ padding: '8px', fontFamily: FONT_MONO, fontSize: 12, color: COLORS.text }}>
-                    {m.annual_income != null && m.annual_income > 0 ? `$${Number(m.annual_income).toLocaleString()}` : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Panel>
-
-      {Object.entries(grouped).map(([category, catDocs]) => (
-        <div key={category} style={{ background: COLORS.panel, border: `1px solid ${COLORS.border}`, marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 16px', backgroundColor: '#fafaf9', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: COLORS.textMuted }}>{category}</div>
-            <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: FONT_MONO }}>
-              {catDocs.filter((d) => getEffectiveStatus(d) === 'approved').length}/{catDocs.filter((d) => getEffectiveStatus(d) !== 'waived').length} approved
-            </div>
-          </div>
-          {catDocs.map((doc) => {
-            const gIdx = documents.findIndex((d) => d.id === doc.id);
-            return (
-              <DocumentRow
-                key={doc.id}
-                doc={doc}
-                isFocused={focusedDocIdx === gIdx}
-                isFlashing={flashDocIdx === gIdx}
-                isApproving={approvingId === doc.id}
-                onApprove={handleApprove}
-                onReject={setRejectingDoc}
-                onView={setViewingDoc}
-                onClick={() => setFocusedDocIdx(gIdx)}
-                rowRef={(el) => { docRowRefs.current[gIdx] = el; }}
-              />
-            );
-          })}
-        </div>
-      ))}
-
-      <ToastBar toast={toast} />
-
-      <ShortcutsBar toast={toast} onShowHelp={() => setShowShortcuts(true)} />
-
-      {viewingDoc && (
-        <DocumentViewer
-          document={viewingDoc}
-          onClose={() => setViewingDoc(null)}
-        />
-      )}
-
-      {showShortcuts && (
-        <ShortcutsHelpModal onClose={() => setShowShortcuts(false)} />
-      )}
-
-      {rejectingDoc && packet && (
-        <RejectDialog
-          document={rejectingDoc}
-          application={{
-            head_of_household_name: packet.application.head_of_household_name,
-            building_address: packet.application.building_address,
-            unit_number: packet.application.unit_number,
-            preferred_language: packet.application.preferred_language,
-          }}
-          onClose={() => setRejectingDoc(null)}
-          onSubmit={handleRejectSubmit}
-        />
-      )}
+      <HachReviewSurface
+        packet={packet}
+        workspaceId={packet.application.id} // Use application ID as workspace ID
+        onDocumentAction={async (action: string, docId: string, data?: any) => {
+          try {
+            let url = '';
+            let body: any = {};
+            
+            switch (action) {
+              case 'approve':
+                url = `/api/hach/documents/${docId}/approve`;
+                break;
+              case 'reject':
+                url = `/api/hach/documents/${docId}/reject`;
+                body = {
+                  reason_code: data?.reasonCode,
+                  reason_text: data?.reasonText,
+                };
+                break;
+              default:
+                throw new Error(`Unknown action: ${action}`);
+            }
+            
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
+            
+            const json = await res.json();
+            if (!res.ok || !json.success) {
+              throw new Error(json.message || `${action} failed`);
+            }
+            
+            // Refresh data to get updated document status
+            const packetRes = await fetch(`/api/hach/applications/${id}`);
+            const packetData = await packetRes.json();
+            if (packetData.success) {
+              setPacket(packetData.data);
+            }
+          } catch (error: any) {
+            throw new Error(error.message || `${action} failed`);
+          }
+        }}
+      />
     </div>
   );
 }
