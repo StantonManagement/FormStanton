@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { SessionData, sessionOptions, userHasPermission, SessionUser } from '@/lib/auth';
-import { ROUTE_PERMISSION_MAP } from '@/lib/permissions';
+import { ROUTE_PERMISSION_MAP, RESOURCES } from '@/lib/permissions';
 
 function resolveRoutePermission(pathname: string, httpMethod: string) {
   for (const { prefix, permission } of ROUTE_PERMISSION_MAP) {
@@ -23,6 +23,7 @@ export async function middleware(request: NextRequest) {
 
   const isHachUser =
     session.user_type === 'hach_admin' || session.user_type === 'hach_reviewer';
+  let skipPermissionEnforcement = false;
 
   if (pathname.startsWith('/api/admin/pbv/full-applications')) {
     console.warn('[middleware] admin PBV full-applications hit:', pathname, httpMethod);
@@ -81,10 +82,50 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  const lobbyDocumentPrefixes = [
+    '/api/admin/compliance/attach-document',
+    '/api/admin/compliance/delete-document',
+  ];
+  const isLobbyDocumentRoute = lobbyDocumentPrefixes.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
+
+  if (isLobbyDocumentRoute) {
+    if (!session.isAdmin) {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!session.impersonating && session.userId && session.permissions && session.permissions.length > 0) {
+      const user: SessionUser = {
+        userId: session.userId,
+        username: session.username ?? '',
+        displayName: session.displayName ?? '',
+        departmentId: session.departmentId ?? null,
+        departmentCode: session.departmentCode ?? null,
+        permissions: session.permissions ?? [],
+        isSuperAdmin: session.isSuperAdmin === true,
+        user_type: session.user_type ?? 'stanton_staff',
+      };
+
+      const hasLobbyAccess =
+        userHasPermission(user, RESOURCES.LOBBY, 'write') ||
+        userHasPermission(user, RESOURCES.COMPLIANCE, 'write');
+
+      if (!hasLobbyAccess) {
+        return NextResponse.json(
+          { success: false, message: 'You do not have permission to access this resource' },
+          { status: 403 }
+        );
+      }
+    }
+
+    skipPermissionEnforcement = true;
+  }
+
   // ----------------------------------------------------------------
   // Admin API routes — full permission check
   // ----------------------------------------------------------------
-  if (pathname.startsWith('/api/admin/') && pathname !== '/api/admin/auth') {
+  if (!skipPermissionEnforcement && pathname.startsWith('/api/admin/') && pathname !== '/api/admin/auth') {
     if (!session.isAdmin) {
       return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
     }
