@@ -385,7 +385,7 @@ function LockKeyReplacementFormContent() {
                   <table className="w-full text-sm table-fixed">
                     <thead>
                       <tr className="border-b border-[var(--divider)]">
-                        <th className="text-left py-2 w-[40%] min-w-[120px]">Item</th>
+                        <th className="text-left py-2 pl-3 pr-2 w-[40%] min-w-[120px]">Item</th>
                         <th className="text-center py-2 w-[20%] min-w-[80px]">Quantity</th>
                         <th className="text-center py-2 w-[20%] min-w-[100px]">Est. Cost Each</th>
                         <th className="text-center py-2 w-[20%] min-w-[80px]">Total</th>
@@ -394,7 +394,7 @@ function LockKeyReplacementFormContent() {
                     <tbody>
                       {formData.items.map((item, index) => (
                         <tr key={item.item} className="border-b border-[var(--divider)]/50">
-                          <td className="py-3 pr-2">{item.item}</td>
+                          <td className="py-3 pl-3 pr-2">{item.item}</td>
                           <td className="py-3 px-1">
                             <input
                               type="number"
