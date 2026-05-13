@@ -381,37 +381,37 @@ function LockKeyReplacementFormContent() {
               transition={{ duration: 0.3 }}
             >
               <FormSection title="Items Needing Replacement">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8">
+                  <table className="w-full text-sm table-fixed min-w-[500px]">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2">Item</th>
-                        <th className="text-center py-2 w-24">Quantity</th>
-                        <th className="text-center py-2 w-32">Est. Cost Each</th>
-                        <th className="text-center py-2 w-32">Total</th>
+                        <th className="text-left py-2 w-[40%]">Item</th>
+                        <th className="text-center py-2 w-[20%]">Quantity</th>
+                        <th className="text-center py-2 w-[20%]">Est. Cost Each</th>
+                        <th className="text-center py-2 w-[20%]">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {formData.items.map((item, index) => (
                         <tr key={item.item} className="border-b">
-                          <td className="py-3">{item.item}</td>
-                          <td className="py-3">
+                          <td className="py-3 pr-2">{item.item}</td>
+                          <td className="py-3 px-1">
                             <input
                               type="number"
                               min="0"
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded-none text-center"
+                              className="w-full max-w-[80px] px-2 py-1 border border-gray-300 rounded-none text-center mx-auto block"
                             />
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-1">
                             <input
                               type="number"
                               min="0"
                               step="0.01"
                               value={item.estimatedCost}
                               onChange={(e) => updateItem(index, 'estimatedCost', e.target.value)}
-                              className="w-full px-2 py-1 border border-gray-300 rounded-none text-center"
+                              className="w-full max-w-[90px] px-2 py-1 border border-gray-300 rounded-none text-center mx-auto block"
                               placeholder="0.00"
                             />
                           </td>

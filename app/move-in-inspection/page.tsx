@@ -230,49 +230,49 @@ function MoveInInspectionFormContent() {
         <div className="bg-[var(--primary)] px-4 py-2 mb-0">
           <h3 className="text-sm font-bold text-white tracking-wide">{title}</h3>
         </div>
-        <div className="overflow-x-auto border border-[var(--border)] border-t-0">
-          <table className="w-full border-collapse">
+        <div className="overflow-x-auto border border-[var(--border)] border-t-0 -mx-6 sm:-mx-8 px-6 sm:px-8">
+          <table className="w-full border-collapse table-fixed min-w-[500px]">
             <thead>
               <tr className="bg-[var(--bg-section)] border-b border-[var(--border)]">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-2/5">{t.itemColumn}</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-1/4">{t.condition}</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)]">{t.notes}</th>
-                <th className="px-2 py-2 w-8"></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%]">{t.itemColumn}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[25%]">{t.condition}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%]">{t.notes}</th>
+                <th className="px-2 py-2 w-[5%] min-w-[32px]"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((inspectionItem, idx) => (
                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-[var(--bg-section)]/40'}>
-                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50 min-w-0">
                     <input
                       type="text"
                       value={inspectionItem.item}
                       onChange={(e) => updateInspectionItem(room, idx, 'item', e.target.value)}
                       placeholder={t.itemPlaceholder}
-                      className="w-full px-0 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none"
+                      className="w-full px-1 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none min-w-0"
                     />
                   </td>
-                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50 min-w-0">
                     <select
                       value={inspectionItem.condition}
                       onChange={(e) => updateInspectionItem(room, idx, 'condition', e.target.value)}
-                      className={`w-full px-0 py-0.5 text-sm bg-transparent border-none outline-none cursor-pointer ${conditionColor(inspectionItem.condition)}`}
+                      className={`w-full px-1 py-0.5 text-sm bg-transparent border-none outline-none cursor-pointer ${conditionColor(inspectionItem.condition)} min-w-0`}
                     >
                       {CONDITION_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50">
+                  <td className="px-3 py-1.5 border-b border-[var(--border)]/50 min-w-0">
                     <input
                       type="text"
                       value={inspectionItem.notes}
                       onChange={(e) => updateInspectionItem(room, idx, 'notes', e.target.value)}
                       placeholder={t.notesPlaceholder}
-                      className="w-full px-0 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none"
+                      className="w-full px-1 py-0.5 text-sm bg-transparent text-[var(--ink)] placeholder:text-[var(--muted)]/50 border-none outline-none min-w-0"
                     />
                   </td>
-                  <td className="px-2 py-1.5 border-b border-[var(--border)]/50 text-center">
+                  <td className="px-2 py-1.5 border-b border-[var(--border)]/50 text-center min-w-0">
                     <button
                       type="button"
                       onClick={() => removeRow(room, idx)}
