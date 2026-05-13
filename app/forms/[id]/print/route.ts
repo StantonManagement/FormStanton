@@ -10,6 +10,11 @@ function escapeAttr(str: string): string {
 const PRINT_STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;500;600&display=swap');
 
+@page {
+  size: letter;
+  margin: 0.75in 0.75in 0.9in;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -27,6 +32,7 @@ body {
   border-bottom: 2px solid #1a2744;
   padding-bottom: 14px;
   margin-bottom: 28px;
+  page-break-after: avoid;
 }
 .pf-letterhead h1 {
   font-family: 'Libre Baskerville', Georgia, serif;
@@ -37,8 +43,13 @@ body {
 }
 .pf-letterhead p { font-size: 9.5pt; color: #5a5a5a; }
 
-/* No-print bar */
+/* No-print bar — fixed so it doesn't affect page layout */
 .pf-noprint {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   background: #1a2744;
   color: #fff;
   padding: 10px 20px;
@@ -47,7 +58,7 @@ body {
   justify-content: space-between;
   font-family: 'Inter', Arial, sans-serif;
   font-size: 10pt;
-  margin: -0.75in -0.75in 0.5in;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .pf-noprint button {
   background: #fff;
@@ -59,6 +70,8 @@ body {
   cursor: pointer;
   font-family: 'Inter', Arial, sans-serif;
 }
+/* Push body below the fixed bar on screen */
+body { padding-top: 3.5rem; }
 
 /* Headers */
 h2.pf-h2 {
@@ -142,10 +155,15 @@ table.pf-table {
   border-collapse: collapse;
   margin: 12pt 0;
   font-size: 10pt;
+}
+table.pf-table thead {
+  display: table-header-group;
+}
+table.pf-table tr {
   page-break-inside: avoid;
 }
 .pf-th {
-  border: 1pt solid #1a1a1a;
+  border: 1.5pt solid #1a1a1a;
   padding: 6pt 10pt;
   background: #f0f0f0;
   font-weight: 600;
@@ -153,9 +171,9 @@ table.pf-table {
   font-size: 9.5pt;
 }
 .pf-td {
-  border: 1pt solid #1a1a1a;
+  border: 1.5pt solid #1a1a1a;
   padding: 8pt 10pt;
-  min-height: 0.4in;
+  min-height: 0.3in;
   vertical-align: top;
 }
 
@@ -216,8 +234,10 @@ em.pf-em { font-style: italic; }
 @media print {
   body { padding: 0; }
   .pf-noprint { display: none !important; }
-  .pf-field-blank { min-height: 0.5in; }
-  .pf-sig-line { min-height: 1in; }
+  .pf-field-blank { min-height: 0.35in; }
+  .pf-sig-line { min-height: 0.6in; }
+  table.pf-table { border-collapse: collapse !important; }
+  .pf-th, .pf-td { border: 1.5pt solid #1a1a1a !important; }
 }
 `;
 
@@ -266,7 +286,7 @@ export async function GET(
   <style>${PRINT_STYLES}</style>
 </head>
 <body>
-  <div class="pf-noprint">
+  <div class="pf-noprint" id="noprint-bar">
     <span>Stanton Management &mdash; ${escapeAttr(title)}</span>
     <button onclick="window.print()">Print / Save PDF</button>
   </div>

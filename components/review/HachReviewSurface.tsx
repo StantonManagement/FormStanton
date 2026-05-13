@@ -104,7 +104,7 @@ export default function HachReviewSurface({
     const snapshot = documents;
     setDocuments(prev => prev.map(d =>
       d.id === docId 
-        ? { ...d, latest_action: { action: 'approved', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: null } }
+        ? { ...d, latest_action: { action: 'approved', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: undefined } }
         : d
     ));
 

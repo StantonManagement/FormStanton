@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Form Utilities
  * Common validation and formatting functions for forms
  */
@@ -208,40 +208,35 @@ export function formatFormContent(content: string): string {
 
   // Process markdown tables with enhanced print styling
   const tableRegex = /\|(.+)\|\n\|[-\s|]+\|\n((\|.+\|\n?)+)/gm;
-  html = html.replace(tableRegex, (match, headerRow, bodyRows) => {
-    // Parse header
-    const headers = headerRow.split('|').filter((cell: string) => cell.trim()).map((cell: string) => cell.trim());
-    
-    // Parse body rows
-    const rows = bodyRows.trim().split('\n').map((row: string) => {
-      return row.split('|').filter((cell: string) => cell.trim()).map((cell: string) => cell.trim());
-    });
+  html = html.replace(tableRegex, (_match, headerRow, bodyRows) => {
+    const splitRow = (row: string) => {
+      const parts = row.split('|');
+      if (parts[0].trim() === '') parts.shift();
+      if (parts[parts.length - 1].trim() === '') parts.pop();
+      return parts.map((c: string) => c.trim());
+    };
+    const headers = splitRow(headerRow);
+    const rows = bodyRows.trim().split('\n').map((row: string) => splitRow(row));
 
-    // Build table HTML
-    let tableHtml = '<table class="w-full border-collapse my-4 avoid-break">';
-    
-    // Add header
+    let tableHtml = '<table style="width:100%;border-collapse:collapse;margin:12pt 0;font-size:10pt">';
     if (headers.length > 0) {
       tableHtml += '<thead><tr>';
       headers.forEach((header: string) => {
-        tableHtml += `<th class="border border-[var(--border)] px-3 py-2 bg-[var(--bg-section)] text-left font-semibold text-[var(--ink)]">${header}</th>`;
+        tableHtml += `<th style="border:1.5px solid #1a1a1a;padding:6px 10px;background:#f0f0f0;font-weight:600;text-align:left;font-size:9.5pt">${header || '&nbsp;'}</th>`;
       });
       tableHtml += '</tr></thead>';
     }
-    
-    // Add body
     tableHtml += '<tbody>';
     rows.forEach((row: string[]) => {
       if (row.length > 0) {
         tableHtml += '<tr>';
         row.forEach((cell: string) => {
-          tableHtml += `<td class="border border-[var(--border)] px-3 py-2 text-[var(--ink)]">${cell || '&nbsp;'}</td>`;
+          tableHtml += `<td style="border:1.5px solid #1a1a1a;padding:7px 10px;vertical-align:top">${cell || '&nbsp;'}</td>`;
         });
         tableHtml += '</tr>';
       }
     });
     tableHtml += '</tbody></table>';
-    
     return tableHtml;
   });
 
@@ -296,32 +291,34 @@ export function formatFormContent(content: string): string {
 export function formatFormForPrint(content: string): string {
   let html = content;
 
-  // Escape HTML
+  // 1. Strip the boilerplate letterhead every content string starts with.
+  //    The route already injects a proper pf-letterhead block � no need to render it again.
+  html = html.replace(/^\*\*Stanton Management LLC\*\*\n421 Park Street[^\n]*\n?/m, '');
+
+  // 2. Escape HTML entities
   html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Template placeholders {{llc_name}} etc
+  // 3. Template placeholders
   html = html.replace(/\{\{[^}]+\}\}/g, '<span class="placeholder">[___________________]</span>');
 
-  // Headers
+  // 4. Headers (must come before bold so ## lines aren't consumed by bold)
   html = html.replace(/^### (.+)$/gm, '<h3 class="pf-h3">$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2 class="pf-h2">$1</h2>');
 
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-  // Italic (single asterisk)
-  html = html.replace(/\*([^*\n]+)\*/g, '<em class="pf-em">$1</em>');
-
-  // Horizontal rules
+  // 5. Horizontal rules
   html = html.replace(/^---$/gm, '<hr class="pf-hr" />');
 
-  // Tables
+  // 6. Tables (before bold so cell content isn't corrupted)
   const tableRegex = /\|(.+)\|\n\|[-\s|]+\|\n((\|.+\|\n?)+)/gm;
   html = html.replace(tableRegex, (_match, headerRow, bodyRows) => {
-    const headers = headerRow.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim());
-    const rows = bodyRows.trim().split('\n').map((row: string) =>
-      row.split('|').filter((c: string) => c.trim()).map((c: string) => c.trim())
-    );
+    const splitRow = (row: string) => {
+      const parts = row.split('|');
+      if (parts[0].trim() === '') parts.shift();
+      if (parts[parts.length - 1].trim() === '') parts.pop();
+      return parts.map((c: string) => c.trim());
+    };
+    const headers = splitRow(headerRow);
+    const rows = bodyRows.trim().split('\n').map((row: string) => splitRow(row));
     let t = '<table class="pf-table">';
     if (headers.length) {
       t += '<thead><tr>' + headers.map((h: string) => `<th class="pf-th">${h || '&nbsp;'}</th>`).join('') + '</tr></thead>';
@@ -332,46 +329,71 @@ export function formatFormForPrint(content: string): string {
     return t;
   });
 
-  // Blockquotes (already escaped to &gt;)
+  // 7. Signature lines � must run BEFORE bold so the ** delimiters are still intact.
+  //    Patterns found in formsData:
+  //      **Label:** _____ Date: _____          (bold label, colon inside bold)
+  //      **Label:** _____ Date _____           (no colon after Date)
+  //      Plain Label _____ Date _____          (no bold, e.g. Manager's Signature)
+  const sigLine = (label: string) =>
+    `<div class="pf-sig-block"><div class="pf-sig-item"><div class="pf-sig-line"></div><div class="pf-sig-label">${label}</div></div><div class="pf-sig-date"><div class="pf-sig-line"></div><div class="pf-sig-label">Date</div></div></div>`;
+
+  // Bold label: **Anything (Signature|Representative|Received by|Approved|Denied):** _____ Date[:]? _____
+  html = html.replace(
+    /\*\*([^*\n]{1,80}(?:Signature|Representative|Received by|Approved \/ Denied|Approved|Denied)[^*\n]{0,40}):\*\*\s*_{4,}[^\n]*?Date:?\s*_{4,}/g,
+    (_m, label) => sigLine(label)
+  );
+  // Non-bold label ending with "Signature" or similar followed by underscores + Date
+  html = html.replace(
+    /^([A-Z][^\n]{2,60}(?:Signature|Representative)[^\n]{0,30})\s*_{5,}[^\n]*?Date:?\s*_{4,}$/gm,
+    (_m, label) => sigLine(label.trim())
+  );
+
+  // 8. Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // 9. Italic (single asterisk, not inside already-replaced tags)
+  html = html.replace(/\*([^*\n<]{1,120})\*/g, '<em class="pf-em">$1</em>');
+
+  // 10. Blockquotes (already escaped to &gt;)
   html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="pf-blockquote">$1</blockquote>');
 
-  // Checkbox list items: - [ ] text
+  // 11. Checkbox list items: - [ ] text  (must come before inline [ ] replacement)
   html = html.replace(/^- \[ \] (.+)$/gm,
     '<div class="pf-cb-row"><span class="pf-cb-box"></span><span>$1</span></div>'
   );
 
-  // Plain list items (not checkboxes): - text
-  html = html.replace(/^- (.+)$/gm, '<div class="pf-list-item">$1</div>');
+  // 12. Plain list items: - text  (not checkboxes � those are already replaced)
+  html = html.replace(/^- (?!\[ \])(.+)$/gm, '<div class="pf-list-item">&bull;&nbsp;$1</div>');
 
-  // Numbered lists: lines starting with digit + period
+  // 13. Numbered lists
   html = html.replace(/((?:^\d+\. .+\n?)+)/gm, (block) => {
     const items = block.trim().split('\n').map(line => line.replace(/^\d+\. /, ''));
     return '<ol class="pf-ol">' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
   });
 
-  // Inline [ ] checkboxes (mid-sentence, not at line start)
+  // 14. Inline [ ] checkboxes (mid-sentence, after list checkboxes are done)
   html = html.replace(/\[ \]/g, '<span class="pf-cb-inline"></span>');
 
-  // Signature lines: **Label Signature:** ______ Date: ______
-  html = html.replace(/\*\*([^*]+Signature[^*]*):\*\*\s*_{5,}.*?Date:\s*_{4,}/g, (_m, label) =>
-    `<div class="pf-sig-block"><div class="pf-sig-item"><div class="pf-sig-line"></div><div class="pf-sig-label">${label}</div></div><div class="pf-sig-date"><div class="pf-sig-line"></div><div class="pf-sig-label">Date</div></div></div>`
+  // 15. Field lines: Label: _____ or Label: $_____ (5+ underscores)
+  //     Handles both plain labels and labels with $ prefix for money fields
+  html = html.replace(/([A-Za-z][^:\n<]{0,60}):\s*\$?_{5,}/g, (_m, label) =>
+    `<div class="pf-field"><strong>${label.trim()}:</strong><span class="pf-field-blank"></span></div>`
   );
 
-  // Field lines: Label: _____  (5+ underscores)
-  html = html.replace(/([A-Z][^:\n<]{0,60}):\s*_{5,}/g, (_m, label) =>
-    `<div class="pf-field"><strong>${label}:</strong><span class="pf-field-blank"></span></div>`
-  );
-
-  // Office use sections
+  // 16. Office use sections (italic-wrapped lines starting with "For office use")
   html = html.replace(/<em class="pf-em">For office use[^<]*<\/em>/gi, (m) =>
     `<div class="pf-office-use">${m}</div>`
   );
+  // Also catch plain (non-italic) office use lines like *For office use:* after italic pass
+  html = html.replace(/^(\*For office use[^*]*\*)(.*)$/gm, (_m, marker, rest) =>
+    `<div class="pf-office-use"><em class="pf-em">${marker.replace(/\*/g, '')}</em>${rest}</div>`
+  );
 
-  // Paragraphs
+  // 17. Paragraphs / line breaks
   html = html.replace(/\n\n/g, '</p><p class="pf-p">');
   html = html.replace(/\n/g, '<br />');
   html = '<p class="pf-p">' + html + '</p>';
-  html = html.replace(/<p class="pf-p">\s*<\/p>/g, '');
+  html = html.replace(/<p class="pf-p">\s*(<br \/>)?\s*<\/p>/g, '');
 
   return html;
 }
