@@ -154,7 +154,9 @@ export default function FormsLibraryPage() {
     }
   };
 
-  const departments: Department[] = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr'];
+  const baseDepartments: Department[] = ['leasing', 'property_management', 'maintenance', 'compliance', 'housing_programs', 'collections', 'hr', 'finance'];
+  const hasUncategorized = forms.some((f) => f.department === 'uncategorized');
+  const departments: Department[] = hasUncategorized ? [...baseDepartments, 'uncategorized'] : baseDepartments;
 
   const workflowGroups = useMemo(() => {
     if (searchQuery.trim()) return [];

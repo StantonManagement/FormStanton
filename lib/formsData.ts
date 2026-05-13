@@ -4,7 +4,7 @@ import { llcTable } from './policyContent';
 // Do NOT use Unicode characters: → • — " " ' '
 // Use ASCII equivalents: -> - -- " ' instead
 
-export type Department = 'property_management' | 'maintenance' | 'compliance' | 'finance' | 'leasing' | 'collections' | 'housing_programs' | 'hr';
+export type Department = 'property_management' | 'maintenance' | 'compliance' | 'finance' | 'leasing' | 'collections' | 'housing_programs' | 'hr' | 'uncategorized';
 
 export interface TenantForm {
   id: number;
@@ -24,6 +24,7 @@ export const departmentLabels: Record<Department, string> = {
   housing_programs: 'Housing Programs',
   hr: 'HR',
   finance: 'Finance',
+  uncategorized: 'Uncategorized',
 };
 
 // Canonical registry for forms shown in Admin > Forms Library.
