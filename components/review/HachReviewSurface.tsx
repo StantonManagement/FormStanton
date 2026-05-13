@@ -177,7 +177,7 @@ export default function HachReviewSurface({
 
   const handleWorkspaceEdit = useCallback(async (messageId: string, channel: 'hach' | 'shared', body: string) => {
     try {
-      await hachWorkspaceClient.editMessage(messageId, channel, body);
+      await hachWorkspaceClient.editMessage(workspaceId ?? '', messageId, channel, body);
       // Refresh workspace data
       if (workspaceId) {
         const updated = await hachWorkspaceClient.getWorkspace(workspaceId);

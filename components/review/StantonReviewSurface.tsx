@@ -122,8 +122,8 @@ export default function StantonReviewSurface({
     }
   }, [onDocumentAction, documents, showToast]);
 
-  const handleReject = useCallback((doc: Doc) => {
-    setRejectingDoc(doc);
+  const handleReject = useCallback((doc: { id: string; [key: string]: any }) => {
+    setRejectingDoc(doc as unknown as Doc);
   }, []);
 
   const handleWaive = useCallback(async (docId: string) => {
@@ -145,8 +145,8 @@ export default function StantonReviewSurface({
     }
   }, [onDocumentAction, documents]);
 
-  const handleView = useCallback((doc: Doc) => {
-    setViewingDoc(doc);
+  const handleView = useCallback((doc: { id: string; [key: string]: any }) => {
+    setViewingDoc(doc as unknown as Doc);
   }, []);
 
   // Keyboard shortcuts
@@ -179,7 +179,7 @@ export default function StantonReviewSurface({
 
   const handleWorkspaceEdit = useCallback(async (messageId: string, channel: 'stanton' | 'shared', body: string) => {
     try {
-      await stantonWorkspaceClient.editMessage(messageId, channel, body);
+      await stantonWorkspaceClient.editMessage(workspaceId ?? '', messageId, channel, body);
       // Refresh workspace data
       if (workspaceId) {
         const updated = await stantonWorkspaceClient.getWorkspace(workspaceId);
