@@ -196,6 +196,15 @@ export default function PbvLetter({ language, onLanguageChange }: PbvLetterProps
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', color: '#333344', background: '#fff' }}>
+      {/* ── Logo header ─────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '20px 20px 12px', background: '#fff' }}>
+        <img
+          src="/Stanton-logo.PNG"
+          alt="Stanton Management"
+          style={{ maxWidth: '200px', width: '100%', height: 'auto' }}
+        />
+      </div>
+
       {/* ── Sticky language bar ─────────────────────────────── */}
       <div
         style={{
