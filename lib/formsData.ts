@@ -1290,9 +1290,9 @@ After you add it:
   },
   {
     id: 25,
-    title: 'Apartment Application',
-    department: 'property_management',
-    description: 'Initial application for prospective tenants -- qualifies and schedules showing',
+    title: 'Apartment Inquiry',
+    department: 'leasing',
+    description: 'Initial inquiry form for prospective tenants -- qualifies and schedules showing',
     path: '/apartment-inquiry',
     content: `**Stanton Management LLC**
 421 Park Street, Hartford, CT 06106 | (860) 993-3401
@@ -1386,7 +1386,7 @@ Received: __________ Contacted: __________ By: __________ Outcome: _____________
   {
     id: 26,
     title: 'Full Tenant Application',
-    department: 'property_management',
+    department: 'leasing',
     description: 'Complete application after showing -- collects everything needed to process a lease',
     path: '/tenant-application',
     content: `**Stanton Management LLC**
@@ -1561,6 +1561,20 @@ Received: __________ Contacted: __________ By: __________
 Showing date: __________ Unit(s): __________________________
 Background check: __________ Credit check: __________________
 Outcome: ___________________________________________________`,
+  },
+  {
+    id: 27,
+    title: 'Rental Application (Digital)',
+    department: 'leasing',
+    description: 'Full digital rental application with income, household, and payment type -- market rate and Section 8',
+    path: '/rental-application',
+  },
+  {
+    id: 28,
+    title: 'PBV Pre-Application',
+    department: 'housing_programs',
+    description: 'Project-Based Voucher pre-screening for current Stanton tenants -- trilingual',
+    path: '/pbv-preapp',
   },
 ];
 
