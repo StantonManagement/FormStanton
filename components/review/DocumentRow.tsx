@@ -206,7 +206,7 @@ export default function DocumentRow({
                 {totalUnread}
               </span>
             )}
-            {doc.person_slot > 0 && <span className="text-xs text-gray-500">P{doc.person_slot}</span>}
+            {(doc.person_slot ?? 0) > 0 && <span className="text-xs text-gray-500">P{doc.person_slot}</span>}
             {!doc.required && <span className="text-xs text-gray-500">(opt)</span>}
           </div>
           {doc.file_name && (
