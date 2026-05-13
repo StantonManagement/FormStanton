@@ -31,6 +31,24 @@ export default function PbvFullApplicationDetailPage() {
   const [exportingHach, setExportingHach] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  const fetchDetail = useCallback(async () => {
+    setLoading(true); setFetchError('');
+    try {
+      const res = await fetch('/api/admin/pbv/full-applications/'+id);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to load');
+      const d:AppDetail = json.data;
+      setDetail(d);
+      setReviewStatus(d.stanton_review_status);
+      setReviewerName(d.stanton_reviewer??'');
+      setReviewNotes(d.stanton_review_notes??'');
+      const edits:Record<string,string>={};
+      for(const m of d.members) edits[m.id]=m.documented_income!=null?String(m.documented_income):'';
+      setIncomeEdits(edits);
+    } catch(e:unknown){ setFetchError(e instanceof Error?e.message:'Failed to load'); }
+    finally{ setLoading(false); }
+  },[id]);
+
   // Document action handler for unified review surface
   const handleDocumentAction = useCallback(async (action: string, docId: string, data?: any) => {
     if (!detail) return;
@@ -75,24 +93,6 @@ export default function PbvFullApplicationDetailPage() {
       throw new Error(error.message || `${action} failed`);
     }
   }, [detail, fetchDetail]);
-
-  const fetchDetail = useCallback(async () => {
-    setLoading(true); setFetchError('');
-    try {
-      const res = await fetch('/api/admin/pbv/full-applications/'+id);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message || 'Failed to load');
-      const d:AppDetail = json.data;
-      setDetail(d);
-      setReviewStatus(d.stanton_review_status);
-      setReviewerName(d.stanton_reviewer??'');
-      setReviewNotes(d.stanton_review_notes??'');
-      const edits:Record<string,string>={};
-      for(const m of d.members) edits[m.id]=m.documented_income!=null?String(m.documented_income):'';
-      setIncomeEdits(edits);
-    } catch(e:unknown){ setFetchError(e instanceof Error?e.message:'Failed to load'); }
-    finally{ setLoading(false); }
-  },[id]);
 
   useEffect(()=>{ fetchDetail(); },[fetchDetail]);
 
