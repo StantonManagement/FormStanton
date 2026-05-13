@@ -177,6 +177,33 @@ export default function FormSubmissionsPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Permanently delete ${selectedIds.size} submission(s)? This cannot be undone.`)) return;
+
+    setIsBulkActionProcessing(true);
+    try {
+      const response = await fetch('/api/admin/form-submissions/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          submissionIds: Array.from(selectedIds),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSelectedIds(new Set());
+        fetchSubmissions();
+      }
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+    } finally {
+      setIsBulkActionProcessing(false);
+    }
+  };
+
   const handleBulkExport = async () => {
     const exportIds = Array.from(selectedIds).filter((id) => {
       const sub = sortedSubmissions.find((s) => s.id === id);
@@ -516,6 +543,13 @@ export default function FormSubmissionsPage() {
                   Export ZIP
                 </button>
               )}
+              <button
+                onClick={handleBulkDelete}
+                disabled={isBulkActionProcessing}
+                className="px-4 py-2 bg-red-600 text-white rounded-none hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                Delete Selected
+              </button>
             </div>
           )}
         </div>
@@ -616,6 +650,11 @@ export default function FormSubmissionsPage() {
           onUpdate={(updated) => {
             setSubmissions((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
             setSelectedSubmission(updated);
+          }}
+          onDelete={(id) => {
+            setSubmissions((prev) => prev.filter((s) => s.id !== id));
+            setFilteredSubmissions((prev) => prev.filter((s) => s.id !== id));
+            setSelectedSubmission(null);
           }}
           currentUser="Admin"
         />

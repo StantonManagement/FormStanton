@@ -2,25 +2,29 @@
 
 interface SectionHeaderProps {
   title: string;
-  sectionNumber: number;
-  totalSections: number;
+  sectionNumber?: number;
+  totalSections?: number;
+  subtitle?: string;
 }
 
-export default function SectionHeader({ title, sectionNumber, totalSections }: SectionHeaderProps) {
+export default function SectionHeader({ title, sectionNumber, totalSections, subtitle }: SectionHeaderProps) {
   return (
-    <div className="relative py-6 mb-6">
-      {/* Decorative line */}
-      <div className="absolute left-0 top-1/2 w-full h-px bg-[var(--divider)]" />
+    <div className="py-6 mb-6 border-b border-[var(--divider)]">
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-xl text-[var(--primary)]">
+          {title}
+        </h2>
+        
+        {sectionNumber && totalSections && (
+          <span className="text-sm text-[var(--muted)] font-medium">
+            Section {sectionNumber} of {totalSections}
+          </span>
+        )}
+      </div>
       
-      {/* Header with background knockout */}
-      <h2 className="relative inline-block bg-white pr-4 font-serif text-xl text-[var(--primary)]">
-        {title}
-      </h2>
-      
-      {/* Section number */}
-      <span className="absolute right-0 top-1/2 -translate-y-1/2 bg-white pl-4 text-sm text-[var(--muted)] font-medium">
-        Section {sectionNumber} of {totalSections}
-      </span>
+      {subtitle && (
+        <p className="mt-2 text-sm text-[var(--muted)]">{subtitle}</p>
+      )}
     </div>
   );
 }

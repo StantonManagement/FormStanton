@@ -28,6 +28,7 @@ interface Props {
   submission: FormSubmission | null;
   onClose: () => void;
   onUpdate: (updated: FormSubmission) => void;
+  onDelete?: (id: string) => void;
   currentUser?: string;
 }
 
@@ -35,11 +36,13 @@ export default function FormSubmissionQuickViewModal({
   submission,
   onClose,
   onUpdate,
+  onDelete,
   currentUser: currentUserProp,
 }: Props) {
   const { user } = useAdminAuth();
   const currentUser = user?.displayName || currentUserProp || 'Admin';
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!submission) return null;
 
@@ -100,6 +103,29 @@ export default function FormSubmissionQuickViewModal({
     if (formData.issue) fields.push({ label: 'Issue', value: formData.issue });
 
     return fields.slice(0, 4);
+  };
+
+  const handleDelete = async () => {
+    if (!submission) return;
+    if (!confirm(`Delete this submission from ${submission.tenant_name || 'Unknown Tenant'}? This cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/form-submissions/${submission.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        onDelete?.(submission.id);
+        onClose();
+      } else {
+        alert(data.message || 'Delete failed');
+      }
+    } catch (error) {
+      console.error('Failed to delete submission:', error);
+      alert('Delete failed');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const keyFields = getKeyFields();
@@ -219,6 +245,13 @@ export default function FormSubmissionQuickViewModal({
             >
               View Full Details
             </Link>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 bg-red-600 text-white rounded-none hover:bg-red-700 transition-colors font-medium disabled:opacity-50 text-sm"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
             <button
               onClick={onClose}
               className="px-6 py-2 border border-gray-300 text-gray-700 rounded-none hover:bg-gray-50 transition-colors font-medium"

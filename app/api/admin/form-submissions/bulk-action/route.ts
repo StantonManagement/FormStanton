@@ -32,6 +32,20 @@ export async function POST(request: NextRequest) {
 
     for (const id of submissionIds) {
       try {
+        if (action === 'delete') {
+          const { error } = await supabaseAdmin
+            .from('form_submissions')
+            .delete()
+            .eq('id', id);
+
+          if (error) {
+            results.push({ id, success: false, error: error.message });
+          } else {
+            results.push({ id, success: true });
+          }
+          continue;
+        }
+
         let updates: any = {};
 
         switch (action) {

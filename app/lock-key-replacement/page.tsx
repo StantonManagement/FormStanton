@@ -381,19 +381,19 @@ function LockKeyReplacementFormContent() {
               transition={{ duration: 0.3 }}
             >
               <FormSection title="Items Needing Replacement">
-                <div className="overflow-x-auto -mx-6 sm:-mx-8 px-6 sm:px-8">
-                  <table className="w-full text-sm table-fixed min-w-[500px]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm table-fixed">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 w-[40%]">Item</th>
-                        <th className="text-center py-2 w-[20%]">Quantity</th>
-                        <th className="text-center py-2 w-[20%]">Est. Cost Each</th>
-                        <th className="text-center py-2 w-[20%]">Total</th>
+                      <tr className="border-b border-[var(--divider)]">
+                        <th className="text-left py-2 w-[40%] min-w-[120px]">Item</th>
+                        <th className="text-center py-2 w-[20%] min-w-[80px]">Quantity</th>
+                        <th className="text-center py-2 w-[20%] min-w-[100px]">Est. Cost Each</th>
+                        <th className="text-center py-2 w-[20%] min-w-[80px]">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {formData.items.map((item, index) => (
-                        <tr key={item.item} className="border-b">
+                        <tr key={item.item} className="border-b border-[var(--divider)]/50">
                           <td className="py-3 pr-2">{item.item}</td>
                           <td className="py-3 px-1">
                             <input
@@ -401,7 +401,7 @@ function LockKeyReplacementFormContent() {
                               min="0"
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              className="w-full max-w-[80px] px-2 py-1 border border-gray-300 rounded-none text-center mx-auto block"
+                              className="w-full max-w-[70px] px-2 py-1 border border-[var(--border)] rounded-none text-center mx-auto block"
                             />
                           </td>
                           <td className="py-3 px-1">
@@ -411,22 +411,22 @@ function LockKeyReplacementFormContent() {
                               step="0.01"
                               value={item.estimatedCost}
                               onChange={(e) => updateItem(index, 'estimatedCost', e.target.value)}
-                              className="w-full max-w-[90px] px-2 py-1 border border-gray-300 rounded-none text-center mx-auto block"
+                              className="w-full max-w-[90px] px-2 py-1 border border-[var(--border)] rounded-none text-center mx-auto block"
                               placeholder="0.00"
                             />
                           </td>
-                          <td className="py-3 text-center">
+                          <td className="py-3 text-center text-sm">
                             ${((parseFloat(item.estimatedCost) || 0) * item.quantity).toFixed(2)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr>
-                        <td colSpan={3} className="py-3 text-right font-semibold">
-                          Total estimated cost to tenant:
+                      <tr className="border-t border-[var(--divider)]">
+                        <td colSpan={3} className="py-3 text-right font-semibold text-sm">
+                          Total estimated cost:
                         </td>
-                        <td className="py-3 text-center font-semibold">
+                        <td className="py-3 text-center font-semibold text-sm">
                           ${formData.totalEstimatedCost}
                         </td>
                       </tr>

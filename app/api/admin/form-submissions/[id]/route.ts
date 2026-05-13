@@ -56,6 +56,42 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authenticated = await isAuthenticated();
+
+    if (!authenticated) {
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = await params;
+    const sessionUser = await getSessionUser();
+
+    const { error } = await supabaseAdmin
+      .from('form_submissions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    await logAudit(sessionUser, 'submission.delete', 'form_submission', id, {}, getClientIp(request));
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Form submission delete error:', error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

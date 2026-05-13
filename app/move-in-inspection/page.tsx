@@ -230,13 +230,13 @@ function MoveInInspectionFormContent() {
         <div className="bg-[var(--primary)] px-4 py-2 mb-0">
           <h3 className="text-sm font-bold text-white tracking-wide">{title}</h3>
         </div>
-        <div className="overflow-x-auto border border-[var(--border)] border-t-0 -mx-6 sm:-mx-8 px-6 sm:px-8">
-          <table className="w-full border-collapse table-fixed min-w-[500px]">
+        <div className="overflow-x-auto border border-[var(--border)] border-t-0">
+          <table className="w-full border-collapse table-fixed">
             <thead>
               <tr className="bg-[var(--bg-section)] border-b border-[var(--border)]">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%]">{t.itemColumn}</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[25%]">{t.condition}</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%]">{t.notes}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%] min-w-[100px]">{t.itemColumn}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[25%] min-w-[90px]">{t.condition}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[var(--muted)] w-[35%] min-w-[100px]">{t.notes}</th>
                 <th className="px-2 py-2 w-[5%] min-w-[32px]"></th>
               </tr>
             </thead>
