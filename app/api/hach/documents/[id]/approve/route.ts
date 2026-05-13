@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 /**
  * POST /api/hach/documents/[id]/approve
@@ -68,6 +69,7 @@ export async function POST(
         rejection_reason: null,
         notes: null,
         created_by: user.username,
+        source: 'hach',
       });
 
     if (insertErr) {
@@ -131,13 +133,13 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         document_id: documentId,
         effective_status: 'approved',
         reviewer_name: user.displayName,
         reviewed_at: new Date().toISOString(),
         progress,
-      },
+      }),
     });
   } catch (error: any) {
     console.error('[hach/documents/approve] error:', error);

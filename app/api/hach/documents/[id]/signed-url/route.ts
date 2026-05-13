@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 const BUCKET = 'form-submissions';
 const TTL = 300; // 5 minutes
@@ -103,7 +104,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         document_id: documentId,
         label: doc.label,
         file_name: targetRevision?.file_name ?? doc.file_name,
@@ -111,7 +112,7 @@ export async function GET(
         signed_url: targetRevision?.signed_url ?? null,
         revisions: revisionList,
         expires_in: TTL,
-      },
+      }),
     });
   } catch (error: any) {
     console.error('[hach/documents/signed-url] error:', error);

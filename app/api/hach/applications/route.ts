@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 /**
  * GET /api/hach/applications
@@ -130,6 +131,66 @@ export async function GET() {
       }
     }
 
+    // Fetch workspace unread counts for HACH user (hach + shared channels)
+    const unreadByApp: Record<string, { hach: number; shared: number }> = {};
+    {
+      const { data: workspaces } = await supabaseAdmin
+        .from('review_workspaces')
+        .select('id, anchor_id')
+        .eq('workspace_type', 'pbv')
+        .in('anchor_id', appIds);
+
+      if (workspaces && workspaces.length > 0) {
+        const wsIds = workspaces.map((w: any) => w.id);
+        const workspaceByAnchor = new Map(workspaces.map((w: any) => [w.anchor_id, w.id]));
+
+        const { data: receipts } = await supabaseAdmin
+          .from('workspace_read_receipts')
+          .select('workspace_id, channel, last_read_at')
+          .eq('user_id', currentUserId)
+          .in('workspace_id', wsIds)
+          .in('channel', ['hach', 'shared']);
+
+        const receiptMap = new Map(
+          (receipts ?? []).map((r: any) => [`${r.workspace_id}:${r.channel}`, r.last_read_at])
+        );
+
+        const { data: hachMsgs } = await supabaseAdmin
+          .from('hach_workspace_messages')
+          .select('workspace_id, author_user_id, created_at')
+          .in('workspace_id', wsIds);
+
+        const { data: sharedMsgs } = await supabaseAdmin
+          .from('shared_workspace_messages')
+          .select('workspace_id, author_user_id, created_at')
+          .in('workspace_id', wsIds);
+
+        for (const app of apps) {
+          const wsId = workspaceByAnchor.get((app as any).id);
+          if (!wsId) continue;
+
+          const lastReadHach = receiptMap.get(`${wsId}:hach`);
+          const lastReadShared = receiptMap.get(`${wsId}:shared`);
+
+          const hachUnread = (hachMsgs ?? []).filter((m: any) => {
+            if (m.workspace_id !== wsId) return false;
+            if (m.author_user_id === currentUserId) return false;
+            if (lastReadHach && m.created_at <= lastReadHach) return false;
+            return true;
+          }).length;
+
+          const sharedUnread = (sharedMsgs ?? []).filter((m: any) => {
+            if (m.workspace_id !== wsId) return false;
+            if (m.author_user_id === currentUserId) return false;
+            if (lastReadShared && m.created_at <= lastReadShared) return false;
+            return true;
+          }).length;
+
+          unreadByApp[(app as any).id] = { hach: hachUnread, shared: sharedUnread };
+        }
+      }
+    }
+
     // Enrich and group
     const enriched = apps.map((a: any) => ({
       id: a.id,
@@ -143,6 +204,7 @@ export async function GET() {
       has_review_actions: reviewedAppIds.has(a.id),
       last_viewed_at: lastViewedByApp[a.id] ?? null,
       documents_uploaded_since_last_view: newRevsByApp[a.id] ?? 0,
+      workspace_unread_counts: unreadByApp[a.id] ?? { hach: 0, shared: 0 },
     }));
 
     const needsFirstReview = enriched.filter(
@@ -159,11 +221,11 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         needs_first_review: needsFirstReview,
         awaiting_response: awaitingResponse,
         approved,
-      },
+      }),
     });
   } catch (error: any) {
     console.error('[hach/applications] error:', error);

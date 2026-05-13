@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser } from '@/lib/auth';
 import { fetchRejectionTemplates } from '@/lib/rejection-templates';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 /**
  * GET /api/hach/rejection-reasons
@@ -13,7 +14,7 @@ export async function GET(_request: NextRequest) {
 
   try {
     const templates = await fetchRejectionTemplates();
-    return NextResponse.json({ success: true, data: templates });
+    return NextResponse.json({ success: true, data: safeHachJson(templates) });
   } catch (error: any) {
     console.error('[hach/rejection-reasons] error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

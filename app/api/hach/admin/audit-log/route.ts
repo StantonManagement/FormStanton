@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 const PAGE_SIZE = 50;
 
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
     const total = count ?? 0;
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         entries: entries ?? [],
         total,
         page,
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
           id: u.id,
           name: u.display_name || u.username,
         })),
-      },
+      }),
     });
   } catch (err: any) {
     console.error('[hach/admin/audit-log] error:', err);

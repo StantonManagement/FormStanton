@@ -3,6 +3,7 @@ import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 import { sendRejectionNotification } from '@/lib/notifications';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 /**
  * POST /api/hach/documents/[id]/reject
@@ -105,6 +106,7 @@ export async function POST(
         rejection_reason: reason_text ?? template.label,
         notes: reason_text ?? null,
         created_by: user.username,
+        source: 'hach',
       });
 
     if (insertErr) {
@@ -197,7 +199,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         document_id: documentId,
         effective_status: 'rejected',
         reviewer_name: user.displayName,
@@ -213,7 +215,7 @@ export async function POST(
           error: notificationResult.status === 'failed' ? (notificationResult as any).error : null,
         },
         progress,
-      },
+      }),
     });
   } catch (error: any) {
     console.error('[hach/documents/reject] error:', error);

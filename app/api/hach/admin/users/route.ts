@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 async function requireHachAdmin() {
   const guard = await requireHachUser();
@@ -63,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: { users: users ?? [], pending_invitations: pendingWithInviter },
+      data: safeHachJson({ users: users ?? [], pending_invitations: pendingWithInviter }),
     });
   } catch (err: any) {
     console.error('[hach/admin/users] GET error:', err);

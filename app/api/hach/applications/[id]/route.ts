@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireHachUser, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { safeHachJson } from '@/lib/hach/payload-filter';
 
 /**
  * GET /api/hach/applications/[id]
@@ -24,7 +25,7 @@ export async function GET(
         `id, head_of_household_name, building_address, unit_number,
          household_size, bedroom_count, created_at, updated_at,
          hach_review_status, stanton_review_status,
-         stanton_review_notes, form_submission_id,
+         form_submission_id,
          dv_status, claiming_medical_deduction, has_childcare_expense`
       )
       .eq('id', id)
@@ -56,7 +57,7 @@ export async function GET(
       .select(
         `id, doc_type, label, status, file_name, storage_path,
          display_order, person_slot, required, revision,
-         reviewer, reviewed_at, rejection_reason, notes`
+         rejection_reason`
       )
       .eq('form_submission_id', (app as any).form_submission_id)
       .order('display_order');
@@ -65,9 +66,10 @@ export async function GET(
     const { data: reviewActions } = await supabaseAdmin
       .from('document_review_actions')
       .select(
-        `id, document_id, reviewer_name, action, rejection_reason, notes, created_at`
+        `id, document_id, reviewer_name, action, rejection_reason, created_at`
       )
       .eq('full_application_id', id)
+      .eq('source', 'hach')
       .order('created_at', { ascending: false });
 
     // Collapse to latest action per document
@@ -128,14 +130,14 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: {
+      data: safeHachJson({
         application: app,
         members: members ?? [],
         documents: enrichedDocs,
         review_action_log: reviewActions ?? [],
         last_viewed_at,
         new_since_last_view,
-      },
+      }),
     });
   } catch (error: any) {
     console.error('[hach/applications/[id]] error:', error);
