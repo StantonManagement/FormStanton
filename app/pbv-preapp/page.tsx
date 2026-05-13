@@ -13,11 +13,10 @@ import {
   FormCheckbox,
   FormSection,
   FormLayout,
-  LanguageLanding,
   SuccessScreen,
 } from '@/components/form';
-import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PbvLetter from '@/components/PbvLetter';
 import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import { useFormSection, useFieldValidation } from '@/lib/formHooks';
@@ -73,7 +72,6 @@ function PbvPreappContent() {
   const initLang: Language = lp === 'en' || lp === 'es' || lp === 'pt' ? lp : 'en';
 
   const [language, setLanguage] = useState<Language>(initLang);
-  const [showForm, setShowForm] = useState(lp === 'en' || lp === 'es' || lp === 'pt');
   const [form, setForm] = useState<PbvOpenFormData>(INITIAL);
   const [signature, setSignature] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -196,16 +194,6 @@ function PbvPreappContent() {
     }
   };
 
-  if (!showForm) {
-    return (
-      <LanguageLanding
-        title={t.form_title}
-        description={t.form_subtitle}
-        onSelect={(lang) => { setLanguage(lang); setShowForm(true); }}
-      />
-    );
-  }
-
   if (submitted) {
     return (
       <SuccessScreen
@@ -226,7 +214,7 @@ function PbvPreappContent() {
 
   return (
     <>
-      <Header language={language} onLanguageChange={setLanguage} />
+      <PbvLetter language={language} onLanguageChange={setLanguage} />
       <FormLayout>
         <TabNavigation
           tabs={tabs}
@@ -545,6 +533,7 @@ function PbvPreappContent() {
     </>
   );
 }
+
 
 // ── Member card ───────────────────────────────────────────────────────────────
 

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Stanton PBV Pre-Application</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: #333344;
+    background: #fff;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page { max-width: 520px; margin: 0 auto; padding: 0 20px 40px; }
+
+  /* Language toggle */
+  .lang-bar {
+    display: flex; gap: 0; margin: 0 -20px; padding: 8px 20px;
+    background: #2B2D6E; position: sticky; top: 0; z-index: 10;
+  }
+  .lang-btn {
+    flex: 1; padding: 10px 0; border: none; background: transparent;
+    color: rgba(255,255,255,0.55); font-size: 14px; font-weight: 600;
+    cursor: pointer; border-radius: 6px; transition: all 0.2s;
+  }
+  .lang-btn.active { background: rgba(255,255,255,0.15); color: #fff; }
+
+  /* Content sections */
+  .lang-section { display: none; }
+  .lang-section.active { display: block; }
+
+  .title {
+    color: #2B2D6E; font-size: 22px; font-weight: 700;
+    line-height: 1.25; margin: 24px 0 18px;
+  }
+  .greeting { font-weight: 600; font-size: 16px; margin-bottom: 14px; }
+  p { font-size: 16px; line-height: 1.55; margin-bottom: 14px; }
+
+  /* Green callout */
+  .callout-green {
+    background: #E6F5EC; color: #1B7340; border-radius: 8px;
+    padding: 16px 18px; margin: 18px 0; text-align: center;
+    font-weight: 600; font-size: 16px; line-height: 1.5;
+  }
+  /* Amber callout */
+  .callout-amber {
+    background: #FFF8ED; color: #7A5C1F; border-radius: 8px;
+    padding: 16px 18px; margin: 18px 0;
+    border-left: 4px solid #E8B44A;
+    font-weight: 600; font-size: 16px; line-height: 1.5;
+  }
+  /* Coral CTA */
+  .callout-coral {
+    background: #E8734A; color: #fff; border-radius: 8px;
+    padding: 16px 18px; margin: 18px 0;
+    font-weight: 600; font-size: 16px; line-height: 1.5;
+  }
+
+  /* Section header */
+  .section-hdr {
+    color: #2B2D6E; font-size: 19px; font-weight: 700; margin: 22px 0 4px;
+  }
+  .section-hdr::after {
+    content: ''; display: block; width: 100%; max-width: 180px;
+    height: 3px; background: #E8734A; border-radius: 2px; margin-top: 4px;
+  }
+
+  /* Timeline */
+  .timeline { margin: 18px 0 12px; position: relative; padding-left: 36px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 13px; top: 14px; bottom: 14px;
+    width: 2px; background: #D8D8E0;
+  }
+  .step { position: relative; padding-bottom: 20px; }
+  .step:last-child { padding-bottom: 0; }
+  .step-circle {
+    position: absolute; left: -36px; top: 0;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 12px; z-index: 1;
+  }
+  .step-circle.coral { background: #E8734A; }
+  .step-circle.navy { background: #2B2D6E; }
+  .step-circle.green { background: #27AE60; }
+
+  .step-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .step-title { font-weight: 700; font-size: 16px; color: #1A1A2E; }
+  .step-pill {
+    font-size: 12px; font-weight: 700; padding: 3px 10px;
+    border-radius: 10px; white-space: nowrap;
+  }
+  .pill-coral { background: #FFF0EB; color: #E8734A; }
+  .pill-navy { background: #EEF2F9; color: #2B2D6E; }
+  .pill-green { background: #E6F5EC; color: #1B7340; }
+
+  .step-desc { font-size: 14px; color: #6B6B80; line-height: 1.5; margin-top: 4px; }
+
+  /* Sign-off */
+  .signoff { margin-top: 14px; }
+  .signoff-name { color: #2B2D6E; font-weight: 700; font-size: 16px; }
+  .signoff-contact { color: #6B6B80; font-size: 14px; margin-top: 2px; }
+
+  /* Divider before form */
+  .form-divider {
+    border: none; border-top: 2px solid #D8D8E0;
+    margin: 32px 0;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Language toggle -->
+  <div class="lang-bar">
+    <button class="lang-btn active" onclick="switchLang('en')">English</button>
+    <button class="lang-btn" onclick="switchLang('es')">Español</button>
+    <button class="lang-btn" onclick="switchLang('pt')">Português</button>
+  </div>
+
+  <!-- ═══════════════════════════════ ENGLISH ═══════════════════════════════ -->
+  <div class="lang-section active" id="lang-en">
+    <h1 class="title">Opportunity for Current Tenants to Receive Housing Assistance</h1>
+    <p class="greeting">Dear Tenants,</p>
+    <p>We have good news to share. Stanton Management has been awarded a significant number of Project-Based Vouchers (PBVs) through The Housing Authority of the City of Hartford (HACH). This program allows us to offer housing assistance directly to current tenants who do not already receive HCV/Section 8 benefits — meaning you may be able to continue living in your current apartment at a significantly lower cost.</p>
+
+    <div class="callout-green">If your household qualifies, your rent drops to approximately 30–40% of your household income. HACH pays the remainder directly to us.</div>
+
+    <p>This is not a waitlist. If you qualify and complete the steps below, assistance can begin as early as <strong>August 1, 2026</strong>. Our goal is to meet that date — but we need your cooperation and timely responses to make it happen.</p>
+
+    <div class="callout-amber">This opportunity will be reserved for tenants who have demonstrated that they truly treat their apartment as a home — those with a strong payment history, a well-maintained unit, and a cooperative relationship with management.</div>
+
+    <h2 class="section-hdr">Application Process</h2>
+
+    <div class="timeline">
+      <div class="step">
+        <div class="step-circle coral">1</div>
+        <div class="step-header">
+          <span class="step-title">Pre-Application</span>
+          <span class="step-pill pill-coral">Due 5/19/26</span>
+        </div>
+        <div class="step-desc">A short 10-minute questionnaire. Tell us who lives in your apartment and your household's approximate income. This lets us determine whether you're likely to qualify. Complete online below — or use the paper form if needed.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">2</div>
+        <div class="step-header">
+          <span class="step-title">Eligibility Notification</span>
+          <span class="step-pill pill-navy">By 5/22/26</span>
+        </div>
+        <div class="step-desc">We will review your pre-application and notify you whether your household is eligible to proceed to the Full Application.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">3</div>
+        <div class="step-header">
+          <span class="step-title">Full Application</span>
+          <span class="step-pill pill-navy">Due 6/2/26</span>
+        </div>
+        <div class="step-desc">Complete the full Section 8 application and provide supporting documentation: government-issued IDs, birth certificates, proof of income (pay stubs), proof of assets (bank statements), and other items as required. We will provide you with the application and a full document checklist when you reach this step.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">4</div>
+        <div class="step-header">
+          <span class="step-title">Pre-Inspection</span>
+          <span class="step-pill pill-navy">5/25–6/12/26</span>
+        </div>
+        <div class="step-desc">Stanton will inspect your unit and complete any repairs needed to pass the Section 8 Housing Quality Standards inspection.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">5</div>
+        <div class="step-header">
+          <span class="step-title">Section 8 Inspection</span>
+          <span class="step-pill pill-navy">By early July</span>
+        </div>
+        <div class="step-desc">After HACH processes your application and confirms eligibility, they will conduct their own inspection of your unit.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">6</div>
+        <div class="step-header">
+          <span class="step-title">Program Onboarding</span>
+          <span class="step-pill pill-navy">July 2026</span>
+        </div>
+        <div class="step-desc">You will attend a brief virtual meeting with HACH. They will explain program rules, your rights and responsibilities as a participant, and answer any questions.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">7</div>
+        <div class="step-header">
+          <span class="step-title">HAP Contract Execution</span>
+          <span class="step-pill pill-navy">July 2026</span>
+        </div>
+        <div class="step-desc">You and Stanton Management will sign the Housing Assistance Payments (HAP) contract, finalizing your enrollment in the program.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle green">8</div>
+        <div class="step-header">
+          <span class="step-title">Assistance Begins</span>
+          <span class="step-pill pill-green">Target 8/1/26</span>
+        </div>
+        <div class="step-desc">HACH begins paying their portion of your rent directly to Stanton. You begin paying your reduced portion — approximately 30–40% of your household income.</div>
+      </div>
+    </div>
+
+    <div class="callout-coral">Complete the Pre-Application below. It takes about 10 minutes.</div>
+
+    <p>If you have any questions, please call or stop by the office. We're here to help.</p>
+    <div class="signoff">
+      <div class="signoff-name">Stanton Management</div>
+      <div class="signoff-contact">(860) 993-3401 · info@stantoncap.com</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SPANISH ═══════════════════════════════ -->
+  <div class="lang-section" id="lang-es">
+    <h1 class="title">Oportunidad para que los Inquilinos Actuales Reciban Asistencia de Vivienda</h1>
+    <p class="greeting">Estimados Inquilinos,</p>
+    <p>Tenemos buenas noticias que compartir. Stanton Management ha recibido un número significativo de Vales Basados en Proyectos (PBV) a través de la Autoridad de Vivienda de la Ciudad de Hartford (HACH). Este programa nos permite ofrecer asistencia de vivienda directamente a los inquilinos actuales que aún no reciben beneficios de HCV/Sección 8 — lo que significa que usted podría seguir viviendo en su apartamento actual a un costo significativamente menor.</p>
+
+    <div class="callout-green">Si su hogar califica, su porción del alquiler se reduciría a aproximadamente el 30–40% del ingreso de su hogar. HACH paga el resto directamente a nosotros.</div>
+
+    <p>Esto no es una lista de espera. Si usted califica y completa los pasos a continuación, la asistencia puede comenzar tan pronto como el <strong>1 de agosto de 2026</strong>. Nuestra meta es cumplir esa fecha — pero necesitamos su cooperación y respuestas oportunas para lograrlo.</p>
+
+    <div class="callout-amber">Esta oportunidad estará reservada para inquilinos que han demostrado que realmente tratan su apartamento como un hogar — aquellos con un buen historial de pagos, una unidad bien mantenida y una relación cooperativa con la administración.</div>
+
+    <h2 class="section-hdr">Proceso de Solicitud</h2>
+
+    <div class="timeline">
+      <div class="step">
+        <div class="step-circle coral">1</div>
+        <div class="step-header"><span class="step-title">Pre-Solicitud</span><span class="step-pill pill-coral">Límite 5/19/26</span></div>
+        <div class="step-desc">Un breve cuestionario de 10 minutos. Díganos quién vive en su apartamento y el ingreso aproximado de su hogar. Esto nos permite determinar si es probable que califique. Complete en línea a continuación — o use el formulario en papel adjunto si es necesario.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">2</div>
+        <div class="step-header"><span class="step-title">Notificación de Elegibilidad</span><span class="step-pill pill-navy">Para 5/22/26</span></div>
+        <div class="step-desc">Revisaremos su pre-solicitud y le notificaremos si su hogar es elegible para proceder a la Solicitud Completa.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">3</div>
+        <div class="step-header"><span class="step-title">Solicitud Completa</span><span class="step-pill pill-navy">Límite 6/2/26</span></div>
+        <div class="step-desc">Complete la solicitud completa de la Sección 8 y proporcione la documentación de respaldo: identificaciones emitidas por el gobierno, certificados de nacimiento, comprobantes de ingresos (recibos de pago), comprobantes de activos (estados de cuenta bancarios) y otros documentos según sea necesario. Le proporcionaremos la solicitud y una lista completa de documentos cuando llegue a este paso.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">4</div>
+        <div class="step-header"><span class="step-title">Pre-Inspección</span><span class="step-pill pill-navy">5/25–6/12/26</span></div>
+        <div class="step-desc">Stanton inspeccionará su unidad y completará cualquier reparación necesaria para aprobar la inspección de Estándares de Calidad de Vivienda de la Sección 8.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">5</div>
+        <div class="step-header"><span class="step-title">Inspección de la Sección 8</span><span class="step-pill pill-navy">Principios julio</span></div>
+        <div class="step-desc">Después de que HACH procese su solicitud y confirme la elegibilidad, realizarán su propia inspección de su unidad.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">6</div>
+        <div class="step-header"><span class="step-title">Incorporación al Programa</span><span class="step-pill pill-navy">Julio 2026</span></div>
+        <div class="step-desc">Asistirá a una breve reunión virtual con HACH. Le explicarán las reglas del programa, sus derechos y responsabilidades como participante, y responderán cualquier pregunta.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">7</div>
+        <div class="step-header"><span class="step-title">Contrato HAP</span><span class="step-pill pill-navy">Julio 2026</span></div>
+        <div class="step-desc">Usted y Stanton Management firmarán el contrato de Pagos de Asistencia de Vivienda (HAP), finalizando su inscripción en el programa.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle green">8</div>
+        <div class="step-header"><span class="step-title">Comienza la Asistencia</span><span class="step-pill pill-green">Meta 8/1/26</span></div>
+        <div class="step-desc">HACH comienza a pagar su porción del alquiler directamente a Stanton. Usted comienza a pagar su porción reducida — aproximadamente el 30–40% del ingreso de su hogar.</div>
+      </div>
+    </div>
+
+    <div class="callout-coral">Complete la Pre-Solicitud a continuación. Toma aproximadamente 10 minutos.</div>
+
+    <p>Si tiene alguna pregunta, por favor llame o visite nuestra oficina. Estamos aquí para ayudarle.</p>
+    <div class="signoff">
+      <div class="signoff-name">Stanton Management</div>
+      <div class="signoff-contact">(860) 993-3401 · info@stantoncap.com</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ PORTUGUESE ═══════════════════════════════ -->
+  <div class="lang-section" id="lang-pt">
+    <h1 class="title">Oportunidade para Inquilinos Atuais Receberem Assistência Habitacional</h1>
+    <p class="greeting">Prezados Inquilinos,</p>
+    <p>Temos boas notícias para compartilhar. A Stanton Management recebeu um número significativo de Vouchers Baseados em Projetos (PBVs) através da Autoridade Habitacional da Cidade de Hartford (HACH). Este programa nos permite oferecer assistência habitacional diretamente aos inquilinos atuais que ainda não recebem benefícios do HCV/Seção 8 — o que significa que você poderá continuar morando em seu apartamento atual a um custo significativamente menor.</p>
+
+    <div class="callout-green">Se a sua família se qualificar, a sua parte do aluguel será reduzida para aproximadamente 30–40% da renda familiar. A HACH paga o restante diretamente para nós.</div>
+
+    <p>Isto não é uma lista de espera. Se você se qualificar e completar os passos abaixo, a assistência pode começar já em <strong>1º de agosto de 2026</strong>. Nosso objetivo é cumprir essa data — mas precisamos da sua cooperação e respostas pontuais para que isso aconteça.</p>
+
+    <div class="callout-amber">Esta oportunidade será reservada para inquilinos que demonstraram que realmente tratam seu apartamento como um lar — aqueles com um bom histórico de pagamento, uma unidade bem mantida e um relacionamento cooperativo com a administração.</div>
+
+    <h2 class="section-hdr">Processo de Solicitação</h2>
+
+    <div class="timeline">
+      <div class="step">
+        <div class="step-circle coral">1</div>
+        <div class="step-header"><span class="step-title">Pré-Solicitação</span><span class="step-pill pill-coral">Prazo 5/19/26</span></div>
+        <div class="step-desc">Um breve questionário de 10 minutos. Diga-nos quem mora em seu apartamento e a renda aproximada da sua família. Isso nos permite determinar se você provavelmente se qualifica. Complete online abaixo — ou use o formulário em papel anexo, se necessário.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">2</div>
+        <div class="step-header"><span class="step-title">Notificação de Elegibilidade</span><span class="step-pill pill-navy">Até 5/22/26</span></div>
+        <div class="step-desc">Analisaremos sua pré-solicitação e notificaremos se sua família é elegível para prosseguir com a Solicitação Completa.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">3</div>
+        <div class="step-header"><span class="step-title">Solicitação Completa</span><span class="step-pill pill-navy">Prazo 6/2/26</span></div>
+        <div class="step-desc">Preencha a solicitação completa da Seção 8 e forneça a documentação de apoio: identidades emitidas pelo governo, certidões de nascimento, comprovantes de renda (contracheques), comprovantes de bens (extratos bancários) e outros itens conforme necessário. Forneceremos a solicitação e uma lista completa de documentos quando você chegar a esta etapa.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">4</div>
+        <div class="step-header"><span class="step-title">Pré-Inspeção</span><span class="step-pill pill-navy">5/25–6/12/26</span></div>
+        <div class="step-desc">A Stanton inspecionará sua unidade e concluirá quaisquer reparos necessários para passar na inspeção dos Padrões de Qualidade Habitacional da Seção 8.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">5</div>
+        <div class="step-header"><span class="step-title">Inspeção da Seção 8</span><span class="step-pill pill-navy">Início de julho</span></div>
+        <div class="step-desc">Após a HACH processar sua solicitação e confirmar a elegibilidade, eles realizarão sua própria inspeção da sua unidade.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">6</div>
+        <div class="step-header"><span class="step-title">Integração ao Programa</span><span class="step-pill pill-navy">Julho 2026</span></div>
+        <div class="step-desc">Você participará de uma breve reunião virtual com a HACH. Eles explicarão as regras do programa, seus direitos e responsabilidades como participante, e responderão a quaisquer perguntas.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle navy">7</div>
+        <div class="step-header"><span class="step-title">Contrato HAP</span><span class="step-pill pill-navy">Julho 2026</span></div>
+        <div class="step-desc">Você e a Stanton Management assinarão o contrato de Pagamentos de Assistência Habitacional (HAP), finalizando sua inscrição no programa.</div>
+      </div>
+      <div class="step">
+        <div class="step-circle green">8</div>
+        <div class="step-header"><span class="step-title">Início da Assistência</span><span class="step-pill pill-green">Meta 8/1/26</span></div>
+        <div class="step-desc">A HACH começa a pagar a sua parte do aluguel diretamente à Stanton. Você começa a pagar sua parte reduzida — aproximadamente 30–40% da renda familiar.</div>
+      </div>
+    </div>
+
+    <div class="callout-coral">Complete a Pré-Solicitação abaixo. Leva cerca de 10 minutos.</div>
+
+    <p>Se tiver alguma dúvida, ligue ou passe no escritório. Estamos aqui para ajudar.</p>
+    <div class="signoff">
+      <div class="signoff-name">Stanton Management</div>
+      <div class="signoff-contact">(860) 993-3401 · info@stantoncap.com</div>
+    </div>
+  </div>
+
+  <!-- Divider before form -->
+  <hr class="form-divider">
+  <p style="text-align: center; color: #6B6B80; font-size: 14px; margin-bottom: 24px;">↓ Pre-Application Form Below ↓</p>
+
+</div>
+
+<script>
+function switchLang(lang) {
+  document.querySelectorAll('.lang-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('lang-' + lang).classList.add('active');
+  document.querySelector('[onclick="switchLang(\'' + lang + '\')"]').classList.add('active');
+}
+</script>
+</body>
+</html>
