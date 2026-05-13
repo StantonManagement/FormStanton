@@ -208,8 +208,10 @@ export default function LockKeyReplacementPrintPage() {
 
       {/* Print button — hidden when printing */}
       <div className="print-btn no-print">
-        <button onClick={() => window.print()}>Print Form</button>
+        <button type="button" onClick={undefined} suppressHydrationWarning
+          {...{ onclick: 'window.print()' } as any}>Print Form</button>
       </div>
+      <script dangerouslySetInnerHTML={{ __html: 'window.onload=function(){window.print();}' }} />
     </>
   );
 }
