@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from 'react';
 import DocumentRow from './DocumentRow';
 import DocumentViewer from './DocumentViewer';
 import RejectDialog from './RejectDialog';
+import UploadDialog from './UploadDialog';
+import RecategorizeDialog from './RecategorizeDialog';
+import PriorVersionsExpander from './PriorVersionsExpander';
 import ApplicationWorkspacePanel from './ApplicationWorkspacePanel';
+import AssignDialog from './AssignDialog';
+import BulkActionBar from './BulkActionBar';
+import { SelectableHeader } from './SelectableRow';
 import { useReviewKeyboardShortcuts } from './useReviewKeyboardShortcuts';
 import { stantonWorkspaceClient } from '@/lib/workspaces/client';
 
@@ -36,14 +42,25 @@ interface Doc {
   required: boolean; 
   display_order: number; 
   requires_signature: boolean; 
+  revision?: number;
   file_name?: string | null;
   storage_path?: string | null;
+  uploaded_by_role?: string | null;
+  uploaded_by_display_name?: string | null;
+  staff_upload_note?: string | null;
+  original_doc_type?: string | null;
   latest_action?: {
     action: string;
     reviewer_name: string;
     created_at: string;
     rejection_reason?: string;
   };
+  // Assignment fields
+  assigned_to_user_id?: string | null;
+  assigned_at?: string | null;
+  // Tier-2 fields
+  owner_review_status?: string | null;
+  owner_flag_reason?: string | null;
 }
 
 interface AppDetail { 
@@ -76,6 +93,8 @@ interface StantonReviewSurfaceProps {
   application: AppDetail;
   documents: Doc[];
   workspaceId?: string;
+  anchorType: string;
+  anchorId: string;
   onDocumentAction: (action: string, docId: string, data?: any) => Promise<void>;
 }
 
@@ -83,11 +102,21 @@ export default function StantonReviewSurface({
   application, 
   documents, 
   workspaceId,
+  anchorType,
+  anchorId,
   onDocumentAction 
 }: StantonReviewSurfaceProps) {
   const [viewingDoc, setViewingDoc] = useState<Doc | null>(null);
   const [rejectingDoc, setRejectingDoc] = useState<Doc | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState<Doc | null>(null);
+  const [recategorizingDoc, setRecategorizingDoc] = useState<Doc | null>(null);
+  const [assigningDoc, setAssigningDoc] = useState<Doc | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Selection state for bulk actions
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [currentUserName, setCurrentUserName] = useState<string>('');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [workspaceData, setWorkspaceData] = useState<any>(null);
@@ -149,6 +178,149 @@ export default function StantonReviewSurface({
     setViewingDoc(doc as unknown as Doc);
   }, []);
 
+  const handleUpload = useCallback((doc: { id: string; [key: string]: any }) => {
+    setUploadingDoc(doc as unknown as Doc);
+  }, []);
+
+  const handleRecategorize = useCallback((doc: { id: string; [key: string]: any }) => {
+    setRecategorizingDoc(doc as unknown as Doc);
+  }, []);
+
+  const handleAssignClick = useCallback((doc: { id: string; [key: string]: any }) => {
+    setAssigningDoc(doc as unknown as Doc);
+  }, []);
+
+  // Fetch current user info
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => r.json())
+      .then(j => {
+        if (j.success) {
+          setCurrentUserId(j.data.userId);
+          setCurrentUserName(j.data.displayName);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Selection handlers
+  const handleSelectDoc = useCallback((docId: string, selected: boolean) => {
+    setSelectedDocIds(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(docId);
+      } else {
+        next.delete(docId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllInCategory = useCallback((docIds: string[], selected: boolean) => {
+    setSelectedDocIds(prev => {
+      const next = new Set(prev);
+      docIds.forEach(id => {
+        if (selected) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      });
+      return next;
+    });
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedDocIds(new Set());
+  }, []);
+
+  // Assign handlers
+  const handleAssignSubmit = useCallback(async (userId: string | null, note?: string) => {
+    if (!assigningDoc) return;
+    
+    try {
+      const res = await fetch(
+        `/api/admin/applications/${anchorType}/${anchorId}/documents/${assigningDoc.id}/assign`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, note }),
+        }
+      );
+      
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || 'Assignment failed');
+      }
+      
+      setAssigningDoc(null);
+      showToast(`Assigned — ${assigningDoc.label}`, 'success');
+      onDocumentAction('refresh', assigningDoc.id);
+    } catch (error: any) {
+      showToast(error.message || 'Assignment failed', 'error');
+    }
+  }, [assigningDoc, anchorType, anchorId, onDocumentAction, showToast]);
+
+  const handleBulkAssign = useCallback(async (userId: string | null) => {
+    const docIds = Array.from(selectedDocIds);
+    if (docIds.length === 0) return;
+    
+    try {
+      const res = await fetch(`/api/admin/applications/${anchorType}/${anchorId}/documents/bulk-assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_ids: docIds, user_id: userId }),
+      });
+      
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || 'Bulk assignment failed');
+      }
+      
+      const { succeeded, failed } = json.data;
+      setSelectedDocIds(new Set());
+      showToast(`Assigned ${succeeded} document${succeeded !== 1 ? 's' : ''}${failed > 0 ? `, ${failed} failed` : ''}`, 'success');
+      onDocumentAction('refresh', docIds[0]);
+    } catch (error: any) {
+      showToast(error.message || 'Bulk assignment failed', 'error');
+    }
+  }, [selectedDocIds, anchorType, anchorId, onDocumentAction, showToast]);
+
+  // Claim handler for C key shortcut
+  const handleClaim = useCallback(async (docId: string) => {
+    if (!currentUserId) return;
+    
+    const doc = documents.find(d => d.id === docId);
+    if (!doc) return;
+    
+    // Skip if already assigned to current user
+    if (doc.assigned_to_user_id === currentUserId) {
+      showToast('Already assigned to you', 'success');
+      return;
+    }
+    
+    try {
+      const res = await fetch(
+        `/api/admin/applications/${anchorType}/${anchorId}/documents/${docId}/assign`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: currentUserId }),
+        }
+      );
+      
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || 'Claim failed');
+      }
+      
+      showToast(`Claimed — ${doc.label}`, 'success');
+      onDocumentAction('refresh', docId);
+    } catch (error: any) {
+      showToast(error.message || 'Claim failed', 'error');
+    }
+  }, [currentUserId, documents, anchorType, anchorId, onDocumentAction, showToast]);
+
   // Keyboard shortcuts
   const { focusedIdx, setFocusedIdx, setRowRef } = useReviewKeyboardShortcuts({
     documents,
@@ -161,6 +333,8 @@ export default function StantonReviewSurface({
       if (rejectingDoc) setRejectingDoc(null);
       if (viewingDoc) setViewingDoc(null);
     },
+    onClaim: handleClaim,
+    currentUserId,
   });
 
   // Workspace message handlers
@@ -243,7 +417,17 @@ export default function StantonReviewSurface({
         <div key={category} className="bg-white border border-gray-200">
           <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">{category}</h3>
+              <div className="flex items-center gap-3">
+                <SelectableHeader
+                  checked={categoryDocs.every(d => selectedDocIds.has(d.id))}
+                  indeterminate={
+                    categoryDocs.some(d => selectedDocIds.has(d.id)) &&
+                    !categoryDocs.every(d => selectedDocIds.has(d.id))
+                  }
+                  onChange={(checked) => handleSelectAllInCategory(categoryDocs.map(d => d.id), checked)}
+                  label={category}
+                />
+              </div>
               <div className="text-xs text-gray-500">
                 {categoryDocs.filter(d => d.status === 'approved' || d.status === 'waived').length}/
                 {categoryDocs.filter(d => d.status !== 'waived').length} approved
@@ -267,9 +451,15 @@ export default function StantonReviewSurface({
                   onReject={handleReject}
                   onWaive={handleWaive}
                   onView={handleView}
+                  onUpload={handleUpload}
+                  onRecategorize={handleRecategorize}
                   onClick={() => setFocusedIdx(docIdx)}
                   onExpand={() => setExpandedDocId(doc.id === expandedDocId ? null : doc.id)}
                   isExpanded={expandedDocId === doc.id}
+                  isSelected={selectedDocIds.has(doc.id)}
+                  onSelect={(selected) => handleSelectDoc(doc.id, selected)}
+                  showAssignee={true}
+                  onAssignClick={() => handleAssignClick(doc)}
                   expandedSlot={
                     expandedDocId === doc.id && workspaceId ? (
                       <div className="h-64 border-t border-gray-200">
@@ -285,6 +475,14 @@ export default function StantonReviewSurface({
                           currentUserId="current-user" // TODO: Get from auth context
                         />
                       </div>
+                    ) : null
+                  }
+                  priorVersionsSlot={
+                    (doc.revision ?? 0) > 1 ? (
+                      <PriorVersionsExpander
+                        revisionsUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/${doc.id}/revisions`}
+                        currentRevision={doc.revision ?? 1}
+                      />
                     ) : null
                   }
                   rowRef={setRowRef(docIdx)}
@@ -329,6 +527,56 @@ export default function StantonReviewSurface({
           onSubmit={handleRejectSubmit}
         />
       )}
+
+      {uploadingDoc && (
+        <UploadDialog
+          uploadUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/upload`}
+          doc={uploadingDoc}
+          onClose={() => setUploadingDoc(null)}
+          onSuccess={() => {
+            setUploadingDoc(null);
+            showToast(`Uploaded — ${uploadingDoc.label}`, 'success');
+            onDocumentAction('refresh', uploadingDoc.id);
+          }}
+        />
+      )}
+
+      {recategorizingDoc && (
+        <RecategorizeDialog
+          categorizeUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/${recategorizingDoc.id}/categorize`}
+          doc={recategorizingDoc}
+          availableSlots={documents}
+          onClose={() => setRecategorizingDoc(null)}
+          onSuccess={() => {
+            setRecategorizingDoc(null);
+            showToast(`Moved — ${recategorizingDoc.label}`, 'success');
+            onDocumentAction('refresh', recategorizingDoc.id);
+          }}
+        />
+      )}
+
+      {/* Assign Dialog */}
+      {assigningDoc && (
+        <AssignDialog
+          isOpen={true}
+          onClose={() => setAssigningDoc(null)}
+          onAssign={handleAssignSubmit}
+          currentAssigneeId={assigningDoc.assigned_to_user_id ?? null}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          documentLabel={assigningDoc.label}
+        />
+      )}
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedDocIds.size}
+        totalCount={documents.length}
+        onAssign={handleBulkAssign}
+        onClear={handleClearSelection}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+      />
     </div>
   );
 }

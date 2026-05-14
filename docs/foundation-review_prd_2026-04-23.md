@@ -40,7 +40,7 @@ Deliverables:
 
 | Role | What they do |
 |---|---|
-| Staff (Tess, Christine, Alex, Dan) | Review individual documents, approve/reject/request-more-info per document, write rejection reasons, trigger bulk export |
+| Staff (Tess, Kristine, Alex, Dan) | Review individual documents, approve/reject/request-more-info per document, write rejection reasons, trigger bulk export |
 | Tenant | See per-document status on their submission, upload revisions only for rejected documents, see reviewer notes |
 
 ## Design Principles

@@ -15,7 +15,7 @@ Tenants submit bad document photos. The PBV document tracker already shows the f
 - **Incomplete:** Paystubs rejected because 2 weekly stubs were uploaded when 4 were required
 - **Stale:** Same paystub submission had dates from January instead of current
 
-Each rejected doc means a round trip: Tess/Christine reviews, rejects with a reason, tenant resubmits, staff reviews again. With 20–40% hostile tenancy, every extra round trip is an opportunity for the tenant to disengage.
+Each rejected doc means a round trip: Tess/Kristine reviews, rejects with a reason, tenant resubmits, staff reviews again. With 20–40% hostile tenancy, every extra round trip is an opportunity for the tenant to disengage.
 
 The current upload flow is a raw `<input type="file">`. It gives tenants no guidance, no feedback, and no quality enforcement. Whatever they send, we store and review.
 
@@ -28,7 +28,7 @@ The current upload flow is a raw `<input type="file">`. It gives tenants no guid
 | User | Context |
 |---|---|
 | **Tenant** | On phone (iOS Safari or Android Chrome). Often not technical. Often not English-first. Possibly hostile or disengaged. Completing tasks via magic link at `/t/[token]`. |
-| **Staff (Tess, Christine)** | Reviewing uploaded docs against the checklist. Currently the bottleneck — every rejection costs them review time twice. |
+| **Staff (Tess, Kristine)** | Reviewing uploaded docs against the checklist. Currently the bottleneck — every rejection costs them review time twice. |
 
 Not in scope for this component:
 - Lobby staff (they use the lobby intake form, different workflow)

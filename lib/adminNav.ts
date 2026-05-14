@@ -99,6 +99,11 @@ export const adminNavSections: NavSection[] = [
         href: '/admin/pbv/full-applications',
         keywords: ['pbv', 'voucher', 'application', 'housing', 'full', 'hud'],
       },
+      {
+        label: 'PBV Work',
+        href: '/admin/pbv/work',
+        keywords: ['pbv', 'work', 'queue', 'review', 'my work', 'team rollup', 'pipeline'],
+      },
     ],
   },
   {

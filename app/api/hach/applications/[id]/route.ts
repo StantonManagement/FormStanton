@@ -26,7 +26,8 @@ export async function GET(
          household_size, bedroom_count, created_at, updated_at,
          hach_review_status, stanton_review_status,
          form_submission_id,
-         dv_status, claiming_medical_deduction, has_childcare_expense`
+         dv_status, claiming_medical_deduction, has_childcare_expense,
+         hach_packet_revision, submitted_to_hach_at`
       )
       .eq('id', id)
       .not('hach_review_status', 'is', null)

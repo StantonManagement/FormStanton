@@ -54,26 +54,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const appIds         = apps.map((a) => a.id);
-    const submissionIds  = apps.map((a) => a.form_submission_id).filter(Boolean) as string[];
+    const appIds = apps.map((a) => a.id);
 
-    // ── 2. Document status counts per submission (batch) ───────────────────
+    // ── 2. Document status counts per application (batch) ──────────────────
     const { data: docRows } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('form_submission_id, status')
-      .in('form_submission_id', submissionIds.length ? submissionIds : ['__none__']);
+      .from('application_documents')
+      .select('anchor_id, status')
+      .eq('anchor_type', 'pbv_full_application')
+      .in('anchor_id', appIds.length ? appIds : ['__none__']);
 
-    // Map: submission_id → { missing, pending, rejected, approved, total }
+    // Map: anchor_id → { missing, pending, rejected, approved, total }
     const docStatsBySubm: Record<string, { missing: number; pending: number; rejected: number; approved: number; total: number }> = {};
     for (const row of docRows ?? []) {
-      if (!docStatsBySubm[row.form_submission_id]) {
-        docStatsBySubm[row.form_submission_id] = { missing: 0, pending: 0, rejected: 0, approved: 0, total: 0 };
+      if (!docStatsBySubm[row.anchor_id]) {
+        docStatsBySubm[row.anchor_id] = { missing: 0, pending: 0, rejected: 0, approved: 0, total: 0 };
       }
-      docStatsBySubm[row.form_submission_id].total++;
-      if (row.status === 'missing')   docStatsBySubm[row.form_submission_id].missing++;
-      else if (row.status === 'rejected') docStatsBySubm[row.form_submission_id].rejected++;
-      else if (row.status === 'approved') docStatsBySubm[row.form_submission_id].approved++;
-      else docStatsBySubm[row.form_submission_id].pending++;
+      docStatsBySubm[row.anchor_id].total++;
+      if (row.status === 'missing')   docStatsBySubm[row.anchor_id].missing++;
+      else if (row.status === 'rejected') docStatsBySubm[row.anchor_id].rejected++;
+      else if (row.status === 'approved') docStatsBySubm[row.anchor_id].approved++;
+      else docStatsBySubm[row.anchor_id].pending++;
     }
 
     // Also factor in document_review_actions (latest per doc)
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
     const now = Date.now();
 
     const rows = apps.map((app) => {
-      const docStats = docStatsBySubm[app.form_submission_id ?? ''] ?? { missing: 0, pending: 0, rejected: 0, approved: 0, total: 0 };
+      const docStats = docStatsBySubm[app.id] ?? { missing: 0, pending: 0, rejected: 0, approved: 0, total: 0 };
       const latestActions = latestActionByAppDoc[app.id] ?? {};
       const hasRejections = hasRejectionByApp[app.id] ?? false;
 

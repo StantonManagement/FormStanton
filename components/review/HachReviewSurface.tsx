@@ -49,6 +49,8 @@ interface Packet {
     household_size: number;
     hach_review_status: string;
     preferred_language?: string | null;
+    hach_packet_revision?: number | null;
+    submitted_to_hach_at?: string | null;
   };
   members: Member[];
   documents: Document[];
@@ -291,7 +293,7 @@ export default function HachReviewSurface({
             {app.building_address}, Unit {app.unit_number} - {app.household_size}-person household - Submitted {submittedDate}
           </div>
         </div>
-        <div style={{ flexShrink: 0, paddingTop: 4 }}>
+        <div style={{ flexShrink: 0, paddingTop: 4, display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 6 }}>
           <span style={{
             padding: '4px 12px',
             background: COLORS.infoBg, color: COLORS.info,
@@ -302,6 +304,18 @@ export default function HachReviewSurface({
              app.hach_review_status === 'approved_by_hach' ? 'Approved' :
              app.hach_review_status === 'rejected_by_hach' ? 'Rejected' : 'Not Routed'}
           </span>
+          {(app.hach_packet_revision ?? 0) > 0 && (
+            <span style={{
+              padding: '2px 8px',
+              background: '#f1f5f9', color: '#475569',
+              fontSize: 11, fontWeight: 600, border: '1px solid #cbd5e1',
+            }}>
+              Revision {app.hach_packet_revision}
+              {app.submitted_to_hach_at
+                ? ' · ' + new Date(app.submitted_to_hach_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : ''}
+            </span>
+          )}
         </div>
       </div>
 

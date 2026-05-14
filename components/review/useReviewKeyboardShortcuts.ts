@@ -9,6 +9,8 @@ interface UseReviewKeyboardShortcutsProps {
   onView?: (doc: any) => void;
   onMessageFocus?: (docId: string) => void;
   onCloseModals?: () => void;
+  onClaim?: (docId: string) => void; // C key - assign focused doc to current user
+  currentUserId?: string;
 }
 
 export function useReviewKeyboardShortcuts({
@@ -18,6 +20,8 @@ export function useReviewKeyboardShortcuts({
   onView,
   onMessageFocus,
   onCloseModals,
+  onClaim,
+  currentUserId,
 }: UseReviewKeyboardShortcutsProps) {
   const [focusedIdx, setFocusedIdx] = useState<number>(-1);
   const docRowRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -124,11 +128,20 @@ export function useReviewKeyboardShortcuts({
         }
         return;
       }
+
+      // Claim shortcut - C key assigns focused doc to current user
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        if (onClaim && currentUserId) {
+          onClaim(focusedDoc.id);
+        }
+        return;
+      }
     };
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [documents, focusedIdx, onApprove, onReject, onView, onMessageFocus, onCloseModals, getEffectiveStatus]);
+  }, [documents, focusedIdx, onApprove, onReject, onView, onMessageFocus, onCloseModals, onClaim, currentUserId, getEffectiveStatus]);
 
   return {
     focusedIdx,

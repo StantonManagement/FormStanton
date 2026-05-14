@@ -24,6 +24,11 @@ export const HACH_PAYLOAD_BANNED_KEYS_DOCUMENT_SCOPED: ReadonlySet<string> = new
   'notes',
   'reviewer',
   'reviewed_at',
+  'uploaded_by_role',
+  'uploaded_by_user_id',
+  'uploaded_by_display_name',
+  'staff_upload_note',
+  'original_doc_type',
 ]);
 
 export const HACH_PAYLOAD_BANNED_KEYS: ReadonlySet<string> = new Set([

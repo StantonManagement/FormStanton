@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import StatusBadge from './StatusBadge';
 import Button from './Button';
+import AssigneeBadge from './AssigneeBadge';
+import SelectableRow from './SelectableRow';
 import { getEffectiveStatus, formatRelativeTime } from './utils';
 
 interface DocumentAction {
@@ -15,12 +17,23 @@ interface DocumentAction {
 interface Document {
   id: string;
   label: string;
+  doc_type?: string;
   file_name?: string | null;
   status: string;
   person_slot?: number;
   required?: boolean;
   storage_path?: string | null;
   latest_action?: DocumentAction;
+  uploaded_by_role?: string | null;
+  uploaded_by_display_name?: string | null;
+  staff_upload_note?: string | null;
+  original_doc_type?: string | null;
+  // Assignment fields
+  assigned_to_user_id?: string | null;
+  assigned_at?: string | null;
+  // Tier-2 fields
+  owner_review_status?: string | null;
+  owner_flag_reason?: string | null;
 }
 
 interface DocumentRowProps {
@@ -34,11 +47,23 @@ interface DocumentRowProps {
   onReject: (doc: Document) => void;
   onWaive?: (id: string) => void; // Stanton only
   onView: (doc: Document) => void;
+  onUpload?: (doc: Document) => void; // Stanton only
+  onRecategorize?: (doc: Document) => void; // Stanton only
   onClick: () => void;
   onExpand?: () => void; // For message thread
   isExpanded?: boolean;
   expandedSlot?: React.ReactNode; // Message thread content
   rowRef?: (el: HTMLDivElement | null) => void;
+  priorVersionsSlot?: React.ReactNode; // Prior versions expander
+  // Selection props
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
+  showAssignee?: boolean;
+  onAssignClick?: () => void;
+  // Tier-2 props
+  isApplicationLead?: boolean;
+  onConfirmAsLead?: () => void;
+  onFlag?: () => void;
 }
 
 export default function DocumentRow({
@@ -52,11 +77,21 @@ export default function DocumentRow({
   onReject,
   onWaive,
   onView,
+  onUpload,
+  onRecategorize,
   onClick,
   onExpand,
   isExpanded = false,
   expandedSlot,
   rowRef,
+  priorVersionsSlot,
+  isSelected = false,
+  onSelect,
+  showAssignee = false,
+  onAssignClick,
+  isApplicationLead = false,
+  onConfirmAsLead,
+  onFlag,
 }: DocumentRowProps) {
   const [hover, setHover] = useState(false);
   const eff = getEffectiveStatus(doc);
@@ -65,6 +100,10 @@ export default function DocumentRow({
   const canReject = eff !== 'approved' && eff !== 'waived' && eff !== 'missing';
   const canWaive = context === 'stanton' && eff !== 'approved' && eff !== 'waived' && eff !== 'missing';
   const canView = !!(doc.storage_path || doc.file_name);
+  const canUpload = context === 'stanton' && eff !== 'approved' && eff !== 'waived';
+  const canRecategorize = context === 'stanton' && !!(doc.storage_path || doc.file_name);
+  const isStaffUploaded = doc.uploaded_by_role === 'staff';
+  const isRecategorized = !!doc.original_doc_type;
 
   // Calculate total unread count for this document
   const totalUnread = Object.values(unreadCountByChannel).reduce((sum, count) => sum + count, 0);
@@ -180,6 +219,11 @@ export default function DocumentRow({
     rowClasses += ' bg-gray-50';
   }
 
+  // Tier-2 state indicators
+  const showTier2Pending = isApplicationLead && doc.owner_review_status === 'pending';
+  const showTier2Confirmed = doc.owner_review_status === 'confirmed';
+  const showTier2Flagged = doc.owner_review_status === 'flagged' || eff === 'flagged_for_rereview';
+
   return (
     <>
       <div
@@ -190,11 +234,19 @@ export default function DocumentRow({
         onMouseLeave={() => setHover(false)}
         data-doc-row="true"
       >
+        {/* Selection checkbox */}
+        {onSelect && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <SelectableRow isSelected={isSelected} onSelect={onSelect} />
+          </div>
+        )}
+
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
           eff === 'approved' ? 'bg-green-500' : 
           eff === 'submitted' ? 'bg-yellow-500' : 
           eff === 'rejected' ? 'bg-red-500' : 
-          eff === 'waived' ? 'bg-indigo-400' : 'bg-gray-300'
+          eff === 'waived' ? 'bg-indigo-400' : 
+          eff === 'flagged_for_rereview' ? 'bg-orange-500' : 'bg-gray-300'
         }`} />
         
         <div className="flex-1 min-w-0">
@@ -220,9 +272,60 @@ export default function DocumentRow({
               {doc.latest_action.rejection_reason}
             </div>
           )}
+          {isStaffUploaded && (
+            <div className="mt-1 flex items-center gap-1">
+              <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5">
+                Uploaded by Stanton on behalf of tenant
+              </span>
+              {doc.uploaded_by_display_name && (
+                <span className="text-xs text-gray-500">by {doc.uploaded_by_display_name}</span>
+              )}
+            </div>
+          )}
+          {isRecategorized && (
+            <div className="mt-0.5">
+              <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5">
+                Re-categorized from {doc.original_doc_type}
+              </span>
+            </div>
+          )}
+          {doc.staff_upload_note && (
+            <div className="mt-0.5 text-xs text-gray-500 italic">Note: {doc.staff_upload_note}</div>
+          )}
+          
+          {/* Tier-2 flag reason display */}
+          {showTier2Flagged && doc.owner_flag_reason && (
+            <div className="mt-1 text-xs text-orange-700 bg-orange-50 px-2 py-1 inline-block">
+              Flagged: {doc.owner_flag_reason}
+            </div>
+          )}
+          
+          {/* Tier-2 confirmed indicator */}
+          {showTier2Confirmed && (
+            <div className="mt-1 text-xs text-green-700 bg-green-50 px-2 py-1 inline-block">
+              Confirmed by Lead
+            </div>
+          )}
         </div>
 
+        {/* Assignee badge */}
+        {showAssignee && (
+          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <AssigneeBadge
+              userId={doc.assigned_to_user_id ?? null}
+              assignedAt={doc.assigned_at ?? null}
+              onClick={onAssignClick}
+            />
+          </div>
+        )}
+
         <div className="flex gap-2 flex-shrink-0">
+          {canUpload && onUpload && (
+            <Button size="sm" variant="secondary" context="stanton" onClick={(e) => { e.stopPropagation(); onUpload(doc); }}>Upload</Button>
+          )}
+          {canRecategorize && onRecategorize && (
+            <Button size="sm" variant="secondary" context="stanton" onClick={(e) => { e.stopPropagation(); onRecategorize(doc); }}>Move</Button>
+          )}
           {canView && (
             <Button size="sm" variant="secondary" context="stanton" onClick={(e) => { e.stopPropagation(); onView(doc); }}>View</Button>
           )}
@@ -241,6 +344,28 @@ export default function DocumentRow({
               Reject
             </Button>
           )}
+          
+          {/* Tier-2 Confirm/Flag buttons for Application Lead */}
+          {showTier2Pending && (
+            <>
+              <Button
+                size="sm"
+                variant="approve"
+                context="stanton"
+                onClick={(e) => { e.stopPropagation(); onConfirmAsLead?.(); }}
+              >
+                Confirm
+              </Button>
+              <Button
+                size="sm"
+                variant="reject"
+                context="stanton"
+                onClick={(e) => { e.stopPropagation(); onFlag?.(); }}
+              >
+                Flag
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -254,6 +379,12 @@ export default function DocumentRow({
       {isExpanded && expandedSlot && (
         <div className="border-t border-gray-200 bg-gray-50">
           {expandedSlot}
+        </div>
+      )}
+
+      {priorVersionsSlot && (
+        <div className="border-t border-gray-100">
+          {priorVersionsSlot}
         </div>
       )}
     </>

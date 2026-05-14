@@ -75,13 +75,20 @@ export async function POST(
          household_size, total_annual_income, stanton_review_status,
          dv_status, homeless_at_admission, claiming_medical_deduction,
          has_childcare_expense, reasonable_accommodation_requested,
-         form_submission_id, tenant_access_token`
+         form_submission_id, tenant_access_token, packet_locked`
       )
       .eq('id', id)
       .single();
 
     if (appError || !app) {
       return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
+    }
+
+    if ((app as any).packet_locked) {
+      return NextResponse.json(
+        { success: false, message: 'Packet is locked. Reopen the packet before regenerating the HHA.' },
+        { status: 423 }
+      );
     }
 
     if (app.stanton_review_status !== 'approved') {
@@ -92,9 +99,10 @@ export async function POST(
     }
 
     const { data: docs, error: docsError } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select('status, required')
-      .eq('form_submission_id', app.form_submission_id);
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', id);
 
     if (docsError) throw docsError;
 

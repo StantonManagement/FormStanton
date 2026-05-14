@@ -10,8 +10,8 @@
 
 The Stanton internal review surface for PBV applications (`/admin/pbv/full-applications/[id]`) today is a summary page: income editor, member list, document status list with colored dots, and a footer link that says "Open in Per-Document Review" → `/admin/form-submissions/[id]`. To actually look at a document and act on it (approve / reject / waive), the user must leave the application page, do the review on a different page, and come back. The HACH external portal (`/hach/applications/[id]`), in contrast, has a single keyboard-driven cockpit with inline viewer, per-document approve/reject buttons, and J/K navigation. The disparity is doing nobody any favors:
 
-- **Stanton reviewers (Tess, Christine, Dan, Alex)** waste clicks and lose context bouncing between pages. Document review feels slower than it is.
-- **The war room is invisible.** There's nowhere on the page to deliberate, ask Christine if she's seen this one, or send HACH a note about a missing pay-stub date range.
+- **Stanton reviewers (Tess, Kristine, Dan, Alex)** waste clicks and lose context bouncing between pages. Document review feels slower than it is.
+- **The war room is invisible.** There's nowhere on the page to deliberate, ask Kristine if she's seen this one, or send HACH a note about a missing pay-stub date range.
 - **HACH gets the better tool.** The strategic goal is for HACH to *prefer* this portal over their old workflow — but Stanton, the team running the whole operation, has the worse surface.
 
 This PRD unifies the review experience. One review surface reused on both sides. Same primitives, same UX, contextually adjusted permissions and data. Embed the workspace (war room) directly on the page so deliberation and correspondence happen where the documents live, not in email.

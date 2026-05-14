@@ -16,8 +16,61 @@ function buildingUnitSlug(building: string, unit: string): string {
   return `${clean(building)}-unit-${clean(unit)}`;
 }
 
+// Helper to enrich rows with assignee information
+async function enrichWithAssignees(rows: any[]) {
+  if (rows.length === 0) return;
+
+  const appIds = rows.map((r: any) => r.id).filter(Boolean);
+  if (appIds.length === 0) return;
+
+  // Fetch assignees per application from application_documents
+  const { data: docAssignees } = await supabaseAdmin
+    .from('application_documents')
+    .select('anchor_id, assigned_to_user_id, admin_users(display_name)')
+    .eq('anchor_type', 'pbv_full_application')
+    .in('anchor_id', appIds)
+    .not('assigned_to_user_id', 'is', null);
+
+  // Group assignees by application id
+  const assigneesByApp = new Map<string, Map<string, { user_id: string; display_name: string; count: number }>>();
+  
+  for (const doc of (docAssignees ?? [])) {
+    const anchorId = doc.anchor_id;
+    const userId = doc.assigned_to_user_id;
+    const userName = (doc.admin_users as any)?.display_name ?? 'Unknown';
+    
+    if (!assigneesByApp.has(anchorId)) {
+      assigneesByApp.set(anchorId, new Map());
+    }
+    
+    const userMap = assigneesByApp.get(anchorId)!;
+    if (userMap.has(userId)) {
+      userMap.get(userId)!.count++;
+    } else {
+      userMap.set(userId, { user_id: userId, display_name: userName, count: 1 });
+    }
+  }
+
+  // Attach to rows
+  for (const row of rows) {
+    const userMap = assigneesByApp.get(row.id);
+    if (userMap) {
+      row.assignees = Array.from(userMap.values()).slice(0, 3); // Up to 3 assignees
+      row.total_assignees = userMap.size;
+    } else {
+      row.assignees = [];
+      row.total_assignees = 0;
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   if (!(await isAuthenticated())) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
 
@@ -25,6 +78,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') ?? '';
     const building = searchParams.get('building') ?? '';
+    const assignedToMe = searchParams.get('assigned_to_me') === 'true';
 
     let query = supabaseAdmin
       .from('pbv_full_applications')
@@ -42,11 +96,24 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) throw error;
 
-    const rows = data ?? [];
+    let rows = data ?? [];
 
-    // Enrich with workspace unread counts for the current user
-    const sessionUser = await getSessionUser();
-    if (sessionUser && rows.length > 0) {
+    // Filter by assigned_to_me if requested
+    if (assignedToMe) {
+      const allAppIds = rows.map((r: any) => r.id).filter(Boolean);
+      const { data: assignedDocs } = await supabaseAdmin
+        .from('application_documents')
+        .select('anchor_id')
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('assigned_to_user_id', sessionUser.userId)
+        .in('anchor_id', allAppIds.length ? allAppIds : ['__none__']);
+      
+      const assignedAppIds = new Set((assignedDocs ?? []).map(d => d.anchor_id));
+      rows = rows.filter((r: any) => assignedAppIds.has(r.id));
+    }
+
+    // Enrich with workspace unread counts and assignee information
+    if (rows.length > 0) {
       const appIds = rows.map((r: any) => r.id);
 
       // Fetch workspaces for these applications
@@ -113,9 +180,15 @@ export async function GET(request: NextRequest) {
           return { ...r, workspace_unread_counts: unreadByWorkspace.get(wsId) ?? { stanton: 0, shared: 0 } };
         });
 
+        // Add assignee information
+        await enrichWithAssignees(enriched);
+
         return NextResponse.json({ success: true, data: enriched });
       }
     }
+
+    // Add assignee information even without workspace data
+    await enrichWithAssignees(rows);
 
     return NextResponse.json({ success: true, data: rows });
   } catch (error: any) {

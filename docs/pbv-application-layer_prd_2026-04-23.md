@@ -44,7 +44,7 @@ Deliverables:
 |---|---|
 | Head of household (tenant) | Completes pre-app (done), receives full-app invite, completes intake form, uploads docs, collects signatures from other adults on shared device, tracks status |
 | Other adults in household | Sign required HUD/HACH forms on same device as head of household |
-| Staff reviewer (Tess, Christine) | Reviews each document per foundation workflow, approves/rejects/waives, runs qualification math, generates PDF summary, packages for HACH |
+| Staff reviewer (Tess, Kristine) | Reviews each document per foundation workflow, approves/rejects/waives, runs qualification math, generates PDF summary, packages for HACH |
 | Alex / Dan | Reviews qualification decisions, signs off on Stanton-side approval before advancing to HACH |
 | HACH | Receives summary PDF + HHA application + document package |
 
@@ -367,7 +367,7 @@ Same as Foundation PRD:
 | Which HC application version is current per HACH? | Alex / HACH | Phase 6 template |
 | Which HUD form versions are current (several in packet show expired OMB numbers)? | Alex / HACH | Phase 4 signature forms |
 | Role definitions: who gets `pbv_reviewer` exactly? | Alex / Dan | Phase 7 |
-| Does Stanton review need Dan's sign-off separately from Tess/Christine, or is one layer enough? | Alex / Dan | Phase 6 admin panel |
+| Does Stanton review need Dan's sign-off separately from Tess/Kristine, or is one layer enough? | Alex / Dan | Phase 6 admin panel |
 | Briefing documents distribution — digital confirmation sufficient, or physical distribution required? | Alex / HACH | Phase 5 |
 | Data retention policy for rejected applications? | Dan | Post-launch |
 

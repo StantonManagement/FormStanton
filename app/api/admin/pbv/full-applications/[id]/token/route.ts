@@ -36,6 +36,18 @@ export async function PATCH(
 
     // Also block if documents have already been uploaded — the old token is embedded
     // in the document portal link that the tenant may already be using.
+    //
+    // PRD-01 NOTE: This guard intentionally still queries form_submission_documents.
+    // The tenant upload path (/api/t/[token]/documents/[documentId]) writes to
+    // form_submission_documents (not application_documents) because tenant-side
+    // document upload is not yet migrated — that migration is scoped to PRD-02
+    // (packet intake decoupling). While the tenant path remains submission-keyed,
+    // this guard correctly reflects whether the tenant has uploaded anything.
+    //
+    // When PRD-02 migrates the tenant upload path, retarget this check to:
+    //   application_documents WHERE anchor_type = 'pbv_full_application'
+    //   AND anchor_id = <id> AND revision > 0
+    // and remove the form_submission_id dependency.
     if (existing.form_submission_id) {
       const { count } = await supabaseAdmin
         .from('form_submission_documents')

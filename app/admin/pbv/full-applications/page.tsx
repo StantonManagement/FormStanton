@@ -21,6 +21,12 @@ interface FullAppRow {
     stanton: number;
     shared: number;
   };
+  assignees?: {
+    user_id: string;
+    display_name: string;
+    count: number;
+  }[];
+  total_assignees?: number;
 }
 
 interface InviteForm {
@@ -66,6 +72,7 @@ export default function PbvFullApplicationsPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterBuilding, setFilterBuilding] = useState('');
   const [filterIntakeOnly, setFilterIntakeOnly] = useState(false);
+  const [filterMyDocs, setFilterMyDocs] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
@@ -85,6 +92,7 @@ export default function PbvFullApplicationsPage() {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (filterBuilding) params.set('building', filterBuilding);
+      if (filterMyDocs) params.set('assigned_to_me', 'true');
       const res = await fetch(`/api/admin/pbv/full-applications?${params.toString()}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed to load');
@@ -94,9 +102,17 @@ export default function PbvFullApplicationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterBuilding]);
+  }, [filterStatus, filterBuilding, filterMyDocs]);
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
+
+  // Get initials from display name
+  const getInitials = (name: string): string => {
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   const handleCopyLink = async (row: FullAppRow) => {
     const link = `${window.location.origin}/pbv-full-app/${row.tenant_access_token}`;
@@ -198,6 +214,17 @@ export default function PbvFullApplicationsPage() {
           <input type="checkbox" checked={filterIntakeOnly} onChange={(e) => setFilterIntakeOnly(e.target.checked)} className="w-4 h-4" />
           Intake submitted only
         </label>
+        <button
+          type="button"
+          onClick={() => setFilterMyDocs(!filterMyDocs)}
+          className={`px-3 py-2 text-sm border transition-colors ${
+            filterMyDocs
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)]'
+          }`}
+        >
+          My docs only
+        </button>
       </div>
 
       {loading ? (
@@ -215,6 +242,7 @@ export default function PbvFullApplicationsPage() {
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Building</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Unit</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Assignees</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Invited</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Intake</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Actions</th>
@@ -255,6 +283,28 @@ export default function PbvFullApplicationsPage() {
                       <span className={`inline-block px-2 py-0.5 text-xs border font-medium ${statusBadge(displayStatus)}`}>
                         {displayStatus}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {row.assignees && row.assignees.length > 0 ? (
+                          <>
+                            {row.assignees.map((assignee) => (
+                              <span
+                                key={assignee.user_id}
+                                className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-medium"
+                                title={`${assignee.display_name} (${assignee.count} docs)`}
+                              >
+                                {getInitials(assignee.display_name)}
+                              </span>
+                            ))}
+                            {row.total_assignees && row.total_assignees > 3 && (
+                              <span className="text-xs text-[var(--muted)]">+{row.total_assignees - 3}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs text-[var(--muted)]">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.created_at)}</td>
                     <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.intake_submitted_at)}</td>

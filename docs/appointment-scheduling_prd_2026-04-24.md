@@ -22,7 +22,7 @@ We need a Calendly-style scheduling tool, scoped to PBV operational needs:
 
 | Role | What they do |
 |---|---|
-| Stanton Staff (Tess, Christine, Will) | Configure weekly availability, see day calendar, mark appointments complete/no-show |
+| Stanton Staff (Tess, Kristine, Will) | Configure weekly availability, see day calendar, mark appointments complete/no-show |
 | Tenant | Clicks scheduling link (from SMS or email), picks a slot |
 | Tenant's family/helper | Can schedule on tenant's behalf (link doesn't require tenant authentication beyond the existing magic link) |
 | Alex | Oversees, sees all appointments across staff |

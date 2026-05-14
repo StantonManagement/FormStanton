@@ -41,6 +41,24 @@ export async function POST(
       );
     }
 
+    // Check packet_locked — tenant-friendly message
+    const { data: fullApp } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('packet_locked')
+      .eq('form_submission_id', submission.id)
+      .single();
+
+    if ((fullApp as any)?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'This packet is currently under HACH review. If you have a new document, please contact the Stanton office.',
+        },
+        { status: 423 }
+      );
+    }
+
     if (doc.status === 'submitted') {
       return NextResponse.json(
         {

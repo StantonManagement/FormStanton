@@ -25,7 +25,8 @@ export async function GET(
          hha_application_file,
          tenant_access_token, form_submission_id, preapp_id,
          claiming_medical_deduction, has_childcare_expense, dv_status,
-         homeless_at_admission, reasonable_accommodation_requested`
+         homeless_at_admission, reasonable_accommodation_requested,
+         packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision`
       )
       .eq('id', id)
       .single();
@@ -46,9 +47,10 @@ export async function GET(
       .order('slot', { ascending: true });
 
     const { data: documents } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, doc_type, label, person_slot, status, required, display_order, requires_signature')
-      .eq('form_submission_id', app.form_submission_id)
+      .from('application_documents')
+      .select('id, doc_type, label, person_slot, status, required, display_order, requires_signature, revision, file_name, storage_path, uploaded_by_role, uploaded_by_display_name, staff_upload_note, original_doc_type, assigned_to_user_id, assigned_at, owner_review_status, owner_flag_reason')
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', id)
       .order('display_order', { ascending: true });
 
     return NextResponse.json({
@@ -77,6 +79,20 @@ export async function PATCH(
 
   try {
     const { id } = await params;
+    // Check packet_locked before any mutation
+    const { data: lockCheck } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('packet_locked')
+      .eq('id', id)
+      .single();
+
+    if ((lockCheck as any)?.packet_locked) {
+      return NextResponse.json(
+        { success: false, message: 'Packet is locked. Reopen the packet before making changes.' },
+        { status: 423 }
+      );
+    }
+
     const body = await request.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });

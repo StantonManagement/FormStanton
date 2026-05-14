@@ -8,7 +8,7 @@
 
 ## Problem Statement
 
-Stanton staff (Tess, Christine) need a single operational view of every PBV conversion unit across all stages of the pipeline — who's where, who's blocked, what's stale, what the next action is. Today this lives in email threads, memory, Supabase folder inspection, and scattered spreadsheets.
+Stanton staff (Tess, Kristine) need a single operational view of every PBV conversion unit across all stages of the pipeline — who's where, who's blocked, what's stale, what the next action is. Today this lives in email threads, memory, Supabase folder inspection, and scattered spreadsheets.
 
 Key workflows this supports:
 - Daily triage: "what needs attention right now"
@@ -25,7 +25,7 @@ This is the Stanton-side mirror of the HACH reviewer portal — same underlying 
 
 | Role | Primary usage |
 |---|---|
-| Tess, Christine (Stanton office staff) | Daily triage, tenant chase, HACH correspondence logging |
+| Tess, Kristine (Stanton office staff) | Daily triage, tenant chase, HACH correspondence logging |
 | Dean (field staff) | Read-only visibility into units he may need to visit |
 | Alex (supervisor) | Portfolio rollup, assignment management, escalations |
 
@@ -234,6 +234,6 @@ CREATE INDEX ae_app_idx ON application_events(application_id, occurred_at desc);
 | Question | Owner |
 |---|---|
 | How do existing `pbv_full_applications` statuses map to the new stage enum? | Alex |
-| Is there ever a case where an application has more than one Stanton assignee? (e.g., Tess for docs, Christine for HACH liaison) | Alex |
+| Is there ever a case where an application has more than one Stanton assignee? (e.g., Tess for docs, Kristine for HACH liaison) | Alex |
 | Should Dean (field staff) have write access to the correspondence log or read-only? | Alex |
 | For the tenant chase, should it only allow re-sending if >24h since last chase, to avoid spamming? | Alex / Dan |

@@ -20,6 +20,8 @@ interface SubmissionDocument {
   file_name: string | null;
   rejection_reason: string | null;
   reviewed_at: string | null;
+  uploaded_by_role?: string | null;
+  staff_upload_note?: string | null;
   scan_metadata?: {
     quality_flags?: string[];
     quality_scores?: {
@@ -467,6 +469,14 @@ export default function SubmissionStatusPortal({ token }: { token: string }) {
                         </span>
                       </div>
                     </div>
+
+                    {/* Staff-upload provenance label */}
+                    {doc.uploaded_by_role === 'staff' && (
+                      <p className="mt-1.5 text-xs text-indigo-700">
+                        This document was uploaded by Stanton Management on your behalf.
+                        {doc.staff_upload_note && ` Note: ${doc.staff_upload_note}`}
+                      </p>
+                    )}
 
                     {/* Rejection reason */}
                     {doc.status === 'rejected' && doc.rejection_reason && (

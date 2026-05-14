@@ -14,7 +14,7 @@ From the project's own postmortem (`memory.md`): *"lost documents, no proof of w
 
 The fix is to model what's actually happening: a shared workspace per application, with three logically and physically separated channels:
 
-1. **Stanton-private channel** — Tess, Christine, Dan, Alex deliberate internally. HACH cannot read this.
+1. **Stanton-private channel** — Tess, Kristine, Dan, Alex deliberate internally. HACH cannot read this.
 2. **HACH-private channel** — HACH reviewers deliberate among themselves. Stanton cannot read this.
 3. **Shared correspondence channel** — both parties post here. Both see everything. Append-only after a 5-minute edit grace period. This replaces the emails.
 
@@ -372,7 +372,7 @@ The Stanton and HACH route files are intentionally separate (no shared resolver,
 | Question | Owner | Default for v1 |
 |---|---|---|
 | 1. Should the shared channel allow attachments (e.g., HACH attaches a corrected pay-stub example)? | Alex | No — text only in v1. |
-| 2. Should there be a typing indicator / presence ("Christine is reading this packet")? | Alex | No — defer. |
+| 2. Should there be a typing indicator / presence ("Kristine is reading this packet")? | Alex | No — defer. |
 | 3. When does a workspace get archived (after voucher issued?) | Alex | Workspace persists. No archive in v1. |
 | 4. Should messages anchored to a document show in the application-level view too? | Alex | Default: no. Doc-anchored messages live on the doc; app-level view shows app-level messages only. Toggle could be added in UI. |
 | 5. Read receipts: do users want to *see* who's read what, or is it just an unread-count gimmick? | Alex | v1: just unread counts, not per-message read receipts visible to others. |

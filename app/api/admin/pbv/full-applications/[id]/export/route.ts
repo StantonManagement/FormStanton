@@ -31,9 +31,10 @@ export async function GET(
       .order('slot', { ascending: true });
 
     const { data: documents, error: docsError } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select('id, doc_type, label, person_slot, revision, status, file_name, storage_path, reviewer, reviewed_at, rejection_reason')
-      .eq('form_submission_id', app.form_submission_id)
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', id)
       .order('display_order', { ascending: true })
       .order('person_slot', { ascending: true });
 
