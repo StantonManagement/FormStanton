@@ -305,20 +305,6 @@ export default function RejectDialog({
                 )}
               </div>
 
-              <div
-                style={{
-                  marginTop: 8,
-                  padding: '8px 12px',
-                  backgroundColor: COLORS.warnBg,
-                  border: `1px solid #fcd34d`,
-                  fontSize: 11,
-                  color: COLORS.warn,
-                  lineHeight: 1.45,
-                }}
-              >
-                <strong>Note:</strong> Tenant notification is deferred until Twilio integration is live.
-                The rejection will be logged but no SMS will be sent yet.
-              </div>
             </div>
 
             {/* Submit error */}
@@ -470,11 +456,6 @@ export default function RejectDialog({
               {previewMessage || (
                 <span className="text-gray-400 italic">Select a reason to preview the message</span>
               )}
-            </div>
-
-            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-xs text-yellow-800 leading-relaxed">
-              <strong>Note:</strong> Tenant notification is deferred until Twilio integration is live.
-              The rejection will be logged but no SMS will be sent yet.
             </div>
           </div>
 

@@ -28,9 +28,10 @@ export async function POST(
   try {
     // 1. Fetch the document and scope-check it belongs to a HACH-accessible application
     const { data: doc, error: docErr } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, label, status, form_submission_id')
+      .from('application_documents')
+      .select('id, label, status, anchor_id')
       .eq('id', documentId)
+      .eq('anchor_type', 'pbv_full_application')
       .single();
 
     if (docErr || !doc) {
@@ -40,11 +41,11 @@ export async function POST(
       );
     }
 
-    // Verify the document's submission links to a HACH-accessible application
+    // Verify the document's application is HACH-accessible
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, hach_review_status, form_submission_id')
-      .eq('form_submission_id', doc.form_submission_id)
+      .select('id, hach_review_status')
+      .eq('id', doc.anchor_id)
       .not('hach_review_status', 'is', null)
       .single();
 
@@ -80,7 +81,13 @@ export async function POST(
       );
     }
 
-    // 3. Update last_activity_at if the column exists — silently skip if not
+    // 3a. Update document status to 'approved'
+    await supabaseAdmin
+      .from('application_documents')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewer: user.displayName, updated_at: new Date().toISOString() })
+      .eq('id', documentId);
+
+    // 3b. Update last_activity_at if the column exists — silently skip if not
     try {
       await supabaseAdmin
         .from('pbv_full_applications')
@@ -92,9 +99,10 @@ export async function POST(
 
     // 4. Recompute packet progress summary
     const { data: allDocs } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select('id, status')
-      .eq('form_submission_id', doc.form_submission_id);
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', applicationId);
 
     const { data: allActions } = await supabaseAdmin
       .from('document_review_actions')
@@ -125,7 +133,7 @@ export async function POST(
     await logAudit(
       user,
       'hach.document.approve',
-      'form_submission_documents',
+      'application_documents',
       documentId,
       { application_id: applicationId, document_label: doc.label },
       getClientIp(request)

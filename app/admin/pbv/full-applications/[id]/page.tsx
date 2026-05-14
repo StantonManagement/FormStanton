@@ -3,13 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
+import NotificationTimeline from '@/components/admin/NotificationTimeline';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
 import ReopenPacketDialog from '@/components/review/ReopenPacketDialog';
 import PacketLockBanner from '@/components/review/PacketLockBanner';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean;revision?:number;file_name?:string|null;storage_path?:string|null;uploaded_by_role?:string|null;uploaded_by_display_name?:string|null;staff_upload_note?:string|null;original_doc_type?:string|null; }
-interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_submitted_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;members:Member[];documents:Doc[]; }
+interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_submitted_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;members:Member[];documents:Doc[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
 const STATUS_COLORS:Record<string,string> = {pending:'bg-gray-100 text-gray-700',under_review:'bg-yellow-100 text-yellow-800',needs_info:'bg-orange-100 text-orange-800',approved:'bg-green-100 text-green-800',denied:'bg-red-100 text-red-800'};
@@ -447,6 +448,19 @@ export default function PbvFullApplicationDetailPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-white border border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--divider)]">
+          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
+        </div>
+        <div className="px-5 py-4">
+          <NotificationTimeline
+            applicationId={detail.id}
+            optedOut={!!detail.sms_opted_out_at}
+            onResendMagicLink={fetchDetail}
+          />
         </div>
       </section>
 

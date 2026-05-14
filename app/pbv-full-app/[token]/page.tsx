@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pbvFullAppTranslations, type PbvFullAppStrings } from '@/lib/pbvFullAppTranslations';
+import TenantDocumentUpload from '@/components/pbv/TenantDocumentUpload';
 import type { PreferredLanguage } from '@/types/compliance';
 import {
   FormField,
@@ -166,6 +167,7 @@ type PageState =
   | 'loading'
   | 'landing'
   | 'form'
+  | 'documents'
   | 'already_submitted'
   | 'signatures'
   | 'docs_ready'
@@ -201,6 +203,18 @@ export default function PbvFullAppPage() {
   const [signatureProgress, setSignatureProgress] = useState<SignatureProgress[]>([]);
   const [documentSummary, setDocumentSummary] = useState<DocumentSummary | null>(null);
   const [nextStep, setNextStep] = useState<'intake' | 'signatures' | 'documents' | 'complete'>('intake');
+  const [rejectedDocs, setRejectedDocs] = useState<Array<{
+    id: string;
+    doc_type: string;
+    label: string;
+    person_slot: number;
+    current_revision: number;
+    rejection_code: string;
+    rejection_message: string;
+    rejected_at: string;
+    rejected_by: string | null;
+  }>>([]);
+  const [rejectedDocsLoading, setRejectedDocsLoading] = useState(false);
   const sigCanvasRefs = useRef<Map<string, SignatureCanvas | null>>(new Map());
 
   const t = pbvFullAppTranslations[language];
@@ -242,6 +256,31 @@ export default function PbvFullAppPage() {
       setSigLoading(false);
     }
   }, [token]);
+
+  const loadRejectedDocs = useCallback(async () => {
+    setRejectedDocsLoading(true);
+    try {
+      const res = await fetch(`/api/t/${token}/documents/rejected?language=${language}`);
+      const json = await res.json();
+      if (json.success) {
+        setRejectedDocs(json.data.documents);
+      } else {
+        setRejectedDocs([]);
+      }
+    } catch (err) {
+      console.error('Failed to load rejected docs:', err);
+      setRejectedDocs([]);
+    } finally {
+      setRejectedDocsLoading(false);
+    }
+  }, [token, language]);
+
+  // Load rejected docs when entering docs_ready state
+  useEffect(() => {
+    if (pageState === 'docs_ready') {
+      loadRejectedDocs();
+    }
+  }, [pageState, loadRejectedDocs]);
 
   useEffect(() => {
     if (!token) return;
@@ -572,6 +611,45 @@ export default function PbvFullAppPage() {
               </p>
             </div>
 
+            {/* Documents to resubmit section */}
+            {rejectedDocsLoading ? (
+              <div className="bg-white border border-[var(--border)] shadow-sm p-5">
+                <p className="text-xs text-[var(--muted)]">Checking for rejected documents...</p>
+              </div>
+            ) : rejectedDocs.length > 0 ? (
+              <div className="bg-white border border-red-200 shadow-sm p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <h3 className="text-sm font-semibold text-red-700">Documents to Resubmit</h3>
+                </div>
+                <p className="text-xs text-[var(--muted)]">
+                  These documents were rejected during review. Please upload corrected versions.
+                </p>
+                {rejectedDocs.map((doc) => (
+                  <div key={doc.id} className="border border-red-100 bg-red-50 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-[var(--ink)]">{doc.label}</span>
+                      <span className="text-xs text-red-600 bg-red-100 px-2 py-0.5">Rejected</span>
+                    </div>
+                    <p className="text-xs text-[var(--muted)] italic">{doc.rejection_message}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Store which document to focus on in the upload page
+                        sessionStorage.setItem('focusDocumentId', doc.id);
+                        setPageState('documents');
+                      }}
+                      className="w-full py-2 px-3 bg-[var(--primary)] text-white text-xs font-semibold transition-opacity hover:opacity-90"
+                    >
+                      Upload new version
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div className="bg-white border border-[var(--border)] shadow-sm p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-[var(--ink)]">Signatures</p>
@@ -605,17 +683,42 @@ export default function PbvFullAppPage() {
                 <p className="text-sm font-semibold text-[var(--ink)]">Documents</p>
                 <span className="text-xs text-[var(--muted)]">{missingCount > 0 ? `${missingCount} remaining` : 'Up to date'}</span>
               </div>
-              {formSubmissionToken ? (
-                <a
-                  href={`/t/${formSubmissionToken}`}
-                  className="block w-full py-3 px-4 bg-[var(--primary)] text-white text-sm font-semibold text-center transition-opacity hover:opacity-90"
-                >
-                  {nextStep === 'documents' ? 'Resume document uploads' : t.docs_portal_btn}
-                </a>
-              ) : (
-                <p className="text-xs text-[var(--muted)]">{t.confirm_contact}</p>
-              )}
+              <button
+                type="button"
+                onClick={() => setPageState('documents')}
+                className="w-full py-3 px-4 bg-[var(--primary)] text-white text-sm font-semibold text-center transition-opacity hover:opacity-90"
+              >
+                {nextStep === 'documents' ? 'Resume document uploads' : t.docs_portal_btn}
+              </button>
             </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  // ── Phase 3b: Document upload ─────────────────────────────────────────────────────
+
+  if (pageState === 'documents') {
+    return (
+      <>
+        <Header language={language} onLanguageChange={setLanguage} />
+        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+          <div className="max-w-lg mx-auto">
+            <button
+              type="button"
+              onClick={() => setPageState('docs_ready')}
+              className="mb-4 text-sm text-[var(--muted)] underline"
+            >
+              ← Back to summary
+            </button>
+            <TenantDocumentUpload
+              token={token}
+              language={language}
+              initialDocuments={[]}
+              packetLocked={false}
+            />
           </div>
         </main>
         <Footer />

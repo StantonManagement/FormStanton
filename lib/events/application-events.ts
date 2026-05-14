@@ -36,6 +36,7 @@ export const ApplicationEventType = {
   // Review workflow - Assignment and tier-2 confirmation
   DOC_ASSIGNED:               'doc_assigned',
   APP_LEAD_ASSIGNED:          'app_lead_assigned',
+  APP_ASSIGNED:               'app_assigned',
   DOC_OWNER_CONFIRMED:        'doc_owner_confirmed',
   DOC_OWNER_FLAGGED:          'doc_owner_flagged',
 
@@ -43,6 +44,18 @@ export const ApplicationEventType = {
   PACKET_INTAKE_STARTED:      'packet_intake_started',
   PACKET_INTAKE_COMMITTED:    'packet_intake_committed',
   PACKET_INTAKE_ABANDONED:    'packet_intake_abandoned',
+
+  // Tenant document upload - Phase PRD-03
+  DOCUMENT_UPLOADED_BY_TENANT: 'document.uploaded_by_tenant',
+
+  // Application lifecycle - PRD-04
+  APPLICATION_CREATED:        'pbv_full_application.created',
+
+  // Notification events - PRD-04
+  NOTIFICATION_SCHEDULED:     'notification.scheduled',
+  NOTIFICATION_SENT:          'notification.sent',
+  NOTIFICATION_FAILED:        'notification.failed',
+  NOTIFICATION_OPTED_OUT:     'notification.opted_out',
 
   // Post-approval execution - Phase 4
   SIGNING_PACKET_CREATED:     'signing_packet_created',
@@ -52,6 +65,13 @@ export const ApplicationEventType = {
   SIGNATURE_WAIVED:           'signature_waived',
   HAP_EXECUTED:               'hap_executed',
   PROPERTY_CONFIGURED:        'property_configured',
+
+  // Appointment scheduling
+  APPOINTMENT_SCHEDULED:      'appointment.scheduled',
+  APPOINTMENT_COMPLETED:      'appointment.completed',
+  APPOINTMENT_NO_SHOW:        'appointment.no_show',
+  APPOINTMENT_RESCHEDULED:    'appointment.rescheduled',
+  APPOINTMENT_CANCELLED:      'appointment.cancelled',
 } as const;
 
 export type ApplicationEventType =
@@ -109,6 +129,13 @@ export interface EventPayloadMap {
     to_user_id: string | null;
     application_id: string;
     head_of_household_name: string;
+  };
+  'app_assigned': {
+    previous_assignee_id: string | null;
+    new_assignee_id: string | null;
+    previous_assignee_name: string | null;
+    new_assignee_name: string | null;
+    bulk_operation: boolean;
   };
   'doc_owner_confirmed': {
     doc_type: string;
@@ -179,6 +206,78 @@ export interface EventPayloadMap {
     source_label?: string | null;
     reason?: string | null;
   };
+
+  'document.uploaded_by_tenant': {
+    doc_type: string;
+    label: string;
+    file_name: string;
+  };
+
+  'pbv_full_application.created': {
+    source: 'portal_intake' | 'admin_created';
+    has_phone: boolean;
+    has_language: boolean;
+  };
+
+  'notification.scheduled': {
+    notification_type: string;
+    due_at: string;
+    cancel_predicate: string | null;
+  };
+
+  'notification.sent': {
+    notification_type: string;
+    notification_id: string;
+    twilio_message_sid: string;
+    bulk_send_id?: string;
+  };
+
+  'notification.failed': {
+    notification_type: string;
+    notification_id: string;
+    reason: string;
+    bulk_send_id?: string;
+  };
+
+  'notification.opted_out': {
+    notification_type?: string;
+    notification_id?: string;
+    action?: 'opted_out' | 'rescinded';
+  };
+
+  // Appointment scheduling payloads
+  'appointment.scheduled': {
+    appointment_id: string;
+    staff_id: string;
+    staff_name: string;
+    starts_at: string;
+    purpose: string;
+    self_scheduled: boolean;
+  };
+  'appointment.completed': {
+    appointment_id: string;
+    staff_id: string;
+    completed_at: string;
+    notes?: string;
+    purpose: string;
+  };
+  'appointment.no_show': {
+    appointment_id: string;
+    staff_id: string;
+    scheduled_time: string;
+    purpose: string;
+  };
+  'appointment.rescheduled': {
+    old_appointment_id: string;
+    new_appointment_id: string;
+    new_starts_at: string;
+    reason?: string;
+  };
+  'appointment.cancelled': {
+    appointment_id: string;
+    cancelled_at: string;
+    reason?: string;
+  };
 }
 
 // --- Generic write primitive ---------------------------------------------------
@@ -223,6 +322,22 @@ export async function writeApplicationEvent<T extends ApplicationEventType>(
   return { id: (data as { id: string }).id };
 }
 
+// --- Event subscriber (fire-and-forget notification hook) ---------------------
+
+type EventSubscriber = (eventType: ApplicationEventType, applicationId: string, eventId: string) => void;
+
+const _subscribers: EventSubscriber[] = [];
+
+export function subscribeToApplicationEvents(fn: EventSubscriber): void {
+  _subscribers.push(fn);
+}
+
+function _notifySubscribers(eventType: ApplicationEventType, applicationId: string, eventId: string): void {
+  for (const fn of _subscribers) {
+    try { fn(eventType, applicationId, eventId); } catch { /* fire-and-forget */ }
+  }
+}
+
 // --- PBV wrapper ---------------------------------------------------------------
 
 export interface WritePbvApplicationEventParams<T extends ApplicationEventType> {
@@ -238,9 +353,11 @@ export async function writePbvApplicationEvent<T extends ApplicationEventType>(
   params: WritePbvApplicationEventParams<T>
 ): Promise<{ id: string }> {
   const { applicationId, ...rest } = params;
-  return writeApplicationEvent({
+  const result = await writeApplicationEvent({
     anchorType: 'pbv_full_application',
     anchorId: applicationId,
     ...rest,
   });
+  _notifySubscribers(params.eventType, applicationId, result.id);
+  return result;
 }

@@ -20,7 +20,7 @@ export async function GET() {
       .select(
         `id, head_of_household_name, building_address, unit_number,
          household_size, created_at, updated_at,
-         hach_review_status, stanton_review_status, form_submission_id`
+         hach_review_status, stanton_review_status`
       )
       .not('hach_review_status', 'is', null)
       .order('created_at', { ascending: false });
@@ -41,48 +41,37 @@ export async function GET() {
       });
     }
 
-    // Fetch document counts for all form_submission_ids
-    const submissionIds = apps
-      .map((a: any) => a.form_submission_id)
-      .filter(Boolean);
+    // Fetch document counts for all applications
+    const appIds = apps.map((a: any) => a.id);
 
     const { data: docCounts } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, form_submission_id, status')
-      .in('form_submission_id', submissionIds);
+      .from('application_documents')
+      .select('id, anchor_id, status')
+      .eq('anchor_type', 'pbv_full_application')
+      .in('anchor_id', appIds);
 
-    // Build doc summary per form_submission_id
+    // Build doc summary per application id
     const docSummary: Record<
       string,
       { total: number; approved: number; rejected: number; missing: number; submitted: number }
     > = {};
+    const docIdToAppId: Record<string, string> = {};
     for (const doc of docCounts ?? []) {
-      const sid = (doc as any).form_submission_id;
-      if (!docSummary[sid]) {
-        docSummary[sid] = { total: 0, approved: 0, rejected: 0, missing: 0, submitted: 0 };
+      const aid = (doc as any).anchor_id;
+      if (!docSummary[aid]) {
+        docSummary[aid] = { total: 0, approved: 0, rejected: 0, missing: 0, submitted: 0 };
       }
-      docSummary[sid].total++;
+      docSummary[aid].total++;
       const status = (doc as any).status as string;
-      if (status in docSummary[sid]) {
-        (docSummary[sid] as any)[status]++;
+      if (status in docSummary[aid]) {
+        (docSummary[aid] as any)[status]++;
       }
+      if ((doc as any).id) docIdToAppId[(doc as any).id] = aid;
     }
 
-    // Build document ID → submission ID → app ID maps for revision counting
-    const docIdToSubmId: Record<string, string> = {};
-    const submIdToAppId: Record<string, string> = {};
-    for (const doc of docCounts ?? []) {
-      const d = doc as any;
-      if (d.id) docIdToSubmId[d.id] = d.form_submission_id;
-    }
-    for (const app of apps) {
-      const a = app as any;
-      if (a.form_submission_id) submIdToAppId[a.form_submission_id] = a.id;
-    }
-    const allDocIds = Object.keys(docIdToSubmId);
+    const allDocIds = Object.keys(docIdToAppId);
 
     // Fetch review action counts to determine "first review" vs "awaiting response"
-    const appIds = apps.map((a: any) => a.id);
     const { data: actionCounts } = await supabaseAdmin
       .from('document_review_actions')
       .select('full_application_id')
@@ -112,20 +101,20 @@ export async function GET() {
       }
     }
 
-    // Count document revisions uploaded since last view per application
+    // Count documents updated since last view per application (using application_documents.updated_at)
     const newRevsByApp: Record<string, number> = {};
     if (allDocIds.length > 0) {
-      const { data: recentRevs } = await supabaseAdmin
-        .from('form_submission_document_revisions')
-        .select('document_id, created_at')
-        .in('document_id', allDocIds);
-      for (const rev of recentRevs ?? []) {
-        const docId = (rev as any).document_id;
-        const appId = submIdToAppId[docIdToSubmId[docId]] ?? null;
+      const { data: recentDocs } = await supabaseAdmin
+        .from('application_documents')
+        .select('id, anchor_id, updated_at')
+        .eq('anchor_type', 'pbv_full_application')
+        .in('id', allDocIds);
+      for (const doc of recentDocs ?? []) {
+        const appId = (doc as any).anchor_id;
         if (!appId) continue;
         const lastViewed = lastViewedByApp[appId];
-        if (!lastViewed) continue; // never viewed → 0 new
-        if ((rev as any).created_at > lastViewed) {
+        if (!lastViewed) continue;
+        if ((doc as any).updated_at > lastViewed) {
           newRevsByApp[appId] = (newRevsByApp[appId] ?? 0) + 1;
         }
       }
@@ -200,7 +189,7 @@ export async function GET() {
       household_size: a.household_size,
       created_at: a.created_at,
       hach_review_status: a.hach_review_status,
-      doc_summary: docSummary[a.form_submission_id] ?? { total: 0, approved: 0, rejected: 0, missing: 0, submitted: 0 },
+      doc_summary: docSummary[a.id] ?? { total: 0, approved: 0, rejected: 0, missing: 0, submitted: 0 },
       has_review_actions: reviewedAppIds.has(a.id),
       last_viewed_at: lastViewedByApp[a.id] ?? null,
       documents_uploaded_since_last_view: newRevsByApp[a.id] ?? 0,

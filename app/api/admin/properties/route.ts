@@ -15,7 +15,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 // Property-level admin actions are covered by the audit_log table if needed.
 
 interface PropertyBody {
-  building_address: string;
+  address: string;
   year_built?: number | null;
   required_addenda?: Array<{
     slug: string;
@@ -35,15 +35,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const building_address = searchParams.get('building_address');
+    const address = searchParams.get('address');
 
     let query = supabaseAdmin
       .from('properties')
       .select('*')
-      .order('building_address');
+      .order('address');
 
-    if (building_address) {
-      query = query.eq('building_address', building_address);
+    if (address) {
+      query = query.eq('address', address);
     }
 
     const { data, error } = await query;
@@ -75,11 +75,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body: PropertyBody = await request.json();
-    const { building_address, year_built, required_addenda = [] } = body;
+    const { address, year_built, required_addenda = [] } = body;
 
-    if (!building_address) {
+    if (!address) {
       return NextResponse.json(
-        { error: 'building_address is required' },
+        { error: 'address is required' },
         { status: 400 }
       );
     }
@@ -106,29 +106,24 @@ export async function POST(request: NextRequest) {
     const { data: existingProperty } = await supabaseAdmin
       .from('properties')
       .select('id')
-      .eq('building_address', building_address)
+      .eq('address', address)
       .single();
 
     let property;
-    const fieldsUpdated: string[] = [];
 
     if (existingProperty) {
       // Update existing property
       const updateData: any = {};
       if (year_built !== undefined) {
         updateData.year_built = year_built;
-        fieldsUpdated.push('year_built');
       }
-      if (required_addenda.length > 0) {
-        updateData.required_addenda = required_addenda;
-        fieldsUpdated.push('required_addenda');
-      }
+      updateData.required_addenda = required_addenda;
       updateData.updated_at = new Date().toISOString();
 
       const { data, error } = await supabaseAdmin
         .from('properties')
         .update(updateData)
-        .eq('building_address', building_address)
+        .eq('address', address)
         .select()
         .single();
 
@@ -143,7 +138,7 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('properties')
         .insert({
-          building_address,
+          address,
           year_built,
           required_addenda,
           created_at: new Date().toISOString(),
@@ -158,7 +153,6 @@ export async function POST(request: NextRequest) {
       }
 
       property = data;
-      fieldsUpdated.push('created');
     }
 
 

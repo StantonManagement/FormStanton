@@ -47,6 +47,8 @@ const iconMap: Record<string, LucideIcon> = {
   'Projects': FolderKanban,
   'PBV Pre-Apps': ClipboardCheck,
   'PBV Full Applications': ListChecks,
+  'PBV Work': ListChecks,
+  'PBV Reviewers': ShieldCheck,
   'Audit Log': History,
   'User Management': Users,
   'Roles': ShieldCheck,

@@ -129,6 +129,7 @@ export const NAV_PERMISSION_MAP: Record<string, NavPermission> = {
   '/admin/projects':          { resource: RESOURCES.PROJECTS,         action: ACTIONS.READ },
   '/admin/pbv/preapps':           { resource: RESOURCES.PBV_PREAPPS,          action: ACTIONS.READ },
   '/admin/pbv/full-applications': { resource: RESOURCES.PBV_FULL_APPLICATIONS, action: ACTIONS.READ },
+  '/admin/pbv/reviewers':         { resource: RESOURCES.PBV_FULL_APPLICATIONS, action: ACTIONS.ADMIN },
   '/admin/lobby':             { resource: RESOURCES.LOBBY,            action: ACTIONS.READ },
   '/admin/phone-entry':       { resource: RESOURCES.PHONE_ENTRY,      action: ACTIONS.READ },
   '/admin/appfolio-queue':    { resource: RESOURCES.APPFOLIO_QUEUE,   action: ACTIONS.READ },
@@ -142,4 +143,5 @@ export const NAV_PERMISSION_MAP: Record<string, NavPermission> = {
   '/admin/users':             { resource: RESOURCES.USER_MANAGEMENT,  action: ACTIONS.ADMIN },
   '/admin/roles':             { resource: RESOURCES.ROLE_MANAGEMENT,  action: ACTIONS.READ },
   '/admin/departments':       { resource: RESOURCES.ROLE_MANAGEMENT,  action: ACTIONS.READ },
+  '/admin/settings/rejection-templates': { resource: RESOURCES.ROLE_MANAGEMENT, action: ACTIONS.ADMIN },
 };

@@ -2,11 +2,10 @@
 
 import { type ChangeEvent, useMemo, useRef, useState } from 'react';
 import { PDFDocument } from 'pdf-lib';
-import { supabase } from '@/lib/supabase';
 import { evaluateImageQuality, QualityScores } from './quality';
 import { translations, ScannerLanguage } from './translations';
 
-export interface Metadata {
+export interface ScannerMetadata {
   capture_method: 'scanner' | 'file_upload';
   page_count: number;
   quality_flags: string[];
@@ -19,19 +18,21 @@ export interface Metadata {
   heic_converted: boolean;
 }
 
+/** @deprecated Use ScannerMetadata instead */
+export type Metadata = ScannerMetadata;
+
 interface DocumentScannerProps {
-  taskId: string;
-  projectUnitId: string;
   instructions: string;
   multiPage?: boolean;
   maxPages?: number;
+  acceptedFormats?: ('pdf' | 'jpeg')[];
   language: ScannerLanguage;
-  onComplete: (evidenceUrl: string, metadata: Metadata) => void;
+  onComplete: (file: File, metadata: ScannerMetadata) => Promise<void> | void;
   onCancel: () => void;
 }
 
 type CaptureMode = 'camera' | 'file';
-type Stage = 'entry' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'uploading';
+type Stage = 'entry' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'submitting';
 
 interface CapturedPage {
   id: string;
@@ -166,11 +167,10 @@ async function ensureJscanifyLoaded(): Promise<any> {
 }
 
 export default function DocumentScanner({
-  taskId,
-  projectUnitId,
   instructions,
   multiPage = true,
   maxPages = 10,
+  acceptedFormats = ['pdf', 'jpeg'],
   language,
   onComplete,
   onCancel,
@@ -303,7 +303,7 @@ export default function DocumentScanner({
     setQualityOverride(false);
 
     if (isSingleMode) {
-      await finalizeUpload([...pages, currentPage]);
+      await finalizeSubmit([...pages, currentPage]);
       return;
     }
 
@@ -320,19 +320,6 @@ export default function DocumentScanner({
     });
   };
 
-  const uploadBlob = async (path: string, blob: Blob, contentType: string): Promise<string> => {
-    const { error: uploadError } = await supabase.storage.from('project-evidence').upload(path, blob, {
-      contentType,
-      upsert: false,
-    });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data } = supabase.storage.from('project-evidence').getPublicUrl(path);
-    return data.publicUrl;
-  };
 
   const buildPdf = async (inputPages: CapturedPage[]): Promise<Blob> => {
     const pdfDoc = await PDFDocument.create();
@@ -359,38 +346,32 @@ export default function DocumentScanner({
     return new Blob([pdfBuffer], { type: 'application/pdf' });
   };
 
-  const finalizeUpload = async (inputPages: CapturedPage[]) => {
+  const finalizeSubmit = async (inputPages: CapturedPage[]) => {
     if (inputPages.length === 0) {
       return;
     }
 
-    setStage('uploading');
+    setStage('submitting');
     setError('');
 
-    const timestamp = Date.now();
-    const basePath = `uploads/${projectUnitId}/${taskId}`;
-
     try {
-      await Promise.all(
-        inputPages.map((page, index) =>
-          uploadBlob(`${basePath}/${timestamp}_page_${index + 1}.jpeg`, page.blob, 'image/jpeg')
-        )
-      );
-
-      let finalUrl = '';
-      let format: 'pdf' | 'jpeg' = 'jpeg';
+      let finalFile: File;
+      let format: 'pdf' | 'jpeg';
 
       if (inputPages.length === 1) {
-        finalUrl = await uploadBlob(`${basePath}/${timestamp}_combined.jpeg`, inputPages[0].blob, 'image/jpeg');
+        // Single page: return as JPEG
+        finalFile = new File([inputPages[0].blob], 'document.jpeg', { type: 'image/jpeg' });
+        format = 'jpeg';
       } else {
+        // Multi-page: return as PDF
         const pdfBlob = await buildPdf(inputPages);
-        finalUrl = await uploadBlob(`${basePath}/${timestamp}_combined.pdf`, pdfBlob, 'application/pdf');
+        finalFile = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
         format = 'pdf';
       }
 
       const qualityFlags = Array.from(new Set(inputPages.flatMap((page) => page.qualityFlags)));
       const qualityScores = averageScores(inputPages);
-      const metadata: Metadata = {
+      const metadata: ScannerMetadata = {
         capture_method: inputPages.some((page) => page.captureMethod === 'scanner') ? 'scanner' : 'file_upload',
         page_count: inputPages.length,
         quality_flags: qualityFlags,
@@ -399,23 +380,7 @@ export default function DocumentScanner({
         heic_converted: inputPages.some((page) => page.heicConverted),
       };
 
-      const { error: completionError } = await supabase
-        .from('task_completions')
-        .update({
-          status: 'complete',
-          evidence_url: finalUrl,
-          completed_by: 'tenant',
-          completed_at: new Date().toISOString(),
-          evidence_metadata: metadata,
-        })
-        .eq('project_unit_id', projectUnitId)
-        .eq('project_task_id', taskId);
-
-      if (completionError) {
-        throw completionError;
-      }
-
-      onComplete(finalUrl, metadata);
+      await onComplete(finalFile, metadata);
     } catch {
       setError(t.uploadError);
       setStage(inputPages.length > 1 ? 'review_pages' : 'preview');
@@ -561,7 +526,7 @@ export default function DocumentScanner({
             )}
             <button
               type="button"
-              onClick={() => finalizeUpload(pages)}
+              onClick={() => finalizeSubmit(pages)}
               disabled={pages.length === 0}
               className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
             >
@@ -578,7 +543,7 @@ export default function DocumentScanner({
         </div>
       )}
 
-      {stage === 'uploading' && <div className="py-8 text-center text-sm text-[var(--muted)]">{t.uploading}</div>}
+      {stage === 'submitting' && <div className="py-8 text-center text-sm text-[var(--muted)]">{t.uploading}</div>}
 
       {error && <p className="text-sm text-[var(--error)]">{error}</p>}
     </div>

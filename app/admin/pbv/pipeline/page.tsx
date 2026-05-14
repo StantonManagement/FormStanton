@@ -26,6 +26,8 @@ interface PipelineRow {
   has_rejections: boolean;
   hach_review_status: string | null;
   missing_contact_info: boolean;
+  hach_last_inbound_days_ago: number | null;
+  hach_awaiting_response: boolean;
 }
 
 interface StaffUser {
@@ -457,7 +459,7 @@ export default function PipelinePage() {
                   {/* Tenant */}
                   <td style={{ padding: '10px 12px' }}>
                     <Link
-                      href={`/admin/pbv/full-applications/${row.id}`}
+                      href={`/admin/pbv/pipeline/${row.id}`}
                       style={{ fontWeight: 500, color: C.text, textDecoration: 'none', fontSize: 13 }}
                     >
                       {row.head_of_household_name}

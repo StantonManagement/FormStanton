@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildStantonFilename, extractLastName } from '@/lib/stantonFilename';
-import { recomputeSubmission } from '@/lib/recomputeSubmission';
 
 export async function GET(
   _request: NextRequest,
@@ -12,7 +11,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, form_submission_id, head_of_household_name')
+      .select('id, head_of_household_name')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -35,9 +34,10 @@ export async function GET(
     }
 
     const { data: docs, error: docsError } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select('id, doc_type, label, person_slot, status, display_order, signer_scope, requires_signature')
-      .eq('form_submission_id', app.form_submission_id)
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', app.id)
       .eq('requires_signature', true)
       .order('display_order', { ascending: true });
 
@@ -82,7 +82,7 @@ export async function POST(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, form_submission_id, head_of_household_name, building_address, unit_number')
+      .select('id, head_of_household_name, building_address, unit_number')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -133,10 +133,11 @@ export async function POST(
       if (!document_id || !data_url) continue;
 
       const { data: doc } = await supabaseAdmin
-        .from('form_submission_documents')
+        .from('application_documents')
         .select('id, doc_type, label, person_slot, signer_scope, revision, status, file_name')
         .eq('id', document_id)
-        .eq('form_submission_id', app.form_submission_id)
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', app.id)
         .single();
 
       if (!doc) continue;
@@ -162,31 +163,25 @@ export async function POST(
         ext: 'png',
       });
 
-      const storagePath = `form-submissions/${app.form_submission_id}/${doc.doc_type}/${fileName}`;
+      const storagePath = `pbv-applications/${app.id}/${doc.doc_type}/${fileName}`;
 
       const { error: uploadError } = await supabaseAdmin.storage
-        .from('form-submissions')
+        .from('pbv-applications')
         .upload(storagePath, buffer, { contentType: 'image/png', upsert: false });
 
       if (uploadError) throw uploadError;
 
-      await supabaseAdmin.from('form_submission_document_revisions').insert({
-        document_id,
-        revision: newRevision,
-        file_name: fileName,
-        storage_path: storagePath,
-        uploaded_by: 'tenant',
-        created_by: 'tenant',
-      });
-
       await supabaseAdmin
-        .from('form_submission_documents')
+        .from('application_documents')
         .update({
           revision: newRevision,
           status: 'submitted',
           file_name: fileName,
           storage_path: storagePath,
           rejection_reason: null,
+          upload_source: 'tenant',
+          uploaded_by_role: 'tenant',
+          updated_at: new Date().toISOString(),
         })
         .eq('id', document_id);
 
@@ -213,8 +208,6 @@ export async function POST(
 
       await supabaseAdmin.from('pbv_household_members').update(memberUpdate).eq('id', member_id);
     }
-
-    await recomputeSubmission(app.form_submission_id);
 
     return NextResponse.json({ success: true, data: { signed: signedDocTypes.length } });
   } catch (error: any) {

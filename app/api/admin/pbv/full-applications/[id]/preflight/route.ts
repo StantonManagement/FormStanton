@@ -25,7 +25,7 @@ export async function GET(
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
       .select(
-        'id, form_submission_id, stanton_review_status, hha_application_file, head_of_household_name, unit_number, building_address, total_annual_income, stanton_reviewer, stanton_review_date, packet_locked, hach_packet_revision'
+        'id, stanton_review_status, hha_application_file, head_of_household_name, unit_number, building_address, total_annual_income, stanton_reviewer, stanton_review_date, packet_locked, hach_packet_revision'
       )
       .eq('id', id)
       .single();

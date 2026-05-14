@@ -22,11 +22,12 @@ export async function GET(
         `id, created_at, head_of_household_name, building_address, unit_number,
          bedroom_count, household_size, intake_submitted_at,
          stanton_review_status, stanton_reviewer, stanton_review_date, stanton_review_notes,
-         hha_application_file,
+         hha_application_file, hach_review_status,
          tenant_access_token, form_submission_id, preapp_id,
          claiming_medical_deduction, has_childcare_expense, dv_status,
          homeless_at_admission, reasonable_accommodation_requested,
-         packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision`
+         packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision,
+         sms_opted_out_at, stage, assigned_to, admin_users:assigned_to(display_name)`
       )
       .eq('id', id)
       .single();
@@ -53,10 +54,15 @@ export async function GET(
       .eq('anchor_id', id)
       .order('display_order', { ascending: true });
 
+    // Extract assigned_to_name from the join
+    const assignedToName = (app.admin_users as any)?.display_name ?? null;
+    const { admin_users, ...appWithoutJoin } = app as any;
+
     return NextResponse.json({
       success: true,
       data: {
-        ...app,
+        ...appWithoutJoin,
+        assigned_to_name: assignedToName,
         members: members ?? [],
         documents: documents ?? [],
         magic_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${app.tenant_access_token}`,

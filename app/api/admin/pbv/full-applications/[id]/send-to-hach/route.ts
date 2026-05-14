@@ -44,7 +44,7 @@ export async function POST(
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
       .select(
-        'id, form_submission_id, stanton_review_status, hha_application_file, packet_locked, hach_packet_revision, head_of_household_name, building_address, unit_number'
+        'id, stanton_review_status, hha_application_file, packet_locked, hach_packet_revision, head_of_household_name, building_address, unit_number'
       )
       .eq('id', id)
       .single();

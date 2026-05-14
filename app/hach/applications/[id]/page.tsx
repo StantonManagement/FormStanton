@@ -659,13 +659,16 @@ export default function HachPacketPage() {
             if (!res.ok || !json.success) {
               throw new Error(json.message || `${action} failed`);
             }
-            
+
             // Refresh data to get updated document status
             const packetRes = await fetch(`/api/hach/applications/${id}`);
             const packetData = await packetRes.json();
             if (packetData.success) {
               setPacket(packetData.data);
             }
+
+            // Return result so HachReviewSurface can show notification status
+            return json;
           } catch (error: any) {
             throw new Error(error.message || `${action} failed`);
           }

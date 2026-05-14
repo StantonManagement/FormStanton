@@ -33,7 +33,7 @@ export interface SigningTemplate {
 
 export interface Property {
   id: string;
-  building_address: string;
+  address: string;
   year_built?: number | null;
   required_addenda: Array<{
     slug: string;
@@ -92,7 +92,7 @@ export async function loadProperty(buildingAddress: string): Promise<Property | 
   const { data, error } = await supabaseAdmin
     .from('properties')
     .select('*')
-    .eq('building_address', buildingAddress)
+    .eq('address', buildingAddress)
     .single();
 
   if (error && error.code !== 'PGRST116') { // PGRST116 = not found

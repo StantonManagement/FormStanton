@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { encryptSsn, ssnLastFour } from '@/lib/ssnEncryption';
 import { getApplicableMembers } from '@/lib/memberFilter';
 import { parsePhoneToE164 } from '@/lib/phoneParser';
+import { recomputeApplicationDocSummary } from '@/lib/recomputeApplicationDocs';
 
 function computeAge(dob: string): number | null {
   if (!dob) return null;
@@ -26,7 +27,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, form_submission_id, phone, preferred_language, language_confirmed_at')
+      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -73,17 +74,10 @@ export async function GET(
       }
     }
 
-    // Document portal token + summary (form_submissions)
-    let form_submission_token: string | null = null;
+    // Document summary from application_documents
     let document_summary: Record<string, number> | null = null;
-    if (app.form_submission_id) {
-      const { data: sub } = await supabaseAdmin
-        .from('form_submissions')
-        .select('tenant_access_token, document_review_summary')
-        .eq('id', app.form_submission_id)
-        .maybeSingle();
-      form_submission_token = sub?.tenant_access_token ?? null;
-      document_summary = (sub?.document_review_summary as Record<string, number> | null) ?? null;
+    if (intake_submitted) {
+      document_summary = await recomputeApplicationDocSummary(app.id) as unknown as Record<string, number>;
     }
 
     const signature_progress: Array<{
@@ -96,7 +90,7 @@ export async function GET(
 
     // Signatures complete check — all required signature docs are signed/submitted per signer scope
     let signatures_complete = false;
-    if (intake_submitted && app.form_submission_id) {
+    if (intake_submitted) {
       const { data: sigMembers } = await supabaseAdmin
         .from('pbv_household_members')
         .select('id, slot, name, signature_required')
@@ -104,9 +98,10 @@ export async function GET(
         .eq('signature_required', true);
 
       const { data: signatureDocs } = await supabaseAdmin
-        .from('form_submission_documents')
+        .from('application_documents')
         .select('id, person_slot, signer_scope, status, requires_signature')
-        .eq('form_submission_id', app.form_submission_id)
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', app.id)
         .eq('requires_signature', true);
 
       const isSignedStatus = (status: string): boolean =>
@@ -166,7 +161,6 @@ export async function GET(
         phone_hint,
         intake_submitted,
         signatures_complete,
-        form_submission_token,
         signature_progress,
         document_summary,
         next_step,
@@ -187,7 +181,7 @@ export async function POST(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, form_submission_id')
+      .select('id, building_address, unit_number')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -372,6 +366,7 @@ export async function POST(
     );
 
     const validLang = ['en', 'es', 'pt'].includes(preferred_language ?? '') ? preferred_language : null;
+    const cleanPhone = phone?.trim() || null;
 
     // Update application fields — intentionally NOT setting intake_submitted_at yet.
     // That timestamp is the commit point and is written only after docs are seeded.
@@ -386,140 +381,110 @@ export async function POST(
         claiming_medical_deduction: claiming_medical_deduction === true,
         has_childcare_expense: has_childcare_expense === true,
         reasonable_accommodation_requested: reasonable_accommodation_requested === true,
-        phone: phone?.trim() || null,
+        phone: cleanPhone,
         preferred_language: validLang ?? null,
         language_confirmed_at: validLang ? new Date().toISOString() : null,
+        ...(cleanPhone ? {
+          sms_consent_captured_at: new Date().toISOString(),
+          sms_consent_text_version: '2026-05-14-v1',
+        } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', app.id);
 
     if (updateError) throw updateError;
 
-    // Seed form_submission_documents if form_submission_id is set.
+    // Seed application_documents.
     // Failures here trigger a compensating rollback: delete the members we just
     // inserted so the application record stays clean and the tenant can retry.
-    if (app.form_submission_id) {
-      try {
-        const anyMemberHasChildSupport = memberDataForFormData.some(
-          (m: any) => m.has_child_support === true
-        );
+    try {
+      const anyMemberHasChildSupport = memberDataForFormData.some(
+        (m: any) => m.has_child_support === true
+      );
 
-        const formData = {
-          household_members: memberDataForFormData,
-          claiming_medical_deduction: claiming_medical_deduction === true,
-          has_childcare_expense: has_childcare_expense === true,
-          dv_status: dv_status === true,
-          reasonable_accommodation_requested: reasonable_accommodation_requested === true,
-          has_insurance_settlement: has_insurance_settlement === true,
-          has_cd_trust_bond: has_cd_trust_bond === true,
-          has_life_insurance: has_life_insurance === true,
-          any_member_has_child_support: anyMemberHasChildSupport,
-        };
+      const { data: templates, error: templatesError } = await supabaseAdmin
+        .from('form_document_templates')
+        .select('*')
+        .eq('form_id', 'pbv-full-application')
+        .order('display_order', { ascending: true });
 
-        const { error: formDataError } = await supabaseAdmin
-          .from('form_submissions')
-          .update({ form_data: formData })
-          .eq('id', app.form_submission_id);
+      if (templatesError) throw templatesError;
+      if (!templates || templates.length === 0) {
+        throw new Error('No document templates found for pbv-full-application — cannot seed document slots.');
+      }
 
-        if (formDataError) throw formDataError;
+      // Clear any stale slots before re-seeding
+      const { error: deleteError } = await supabaseAdmin
+        .from('application_documents')
+        .delete()
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', app.id);
 
-        const { data: templates, error: templatesError } = await supabaseAdmin
-          .from('form_document_templates')
-          .select('*')
-          .eq('form_id', 'pbv-full-application')
-          .order('display_order', { ascending: true });
+      if (deleteError) throw deleteError;
 
-        if (templatesError) throw templatesError;
-        if (!templates || templates.length === 0) {
-          throw new Error('No document templates found for pbv-full-application — cannot seed document slots.');
-        }
+      const docRows: object[] = [];
+      for (const template of templates) {
+        if (template.doc_type === 'vawa_certification' && dv_status !== true) continue;
+        if (template.doc_type === 'reasonable_accommodation_request' && reasonable_accommodation_requested !== true) continue;
+        if (template.doc_type === 'child_support_affidavit' && !anyMemberHasChildSupport) continue;
+        if (template.doc_type === 'no_child_support_affidavit' && anyMemberHasChildSupport) continue;
 
-        // Clear any stale slots before re-seeding
-        const { error: deleteError } = await supabaseAdmin
-          .from('form_submission_documents')
-          .delete()
-          .eq('form_submission_id', app.form_submission_id);
-
-        if (deleteError) throw deleteError;
-
-        const docRows: object[] = [];
-        for (const template of templates) {
-          if (template.doc_type === 'vawa_certification' && dv_status !== true) continue;
-          if (template.doc_type === 'reasonable_accommodation_request' && reasonable_accommodation_requested !== true) continue;
-          if (template.doc_type === 'child_support_affidavit' && !anyMemberHasChildSupport) continue;
-          if (template.doc_type === 'no_child_support_affidavit' && anyMemberHasChildSupport) continue;
-
-          if (!template.per_person || template.applies_to === 'submission') {
+        if (!template.per_person || template.applies_to === 'submission') {
+          docRows.push({
+            anchor_type: 'pbv_full_application',
+            anchor_id: app.id,
+            doc_type: template.doc_type,
+            label: template.label,
+            required: template.required,
+            requires_signature: template.requires_signature === true,
+            signer_scope: template.signer_scope ?? null,
+            display_order: template.display_order,
+            person_slot: 0,
+            status: 'missing',
+            created_by: 'system',
+          });
+        } else {
+          const matched = getApplicableMembers(
+            memberDataForFormData as any[],
+            template.applies_to,
+            template.member_filter
+          );
+          const slots = matched.length > 0 ? matched.map(({ slot }) => slot) : [0];
+          for (const slot of slots) {
             docRows.push({
-              form_submission_id: app.form_submission_id,
+              anchor_type: 'pbv_full_application',
+              anchor_id: app.id,
               doc_type: template.doc_type,
               label: template.label,
               required: template.required,
               requires_signature: template.requires_signature === true,
               signer_scope: template.signer_scope ?? null,
               display_order: template.display_order,
-              person_slot: 0,
+              person_slot: slot,
               status: 'missing',
               created_by: 'system',
             });
-          } else {
-            const matched = getApplicableMembers(
-              memberDataForFormData as any[],
-              template.applies_to,
-              template.member_filter
-            );
-            const slots = matched.length > 0 ? matched.map(({ slot }) => slot) : [0];
-            for (const slot of slots) {
-              docRows.push({
-                form_submission_id: app.form_submission_id,
-                doc_type: template.doc_type,
-                label: template.label,
-                required: template.required,
-                requires_signature: template.requires_signature === true,
-                signer_scope: template.signer_scope ?? null,
-                display_order: template.display_order,
-                person_slot: slot,
-                status: 'missing',
-                created_by: 'system',
-              });
-            }
           }
         }
-
-        const { error: insertError } = await supabaseAdmin
-          .from('form_submission_documents')
-          .insert(docRows);
-
-        if (insertError) throw insertError;
-
-        const { error: summaryError } = await supabaseAdmin
-          .from('form_submissions')
-          .update({
-            document_review_summary: {
-              total: docRows.length,
-              missing: docRows.length,
-              submitted: 0,
-              approved: 0,
-              rejected: 0,
-              waived: 0,
-            },
-          })
-          .eq('id', app.form_submission_id);
-
-        if (summaryError) throw summaryError;
-      } catch (seedError: any) {
-        // Compensating rollback: remove the members we inserted so the application
-        // remains in a retryable state. intake_submitted_at has not been set yet.
-        console.error('PBV intake doc seeding failed — rolling back members:', seedError);
-        await supabaseAdmin
-          .from('pbv_household_members')
-          .delete()
-          .eq('full_application_id', app.id);
-        return NextResponse.json(
-          { success: false, message: 'Failed to prepare your document checklist. Please try submitting again.' },
-          { status: 500 }
-        );
       }
+
+      const { error: insertError } = await supabaseAdmin
+        .from('application_documents')
+        .insert(docRows);
+
+      if (insertError) throw insertError;
+    } catch (seedError: any) {
+      // Compensating rollback: remove the members we inserted so the application
+      // remains in a retryable state. intake_submitted_at has not been set yet.
+      console.error('PBV intake doc seeding failed — rolling back members:', seedError);
+      await supabaseAdmin
+        .from('pbv_household_members')
+        .delete()
+        .eq('full_application_id', app.id);
+      return NextResponse.json(
+        { success: false, message: 'Failed to prepare your document checklist. Please try submitting again.' },
+        { status: 500 }
+      );
     }
 
     // Commit point: stamp intake_submitted_at only after everything succeeded.

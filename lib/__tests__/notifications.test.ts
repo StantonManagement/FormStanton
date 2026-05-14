@@ -42,9 +42,15 @@ vi.mock('twilio', () => ({
   })),
 }));
 
+const mockSendTenantNotification = vi.fn();
+vi.mock('@/lib/notifications/send', () => ({
+  sendTenantNotification: (...args: unknown[]) => mockSendTenantNotification(...args),
+}));
+
 // ── Module under test ─────────────────────────────────────────────────────────
 
 import { sendRejectionNotification } from '@/lib/notifications';
+import { renderBody } from '@/lib/notifications/render';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +86,7 @@ beforeEach(() => {
   mockInsertSelect.mockResolvedValue({ data: { id: 'notif-1' }, error: null });
   mockTwilioCreate.mockResolvedValue({ sid: 'SM123456789' });
   fromChain.update.mockReturnValue({ eq: vi.fn().mockReturnThis() });
+  mockSendTenantNotification.mockResolvedValue({ status: 'sent', notificationId: 'notif-1', twilioSid: 'SM123456789' });
 });
 
 afterEach(() => {
@@ -166,11 +173,11 @@ describe('sendRejectionNotification()', () => {
       }
     });
 
-    it('calls Twilio messages.create with E.164 to number', async () => {
+    it('calls sendTenantNotification with doc_rejected notification_type', async () => {
       setupDocAndApp(APP_COMPLETE);
       await sendRejectionNotification(BASE_PARAMS);
-      expect(mockTwilioCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ to: '+18605551234' })
+      expect(mockSendTenantNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ notificationType: 'doc_rejected' })
       );
     });
   });
@@ -178,7 +185,7 @@ describe('sendRejectionNotification()', () => {
   describe('Twilio failure', () => {
     it('returns failed when Twilio throws', async () => {
       setupDocAndApp(APP_COMPLETE);
-      mockTwilioCreate.mockRejectedValueOnce(new Error('Network error'));
+      mockSendTenantNotification.mockResolvedValueOnce({ status: 'failed', notificationId: 'notif-1', reason: 'Network error' });
       const result = await sendRejectionNotification(BASE_PARAMS);
       expect(result.status).toBe('failed');
       if (result.status === 'failed') {
@@ -190,10 +197,40 @@ describe('sendRejectionNotification()', () => {
   describe('missing PBV_TWILIO_PHONE_NUMBER', () => {
     it('returns failed if env var not set', async () => {
       setupDocAndApp(APP_COMPLETE);
+      mockSendTenantNotification.mockResolvedValueOnce({ status: 'failed', notificationId: '', reason: 'PBV_TWILIO_PHONE_NUMBER not configured' });
       delete process.env.PBV_TWILIO_PHONE_NUMBER;
       const result = await sendRejectionNotification(BASE_PARAMS);
       expect(result.status).toBe('failed');
     });
+  });
+});
+
+// ── renderBody unit tests ────────────────────────────────────────────────────
+
+describe('renderBody()', () => {
+  it('substitutes known slots', () => {
+    const result = renderBody('Hello {tenant_name}, visit {portal_url}', {
+      tenant_name: 'Jane',
+      portal_url: 'https://example.com/t/abc',
+    });
+    expect(result).toBe('Hello Jane, visit https://example.com/t/abc');
+  });
+
+  it('leaves missing slots as literal text', () => {
+    const result = renderBody('Hello {tenant_name}, visit {portal_url}', {
+      tenant_name: 'Jane',
+    });
+    expect(result).toBe('Hello Jane, visit {portal_url}');
+  });
+
+  it('handles message_body passthrough for doc_rejected', () => {
+    const result = renderBody('{message_body}', { message_body: 'Your bank statement was too blurry.' });
+    expect(result).toBe('Your bank statement was too blurry.');
+  });
+
+  it('returns template unchanged when no slots present', () => {
+    const template = 'No slots here.';
+    expect(renderBody(template, {})).toBe(template);
   });
 });
 

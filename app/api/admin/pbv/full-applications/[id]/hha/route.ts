@@ -75,7 +75,7 @@ export async function POST(
          household_size, total_annual_income, stanton_review_status,
          dv_status, homeless_at_admission, claiming_medical_deduction,
          has_childcare_expense, reasonable_accommodation_requested,
-         form_submission_id, tenant_access_token, packet_locked`
+         tenant_access_token, packet_locked`
       )
       .eq('id', id)
       .single();

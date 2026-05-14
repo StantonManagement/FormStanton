@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildStantonFilename, getExtension, extractLastName } from '@/lib/stantonFilename';
-import { recomputeSubmission } from '@/lib/recomputeSubmission';
 
 export async function POST(
   request: NextRequest,
@@ -10,45 +9,31 @@ export async function POST(
   try {
     const { token, documentId } = await params;
 
-    // Resolve token → submission
-    const { data: submission, error: subError } = await supabaseAdmin
-      .from('form_submissions')
-      .select('id, tenant_name, building_address, unit_number, form_data, review_granularity')
+    // Resolve token → PBV application
+    const { data: app, error: appError } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('id, head_of_household_name, building_address, unit_number, packet_locked')
       .eq('tenant_access_token', token)
-      .eq('review_granularity', 'per_document')
-      .single();
+      .maybeSingle();
 
-    if (subError || !submission) {
+    if (appError || !app) {
       return NextResponse.json({ success: false, message: 'Not found' }, { status: 404 });
     }
 
-    // Fetch the document slot and verify it belongs to this submission
+    // Fetch the document slot and verify it belongs to this application
     const { data: doc, error: docError } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, doc_type, label, required, person_slot, revision, status, form_submission_id')
+      .from('application_documents')
+      .select('id, doc_type, label, required, person_slot, revision, status, anchor_id')
       .eq('id', documentId)
-      .eq('form_submission_id', submission.id)
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', app.id)
       .single();
 
     if (docError || !doc) {
       return NextResponse.json({ success: false, message: 'Document not found' }, { status: 404 });
     }
 
-    if (doc.status === 'approved' || doc.status === 'waived') {
-      return NextResponse.json(
-        { success: false, message: `Document is ${doc.status} and cannot be replaced.` },
-        { status: 409 }
-      );
-    }
-
-    // Check packet_locked — tenant-friendly message
-    const { data: fullApp } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('packet_locked')
-      .eq('form_submission_id', submission.id)
-      .single();
-
-    if ((fullApp as any)?.packet_locked) {
+    if (app.packet_locked) {
       return NextResponse.json(
         {
           success: false,
@@ -56,6 +41,13 @@ export async function POST(
             'This packet is currently under HACH review. If you have a new document, please contact the Stanton office.',
         },
         { status: 423 }
+      );
+    }
+
+    if (doc.status === 'approved' || doc.status === 'waived') {
+      return NextResponse.json(
+        { success: false, message: `Document is ${doc.status} and cannot be replaced.` },
+        { status: 409 }
       );
     }
 
@@ -111,13 +103,10 @@ export async function POST(
 
     const newRevision = doc.revision + 1;
     const ext = getExtension(file.name);
-    const lastName = extractLastName(submission.tenant_name ?? '');
+    const lastName = extractLastName(app.head_of_household_name ?? '');
 
-    // Derive asset_id and unit from submission fields
-    // form_data may carry asset_id; fall back to building_address slug
-    const formDataObj = (submission.form_data ?? {}) as Record<string, unknown>;
-    const assetId = String(formDataObj.asset_id ?? submission.building_address ?? 'UNK');
-    const unit = String(submission.unit_number ?? '0');
+    const assetId = String(app.building_address ?? 'UNK');
+    const unit = String(app.unit_number ?? '0');
 
     const fileName = buildStantonFilename({
       assetId,
@@ -129,12 +118,12 @@ export async function POST(
       ext,
     });
 
-    const storagePath = `form-submissions/${submission.id}/${doc.doc_type}/${fileName}`;
+    const storagePath = `pbv-applications/${app.id}/${doc.doc_type}/${fileName}`;
 
     // Upload to storage
     const fileBuffer = await file.arrayBuffer();
     const { error: uploadError } = await supabaseAdmin.storage
-      .from('form-submissions')
+      .from('pbv-applications')
       .upload(storagePath, fileBuffer, {
         contentType: file.type,
         upsert: false,
@@ -142,39 +131,24 @@ export async function POST(
 
     if (uploadError) throw uploadError;
 
-    // Insert revision row (append-only)
-    const { error: revError } = await supabaseAdmin
-      .from('form_submission_document_revisions')
-      .insert({
-        document_id: documentId,
-        revision: newRevision,
-        file_name: fileName,
-        storage_path: storagePath,
-        uploaded_by: 'tenant',
-        created_by: 'tenant',
-      });
-
-    if (revError) throw revError;
-
     // Update document slot
     const { error: updateError } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .update({
         revision: newRevision,
         status: 'submitted',
         file_name: fileName,
         storage_path: storagePath,
-        rejection_reason: null, // clear previous rejection
+        rejection_reason: null,
         reviewed_at: null,
         reviewer: null,
-        scan_metadata: scanMetadata,
+        upload_source: 'tenant',
+        uploaded_by_role: 'tenant',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', documentId);
 
     if (updateError) throw updateError;
-
-    // Recompute parent status and summary
-    await recomputeSubmission(submission.id);
 
     return NextResponse.json({
       success: true,

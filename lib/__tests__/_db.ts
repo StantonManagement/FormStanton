@@ -143,7 +143,10 @@ CREATE TABLE pbv_full_applications (
   lead_user_id                      UUID,
   lead_assigned_at                  TIMESTAMPTZ,
   lead_assigned_by                  UUID,
-  target_move_in_date               DATE
+  target_move_in_date               DATE,
+  sms_consent_captured_at           TIMESTAMPTZ,
+  sms_consent_text_version          TEXT,
+  sms_opted_out_at                  TIMESTAMPTZ
 );
 
 CREATE UNIQUE INDEX idx_pbv_full_applications_token
@@ -195,6 +198,148 @@ CREATE INDEX idx_application_events_type
   ON application_events (event_type, created_at DESC);
 
 -- ===== END application_events =====
+
+-- ===== pbv_document_label_translations =====
+-- Source: PRD-03 Phase 1 migration 20260514140000_tenant_packet_upload.sql
+-- Stub table for schema-contract tests
+
+CREATE TABLE pbv_document_label_translations (
+  doc_type    TEXT        NOT NULL,
+  language    TEXT        NOT NULL CHECK (language IN ('en', 'es', 'pt')),
+  label       TEXT        NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (doc_type, language)
+);
+
+-- ===== END pbv_document_label_translations =====
+
+-- ===== form_document_templates =====
+-- Stub table for pbv_document_label_translations seeding test
+
+CREATE TABLE form_document_templates (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_id       TEXT,
+  doc_type      TEXT,
+  label         TEXT,
+  label_es      TEXT,
+  label_pt      TEXT,
+  required      BOOLEAN DEFAULT FALSE,
+  display_order INTEGER
+);
+
+-- ===== END form_document_templates =====
+
+-- ===== application_documents =====
+-- Source: PRD-01 migration 20260514120000_application_documents.sql
+-- Stub for PRD-03 Phase 2 read endpoint tests
+
+CREATE TABLE application_documents (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  anchor_type            TEXT        NOT NULL,
+  anchor_id              UUID        NOT NULL,
+  doc_type               TEXT        NOT NULL,
+  label                  TEXT        NOT NULL,
+  required               BOOLEAN     DEFAULT false,
+  person_slot            INTEGER     DEFAULT 0,
+  status                 TEXT        NOT NULL DEFAULT 'missing'
+    CHECK (status IN ('missing', 'submitted', 'approved', 'rejected', 'waived')),
+  rejection_reason       TEXT,
+  revision               INTEGER     DEFAULT 0,
+  display_order          INTEGER     DEFAULT 0,
+  file_name              TEXT,
+  storage_path           TEXT,
+  uploaded_by_role       TEXT,
+  uploaded_by_user_id    TEXT,
+  uploaded_by_display_name TEXT,
+  upload_source          TEXT,
+  staff_upload_note      TEXT,
+  scan_metadata          JSONB,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by             TEXT
+);
+
+CREATE INDEX idx_application_documents_anchor
+  ON application_documents (anchor_type, anchor_id, display_order);
+
+-- ===== END application_documents =====
+
+-- ===== application_document_revisions =====
+-- Source: PRD-1.5 migration 20260515030000_application_document_revisions.sql
+-- Stub for PRD-03 Phase 4 replace path tests
+
+CREATE TABLE application_document_revisions (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_document_id   UUID        NOT NULL,
+  revision                  INTEGER     NOT NULL,
+  file_name                 TEXT        NOT NULL,
+  storage_path              TEXT        NOT NULL,
+  uploaded_by               TEXT,
+  uploaded_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status_at_review          TEXT,
+  rejection_reason          TEXT,
+  reviewer                  TEXT,
+  reviewed_at               TIMESTAMPTZ,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by                TEXT,
+  UNIQUE (application_document_id, revision)
+);
+
+CREATE INDEX idx_application_document_revisions_doc
+  ON application_document_revisions (application_document_id, revision DESC);
+
+-- ===== END application_document_revisions =====
+
+-- ===== PRD-04 notification tables (stubs) =====
+
+CREATE TABLE tenant_notification_templates (
+  notification_type  TEXT        NOT NULL,
+  language           TEXT        NOT NULL CHECK (language IN ('en', 'es', 'pt')),
+  body               TEXT        NOT NULL,
+  version            INTEGER     NOT NULL DEFAULT 1,
+  active             BOOLEAN     NOT NULL DEFAULT true,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (notification_type, language, version)
+);
+
+CREATE UNIQUE INDEX tnt_active_per_type_lang
+  ON tenant_notification_templates (notification_type, language)
+  WHERE active = true;
+
+CREATE TABLE notification_schedules (
+  id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id     UUID        NOT NULL REFERENCES pbv_full_applications(id) ON DELETE CASCADE,
+  notification_type  TEXT        NOT NULL,
+  due_at             TIMESTAMPTZ NOT NULL,
+  cancel_predicate   TEXT,
+  status             TEXT        NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'sent', 'cancelled', 'failed')),
+  interpolations     JSONB,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  sent_at            TIMESTAMPTZ
+);
+
+CREATE TABLE tenant_notifications (
+  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  application_id      UUID        NOT NULL REFERENCES pbv_full_applications(id),
+  document_id         UUID        REFERENCES form_submission_documents(id) ON DELETE SET NULL,
+  notification_type   TEXT        NOT NULL,
+  language            TEXT        NOT NULL CHECK (language IN ('en', 'es', 'pt')),
+  recipient_phone     TEXT        NOT NULL,
+  message_body        TEXT        NOT NULL,
+  template_code       TEXT,
+  twilio_message_sid  TEXT,
+  delivery_status     TEXT        NOT NULL DEFAULT 'pending',
+  delivery_error      TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at             TIMESTAMPTZ,
+  delivered_at        TIMESTAMPTZ
+);
+
+-- ===== END PRD-04 notification tables =====
 `;
 
 // -----------------------------------------------------------------------------

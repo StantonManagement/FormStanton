@@ -1,7 +1,18 @@
 # PBV Documents Decoupling — Session Handoff
 
-**Date:** 2026-05-14
-**Purpose:** Resume PRD-02 (Packet Intake) draft without rebuilding context.
+**Date:** 2026-05-14 (revised later same day — see "Correction" below)
+**Purpose:** Resume PRD-02 work without rebuilding context.
+
+---
+
+## ⚠️ Correction (added 2026-05-14, later session)
+
+Earlier in this doc PRD-02 was listed as "Not started — next build (to be drafted)" with four open scoping questions. **That is stale.** PRD-02 was in fact drafted in a parallel session and exists in the workspace as:
+
+- `docs/pbv-02-packet-intake-prd_2026-05-14.md`
+- `docs/pbv-02-packet-intake-prompt_2026-05-14.md`
+
+The drafted scope is **walk-in paper packet digitization with OCR-assisted classification + UI**, not API-only ingest. The four scoping questions in the "PRD-02 — Open questions" section below have been **answered by the existence of the drafted PRD** — do not re-ask them. If a future session believes PRD-02 needs to be re-drafted from scratch, read both files first and confirm with Alex before any rewrite.
 
 ---
 
@@ -9,9 +20,10 @@
 
 | PRD | Title | Status | Primary doc |
 |-----|-------|--------|-------------|
-| 01 | PBV Documents Decoupling | Functionally complete; verification partial | `docs/build-reports/pbv-01-documents-decoupling-build-report_2026-05-14.md` |
+| 01 | PBV Documents Decoupling | Functionally complete; verification partial (Phase 5 items 5, 8, 9 still open) | `docs/build-reports/pbv-01-documents-decoupling-build-report_2026-05-14.md` |
 | 1.5 | PBV Revisions Decoupling | Functionally complete; Model B confirmed | `docs/pbv-1.5-revisions-decoupling-prd_2026-05-14.md` + `docs/build-reports/pbv-1.5-revisions-decoupling-build-report_2026-05-14.md` |
-| 02 | Packet Intake | Not started — next build | (to be drafted) |
+| 02 | Packet Intake (walk-in paper → OCR + classify + commit) | **Drafted — ready for Windsurf.** Scope: walk-in packet digitization with OCR-assisted classification, UI at `/admin/pbv/full-applications/[id]/intake`, 6 phases, polymorphic intake substrate. **Do not relitigate scope.** | `docs/pbv-02-packet-intake-prd_2026-05-14.md` + `docs/pbv-02-packet-intake-prompt_2026-05-14.md` |
+| 03+ | Post-02 sequence | **Not yet defined.** Candidates implied by `application-events.ts` Phase 4 events (Send-to-HACH handoff, signing packet, HAP execution, property configuration) and PRD-02's out-of-scope list (email-to-intake, AppFolio feed, multi-anchor generalization). Confirm sequence with Alex before drafting. | (none) |
 
 ### PRD-01 verification gaps still open
 - Phase 5 items **8 & 9** — manual UI walkthroughs deferred.
@@ -54,61 +66,32 @@ Pattern observed across PRD-01 and PRD-1.5: rounds up to ✅ on summary tables f
 
 ---
 
-## PRD-02 — Open questions (collected mid-session, not yet answered)
+## PRD-02 — Open questions (STALE — superseded by drafted PRD)
 
-User started answering an AskUserQuestion block but the answers didn't come through. The four questions to re-ask in the next session:
+> **Do not re-ask these.** The questions below were drafted mid-session before this session discovered PRD-02 already existed at `docs/pbv-02-packet-intake-prd_2026-05-14.md`. The drafted PRD chose a different direction (OCR + UI + multi-table substrate) than the API-only ingest these questions assumed. Section preserved for historical context only.
 
-1. **Scope** — which of these?
-   - Ingest external packets → new docs only
-   - Same + classifier/routing (auto doc-type classification, required-doc matching)
-   - Same + multi-anchor support (generalize beyond `pbv_full_application`)
-
-2. **Source for v1** (multi-select):
-   - Staff manual upload (UI)
-   - Email-to-intake
-   - AppFolio / external feed (note: `app/admin/appfolio-queue/page.tsx` already exists — may be related)
-   - API endpoint only (UI = Phase 2)
-
-3. **Dedup handling** — does PRD-02 own it?
-   - Yes, first-class — define skip / mark / route-to-revisions behavior
-   - Flag and defer to Phase 2
-   - Out of scope; intake always creates new docs
-
-4. **Evidence gates to bake into the PRD** (multi-select):
-   - SQL output for every schema/data claim (command + raw output)
-   - Grep command + output for every code claim
-   - Build log excerpt per phase (raw, not summarized)
-   - Git diff of every touched file — directly addresses the untracked-file gap
+1. ~~**Scope** — Ingest only / Ingest+classifier / Ingest+multi-anchor~~
+2. ~~**Source for v1** — Manual upload / Email / AppFolio / API-only~~
+3. ~~**Dedup handling** — first-class / defer / out of scope~~
+4. ~~**Evidence gates** — SQL output / grep / build log / git diff~~
 
 ---
 
-## PRD-02 — What the prompt will need (skeleton, pending answers above)
+## PRD-02 — What the prompt needed (STALE — superseded by drafted prompt)
 
-When drafting, mirror PRD-01 / PRD-1.5 structure:
+> **Do not re-draft.** PRD-02 prompt already exists at `docs/pbv-02-packet-intake-prompt_2026-05-14.md`. Skeleton below preserved for historical context only.
 
-- **Problem Statement** — packet intake currently undefined; need a path to create new `application_documents` from incoming packets.
-- **Users & Roles** — intake staff, app leads, document owners.
-- **Core Features** — driven by scope answer.
-- **Data Model** — polymorphic anchor (`anchor_type`, `anchor_id`) per project standard; reuse `application_documents`, no new revision behavior.
-- **Integration Points** — `application_events` writes via `writePbvApplicationEvent` (no direct inserts); review surface UI already supports new docs.
-- **Implementation Phases** — concrete deliverables per phase, with explicit evidence gates.
-- **Verification Gate Structure** — mirror PRD-1.5's; tighten per evidence-gate answer.
-- **Non-goals** — explicitly call out revision handling (owned by PRD-1.5) and any deferred scope.
-
-### Constraints to surface in the prompt
-- Polymorphic anchor pattern is the standard — no PBV-specific FKs.
-- All event writes go through `writePbvApplicationEvent` (or a new typed wrapper if a new anchor type is added). Never call `writeApplicationEvent` directly from a route. Never insert into `application_events` outside `lib/events/application-events.ts`. (Per Event Substrate Generalization report, save-path standard.)
-- New event types must be added to `ApplicationEventType` in `lib/events/application-events.ts`.
-- Schema-contract test (`lib/__tests__/schema-contract.test.ts`) must be extended for any new columns.
-- Save-path integration test (`lib/__tests__/save-path-integration.test.ts`) must cover every new event type.
+~~Constraints originally intended for the prompt: polymorphic anchor pattern; all event writes via `writePbvApplicationEvent`; schema-contract and save-path integration tests extended. These constraints are honored by the actual drafted PRD — verify there, not here.~~
 
 ---
 
 ## Resume checklist for next session
 
-1. [ ] Read this handoff.
-2. [ ] Read `docs/pbv-01-documents-decoupling-prd_2026-05-14.md` and `docs/pbv-1.5-revisions-decoupling-prd_2026-05-14.md` for structure to mirror.
-3. [ ] Confirm/commit working tree state — decide whether to commit before PRD-02 or accept the untracked baseline.
-4. [ ] Get answers to the four PRD-02 questions above.
-5. [ ] Draft PRD-02 prompt and PRD doc.
-6. [ ] Loop back on PRD-01 Phase 5 items 8 & 9 (manual UI walkthroughs) and item 5 (npm test pg dep error) when convenient — not blocking PRD-02.
+1. [ ] Read this handoff **including the Correction block at the top**.
+2. [x] Read `docs/pbv-01-documents-decoupling-prd_2026-05-14.md` and `docs/pbv-1.5-revisions-decoupling-prd_2026-05-14.md`.
+3. [x] Working tree committed (commit ea36bed, then subsequent commit by Alex).
+4. [x] ~~Get answers to the four PRD-02 questions~~ — Superseded; drafted PRD answers them.
+5. [x] ~~Draft PRD-02 prompt and PRD doc~~ — Already exist. See `docs/pbv-02-packet-intake-prd_2026-05-14.md` and `docs/pbv-02-packet-intake-prompt_2026-05-14.md`.
+6. [ ] Loop back on PRD-01 Phase 5 items 8 & 9 (manual UI walkthroughs) and item 5 (`npm test` pg dep error in `scripts/check-pbv-test-schema-drift.ts`) — not blocking PRD-02 build.
+7. [ ] Define the post-02 PRD sequence with Alex. Candidates: Send-to-HACH/handoff lifecycle; signing packet + HAP execution + property configuration; email-to-intake; AppFolio feed; multi-anchor generalization.
+8. [ ] Once 02 is verified and 03+ sequence is locked, hand 02 to Windsurf for build.

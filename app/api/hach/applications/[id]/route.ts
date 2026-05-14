@@ -25,7 +25,6 @@ export async function GET(
         `id, head_of_household_name, building_address, unit_number,
          household_size, bedroom_count, created_at, updated_at,
          hach_review_status, stanton_review_status,
-         form_submission_id,
          dv_status, claiming_medical_deduction, has_childcare_expense,
          hach_packet_revision, submitted_to_hach_at`
       )
@@ -54,13 +53,14 @@ export async function GET(
 
     // Documents
     const { data: documents } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select(
         `id, doc_type, label, status, file_name, storage_path,
          display_order, person_slot, required, revision,
          rejection_reason`
       )
-      .eq('form_submission_id', (app as any).form_submission_id)
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', id)
       .order('display_order');
 
     // Review actions (latest per document_id)
@@ -82,28 +82,11 @@ export async function GET(
       }
     }
 
-    // Fetch latest revision file_name per document (viewer canView detection)
+    // Enrich documents with latest review action
     const docIds = (documents ?? []).map((d: any) => d.id);
-    const latestRevFileName: Record<string, string | null> = {};
-    if (docIds.length > 0) {
-      const { data: revisions } = await supabaseAdmin
-        .from('form_submission_document_revisions')
-        .select('document_id, file_name, revision')
-        .in('document_id', docIds)
-        .order('revision', { ascending: false });
-      for (const rev of revisions ?? []) {
-        const docId = (rev as any).document_id;
-        if (!(docId in latestRevFileName)) {
-          latestRevFileName[docId] = (rev as any).file_name ?? null;
-        }
-      }
-    }
-
-    // Enrich documents with latest review action and revision file_name
     const enrichedDocs = (documents ?? []).map((doc: any) => ({
       ...doc,
       latest_action: latestActionByDoc[doc.id] ?? null,
-      file_name: latestRevFileName[doc.id] ?? doc.file_name ?? null,
     }));
 
     // Compute new-since-last-view for the current reviewer (for the detail page banner)
@@ -120,12 +103,13 @@ export async function GET(
         .limit(1);
       last_viewed_at = (viewEvs?.[0] as any)?.viewed_at ?? null;
       if (last_viewed_at) {
-        const { data: newRevs } = await supabaseAdmin
-          .from('form_submission_document_revisions')
+        const { data: newDocs } = await supabaseAdmin
+          .from('application_documents')
           .select('id')
-          .in('document_id', docIds)
-          .gt('created_at', last_viewed_at);
-        new_since_last_view = (newRevs ?? []).length;
+          .eq('anchor_type', 'pbv_full_application')
+          .eq('anchor_id', id)
+          .gt('updated_at', last_viewed_at);
+        new_since_last_view = (newDocs ?? []).length;
       }
     }
 

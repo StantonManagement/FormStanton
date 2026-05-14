@@ -3,7 +3,7 @@ import { requireHachUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { safeHachJson } from '@/lib/hach/payload-filter';
 
-const BUCKET = 'form-submissions';
+const BUCKET = 'pbv-applications';
 const TTL = 300; // 5 minutes
 
 /**
@@ -25,9 +25,10 @@ export async function GET(
   try {
     // Fetch the document
     const { data: doc, error: docErr } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, label, status, storage_path, file_name, revision, form_submission_id')
+      .from('application_documents')
+      .select('id, label, status, storage_path, file_name, revision, anchor_id')
       .eq('id', documentId)
+      .eq('anchor_type', 'pbv_full_application')
       .single();
 
     if (docErr || !doc) {
@@ -38,7 +39,7 @@ export async function GET(
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
       .select('id, hach_review_status')
-      .eq('form_submission_id', doc.form_submission_id)
+      .eq('id', doc.anchor_id)
       .not('hach_review_status', 'is', null)
       .single();
 
@@ -49,12 +50,11 @@ export async function GET(
       );
     }
 
-    // Fetch all revisions for this document
-    const { data: revisions } = await supabaseAdmin
-      .from('form_submission_document_revisions')
-      .select('id, revision, storage_path, file_name, created_at, uploaded_by')
-      .eq('document_id', documentId)
-      .order('revision', { ascending: true });
+    // application_documents does not have a separate revisions table — serve the current file only
+    const revisions: Array<{ revision: number; storage_path: string | null; file_name: string | null; created_at: string | null; uploaded_by: string | null }> = [];
+    if (doc.storage_path) {
+      revisions.push({ revision: doc.revision ?? 1, storage_path: doc.storage_path, file_name: doc.file_name, created_at: null, uploaded_by: null });
+    }
 
     // Collect storage paths to sign
     const allPaths: string[] = [];
