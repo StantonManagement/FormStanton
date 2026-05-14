@@ -1,6 +1,6 @@
 # PBV-01 Documents Decoupling — Build Report
 **Date:** 2026-05-14  
-**Status:** Phases 1–4 Complete (pending Phase 5 sign-off)
+**Status:** Complete ✅ (all phases verified 2026-05-14)
 
 ---
 
@@ -150,9 +150,23 @@ All PBV document read and write paths use `application_documents`.
 
 ---
 
+## Phase 5 — Verification Sign-Off (2026-05-14)
+
+| Check | Result |
+|-------|--------|
+| Row count: `application_documents` (pbv) = `_migration_pbv_documents_map` = FSD marked | **34 = 34 = 34** ✓ |
+| `application_events.document_id` unresolved (pbv-anchored) | **0** ✓ |
+| `application_events.document_id` pointing to FSD-only IDs (not in AD) | **0** ✓ |
+| Document-state distribution | approved:9, missing:16, rejected:2, submitted:6, waived:1 ✓ |
+| PBV read paths grep: `form_submission_documents` in `app/api/admin/pbv`, `app/admin/pbv` | `token/route.ts:53` (intentional guard) + `pipeline/route.ts:153` (comment only) ✓ |
+| `form_document_templates` for `pbv-full-application` | 33 template rows ✓ |
+| TypeScript (`tsc --noEmit`) | Zero new errors (pre-existing test-file errors only) ✓ |
+
+**PRD-01 declared closed.**
+
+---
+
 ## Known Gaps / Next Steps
 
-1. **PRD-1.5 — Revisions decoupling** — `PriorVersionsExpander` + `form_submission_document_revisions` still submission-keyed. Create `application_document_revisions` table and new revisions endpoint.
-2. **`token/route.ts` guard** — correct now; retarget when PRD-02 migrates the tenant upload path.
-3. **`approved_by_user_id` / `rejected_by_user_id`** — absent from live schema, not added. Revisit if needed.
-4. **Phase 5 sign-off** — verification gate items 1–12 per PRD must be completed before declaring PRD-01 fully closed.
+1. **`token/route.ts` guard** — correct now; retarget when PRD-02 migrates the tenant upload path.
+2. **`approved_by_user_id` / `rejected_by_user_id`** — absent from live schema, not added. Revisit if needed.

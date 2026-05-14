@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import DocumentRow from './DocumentRow';
 import DocumentViewer from './DocumentViewer';
 import RejectDialog from './RejectDialog';
@@ -96,6 +97,7 @@ interface StantonReviewSurfaceProps {
   anchorType: string;
   anchorId: string;
   onDocumentAction: (action: string, docId: string, data?: any) => Promise<void>;
+  showIntakeButton?: boolean;
 }
 
 export default function StantonReviewSurface({ 
@@ -104,7 +106,8 @@ export default function StantonReviewSurface({
   workspaceId,
   anchorType,
   anchorId,
-  onDocumentAction 
+  onDocumentAction,
+  showIntakeButton = false,
 }: StantonReviewSurfaceProps) {
   const [viewingDoc, setViewingDoc] = useState<Doc | null>(null);
   const [rejectingDoc, setRejectingDoc] = useState<Doc | null>(null);
@@ -378,8 +381,11 @@ export default function StantonReviewSurface({
     }
   }, [workspaceId]);
 
-  // Group documents by category for display
-  const groupedDocs = documents.reduce<Record<string, Doc[]>>((acc, doc) => {
+  const standardDocs = documents.filter((d) => d.doc_type !== 'custom');
+  const customDocs = documents.filter((d) => d.doc_type === 'custom');
+
+  // Group standard documents by category for display
+  const groupedDocs = standardDocs.reduce<Record<string, Doc[]>>((acc, doc) => {
     const category = doc.doc_type || 'Documents';
     if (!acc[category]) acc[category] = [];
     acc[category].push(doc);
@@ -412,6 +418,18 @@ export default function StantonReviewSurface({
 
   return (
     <div className="space-y-6">
+      {/* Toolbar */}
+      {showIntakeButton && (
+        <div className="flex justify-end">
+          <Link
+            href={`/admin/pbv/full-applications/${anchorId}/intake`}
+            className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Intake Packet
+          </Link>
+        </div>
+      )}
+
       {/* Document sections */}
       {Object.entries(groupedDocs).map(([category, categoryDocs]) => (
         <div key={category} className="bg-white border border-gray-200">
@@ -492,6 +510,57 @@ export default function StantonReviewSurface({
           </div>
         </div>
       ))}
+
+      {/* Additional Documents — custom docs from packet intake */}
+      {customDocs.length > 0 && (
+        <div className="bg-white border border-gray-200">
+          <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-semibold text-[var(--ink)]">Additional Documents</span>
+              <span className="text-xs text-[var(--muted)]">Not counted toward required documents</span>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {customDocs.map((doc) => {
+              const docIdx = documents.findIndex((d) => d.id === doc.id);
+              const unreadCounts = workspaceData?.unread_counts || {};
+              return (
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  context="stanton"
+                  isFocused={focusedIdx === docIdx}
+                  isApproving={false}
+                  unreadCountByChannel={unreadCounts}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onWaive={handleWaive}
+                  onView={handleView}
+                  onUpload={handleUpload}
+                  onRecategorize={handleRecategorize}
+                  onClick={() => setFocusedIdx(docIdx)}
+                  onExpand={() => setExpandedDocId(doc.id === expandedDocId ? null : doc.id)}
+                  isExpanded={expandedDocId === doc.id}
+                  isSelected={selectedDocIds.has(doc.id)}
+                  onSelect={(selected) => handleSelectDoc(doc.id, selected)}
+                  showAssignee={true}
+                  onAssignClick={() => handleAssignClick(doc)}
+                  expandedSlot={null}
+                  priorVersionsSlot={
+                    (doc.revision ?? 0) > 1 ? (
+                      <PriorVersionsExpander
+                        revisionsUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/${doc.id}/revisions`}
+                        currentRevision={doc.revision ?? 1}
+                      />
+                    ) : null
+                  }
+                  rowRef={setRowRef(docIdx)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Toast notification */}
       {toast && (

@@ -10,9 +10,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-// TODO(property_configured): PROPERTY_CONFIGURED events need a 'system' anchor type
-// added to application_events before property config changes can be logged.
-// Removed stale writeApplicationEvent call with fullApplicationId: 'system' (non-UUID).
+// Property config changes are not logged to application_events.
+// application_events requires a per-application anchor (anchor_type = 'pbv_full_application').
+// Property-level admin actions are covered by the audit_log table if needed.
 
 interface PropertyBody {
   building_address: string;

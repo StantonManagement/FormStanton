@@ -324,6 +324,7 @@ export default function PbvFullApplicationDetailPage() {
         anchorType={ANCHOR_TYPE}
         anchorId={detail.id}
         onDocumentAction={handleDocumentAction}
+        showIntakeButton={true}
       />
 
       <section className="bg-white border border-[var(--border)]">

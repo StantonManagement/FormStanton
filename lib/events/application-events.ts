@@ -39,6 +39,11 @@ export const ApplicationEventType = {
   DOC_OWNER_CONFIRMED:        'doc_owner_confirmed',
   DOC_OWNER_FLAGGED:          'doc_owner_flagged',
 
+  // Packet intake - Phase PRD-02
+  PACKET_INTAKE_STARTED:      'packet_intake_started',
+  PACKET_INTAKE_COMMITTED:    'packet_intake_committed',
+  PACKET_INTAKE_ABANDONED:    'packet_intake_abandoned',
+
   // Post-approval execution - Phase 4
   SIGNING_PACKET_CREATED:     'signing_packet_created',
   SIGNATURE_MARKED_SENT:      'signature_marked_sent',
@@ -154,6 +159,25 @@ export interface EventPayloadMap {
   'property_configured': {
     building_address: string;
     fields_updated: string[];
+  };
+
+  'packet_intake_started': {
+    batch_id: string;
+    source_label?: string | null;
+    file_count: number;
+  };
+  'packet_intake_committed': {
+    batch_id: string;
+    total_pages: number;
+    template_docs: number;
+    custom_docs: number;
+    discarded_pages: number;
+    source_label?: string | null;
+  };
+  'packet_intake_abandoned': {
+    batch_id: string;
+    source_label?: string | null;
+    reason?: string | null;
   };
 }
 
