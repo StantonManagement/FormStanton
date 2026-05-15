@@ -15,6 +15,13 @@ export interface ImpersonationState {
   startedAt: string;
 }
 
+export interface AssistedModeState {
+  staffUserId: string;
+  staffDisplayName: string;
+  applicationId: string;
+  startedAt: string;
+}
+
 export interface SessionData {
   isAdmin: boolean;
   userId?: string;
@@ -26,6 +33,7 @@ export interface SessionData {
   isSuperAdmin?: boolean;
   impersonating?: ImpersonationState;
   user_type?: string;
+  assistedMode?: AssistedModeState;
 }
 
 export interface SessionUser {
@@ -47,7 +55,7 @@ export const sessionOptions = {
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 60 * 60 * 24, // 24 hours
+    maxAge: 60 * 60 * 24 * 14, // 14 days (2 weeks)
   },
 };
 

@@ -48,6 +48,18 @@ export async function POST(
       language = 'en',
     } = body;
 
+    // Read X-Assisted-By header — forwarded by tenantFetch in staff-assisted sessions.
+    const assistedByHeader = request.headers.get('X-Assisted-By');
+    let assistedByStaffUserId: string | null = null;
+    if (assistedByHeader) {
+      const { data: staffRow } = await supabaseAdmin
+        .from('admin_users')
+        .select('id')
+        .eq('id', assistedByHeader)
+        .maybeSingle();
+      if (staffRow) assistedByStaffUserId = staffRow.id;
+    }
+
     // Idempotent check: summary already signed?
     const { data: existing, error: existingError } = await supabaseAdmin
       .from('pbv_summary_documents')

@@ -57,6 +57,19 @@ export async function POST(
       device_owner = 'self',
     } = body;
 
+    // Read X-Assisted-By header — set by tenantFetch when session carries assistedMode.
+    // Validate that this staff user exists in admin_users before trusting it.
+    const assistedByHeader = request.headers.get('X-Assisted-By');
+    let assistedByStaffUserId: string | null = null;
+    if (assistedByHeader) {
+      const { data: staffRow } = await supabaseAdmin
+        .from('admin_users')
+        .select('id')
+        .eq('id', assistedByHeader)
+        .maybeSingle();
+      if (staffRow) assistedByStaffUserId = staffRow.id;
+    }
+
     // ── Load form document ───────────────────────────────────────────────────
     const { data: formDoc, error: formDocError } = await supabaseAdmin
       .from('pbv_form_documents')
@@ -177,6 +190,7 @@ export async function POST(
         document_hash: documentHash,
         ceremony_id,
         consent_text_version,
+        assisted_by_staff_user_id: assistedByStaffUserId,
       });
 
     if (eventError) throw eventError;
