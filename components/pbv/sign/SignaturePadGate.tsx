@@ -14,7 +14,13 @@
 
 import { useState } from 'react';
 import SignatureCanvasComponent from '@/components/SignatureCanvas';
+import AssistedHandoffPrompt from '@/components/pbv/AssistedHandoffPrompt';
 import type { PreferredLanguage } from '@/types/compliance';
+
+interface AssistedModeProps {
+  staffDisplayName: string;
+  tenantName: string;
+}
 
 interface Props {
   language: PreferredLanguage;
@@ -24,6 +30,7 @@ interface Props {
   error?: string;
   onSubmit: (signatureDataUrl: string, typedName: string) => void;
   onCancel: () => void;
+  assistedMode?: AssistedModeProps | null;
 }
 
 const copy: Record<PreferredLanguage, Record<string, string>> = {
@@ -67,12 +74,23 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
 };
 
 export default function SignaturePadGate({
-  language, consentText, expectedName, submitting, error, onSubmit, onCancel,
+  language, consentText, expectedName, submitting, error, onSubmit, onCancel, assistedMode,
 }: Props) {
   const c = copy[language] ?? copy.en;
   const [typedName, setTypedName] = useState('');
   const [signatureData, setSignatureData] = useState('');
   const [localError, setLocalError] = useState('');
+  const [handoffConfirmed, setHandoffConfirmed] = useState(!assistedMode);
+
+  if (!handoffConfirmed && assistedMode) {
+    return (
+      <AssistedHandoffPrompt
+        tenantName={assistedMode.tenantName}
+        staffName={assistedMode.staffDisplayName}
+        onConfirm={() => setHandoffConfirmed(true)}
+      />
+    );
+  }
 
   const handleSubmit = () => {
     setLocalError('');

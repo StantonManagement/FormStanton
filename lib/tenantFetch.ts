@@ -7,6 +7,7 @@ export interface TenantFetchOptions {
   timeout?: number;
   idempotent?: boolean;
   signal?: AbortSignal;
+  assistedByUserId?: string | null;
 }
 
 function isUpload(opts: TenantFetchOptions): boolean {
@@ -27,6 +28,7 @@ export async function tenantFetch(
   if (opts.body && !(opts.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
+  if (opts.assistedByUserId) headers['X-Assisted-By'] = opts.assistedByUserId;
 
   const attempt = async (): Promise<Response> => {
     const controller = new AbortController();
