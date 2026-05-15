@@ -479,6 +479,32 @@ function PbvFullAppPage() {
         });
       }
 
+      // ── PRD-25 dispatcher: route by intake_status / signing_status ────────
+      const intakeStatus = data.intake_status as string | undefined;
+      const signingStatus = data.signing_status as string | undefined;
+
+      if (!options?.silent && intakeStatus && intakeStatus !== 'not_started') {
+        // Intake in-progress or complete: dispatch into new intake SPA
+        if (intakeStatus === 'in_progress') {
+          const resumeSection = (data.intake_data as any)?._resume_section ?? 'household';
+          router.push(`/pbv-full-app/${token}/intake/${resumeSection}`);
+          return;
+        }
+        if (intakeStatus === 'complete') {
+          if (!signingStatus || signingStatus === 'not_started') {
+            // PRD-26 entry (stub — placeholder route)
+            router.push(`/pbv-full-app/${token}/review`);
+            return;
+          }
+          if (signingStatus === 'in_progress' || signingStatus === 'summary_signed') {
+            router.push(`/pbv-full-app/${token}/review`);
+            return;
+          }
+          // signing complete → fall through to existing docs/finalize flow
+        }
+      }
+      // ── End PRD-25 dispatcher ───────────────────────────────────────────────
+
       if (data.intake_submitted) {
         if (!options?.silent) {
           const viewParam = searchParams.get('view');
@@ -495,6 +521,11 @@ function PbvFullAppPage() {
         const hint: string = data.preferred_language ?? 'en';
         if (hint === 'en' || hint === 'es' || hint === 'pt') {
           setLanguage(hint as PreferredLanguage);
+        }
+        // If intake_status = not_started and no existing intake, go to intake landing
+        if (intakeStatus === 'not_started' && !data.intake_submitted) {
+          router.push(`/pbv-full-app/${token}/intake`);
+          return;
         }
         setPageState('landing');
       }
