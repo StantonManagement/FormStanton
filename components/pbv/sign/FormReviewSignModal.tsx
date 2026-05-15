@@ -39,6 +39,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     cancel: 'Cancel',
     typed_name_label: 'Confirm your name:',
     typed_name_placeholder: 'Full legal name',
+    preparing: 'Preparing document...',
   },
   es: {
     preview_label: 'Vista previa del documento',
@@ -48,6 +49,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     cancel: 'Cancelar',
     typed_name_label: 'Confirme su nombre:',
     typed_name_placeholder: 'Nombre legal completo',
+    preparing: 'Preparando documento...',
   },
   pt: {
     // PT: tentative — review
@@ -58,6 +60,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     cancel: 'Cancelar',
     typed_name_label: 'Confirme seu nome:',
     typed_name_placeholder: 'Nome legal completo',
+    preparing: 'Preparando documento...',
   },
 };
 
@@ -70,6 +73,9 @@ export default function FormReviewSignModal({
   const [typedName, setTypedName] = useState('');
   const pdfUrl = `/api/t/${token}/pbv-full-app/forms/${form.id}/preview`;
 
+  // PR-3: Check if form PDF is ready before rendering iframe
+  const isPdfReady = ['generated', 'signed', 'finalized'].includes(form.status);
+
   // If no signature yet, use SignaturePadGate flow
   if (!hasSignature) {
     return (
@@ -77,10 +83,16 @@ export default function FormReviewSignModal({
         <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4">
           <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
 
-          {/* PDF iframe */}
-          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
-            <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
-          </div>
+          {/* PDF iframe — guarded by form status to prevent raw JSON display */}
+          {isPdfReady ? (
+            <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+              <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
+            </div>
+          ) : (
+            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+              <p className="text-sm text-[var(--muted)]">{c.preparing}</p>
+            </div>
+          )}
 
           <ConsentText language={language} />
 
@@ -104,10 +116,16 @@ export default function FormReviewSignModal({
       <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4">
         <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
 
-        {/* PDF iframe */}
-        <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
-          <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
-        </div>
+        {/* PDF iframe — guarded by form status to prevent raw JSON display */}
+        {isPdfReady ? (
+          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+            <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
+          </div>
+        ) : (
+          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+            <p className="text-sm text-[var(--muted)]">{c.preparing}</p>
+          </div>
+        )}
 
         <ConsentText language={language} />
 

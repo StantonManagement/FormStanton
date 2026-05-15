@@ -111,6 +111,6 @@ export async function POST(
     });
   } catch (error: any) {
     console.error('[additional-signers/send-link] POST error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }

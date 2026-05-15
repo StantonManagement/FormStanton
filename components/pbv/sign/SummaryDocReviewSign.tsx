@@ -27,6 +27,7 @@ interface Props {
   hohName: string;
   hohMemberId: string;
   summaryPdfUrl?: string;
+  summaryReady?: boolean; // PR-2: Guard iframe mounting
 }
 
 const copy: Record<PreferredLanguage, Record<string, string>> = {
@@ -68,7 +69,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
 
 type Step = 'review' | 'signing' | 'done';
 
-export default function SummaryDocReviewSign({ token, language, hohName, hohMemberId, summaryPdfUrl }: Props) {
+export default function SummaryDocReviewSign({ token, language, hohName, hohMemberId, summaryPdfUrl, summaryReady = true }: Props) {
   const c = copy[language] ?? copy.en;
   const router = useRouter();
   const [step, setStep] = useState<Step>('review');
@@ -174,7 +175,8 @@ export default function SummaryDocReviewSign({ token, language, hohName, hohMemb
         <p className="text-sm text-[var(--muted)] mb-6">{c.intro}</p>
 
         {/* PDF preview — iframe approach */}
-        {summaryPdfUrl ? (
+        {/* PR-2: Guard with summaryReady to prevent raw JSON in iframe if PDF not generated */}
+        {summaryPdfUrl && summaryReady ? (
           <div className="border border-[var(--border)] mb-6" style={{ height: '60vh' }}>
             <iframe
               src={summaryPdfUrl}

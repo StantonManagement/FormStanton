@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { tenantFetch } from '@/lib/tenantFetch';
+import { safeTenantErrorMessage } from '@/lib/pbv/safeErrorMessage';
 import type { SigningStatus } from './useIntakeBootstrap';
 import type { PreferredLanguage } from '@/types/compliance';
 
@@ -122,7 +123,8 @@ export function useDashboardState(token: string) {
         },
       });
     } catch (err: any) {
-      setState({ status: 'error', message: err.message || 'Failed to load dashboard.' });
+      console.error('[useDashboardState] load failed:', err);
+      setState({ status: 'error', message: safeTenantErrorMessage(err, 'Failed to load dashboard.') });
     }
   }, [token]);
 

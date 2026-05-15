@@ -195,33 +195,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
-    // Check if already assigned
-    const { data: existing } = await supabaseAdmin
+    // Assign role using upsert to handle race conditions gracefully
+    const actor = await getRealSessionUser();
+    const { error: assignError } = await supabaseAdmin
       .from('user_roles')
-      .select('id')
-      .eq('user_id', user_id)
-      .eq('role_id', roleId)
-      .maybeSingle();
+      .upsert({
+        user_id,
+        role_id: roleId,
+        assigned_by: actor?.userId ?? null,
+      }, {
+        onConflict: 'user_id,role_id',
+        ignoreDuplicates: false, // We want to know if it was an insert or update
+      });
 
-    if (existing) {
-      return NextResponse.json(
-        { success: false, message: 'User already has PBV reviewer access' },
-        { status: 409 }
-      );
-    }
-
-    // Assign role
-    const { error: assignError } = await supabaseAdmin.from('user_roles').insert({
-      user_id,
-      role_id: roleId,
-    });
-
+    // If we get a unique constraint violation, it means the user already has the role
+    // (race condition occurred between our check and insert)
     if (assignError) {
+      if (assignError.code === '23505' || assignError.message?.includes('unique constraint')) {
+        return NextResponse.json(
+          { success: false, message: 'User already has PBV reviewer access' },
+          { status: 409 }
+        );
+      }
       throw assignError;
     }
 
     // Log audit
-    const actor = await getRealSessionUser();
     await logAudit(
       actor,
       'pbv.reviewer.grant',
@@ -237,7 +236,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('POST /api/admin/pbv/reviewers error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    // Return user-friendly error message, log full error server-side
+    const userMessage = error?.code === '23505' || error?.message?.includes('unique constraint')
+      ? 'User already has PBV reviewer access'
+      : 'Failed to grant reviewer access. Please try again.';
+    return NextResponse.json({ success: false, message: userMessage }, { status: 500 });
   }
 }
 
@@ -297,7 +300,10 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('DELETE /api/admin/pbv/reviewers error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: 'Failed to remove reviewer access. Please try again.' },
+      { status: 500 }
+    );
   }
 }
 

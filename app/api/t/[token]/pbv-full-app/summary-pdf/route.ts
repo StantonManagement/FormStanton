@@ -26,7 +26,7 @@ export async function GET(
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
       .select('id')
-      .eq('access_token', token)
+      .eq('tenant_access_token', token)
       .maybeSingle();
 
     if (!app) {
@@ -73,6 +73,6 @@ export async function GET(
     });
   } catch (err: any) {
     console.error('[summary-pdf] GET error:', err);
-    return NextResponse.json({ success: false, message: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }

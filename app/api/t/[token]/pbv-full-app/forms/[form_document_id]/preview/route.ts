@@ -63,6 +63,6 @@ export async function GET(
     });
   } catch (error: any) {
     console.error('[forms/preview] GET error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }

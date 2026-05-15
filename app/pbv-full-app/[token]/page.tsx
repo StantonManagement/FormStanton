@@ -21,6 +21,7 @@ import TabNavigation from '@/components/TabNavigation';
 import SectionHeader from '@/components/SectionHeader';
 import { useFormSection, useFieldValidation } from '@/lib/formHooks';
 import { tenantFetch } from '@/lib/tenantFetch';
+import { safeTenantErrorMessage } from '@/lib/pbv/safeErrorMessage';
 import SignatureCanvas from 'react-signature-canvas';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -343,7 +344,8 @@ function PbvFullAppPage() {
         setPageState('docs_ready');
       }
     } catch (err: any) {
-      setSigError(err.message || 'Failed to load signature forms');
+      console.error('[loadSigners] error:', err);
+      setSigError(safeTenantErrorMessage(err, 'Failed to load signature forms'));
     } finally {
       setSigLoading(false);
     }
@@ -527,7 +529,8 @@ function PbvFullAppPage() {
         setPageState('landing');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Something went wrong. Please try again.');
+      console.error('[PBV Page] loadTenantData error:', err);
+      setErrorMsg(safeTenantErrorMessage(err, 'Something went wrong. Please try again.'));
       setPageState('error');
     }
   }, [token, searchParams]);
@@ -710,7 +713,8 @@ function PbvFullAppPage() {
       setPageState('signatures');
       loadSigners();
     } catch (err: any) {
-      setSubmitError(err.message || 'Submission failed.');
+      console.error('[handleSubmit] error:', err);
+      setSubmitError(safeTenantErrorMessage(err, 'Submission failed.'));
     } finally {
       setSubmitting(false);
     }
@@ -778,7 +782,8 @@ function PbvFullAppPage() {
         console.error('[pbv-signatures] Signer event log failed:', eventError);
       }
     } catch (err: any) {
-      setSigError(err.message || 'Failed to save signatures');
+      console.error('[saveAllSignatures] error:', err);
+      setSigError(safeTenantErrorMessage(err, 'Failed to save signatures'));
     } finally {
       setSigSaving(false);
     }
@@ -1904,7 +1909,8 @@ function PbvFullAppPage() {
               .catch(() => {});
           }
         } catch (err: any) {
-          setSigError(err.message || 'Failed to save signature');
+          console.error('[handleConfirmRejection] error:', err);
+          setSigError(safeTenantErrorMessage(err, 'Failed to save signature'));
         } finally {
           setSigSaving(false);
         }

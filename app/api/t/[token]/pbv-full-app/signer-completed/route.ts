@@ -64,6 +64,6 @@ export async function POST(
     return NextResponse.json({ success: true, data: { already_recorded: false } });
   } catch (error: any) {
     console.error('[signer-completed] Unexpected error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }

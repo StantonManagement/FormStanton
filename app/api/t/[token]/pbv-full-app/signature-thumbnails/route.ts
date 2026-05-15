@@ -49,6 +49,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: urlMap });
   } catch (error: any) {
     console.error('[signature-thumbnails] Error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }

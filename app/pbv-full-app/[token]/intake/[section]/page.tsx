@@ -20,6 +20,7 @@ import { useSectionVisibility } from '@/lib/pbv/hooks/useSectionVisibility';
 import { useSectionAutoSave } from '@/lib/pbv/hooks/useSectionAutoSave';
 import IntakeShell from '@/components/pbv/intake/IntakeShell';
 import type { SectionSlug, IntakeData } from '@/lib/pbv/intake-schema';
+import { isSectionComplete } from '@/lib/pbv/intake-schema';
 import type { PreferredLanguage } from '@/types/compliance';
 
 // Section components (built in commits 2-4)
@@ -142,7 +143,7 @@ export default function IntakeSectionPage({ params }: Props) {
       saveStatus={saveStatus}
       lastSavedAt={lastSavedAt}
       canGoBack={currentIndex > 0}
-      canGoNext={!isReviewSection}
+      canGoNext={!isReviewSection && isSectionComplete(currentSlug, intakeData)}
       isLastSection={isLastSection}
       onBack={handleBack}
       onNext={handleNext}

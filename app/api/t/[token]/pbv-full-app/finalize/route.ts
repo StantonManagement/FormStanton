@@ -74,7 +74,7 @@ export async function POST(
       };
     } catch (error: any) {
       console.error('[pbv-finalize] Unexpected error:', error);
-      return { body: { success: false, message: error.message || 'Internal server error' }, status: 500 };
+      return { body: { success: false, message: 'Internal server error', code: 'server_error' }, status: 500 };
     }
   });
 }

@@ -70,7 +70,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: { adults: result } });
   } catch (error: any) {
     console.error('PBV signatures GET error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }
 
@@ -228,7 +228,7 @@ export async function POST(
     return { body: { success: true, data: { signed: signedDocTypes.length } }, status: 200 };
       } catch (error: any) {
         console.error('PBV signatures POST error:', error);
-        return { body: { success: false, message: error.message }, status: 500 };
+        return { body: { success: false, message: 'Failed to save signatures', code: 'server_error' }, status: 500 };
       }
     },
     'id, head_of_household_name, building_address, unit_number, submitted_at'

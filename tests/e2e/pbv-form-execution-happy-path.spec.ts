@@ -276,7 +276,7 @@ test.describe('PRD-30: Maria Garcia-Rodriguez Full PBV Flow', () => {
 
   // ── Step 10: Submit ────────────────────────────────────────────────────────
   test('10 — Submit completes and signing_status = complete', async () => {
-    const res = await fetch(`${baseUrl}/api/t/${tenantToken}/pbv-full-app/submit`, {
+    const res = await fetch(`${baseUrl}/api/t/${tenantToken}/pbv-full-app/finalize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

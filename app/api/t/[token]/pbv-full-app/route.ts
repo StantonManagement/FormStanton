@@ -29,7 +29,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name')
+      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name, intake_status, signing_status, submission_language')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -46,6 +46,16 @@ export async function GET(
       .eq('full_application_id', app.id);
 
     const intake_submitted = (count ?? 0) > 0;
+
+    // Fetch HOH member ID (slot=1) for summary signing flow
+    const { data: hohMember } = await supabaseAdmin
+      .from('pbv_household_members')
+      .select('id')
+      .eq('full_application_id', app.id)
+      .eq('slot', 1)
+      .maybeSingle();
+
+    const hoh_member_id = hohMember?.id ?? null;
 
     // Language: use confirmed value from pbv_full_applications if set, else fall back to preapp
     let preferred_language: string = app.preferred_language ?? 'en';
@@ -268,11 +278,16 @@ export async function GET(
         head_of_household_name: app.head_of_household_name,
         documents,
         signatures,
+        // PRD-26/31: Fields needed by dashboard and dispatcher
+        intake_status: app.intake_status ?? null,
+        signing_status: app.signing_status ?? null,
+        submission_language: app.submission_language ?? null,
+        hoh_member_id,
       },
     });
   } catch (error: any) {
     console.error('PBV full-app GET error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
   }
 }
 
@@ -564,7 +579,7 @@ export async function POST(
     return { body: { success: true, data: { id: app.id } }, status: 200 };
   } catch (error: any) {
     console.error('PBV full-app POST error:', error);
-    return { body: { success: false, message: error.message }, status: 500 };
+    return { body: { success: false, message: 'Internal server error', code: 'server_error' }, status: 500 };
   }
     },
     'id, building_address, unit_number, submitted_at'

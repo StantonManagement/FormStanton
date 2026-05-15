@@ -234,10 +234,10 @@ export async function POST(
             eventType: ApplicationEventType.PACKET_INTAKE_ABANDONED,
             actorUserId: null,
             actorDisplayName: 'Tenant',
-            payload: { batch_id: batchId, source_label: 'tenant_upload', reason: error.message },
+            payload: { batch_id: batchId, source_label: 'tenant_upload', reason: 'Upload failed' },
           });
         }
-        return { body: { success: false, message: error.message }, status: 500 };
+        return { body: { success: false, message: 'Upload failed. Please try again.', code: 'upload_failed' }, status: 500 };
       }
     },
     'id, packet_locked, submitted_at'

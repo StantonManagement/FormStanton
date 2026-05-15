@@ -177,7 +177,7 @@ export async function GET(
   } catch (error: any) {
     console.error('[action-items GET] error:', error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
+      { success: false, message: 'Internal server error', code: 'server_error' },
       { status: 500 }
     );
   }

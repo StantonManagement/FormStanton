@@ -86,18 +86,38 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
   const form = forms[index];
   const pdfUrl = `/api/pbv-full-app/signer/${memberToken}/forms/${form.id}/preview`;
 
+  // PR-3: Check if form PDF is ready before rendering iframe
+  const isPdfReady = ['generated', 'signed', 'finalized'].includes(form.status);
+
   const signWithCapture = async (sigDataUrl: string, typedNameVal: string) => {
     setSubmitting(true);
     setError('');
     try {
-      setSignatureImagePath(sigDataUrl);
+      // First: capture/store the signature image
+      const captureRes = await fetch(`/api/pbv-full-app/signer/${memberToken}/signature/capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signature_image_data_url: sigDataUrl,
+          ceremony_id: ceremonyId,
+        }),
+      });
+      const captureJson = await captureRes.json().catch(() => ({}));
+      if (!captureRes.ok) throw new Error((captureJson as any).message || 'Failed to store signature.');
+
+      const storagePath = captureJson.data?.signature_image_path;
+      if (!storagePath) throw new Error('No signature path returned.');
+
+      setSignatureImagePath(storagePath);
+
+      // Second: sign the form with the storage path
       const res = await fetch(`/api/pbv-full-app/signer/${memberToken}/sign-form`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           form_document_id: form.id,
           typed_name: typedNameVal,
-          signature_image_path: sigDataUrl,
+          signature_image_path: storagePath,
           ceremony_id: ceremonyId,
           consent_text_version: CONSENT_TEXT_VERSION,
         }),
@@ -151,14 +171,23 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
     : 'I have reviewed this document and authorize my signature to be applied.';
   const namePlaceholder = language === 'es' ? 'Nombre legal completo' : language === 'pt' ? 'Nome legal completo' : 'Full legal name';
 
+  const preparingText = language === 'es' ? 'Preparando documento...' : language === 'pt' ? 'Preparando documento...' : 'Preparing document...';
+
   if (!signatureImagePath) {
     return (
       <div className="min-h-screen bg-[var(--paper)]">
         <div className="max-w-lg mx-auto px-4 py-8 space-y-4">
           <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
-          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
-            <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
-          </div>
+          {/* PDF iframe — guarded by form status to prevent raw JSON display */}
+          {isPdfReady ? (
+            <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+              <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
+            </div>
+          ) : (
+            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+              <p className="text-sm text-[var(--muted)]">{preparingText}</p>
+            </div>
+          )}
           <ConsentText language={language} />
           <SignaturePadGate
             language={language}
@@ -178,9 +207,16 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
     <div className="min-h-screen bg-[var(--paper)]">
       <div className="max-w-lg mx-auto px-4 py-8 space-y-4">
         <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
-        <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
-          <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
-        </div>
+        {/* PDF iframe — guarded by form status to prevent raw JSON display */}
+        {isPdfReady ? (
+          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+            <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
+          </div>
+        ) : (
+          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+            <p className="text-sm text-[var(--muted)]">{preparingText}</p>
+          </div>
+        )}
         <ConsentText language={language} />
         <input
           type="text"

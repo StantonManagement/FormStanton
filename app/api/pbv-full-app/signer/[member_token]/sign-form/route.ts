@@ -84,7 +84,6 @@ export async function POST(
     const { error: insertError } = await supabaseAdmin
       .from('pbv_signature_events')
       .insert({
-        full_application_id: member.full_application_id,
         form_document_id,
         signer_member_id: member.id,
         typed_name,
