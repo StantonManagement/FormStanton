@@ -1,0 +1,108 @@
+{
+  "form_id": "hach-release-es",
+  "source_pdf": "docs/templates/hach-release-es.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "fields": [
+    {
+      "name": "applicant_name",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 637,
+      "width": 200,
+      "font_size": 9,
+      "label": "Nombre"
+    },
+    {
+      "name": "applicant_address",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 618,
+      "width": 220,
+      "font_size": 9,
+      "label": "Dirección"
+    },
+    {
+      "name": "hoh_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 170,
+      "width": 150,
+      "height": 12,
+      "label": "Firma y Nombre Impreso del Jefe de Familia"
+    },
+    {
+      "name": "hoh_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 173,
+      "width": 60,
+      "font_size": 9,
+      "label": "Fecha"
+    },
+    {
+      "name": "spouse_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 138,
+      "width": 150,
+      "height": 12,
+      "label": "Firma y Nombre Impreso de Cónyuge u Otro Adulto"
+    },
+    {
+      "name": "spouse_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 141,
+      "width": 60,
+      "font_size": 9,
+      "label": "Fecha"
+    },
+    {
+      "name": "other_adult_1_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 107,
+      "width": 150,
+      "height": 12,
+      "label": "Firma y Nombre Impreso de Otro Adulto"
+    },
+    {
+      "name": "other_adult_1_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 110,
+      "width": 60,
+      "font_size": 9,
+      "label": "Fecha"
+    },
+    {
+      "name": "other_adult_2_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 76,
+      "width": 150,
+      "height": 12,
+      "label": "Firma y Nombre Impreso de Otro Adulto"
+    },
+    {
+      "name": "other_adult_2_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 79,
+      "width": 60,
+      "font_size": 9,
+      "label": "Fecha"
+    }
+  ]
+}

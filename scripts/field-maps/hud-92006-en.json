@@ -1,0 +1,168 @@
+{
+  "form_id": "hud-92006-en",
+  "source_pdf": "docs/templates/hud-92006-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "fields": [
+    {
+      "name": "applicant_name",
+      "type": "text",
+      "page": 2,
+      "x": 120,
+      "y": 603,
+      "width": 300,
+      "font_size": 9,
+      "label": "Applicant Name"
+    },
+    {
+      "name": "mailing_address",
+      "type": "text",
+      "page": 2,
+      "x": 90,
+      "y": 585,
+      "width": 400,
+      "font_size": 9,
+      "label": "Mailing Address"
+    },
+    {
+      "name": "telephone",
+      "type": "text",
+      "page": 2,
+      "x": 80,
+      "y": 558,
+      "width": 130,
+      "font_size": 9,
+      "label": "Telephone No"
+    },
+    {
+      "name": "additional_contact_name",
+      "type": "text",
+      "page": 2,
+      "x": 170,
+      "y": 540,
+      "width": 300,
+      "font_size": 9,
+      "label": "Name of Additional Contact Person or Organization"
+    },
+    {
+      "name": "additional_contact_address",
+      "type": "text",
+      "page": 2,
+      "x": 80,
+      "y": 514,
+      "width": 400,
+      "font_size": 9,
+      "label": "Address"
+    },
+    {
+      "name": "additional_contact_phone",
+      "type": "text",
+      "page": 2,
+      "x": 80,
+      "y": 487,
+      "width": 130,
+      "font_size": 9,
+      "label": "Telephone No"
+    },
+    {
+      "name": "additional_contact_email",
+      "type": "text",
+      "page": 2,
+      "x": 140,
+      "y": 472,
+      "width": 300,
+      "font_size": 9,
+      "label": "E-Mail Address"
+    },
+    {
+      "name": "additional_contact_relationship",
+      "type": "text",
+      "page": 2,
+      "x": 140,
+      "y": 442,
+      "width": 300,
+      "font_size": 9,
+      "label": "Relationship to Applicant"
+    },
+    {
+      "name": "contact_reason_emergency",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 407,
+      "width": 10,
+      "height": 10,
+      "label": "Emergency"
+    },
+    {
+      "name": "contact_reason_unable_to_contact",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 394,
+      "width": 10,
+      "height": 10,
+      "label": "Unable to contact you"
+    },
+    {
+      "name": "contact_reason_termination",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 381,
+      "width": 10,
+      "height": 10,
+      "label": "Termination of rental assistance"
+    },
+    {
+      "name": "contact_reason_eviction",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 368,
+      "width": 10,
+      "height": 10,
+      "label": "Eviction from unit"
+    },
+    {
+      "name": "contact_reason_late_payment",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 355,
+      "width": 10,
+      "height": 10,
+      "label": "Late payment of rent"
+    },
+    {
+      "name": "opt_out",
+      "type": "checkbox",
+      "page": 2,
+      "x": 34,
+      "y": 187,
+      "width": 10,
+      "height": 10,
+      "label": "Check this box if you choose not to provide the contact information"
+    },
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 2,
+      "x": 86,
+      "y": 147,
+      "width": 150,
+      "height": 12,
+      "label": "Signature of Applicant"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 2,
+      "x": 460,
+      "y": 150,
+      "width": 100,
+      "font_size": 9,
+      "label": "Date"
+    }
+  ]
+}

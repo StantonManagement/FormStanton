@@ -1,0 +1,149 @@
+{
+  "form_id": "hud-92006-es",
+  "source_pdf": "docs/templates/hud-92006-es.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "notes": "ES form is a single-page fillable (packet p 36). The EN cover/instructions page (p 33 blank area, p 35 EN) is not included. ES text at y=155 reads 'Se eliminó el cuadro de la firma' — the signature box was removed from this ES translation. No signature field in ES map.",
+  "fields": [
+    {
+      "name": "applicant_name",
+      "type": "text",
+      "page": 1,
+      "x": 120,
+      "y": 589,
+      "width": 300,
+      "font_size": 9,
+      "label": "Nombre del solicitante"
+    },
+    {
+      "name": "mailing_address",
+      "type": "text",
+      "page": 1,
+      "x": 90,
+      "y": 571,
+      "width": 400,
+      "font_size": 9,
+      "label": "Dirección postal"
+    },
+    {
+      "name": "telephone",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 545,
+      "width": 130,
+      "font_size": 9,
+      "label": "N.º de teléfono"
+    },
+    {
+      "name": "additional_contact_name",
+      "type": "text",
+      "page": 1,
+      "x": 170,
+      "y": 528,
+      "width": 300,
+      "font_size": 9,
+      "label": "Nombre de la persona u organización de contacto adicional"
+    },
+    {
+      "name": "additional_contact_address",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 502,
+      "width": 400,
+      "font_size": 9,
+      "label": "Dirección"
+    },
+    {
+      "name": "additional_contact_phone",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 475,
+      "width": 130,
+      "font_size": 9,
+      "label": "N.º de teléfono"
+    },
+    {
+      "name": "additional_contact_email",
+      "type": "text",
+      "page": 1,
+      "x": 140,
+      "y": 461,
+      "width": 300,
+      "font_size": 9,
+      "label": "Dirección de correo electrónico"
+    },
+    {
+      "name": "additional_contact_relationship",
+      "type": "text",
+      "page": 1,
+      "x": 140,
+      "y": 431,
+      "width": 300,
+      "font_size": 9,
+      "label": "Relación con el solicitante"
+    },
+    {
+      "name": "contact_reason_emergency",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 396,
+      "width": 10,
+      "height": 10,
+      "label": "Emergencia"
+    },
+    {
+      "name": "contact_reason_unable_to_contact",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 383,
+      "width": 10,
+      "height": 10,
+      "label": "No es posible comunicarse con usted"
+    },
+    {
+      "name": "contact_reason_termination",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 370,
+      "width": 10,
+      "height": 10,
+      "label": "Rescisión de la asistencia de alquiler"
+    },
+    {
+      "name": "contact_reason_eviction",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 357,
+      "width": 10,
+      "height": 10,
+      "label": "Desalojo de la unidad"
+    },
+    {
+      "name": "contact_reason_late_payment",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 344,
+      "width": 10,
+      "height": 10,
+      "label": "Pago atrasado de la renta"
+    },
+    {
+      "name": "opt_out",
+      "type": "checkbox",
+      "page": 1,
+      "x": 34,
+      "y": 196,
+      "width": 10,
+      "height": 10,
+      "label": "Marque esta casilla si escoge no proporcionar la información de contacto"
+    }
+  ]
+}
