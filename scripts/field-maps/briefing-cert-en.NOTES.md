@@ -69,3 +69,15 @@ y=139.6  "Date" label
 3. Place text at `label_y + 8-10` as starting estimate; signature image bottom at `label_y + 3-4`
 4. If text appears below the line: increase y. If above: decrease y.
 5. HACH forms use 612×790pt (not 792pt) — confirm page dimensions for each form before mapping
+
+## Visual Verification
+
+Visual verification is done programmatically via `scripts/render-stamped.py` (pymupdf 1.27.2.3).
+
+```
+python scripts/render-stamped.py --input docs/templates/briefing-cert-en-filled.pdf --output-dir scripts/output/render/ --dpi 150
+```
+
+Output: `scripts/output/render/briefing-cert-en-filled-page1.png`
+
+Verified 2026-05-15: "Maria Garcia-Rodriguez" appears on the printed name underline; cursive signature image falls within the signature box (y=183–213, 5pt below body text); "2026-05-14" appears on the date line. All source content (HACH letterhead, 8 numbered documents, obligations bullets, bold footer warning, Rev 3/28/2025) is unchanged.

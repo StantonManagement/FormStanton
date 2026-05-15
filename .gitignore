@@ -33,5 +33,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*.local
+# PDF toolchain outputs — gitignore by default
+scripts/output/extract/
+scripts/output/render/*.png
+# Pilot reference PNGs are committed for review history
+!scripts/output/render/briefing-cert-en-filled-page1.png
+!scripts/output/render/briefing-cert-es-filled-page1.png
+!scripts/output/render/citizenship-declaration-en-filled-page1.png
+!scripts/output/render/citizenship-declaration-es-filled-page1.png
