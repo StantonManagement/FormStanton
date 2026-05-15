@@ -70,6 +70,50 @@ console.log(`  Keys: ${Object.keys(data).join(', ')}`);
 // --- Embed standard font ---
 const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+// --- Stamp row_patterns (plural array) if present ---
+if (Array.isArray(fieldMap.row_patterns)) {
+  for (const rp of fieldMap.row_patterns) {
+    const rows = data[rp.data_key];
+    if (!Array.isArray(rows) || rows.length === 0) {
+      console.log(`\n[SKIP] row_patterns["${rp.id}"] — key="${rp.data_key}" empty or missing`);
+      continue;
+    }
+    console.log(`\nStamping row_patterns["${rp.id}"] (${rows.length} rows, key="${rp.data_key}"):`);
+    for (let i = 0; i < Math.min(rows.length, rp.max_rows ?? 9); i++) {
+      const row = rows[i];
+      const rowY = rp.row_start_y - i * rp.row_pitch;
+      for (const col of rp.columns) {
+        const key = col.field_prefix ?? col.member_key;
+        const value = row[key];
+        if (value === undefined || value === null || value === '') {
+          console.log(`  [SKIP] row ${i + 1} ${key} — empty`);
+          continue;
+        }
+        const pageIndex = (rp.page || 1) - 1;
+        const page = pdfDoc.getPages()[pageIndex];
+        if (col.type === 'text') {
+          page.drawText(String(value), {
+            x: col.x,
+            y: rowY + (col.y_offset ?? 5),
+            size: col.font_size || 9,
+            font,
+            color: rgb(0, 0, 0),
+          });
+          console.log(`  [TEXT] row ${i + 1} ${key} = "${value}" @ x=${col.x}, y=${rowY + (col.y_offset ?? 5)}`);
+        } else if (col.type === 'checkbox') {
+          const checked = value === col.check_value;
+          if (checked) {
+            page.drawText('X', { x: col.x, y: rowY + (col.y_offset ?? 5), size: col.font_size || 9, font, color: rgb(0, 0, 0) });
+            console.log(`  [CHECK] row ${i + 1} ${key} = X @ x=${col.x}, y=${rowY + (col.y_offset ?? 5)}`);
+          } else {
+            console.log(`  [SKIP] row ${i + 1} ${key} — not checked`);
+          }
+        }
+      }
+    }
+  }
+}
+
 // --- Stamp row_pattern fields (table rows) if present ---
 if (fieldMap.row_pattern) {
   const rp = fieldMap.row_pattern;

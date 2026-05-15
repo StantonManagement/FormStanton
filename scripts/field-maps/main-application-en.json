@@ -1,0 +1,110 @@
+{
+  "form_id": "main-application-en",
+  "source_pdf": "docs/templates/main-application-en.pdf",
+  "page_size": "legal",
+  "page_dimensions": { "width": 612, "height": 1008 },
+  "row_patterns": [
+    {
+      "id": "adults",
+      "page": 1,
+      "data_key": "adults",
+      "max_rows": 6,
+      "row_start_y": 566,
+      "row_pitch": 22,
+      "columns": [
+        { "field_prefix": "last_name",       "type": "text",     "x": 18,  "y_offset": 5, "width": 60, "font_size": 7, "label": "Last" },
+        { "field_prefix": "first_name",      "type": "text",     "x": 86,  "y_offset": 5, "width": 50, "font_size": 7, "label": "First" },
+        { "field_prefix": "middle_initial",  "type": "text",     "x": 143, "y_offset": 5, "width": 20, "font_size": 7, "label": "MI" },
+        { "field_prefix": "dob",             "type": "text",     "x": 168, "y_offset": 5, "width": 52, "font_size": 7, "label": "Date Of Birth" },
+        { "field_prefix": "ssn",             "type": "text",     "x": 228, "y_offset": 5, "width": 60, "font_size": 7, "label": "Social Security #" },
+        { "field_prefix": "relationship",    "type": "text",     "x": 295, "y_offset": 5, "width": 55, "font_size": 7, "label": "Relationship" },
+        { "field_prefix": "age",             "type": "text",     "x": 455, "y_offset": 5, "width": 22, "font_size": 7, "label": "Age" }
+      ]
+    },
+    {
+      "id": "minors",
+      "page": 1,
+      "data_key": "minors",
+      "max_rows": 8,
+      "row_start_y": 322,
+      "row_pitch": 22,
+      "columns": [
+        { "field_prefix": "last_name",       "type": "text",     "x": 18,  "y_offset": 5, "width": 60, "font_size": 7, "label": "Last" },
+        { "field_prefix": "first_name",      "type": "text",     "x": 86,  "y_offset": 5, "width": 50, "font_size": 7, "label": "First" },
+        { "field_prefix": "middle_initial",  "type": "text",     "x": 143, "y_offset": 5, "width": 20, "font_size": 7, "label": "MI" },
+        { "field_prefix": "dob",             "type": "text",     "x": 168, "y_offset": 5, "width": 52, "font_size": 7, "label": "Date Of Birth" },
+        { "field_prefix": "ssn",             "type": "text",     "x": 228, "y_offset": 5, "width": 60, "font_size": 7, "label": "Social Security #" },
+        { "field_prefix": "relationship",    "type": "text",     "x": 295, "y_offset": 5, "width": 55, "font_size": 7, "label": "Relationship" },
+        { "field_prefix": "age",             "type": "text",     "x": 455, "y_offset": 5, "width": 22, "font_size": 7, "label": "Age" }
+      ]
+    },
+    {
+      "id": "income",
+      "page": 2,
+      "data_key": "income_rows",
+      "max_rows": 17,
+      "row_start_y": 872,
+      "row_pitch": 22.5,
+      "columns": [
+        { "field_prefix": "member",  "type": "text",     "x": 160, "y_offset": 5, "width": 90, "font_size": 7, "label": "Family Member" },
+        { "field_prefix": "source",  "type": "text",     "x": 260, "y_offset": 5, "width": 90, "font_size": 7, "label": "Source" },
+        { "field_prefix": "amount",  "type": "text",     "x": 360, "y_offset": 5, "width": 55, "font_size": 7, "label": "Amount per Month" }
+      ]
+    },
+    {
+      "id": "assets",
+      "page": 3,
+      "data_key": "asset_rows",
+      "max_rows": 10,
+      "row_start_y": 870,
+      "row_pitch": 22.6,
+      "columns": [
+        { "field_prefix": "member",  "type": "text",     "x": 156, "y_offset": 5, "width": 90, "font_size": 7, "label": "Family Member" },
+        { "field_prefix": "source",  "type": "text",     "x": 270, "y_offset": 5, "width": 75, "font_size": 7, "label": "Source" },
+        { "field_prefix": "value",   "type": "text",     "x": 350, "y_offset": 5, "width": 55, "font_size": 7, "label": "Amount or Market Value" }
+      ]
+    },
+    {
+      "id": "medical",
+      "page": 3,
+      "data_key": "medical_rows",
+      "max_rows": 4,
+      "row_start_y": 413,
+      "row_pitch": 22.5,
+      "columns": [
+        { "field_prefix": "member",  "type": "text",     "x": 156, "y_offset": 5, "width": 90, "font_size": 7, "label": "Family Member" },
+        { "field_prefix": "source",  "type": "text",     "x": 270, "y_offset": 5, "width": 75, "font_size": 7, "label": "Source" },
+        { "field_prefix": "amount",  "type": "text",     "x": 350, "y_offset": 5, "width": 55, "font_size": 7, "label": "Amount" }
+      ]
+    }
+  ],
+  "fields": [
+    { "name": "applicant_full_name",      "type": "text",  "page": 1, "x": 18,  "y": 776, "width": 280, "font_size": 9, "label": "Name" },
+    { "name": "applicant_email",          "type": "text",  "page": 1, "x": 370, "y": 776, "width": 220, "font_size": 9, "label": "Email Address" },
+    { "name": "phone_home",               "type": "text",  "page": 1, "x": 105, "y": 756, "width": 120, "font_size": 9, "label": "Phone Numbers – Home" },
+    { "name": "phone_work",               "type": "text",  "page": 1, "x": 280, "y": 756, "width": 100, "font_size": 9, "label": "Work" },
+    { "name": "phone_cell",               "type": "text",  "page": 1, "x": 460, "y": 756, "width": 130, "font_size": 9, "label": "Cell" },
+    { "name": "address_street",           "type": "text",  "page": 1, "x": 75,  "y": 737, "width": 240, "font_size": 9, "label": "Address" },
+    { "name": "address_city_state_zip",   "type": "text",  "page": 1, "x": 390, "y": 737, "width": 200, "font_size": 9, "label": "City, ST, Zip" },
+    { "name": "alternate_contact_name",   "type": "text",  "page": 1, "x": 185, "y": 718, "width": 200, "font_size": 9, "label": "Provide an alternate contact name" },
+    { "name": "alternate_contact_phone",  "type": "text",  "page": 1, "x": 455, "y": 718, "width": 130, "font_size": 9, "label": "Phone Number" },
+    { "name": "school_fulltime_who",      "type": "text",  "page": 1, "x": 490, "y": 407, "width": 100, "font_size": 9, "label": "If yes, who?" },
+    { "name": "q1_outside_help_explain",  "type": "text",  "page": 2, "x": 165, "y": 140, "width": 380, "font_size": 9, "label": "If yes, explain (Q1)" },
+    { "name": "zero_income_names",        "type": "text",  "page": 2, "x": 260, "y": 275, "width": 280, "font_size": 9, "label": "Household member(s) claiming Zero Income" },
+    { "name": "q2_pending_benefits_explain", "type": "text", "page": 3, "x": 85, "y": 953, "width": 490, "font_size": 9, "label": "If yes, explain (Q2)" },
+    { "name": "q3_sold_assets_explain",   "type": "text",  "page": 3, "x": 85,  "y": 600, "width": 490, "font_size": 9, "label": "If yes, explain (Q3)" },
+    { "name": "notices_read_yes",         "type": "checkbox", "page": 5, "x": 38, "y": 677, "label": "I have read and understood notices — Yes" },
+    { "name": "hoh_signature",            "type": "image", "page": 5, "x": 49,  "y": 381, "width": 340, "height": 12, "label": "Signature of Head of Household" },
+    { "name": "hoh_signature_date",       "type": "text",  "page": 5, "x": 435, "y": 382, "width": 120, "font_size": 9, "label": "Date (HOH)" },
+    { "name": "spouse_signature_1",       "type": "image", "page": 5, "x": 49,  "y": 340, "width": 340, "height": 12, "label": "Spouse/Co-Head/Other Adult sig 1" },
+    { "name": "spouse_signature_1_date",  "type": "text",  "page": 5, "x": 435, "y": 341, "width": 120, "font_size": 9, "label": "Date 1" },
+    { "name": "spouse_signature_2",       "type": "image", "page": 5, "x": 49,  "y": 298, "width": 340, "height": 12, "label": "Spouse/Co-Head/Other Adult sig 2" },
+    { "name": "spouse_signature_2_date",  "type": "text",  "page": 5, "x": 435, "y": 299, "width": 120, "font_size": 9, "label": "Date 2" },
+    { "name": "spouse_signature_3",       "type": "image", "page": 5, "x": 49,  "y": 257, "width": 340, "height": 12, "label": "Spouse/Co-Head/Other Adult sig 3" },
+    { "name": "spouse_signature_3_date",  "type": "text",  "page": 5, "x": 435, "y": 258, "width": 120, "font_size": 9, "label": "Date 3" },
+    { "name": "spouse_signature_4",       "type": "image", "page": 5, "x": 49,  "y": 215, "width": 340, "height": 12, "label": "Spouse/Co-Head/Other Adult sig 4" },
+    { "name": "spouse_signature_4_date",  "type": "text",  "page": 5, "x": 435, "y": 216, "width": 120, "font_size": 9, "label": "Date 4" },
+    { "name": "spouse_signature_5",       "type": "image", "page": 5, "x": 49,  "y": 173, "width": 340, "height": 12, "label": "Spouse/Co-Head/Other Adult sig 5" },
+    { "name": "spouse_signature_5_date",  "type": "text",  "page": 5, "x": 435, "y": 174, "width": 120, "font_size": 9, "label": "Date 5" }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "applicant_full_name": "Maria Garcia-Rodriguez",
+  "applicant_email": "maria.garcia@email.com",
+  "phone_home": "860-555-0100",
+  "phone_work": "",
+  "phone_cell": "860-555-0101",
+  "address_street": "123 Main Street",
+  "address_city_state_zip": "Hartford, CT 06103",
+  "alternate_contact_name": "Carmen Rodriguez",
+  "alternate_contact_phone": "860-555-0200",
+  "school_fulltime_who": "",
+  "q1_outside_help_explain": "",
+  "zero_income_names": "",
+  "q2_pending_benefits_explain": "",
+  "q3_sold_assets_explain": "",
+  "hoh_signature": "docs/templates/sample-signature.png",
+  "hoh_signature_date": "2026-05-15",
+  "spouse_signature_1": "docs/templates/sample-signature.png",
+  "spouse_signature_1_date": "2026-05-15",
+  "spouse_signature_2": "docs/templates/sample-signature.png",
+  "spouse_signature_2_date": "2026-05-15",
+  "adults": [
+    { "last_name": "Garcia-Rodriguez", "first_name": "Maria",   "middle_initial": "L", "dob": "03/12/1978", "ssn": "XXX-XX-0001", "relationship": "SELF",   "age": "48" },
+    { "last_name": "Garcia-Rodriguez", "first_name": "Carlos",  "middle_initial": "M", "dob": "07/22/1975", "ssn": "XXX-XX-0002", "relationship": "Spouse", "age": "50" },
+    { "last_name": "Garcia-Rodriguez", "first_name": "Diego",   "middle_initial": "",  "dob": "11/05/2004", "ssn": "XXX-XX-0003", "relationship": "Son",    "age": "21" }
+  ],
+  "minors": [
+    { "last_name": "Garcia-Rodriguez", "first_name": "Sofia",  "middle_initial": "", "dob": "06/18/2012", "ssn": "XXX-XX-0004", "relationship": "Daughter", "age": "13" },
+    { "last_name": "Garcia-Rodriguez", "first_name": "Lucas",  "middle_initial": "", "dob": "02/09/2015", "ssn": "XXX-XX-0005", "relationship": "Son",      "age": "11" }
+  ],
+  "income_rows": [
+    { "member": "Maria", "source": "Hartford Public Schools", "amount": "2850.00" },
+    { "member": "Carlos", "source": "Metro Transit Authority", "amount": "3200.00" }
+  ],
+  "asset_rows": [
+    { "member": "Maria", "source": "TD Bank", "value": "1250.00" }
+  ],
+  "medical_rows": []
+}
