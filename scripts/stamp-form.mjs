@@ -70,6 +70,79 @@ console.log(`  Keys: ${Object.keys(data).join(', ')}`);
 // --- Embed standard font ---
 const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+// --- Stamp row_pattern fields (table rows) if present ---
+if (fieldMap.row_pattern) {
+  const rp = fieldMap.row_pattern;
+  const members = data[rp.data_key];
+  if (!Array.isArray(members)) {
+    console.error(`row_pattern.data_key "${rp.data_key}" not found or not an array in data file`);
+    process.exit(1);
+  }
+  console.log(`\nStamping row_pattern (${members.length} rows, key="${rp.data_key}"):`);
+  for (let i = 0; i < Math.min(members.length, rp.max_rows ?? 9); i++) {
+    const member = members[i];
+    const rowY = rp.row_start_y - i * rp.row_pitch;
+    for (const col of rp.columns) {
+      const value = member[col.member_key];
+      if (value === undefined || value === null) {
+        console.log(`  [SKIP] row ${i + 1} ${col.member_key} — no value`);
+        continue;
+      }
+      const pageIndex = (rp.page || 1) - 1;
+      const page = pdfDoc.getPages()[pageIndex];
+      if (col.type === 'text') {
+        page.drawText(String(value), {
+          x: col.x,
+          y: rowY + (col.y_offset ?? 5),
+          size: col.font_size || 9,
+          font,
+          color: rgb(0, 0, 0),
+        });
+        console.log(`  [TEXT] row ${i + 1} ${col.member_key} = "${value}" @ x=${col.x}, y=${rowY + (col.y_offset ?? 5)}`);
+      } else if (col.type === 'checkbox') {
+        const checked = value === col.check_value;
+        if (checked) {
+          page.drawText('X', {
+            x: col.x,
+            y: rowY + (col.y_offset ?? 5),
+            size: col.font_size || 9,
+            font,
+            color: rgb(0, 0, 0),
+          });
+          console.log(`  [CHECK] row ${i + 1} ${col.member_key} = X @ x=${col.x}, y=${rowY + (col.y_offset ?? 5)}`);
+        } else {
+          console.log(`  [SKIP] row ${i + 1} ${col.member_key} — not checked (value="${value}", check_value="${col.check_value}")`);
+        }
+      } else if (col.type === 'image') {
+        const imagePath = resolve(root, String(value));
+        if (!existsSync(imagePath)) {
+          console.error(`  [ERROR] Image not found: ${imagePath}`);
+          continue;
+        }
+        const imageBytes = readFileSync(imagePath);
+        const ext = imagePath.toLowerCase().split('.').pop();
+        let embeddedImage;
+        if (ext === 'png') {
+          embeddedImage = await pdfDoc.embedPng(imageBytes);
+        } else if (ext === 'jpg' || ext === 'jpeg') {
+          embeddedImage = await pdfDoc.embedJpg(imageBytes);
+        } else {
+          console.error(`  [ERROR] Unsupported image format: ${ext}`);
+          continue;
+        }
+        const imgH = col.height || 13;
+        page.drawImage(embeddedImage, {
+          x: col.x,
+          y: rowY + (col.y_offset ?? 2),
+          width: col.width || 150,
+          height: imgH,
+        });
+        console.log(`  [IMAGE] row ${i + 1} ${col.member_key} @ x=${col.x}, y=${rowY + (col.y_offset ?? 2)}`);
+      }
+    }
+  }
+}
+
 // --- Stamp each field ---
 console.log('\nStamping fields:');
 for (const field of fieldMap.fields) {
