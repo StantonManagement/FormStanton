@@ -491,13 +491,10 @@ function PbvFullAppPage() {
           return;
         }
         if (intakeStatus === 'complete') {
-          if (!signingStatus || signingStatus === 'not_started') {
-            // PRD-26 entry (stub — placeholder route)
-            router.push(`/pbv-full-app/${token}/review`);
-            return;
-          }
-          if (signingStatus === 'in_progress' || signingStatus === 'summary_signed') {
-            router.push(`/pbv-full-app/${token}/review`);
+          if (!signingStatus || signingStatus === 'not_started' ||
+              signingStatus === 'summary_signed' || signingStatus === 'in_progress') {
+            // PRD-26 dashboard
+            router.push(`/pbv-full-app/${token}/dashboard`);
             return;
           }
           // signing complete → fall through to existing docs/finalize flow
