@@ -1,0 +1,29 @@
+{
+  "form_id": "eiv-guide-receipt-es",
+  "source_pdf": "docs/templates/eiv-guide-receipt-es.pdf",
+  "page_size": "letter-landscape",
+  "page_dimensions": { "width": 1224, "height": 612 },
+  "notes": "ES guide pages (packet pp 26, 28) are blank in the source packet. This form uses the EN signature page (packet p 27) as the source for the receipt. The guide content itself is EN-only (HUD publication). Signer is HOH; single signature + date.",
+  "fields": [
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 1,
+      "x": 534,
+      "y": 35,
+      "width": 150,
+      "height": 12,
+      "label": "Firma"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 700,
+      "y": 38,
+      "width": 100,
+      "font_size": 9,
+      "label": "Fecha"
+    }
+  ]
+}

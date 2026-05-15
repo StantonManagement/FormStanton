@@ -86,5 +86,30 @@
   "minors": ["minor_1", "minor_2"],
   "signature_date": "2026-05-15",
   "hoh_printed_name": "Maria Garcia-Rodriguez",
-  "signature": "docs/templates/sample-signature.png"
+  "signature": "docs/templates/sample-signature.png",
+  "income": {
+    "child_support": {
+      "receives": false,
+      "children": "Sofia Garcia-Rodriguez, Lucas Garcia-Rodriguez",
+      "amount_weekly": null,
+      "amount_monthly": null
+    }
+  },
+  "ssn": {
+    "hoh": "XXX-XX-0001",
+    "spouse": "XXX-XX-0002",
+    "adult_son": "XXX-XX-0003"
+  },
+  "address": {
+    "street": "123 Main Street",
+    "apt": "",
+    "city": "Hartford",
+    "state": "CT",
+    "zip": "06103",
+    "previous_street": "456 Elm Street",
+    "previous_apt": "",
+    "previous_city": "Hartford",
+    "previous_state": "CT",
+    "previous_zip": "06106"
+  }
 }
