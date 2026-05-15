@@ -210,28 +210,76 @@ export async function POST(
       // Load field map for signature coordinates
       const fieldMap = await loadFieldMapForSigning(formDoc.form_id, formDoc.language as 'en' | 'es');
 
-      if (fieldMap) {
-        const signatureFieldData = buildSignatureFieldData(fieldMap, typed_name, sigImageBytes);
-
-        const signedPdfBuffer = await stampForm({
-          fieldMap,
-          data: signatureFieldData,
-          sourcePdfBytes: unsignedPdfBytes,
-          imageResolver: async (path: string) => {
-            if (path === '__sig__') return sigImageBytes;
-            return null;
-          },
-        });
-
-        signedPdfPath = `pbv/${app.id}/forms/${formDoc.form_id}-${formDoc.language}-signed.pdf`;
-
-        await supabaseAdmin.storage
-          .from('pbv-forms')
-          .upload(signedPdfPath, signedPdfBuffer, {
-            contentType: 'application/pdf',
-            upsert: true,
-          });
+      if (!fieldMap) {
+        return {
+          body: { success: false, message: 'Field map not found for this form — cannot generate signed PDF' },
+          status: 422,
+        };
       }
+
+      // F5: Load all signature events for this form to get each signer's image
+      const { data: allSigEvents, error: sigEventsError } = await supabaseAdmin
+        .from('pbv_signature_events')
+        .select('signer_member_id, signature_image_path')
+        .eq('form_document_id', formDoc.id);
+
+      if (sigEventsError) throw sigEventsError;
+
+      // F5: Build map of member_id -> signature bytes
+      const sigImageMap = new Map<string, Buffer>();
+      for (const ev of (allSigEvents ?? [])) {
+        if (!ev.signature_image_path) continue;
+        const { data: imgData, error: imgError } = await supabaseAdmin.storage
+          .from('pbv-signatures')
+          .download(ev.signature_image_path);
+        if (!imgError && imgData) {
+          sigImageMap.set(ev.signer_member_id, Buffer.from(await imgData.arrayBuffer()));
+        }
+      }
+
+      // F5: Load member slots to determine row index (slot - 1)
+      const { data: membersData } = await supabaseAdmin
+        .from('pbv_household_members')
+        .select('id, slot')
+        .eq('full_application_id', app.id)
+        .in('id', requiredIds);
+
+      const memberSlotMap = new Map<string, number>();
+      for (const m of (membersData ?? [])) {
+        memberSlotMap.set(m.id, m.slot);
+      }
+
+      // F5: Build signature field data with per-signer markers
+      const signatureFieldData = buildSignatureFieldDataF5(
+        fieldMap,
+        requiredIds,
+        memberSlotMap
+      );
+
+      const signedPdfBuffer = await stampForm({
+        fieldMap,
+        data: signatureFieldData,
+        sourcePdfBytes: unsignedPdfBytes,
+        imageResolver: async (path: string) => {
+          // F5: Resolve per-signer signature markers
+          if (path.startsWith('__sig__:')) {
+            const memberId = path.slice('__sig__:'.length);
+            return sigImageMap.get(memberId) ?? null;
+          }
+          // Fallback for legacy single-sig forms
+          if (path === '__sig__') return sigImageBytes;
+          return null;
+        },
+      });
+
+      signedPdfPath = `pbv/${app.id}/forms/${formDoc.form_id}-${formDoc.language}-signed.pdf`;
+
+      await supabaseAdmin.storage
+        .from('pbv-forms')
+        .upload(signedPdfPath, signedPdfBuffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
 
       formDocUpdate.status = 'signed';
       formDocUpdate.signed_pdf_path = signedPdfPath;
@@ -310,14 +358,72 @@ async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Pr
   }
 }
 
+/**
+ * F5: Build signature field data with per-signer markers.
+ * For multi-signer forms, emits __sig__:${member_id} keyed by row index (slot - 1).
+ */
+function buildSignatureFieldDataF5(
+  fieldMap: FieldMap,
+  requiredSignerIds: string[],
+  memberSlotMap: Map<string, number>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  // Search flat fields for signature images (single-sig forms)
+  const sigField = fieldMap.fields.find(
+    (f) => f.type === 'image' && f.name.includes('signature')
+  );
+  if (sigField) {
+    // For single-sig forms, use first required signer
+    result[sigField.name] = `__sig__:${requiredSignerIds[0]}`;
+  }
+
+  // F5: Search row_patterns[].columns for signature images (multi-sig table forms)
+  const rowPatterns = fieldMap.row_patterns ?? (fieldMap.row_pattern ? [fieldMap.row_pattern] : []);
+  for (const pattern of rowPatterns) {
+    for (const col of pattern.columns) {
+      const key = col.member_key ?? col.field_prefix ?? '';
+      if (col.type === 'image' && key.includes('signature')) {
+        // For each row, map to the member in that slot (row 0 = slot 1 = HOH)
+        for (const memberId of requiredSignerIds) {
+          const slot = memberSlotMap.get(memberId) ?? 1;
+          const rowIndex = slot - 1; // HOH = row 0, spouse = row 1, etc.
+          result[`__row_pattern:${pattern.data_key}:signature:${rowIndex}`] = `__sig__:${memberId}`;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/** @deprecated Use buildSignatureFieldDataF5 for multi-signer support */
 function buildSignatureFieldData(
   fieldMap: FieldMap,
   _typedName: string,
   _sigBytes: Buffer
 ): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  // Search flat fields for signature images
   const sigField = fieldMap.fields.find(
     (f) => f.type === 'image' && f.name.includes('signature')
   );
-  if (!sigField) return {};
-  return { [sigField.name]: '__sig__' };
+  if (sigField) {
+    result[sigField.name] = '__sig__';
+  }
+
+  // H1: Search row_patterns[].columns for signature images (table-style forms)
+  const rowPatterns = fieldMap.row_patterns ?? (fieldMap.row_pattern ? [fieldMap.row_pattern] : []);
+  for (const pattern of rowPatterns) {
+    for (const col of pattern.columns) {
+      const key = col.member_key ?? col.field_prefix ?? '';
+      if (col.type === 'image' && key.includes('signature')) {
+        // Marker for row-pattern signatures (H2: multi-signer handled via repeated calls)
+        result[`__row_pattern:${pattern.data_key}:signature`] = '__sig__';
+      }
+    }
+  }
+
+  return result;
 }

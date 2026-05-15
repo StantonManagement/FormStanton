@@ -97,10 +97,16 @@ export async function POST(
         continue;
       }
 
-      // Determine which member slots need forms
+      // F4: For each_adult/individual scopes, emit ONE row per (form_id, language)
+      // with ALL adult IDs as required signers. For other scopes, loop per slot.
+      const isPerPersonAllAdults = template.per_person_scope === 'each_adult' || template.per_person_scope === 'individual';
       const signerSlots = getSignerSlots(template.per_person_scope, members);
 
-      for (const signerSlot of signerSlots) {
+      // For each_adult/individual: process once with all adult IDs
+      // For other scopes: loop per signer slot
+      const iterations = isPerPersonAllAdults ? [{ slot: 1, allAdultIds: true }] : signerSlots.map(slot => ({ slot, allAdultIds: false }));
+
+      for (const iter of iterations) {
         const formId = template.form_id;
         const sourcePdf = getSourcePdf(formId, language);
 
@@ -110,8 +116,8 @@ export async function POST(
           continue;
         }
 
-        // Resolve field data for this form + signer
-        const fieldData = resolveFieldData(formId, intakeData, members, language, signerSlot);
+        // Resolve field data (for per-person scopes, includes all members via row_patterns)
+        const fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot);
 
         // Load field map JSON
         const fieldMap = await loadFieldMap(formId, language);
@@ -142,8 +148,11 @@ export async function POST(
           throw uploadError;
         }
 
-        // Determine required signers
-        const requiredSignerIds = getRequiredSignerIds(template.per_person_scope, members, signerSlot);
+        // F4: For each_adult/individual, required signers = ALL adult member IDs
+        // For other scopes, use the specific slot
+        const requiredSignerIds = iter.allAdultIds
+          ? members.filter((m) => (m.age ?? 0) >= 18).map((m) => m.id).filter(Boolean) as string[]
+          : getRequiredSignerIds(template.per_person_scope, members, iter.slot);
 
         // Compute source hash
         const sourceHash = sha256Hex(sourcePdf);
@@ -184,6 +193,9 @@ export async function POST(
             language,
           });
         }
+
+        // F4: For each_adult/individual, only process once (not per slot)
+        if (isPerPersonAllAdults) break;
       }
     }
 

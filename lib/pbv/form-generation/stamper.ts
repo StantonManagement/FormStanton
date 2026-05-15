@@ -23,6 +23,8 @@ export interface FieldMapColumn {
   y_offset?: number;
   font_size?: number;
   check_value?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface RowPattern {
@@ -131,6 +133,27 @@ export async function stampForm(input: StamperInput): Promise<Buffer> {
                 color: rgb(0, 0, 0),
               });
             }
+          } else if (col.type === 'image') {
+            // F5: Handle per-row signature images
+            const key = col.member_key ?? col.field_prefix ?? '';
+            if (key.includes('signature')) {
+              // Look for per-row signature marker: __row_pattern:{data_key}:signature:{rowIndex}
+              const rowMarker = `__row_pattern:${rp.data_key}:signature:${i}`;
+              const markerValue = data[rowMarker];
+              if (markerValue && imageResolver) {
+                const imgBytes = await imageResolver(String(markerValue));
+                if (imgBytes) {
+                  await drawImage(
+                    rp.page ?? 1,
+                    imgBytes,
+                    col.x,
+                    yPos - (col.height ?? 20) + (col.y_offset ?? 0),
+                    col.width ?? 100,
+                    col.height ?? 20
+                  );
+                }
+              }
+            }
           }
         }
       }
@@ -172,6 +195,25 @@ export async function stampForm(input: StamperInput): Promise<Buffer> {
                 font,
                 color: rgb(0, 0, 0),
               });
+            }
+          } else if (col.type === 'image') {
+            // F5: Handle per-row signature images for legacy row_pattern
+            if (key.includes('signature') && imageResolver) {
+              const rowMarker = `__row_pattern:${rp.data_key}:signature:${i}`;
+              const markerValue = data[rowMarker];
+              if (markerValue) {
+                const imgBytes = await imageResolver(String(markerValue));
+                if (imgBytes) {
+                  await drawImage(
+                    rp.page ?? 1,
+                    imgBytes,
+                    col.x,
+                    yPos - (col.height ?? 20) + (col.y_offset ?? 0),
+                    col.width ?? 100,
+                    col.height ?? 20
+                  );
+                }
+              }
             }
           }
         }

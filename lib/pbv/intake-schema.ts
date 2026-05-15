@@ -36,7 +36,6 @@ export const ALWAYS_SECTIONS: SectionSlug[] = [
   'childcare_disability',
   'criminal_history',
   'dv_homeless_ra',
-  'review',
 ];
 
 // Conditional sections — shown by useSectionVisibility

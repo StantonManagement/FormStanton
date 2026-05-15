@@ -209,7 +209,7 @@ export default function SectionReview({ language, intakeData, token, onNavigateT
         throw new Error(json.message || `Submit failed (${res.status})`);
       }
       onSubmitted();
-      router.push(`/pbv-full-app/${token}/review`);
+      router.push(`/pbv-full-app/${token}/dashboard`);
     } catch (err: any) {
       setError(err.message || 'Submit failed.');
     } finally {

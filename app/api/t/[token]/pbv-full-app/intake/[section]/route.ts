@@ -14,20 +14,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { withIdempotency } from '@/lib/idempotency';
+import { SECTION_SLUGS, type SectionSlug } from '@/lib/pbv/intake-schema';
 
-const ALLOWED_SECTIONS = new Set([
-  'applicant',
-  'household',
-  'income',
-  'assets',
-  'criminal',
-  'medical',
-  'childcare',
-  'pets',
-  'vehicle',
-  'expenses',
-  'preferences',
-]);
+const ALLOWED_SECTIONS = new Set<string>(SECTION_SLUGS);
 
 export async function POST(
   request: NextRequest,
@@ -42,7 +32,7 @@ export async function POST(
     );
   }
 
-  return withTenantContext(request, token, `intake-${section}`, async (app) => {
+  return withIdempotency(request, '', `intake-${section}`, async () => withTenantContext(request, token, `intake-${section}`, async (app) => {
     const body = await request.json().catch(() => null);
     if (!body || typeof body.data !== 'object' || body.data === null) {
       return { body: { success: false, message: 'Body must contain a data object' }, status: 400 };
@@ -65,6 +55,8 @@ export async function POST(
     const mergedIntakeData = {
       ...existingIntakeData,
       [section]: sectionData,
+      _resume_section: section,
+      _last_saved_at: new Date().toISOString(),
     };
 
     const updatePayload: Record<string, unknown> = {
@@ -94,5 +86,5 @@ export async function POST(
       },
       status: 200,
     };
-  });
+  }));
 }
