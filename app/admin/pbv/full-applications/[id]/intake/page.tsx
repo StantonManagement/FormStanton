@@ -83,10 +83,12 @@ function PageThumbnail({
   page,
   isSelected,
   onToggleSelect,
+  onZoom,
 }: {
   page: IntakePage;
   isSelected: boolean;
   onToggleSelect: (id: string, shift: boolean) => void;
+  onZoom: (url: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: page.id,
@@ -119,7 +121,7 @@ function PageThumbnail({
         </span>
       </div>
 
-      <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center mb-1 overflow-hidden">
+      <div className="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center mb-1 overflow-hidden relative group">
         <img
           src={`/api/admin/intake/page-image/${page.image_path.replace('/', '/')}`}
           alt={`Page ${page.global_index}`}
@@ -128,7 +130,19 @@ function PageThumbnail({
             (e.target as HTMLImageElement).style.display = 'none';
           }}
         />
-        <span className="absolute text-xs text-gray-400">pg {page.page_index}</span>
+        <span className="absolute bottom-0 left-0 text-xs text-gray-400 px-1">pg {page.page_index}</span>
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onZoom(`/api/admin/intake/page-image/${page.image_path}`);
+          }}
+          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-1.5 py-0.5 leading-none"
+          title="View full size"
+        >
+          &#x26F6;
+        </button>
       </div>
 
       <div className="space-y-1">
@@ -312,6 +326,21 @@ export default function PacketIntakePage() {
   const [customLabelInput, setCustomLabelInput] = useState('');
 
   const [priorBatchesOpen, setPriorBatchesOpen] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Warn before navigating away with unsaved classify work or selected files
+  useEffect(() => {
+    const isDirty =
+      (phase === 'upload' && selectedFiles.length > 0) ||
+      phase === 'classify';
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [phase, selectedFiles.length]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -531,6 +560,28 @@ export default function PacketIntakePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt="Document page"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 text-white text-2xl leading-none bg-black/40 px-3 py-1 hover:bg-black/70 transition-colors"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <div className="text-sm flex items-center gap-2 text-[var(--muted)]">
         <Link href="/admin/pbv/full-applications" className="hover:text-[var(--ink)] underline">
@@ -761,6 +812,7 @@ export default function PacketIntakePage() {
                       page={page}
                       isSelected={selectedPageIds.has(page.id)}
                       onToggleSelect={handleToggleSelect}
+                      onZoom={setLightboxUrl}
                     />
                   ))}
                 </div>

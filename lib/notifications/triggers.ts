@@ -14,10 +14,11 @@ import { sendTenantNotification } from './send';
 import { scheduleReminders } from './scheduler';
 import { supabaseAdmin } from '@/lib/supabase';
 
+// Automatic SMS notifications DISABLED - all notifications are now staff-controlled
+// Staff must explicitly click "Send SMS" buttons in the UI
+// This prevents unexpected tenant notifications during complex cases
 const eventToNotification: Partial<Record<string, NotificationType>> = {
-  [ApplicationEventType.APPLICATION_CREATED]:  NotificationType.MAGIC_LINK_INITIAL,
-  [ApplicationEventType.DOCUMENT_REJECTED]:    NotificationType.DOC_REJECTED,
-  [ApplicationEventType.HAP_EXECUTED]:         NotificationType.HAP_EXECUTED_MOVE_IN,
+  // All automatic sends removed per Phase 2 implementation
 };
 
 /**
@@ -44,29 +45,17 @@ export async function dispatchNotificationTrigger(
       });
     }
 
-    // Special case: APPLICATION_CREATED → schedule upload reminders
-    if (eventType === ApplicationEventType.APPLICATION_CREATED) {
-      await scheduleReminders(applicationId);
-    }
+    // Automatic reminders DISABLED - staff must manually send reminders via UI
+    // This prevents notification fatigue and gives staff control over timing
+    // if (eventType === ApplicationEventType.APPLICATION_CREATED) {
+    //   await scheduleReminders(applicationId);
+    // }
 
-    // Special case: handoff.sent with hach_review_status === 'approved_by_hach'
-    if (eventType === ApplicationEventType.HANDOFF_SENT) {
-      const { data: event } = await supabaseAdmin
-        .from('application_events')
-        .select('payload')
-        .eq('id', eventId)
-        .maybeSingle();
-      const payload = event?.payload as { hach_review_status?: string } | null;
-      if (payload?.hach_review_status === 'approved_by_hach') {
-        const interpolations = await buildInterpolations(applicationId, NotificationType.HACH_APPROVED_SIGNING_READY);
-        await sendTenantNotification({
-          applicationId,
-          notificationType: NotificationType.HACH_APPROVED_SIGNING_READY,
-          interpolations,
-          triggeredByEventId: eventId,
-        });
-      }
-    }
+    // Automatic HACH approval notification DISABLED - staff must manually notify
+    // This allows staff to review packet before notifying tenant
+    // if (eventType === ApplicationEventType.HANDOFF_SENT) {
+    //   ... notification logic removed ...
+    // }
   } catch (err) {
     console.error('[notifications/triggers] dispatch error:', err);
   }

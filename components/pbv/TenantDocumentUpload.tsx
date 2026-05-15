@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { tenantFetch } from '@/lib/tenantFetch';
+import dynamic from 'next/dynamic';
+import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
+
+const DocumentScanner = dynamic(
+  () => import('@/components/DocumentScanner/DocumentScanner'),
+  { ssr: false }
+);
 
 interface Document {
   id: string;
@@ -10,8 +18,12 @@ interface Document {
   person_slot: number;
   status: 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived';
   rejection_reason: string | null;
+  rejection_reason_key?: string | null;
+  rejection_reason_display?: string | null;
   current_revision: number;
   uploaded_at: string | null;
+  category?: string;
+  display_order?: number;
 }
 
 interface TenantDocumentUploadProps {
@@ -40,6 +52,12 @@ const translations = {
     error_upload: 'Upload failed. Please try again.',
     locked_message: 'This packet is under review. Contact the office for updates.',
     progress: '{uploaded} of {total} uploaded',
+    category_income: 'Income Verification',
+    category_assets: 'Banking & Assets',
+    category_medical_childcare: 'Medical & Childcare',
+    category_immigration: 'Citizenship & Immigration',
+    category_signed_forms: 'Signed Forms',
+    category_custom: 'Additional Documents',
   },
   es: {
     title: 'Documentos Requeridos',
@@ -58,6 +76,12 @@ const translations = {
     error_upload: 'Error al subir. Intente de nuevo.',
     locked_message: 'Este paquete está en revisión. Contacte la oficina para actualizaciones.',
     progress: '{uploaded} de {total} subidos',
+    category_income: 'Verificación de Ingresos',
+    category_assets: 'Cuentas y Bienes',
+    category_medical_childcare: 'Médico y Cuidado Infantil',
+    category_immigration: 'Ciudadanía e Inmigración',
+    category_signed_forms: 'Formularios Firmados',
+    category_custom: 'Documentos Adicionales',
   },
   pt: {
     title: 'Documentos Necessários',
@@ -76,6 +100,12 @@ const translations = {
     error_upload: 'Falha no envio. Tente novamente.',
     locked_message: 'Este pacote está em revisão. Entre em contato com o escritório para atualizações.',
     progress: '{uploaded} de {total} enviados',
+    category_income: 'Verificação de Renda',
+    category_assets: 'Contas e Bens',
+    category_medical_childcare: 'Médico e Creche',
+    category_immigration: 'Cidadania e Imigração',
+    category_signed_forms: 'Formulários Assinados',
+    category_custom: 'Documentos Adicionais',
   },
 };
 
@@ -107,24 +137,71 @@ export default function TenantDocumentUpload({
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLocked, setIsLocked] = useState(packetLocked);
+  const [scanningDocId, setScanningDocId] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
-  // Fetch documents on mount
-  useEffect(() => {
-    fetch(`/api/pbv-full-app/${token}/documents?language=${language}`)
+  // Fixed category order per PRD-14 Phase 4
+  const CATEGORY_ORDER = ['income', 'assets', 'medical_childcare', 'immigration', 'signed_forms', 'custom'];
+
+  // Group documents by category
+  const groupedDocs = documents.reduce<Record<string, Document[]>>((acc, doc) => {
+    const category = doc.category || 'custom';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(doc);
+    return acc;
+  }, {});
+
+  // Sort documents within each category by (display_order, person_slot)
+  Object.keys(groupedDocs).forEach((key) => {
+    groupedDocs[key].sort((a, b) => {
+      const orderDiff = (a.display_order ?? 0) - (b.display_order ?? 0);
+      if (orderDiff !== 0) return orderDiff;
+      return (a.person_slot ?? 0) - (b.person_slot ?? 0);
+    });
+  });
+
+  // Get sorted category entries based on fixed order
+  const sortedCategories = CATEGORY_ORDER.filter((cat) => groupedDocs[cat]?.length > 0)
+    .map((cat) => [cat, groupedDocs[cat]] as const);
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const loadDocuments = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    tenantFetch(`/api/t/${token}/pbv-full-app/documents?language=${language}`)
       .then((res) => res.json())
       .then((result) => {
         if (result.success && result.data?.documents) {
           setDocuments(result.data.documents);
         }
+        if (result.success && result.data?.packet_locked) {
+          setIsLocked(true);
+        }
       })
       .catch((err) => {
         console.error('Failed to fetch documents:', err);
-        setError('Failed to load documents');
+        setError(language === 'en' ? 'Failed to load documents. Please try again.' : language === 'es' ? 'Error al cargar documentos. Intente de nuevo.' : 'Erro ao carregar documentos. Tente novamente.');
       })
       .finally(() => {
         setLoading(false);
       });
   }, [token, language]);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
 
   const uploadedCount = documents.filter((d) => d.status !== 'missing').length;
   const totalCount = documents.length;
@@ -156,7 +233,7 @@ export default function TenantDocumentUpload({
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`/api/pbv-full-app/${token}/documents/${docId}/upload`, {
+        const response = await tenantFetch(`/api/t/${token}/pbv-full-app/documents/${docId}/upload`, {
           method: 'POST',
           body: formData,
         });
@@ -189,6 +266,14 @@ export default function TenantDocumentUpload({
     [documents, token, onDocumentsChange, t]
   );
 
+  const handleScannerComplete = useCallback(
+    async (docId: string, file: File, _metadata: ScannerMetadata) => {
+      setScanningDocId(null);
+      await handleFileChange(docId, file);
+    },
+    [handleFileChange]
+  );
+
   if (loading) {
     return (
       <div className="bg-white border border-[var(--border)] p-6 text-center">
@@ -197,7 +282,22 @@ export default function TenantDocumentUpload({
     );
   }
 
-  if (packetLocked) {
+  if (!loading && documents.length === 0 && error) {
+    return (
+      <div className="bg-white border border-[var(--border)] p-6 text-center space-y-3">
+        <p className="text-sm text-[var(--error)]">{error}</p>
+        <button
+          type="button"
+          onClick={loadDocuments}
+          className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        >
+          {language === 'en' ? 'Try again' : language === 'es' ? 'Intentar de nuevo' : 'Tentar novamente'}
+        </button>
+      </div>
+    );
+  }
+
+  if (isLocked) {
     return (
       <div className="bg-white border border-[var(--border)] p-6 text-center">
         <p className="text-[var(--muted)] text-base min-h-[44px] flex items-center justify-center">
@@ -234,91 +334,123 @@ export default function TenantDocumentUpload({
         </div>
       )}
 
-      {/* Document list */}
-      <div className="space-y-3">
-        {documents.map((doc) => {
-          const isUploading = uploadingId === doc.id;
-          const canUpload = doc.status === 'missing' || doc.status === 'submitted' || doc.status === 'rejected';
-          const isReplace = doc.status === 'submitted' || doc.status === 'rejected';
+      {/* Document list - grouped by category */}
+      <div className="space-y-4">
+        {sortedCategories.map(([category, categoryDocs]) => {
+          const isCollapsed = collapsedCategories.has(category);
+          const categoryLabel = t[`category_${category}` as keyof typeof t] || category;
 
           return (
-            <div
-              key={doc.id}
-              className={`bg-white border p-4 ${statusClasses[doc.status]}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${statusDotClasses[doc.status]}`} />
-                    <span className="font-medium text-base">{doc.label}</span>
-                    {doc.required ? (
-                      <span className="text-xs text-[var(--error)]">({t.required})</span>
-                    ) : (
-                      <span className="text-xs text-[var(--muted)]">({t.optional})</span>
-                    )}
-                  </div>
-
-                  {doc.person_slot > 0 && (
-                    <p className="text-xs text-[var(--muted)] ml-4">
-                      Person {doc.person_slot}
-                    </p>
-                  )}
-
-                  {/* Status badge */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 border ${statusClasses[doc.status]}`}>
-                      {t[`status_${doc.status}` as keyof typeof t] || doc.status}
-                    </span>
-                    {doc.current_revision > 0 && (
-                      <span className="text-xs text-[var(--muted)]">
-                        Rev {doc.current_revision}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Rejection reason */}
-                  {doc.status === 'rejected' && doc.rejection_reason && (
-                    <p className="text-xs text-red-600 mt-2 ml-4">
-                      {doc.rejection_reason}
-                    </p>
-                  )}
+            <div key={category} className="bg-white border border-[var(--border)]">
+              {/* Category header - clickable to toggle */}
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className="w-full px-5 py-3 border-b border-[var(--border)] bg-gray-50 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-[var(--ink)]">{categoryLabel}</span>
+                  <span className="text-xs text-[var(--muted)]">
+                    ({categoryDocs.filter(d => d.status !== 'missing').length}/{categoryDocs.length})
+                  </span>
                 </div>
+                <svg
+                  className={`w-4 h-4 text-[var(--muted)] transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-                {/* Upload button */}
-                {canUpload && (
-                  <div className="flex-shrink-0">
-                    <label
-                      className={`
-                        inline-flex items-center justify-center
-                        min-w-[100px] min-h-[44px] px-4 py-2
-                        text-sm font-semibold
-                        transition-opacity hover:opacity-90
-                        ${isUploading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[var(--primary)] text-white cursor-pointer'}
-                      `}
-                      style={{ touchAction: 'manipulation' }}
-                    >
-                      {isUploading ? (
-                        <span>{t.uploading}</span>
-                      ) : isReplace ? (
-                        <span>{t.replace_btn}</span>
-                      ) : (
-                        <span>{t.upload_btn}</span>
-                      )}
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/jpeg,image/png,image/webp,application/pdf,image/heic,image/heif"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFileChange(doc.id, file);
-                          e.target.value = ''; // Reset input
-                        }}
-                        disabled={isUploading}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
+              {/* Document list for this category */}
+              {!isCollapsed && (
+                <div className="divide-y divide-[var(--border)]">
+                  {categoryDocs.map((doc) => {
+                    const isUploading = uploadingId === doc.id;
+                    const canUpload = doc.status === 'missing' || doc.status === 'submitted' || doc.status === 'rejected';
+                    const isReplace = doc.status === 'submitted' || doc.status === 'rejected';
+
+                    return (
+                      <div
+                        key={doc.id}
+                        className={`p-4 ${statusClasses[doc.status]}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`w-2 h-2 rounded-full ${statusDotClasses[doc.status]}`} />
+                              <span className="font-medium text-base">{doc.label}</span>
+                              {doc.required ? (
+                                <span className="text-xs text-[var(--error)]">({t.required})</span>
+                              ) : (
+                                <span className="text-xs text-[var(--muted)]">({t.optional})</span>
+                              )}
+                            </div>
+
+                            {doc.person_slot > 0 && (
+                              <p className="text-xs text-[var(--muted)] ml-4">
+                                Person {doc.person_slot}
+                              </p>
+                            )}
+
+                            {/* Status badge */}
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className={`text-xs px-2 py-1 border ${statusClasses[doc.status]}`}>
+                                {t[`status_${doc.status}` as keyof typeof t] || doc.status}
+                              </span>
+                              {doc.current_revision > 0 && (
+                                <span className="text-xs text-[var(--muted)]">
+                                  Rev {doc.current_revision}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Rejection reason - always show for rejected docs */}
+                            {doc.status === 'rejected' && (
+                              <p className="text-xs text-red-600 mt-2 ml-4">
+                                {doc.rejection_reason_display || doc.rejection_reason || (language === 'en'
+                                  ? 'Please contact the office for details on why this document was rejected.'
+                                  : language === 'es'
+                                  ? 'Por favor contacte la oficina para detalles sobre por qué este documento fue rechazado.'
+                                  : 'Por favor entre em contato com o escritório para detalhes sobre por que este documento foi rejeitado.')}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Upload button */}
+                          {canUpload && (
+                            <div className="flex-shrink-0">
+                              <button
+                                type="button"
+                                disabled={isUploading}
+                                onClick={() => setScanningDocId(doc.id)}
+                                className={`
+                                  inline-flex items-center justify-center
+                                  min-w-[100px] min-h-[44px] px-4 py-2
+                                  text-sm font-semibold
+                                  transition-opacity hover:opacity-90
+                                  ${isUploading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[var(--primary)] text-white cursor-pointer'}
+                                `}
+                                style={{ touchAction: 'manipulation' }}
+                              >
+                                {isUploading ? (
+                                  <span>{t.uploading}</span>
+                                ) : isReplace ? (
+                                  <span>{t.replace_btn}</span>
+                                ) : (
+                                  <span>{t.upload_btn}</span>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -328,6 +460,23 @@ export default function TenantDocumentUpload({
       {documents.length === 0 && (
         <div className="bg-white border border-[var(--border)] p-6 text-center">
           <p className="text-[var(--muted)]">No documents required.</p>
+        </div>
+      )}
+
+      {/* Document Scanner overlay */}
+      {scanningDocId && (
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <div className="max-w-lg mx-auto p-4">
+            <DocumentScanner
+              instructions={documents.find((d) => d.id === scanningDocId)?.label ?? ''}
+              multiPage={false}
+              language={language}
+              onComplete={async (file, metadata) => {
+                await handleScannerComplete(scanningDocId, file, metadata);
+              }}
+              onCancel={() => setScanningDocId(null)}
+            />
+          </div>
         </div>
       )}
     </div>

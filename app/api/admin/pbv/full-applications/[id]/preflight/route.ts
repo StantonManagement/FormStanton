@@ -4,6 +4,30 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+interface ApplicationDoc {
+  id: string;
+  required: boolean;
+  status: string;
+  doc_type: string;
+  label: string;
+  owner_review_status: string | null;
+}
+
+interface ApplicationData {
+  id: string;
+  stanton_review_status: string;
+  hha_application_file: string | null;
+  head_of_household_name: string;
+  unit_number: string;
+  building_address: string;
+  total_annual_income: number | null;
+  stanton_reviewer: string | null;
+  stanton_review_date: string | null;
+  packet_locked: boolean;
+  hach_packet_revision: number | null;
+  lead_user_id: string | null;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -25,7 +49,7 @@ export async function GET(
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
       .select(
-        'id, stanton_review_status, hha_application_file, head_of_household_name, unit_number, building_address, total_annual_income, stanton_reviewer, stanton_review_date, packet_locked, hach_packet_revision'
+        'id, stanton_review_status, hha_application_file, head_of_household_name, unit_number, building_address, total_annual_income, stanton_reviewer, stanton_review_date, packet_locked, hach_packet_revision, lead_user_id'
       )
       .eq('id', id)
       .single();
@@ -34,20 +58,22 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
     }
 
+    const typedApp = app as unknown as ApplicationData;
+
     const { data: documents } = await supabaseAdmin
       .from('application_documents')
       .select('id, required, status, doc_type, label, owner_review_status')
       .eq('anchor_type', 'pbv_full_application')
       .eq('anchor_id', id);
 
-    const docs = documents ?? [];
-    const requiredDocs = docs.filter((d: any) => d.required);
+    const docs = (documents ?? []) as unknown as ApplicationDoc[];
+    const requiredDocs = docs.filter((d) => d.required);
     const docsNotCleared = requiredDocs.filter(
-      (d: any) => d.status !== 'approved' && d.status !== 'waived'
+      (d) => d.status !== 'approved' && d.status !== 'waived'
     );
 
     const docCounts = docs.reduce(
-      (acc: Record<string, number>, d: any) => {
+      (acc: Record<string, number>, d) => {
         acc[d.status] = (acc[d.status] ?? 0) + 1;
         return acc;
       },
@@ -57,20 +83,14 @@ export async function GET(
     // ── Tier-2 Lead Review Check ───────────────────────────────────────────────
     // If lead_user_id IS NOT NULL, every tier-1-reviewed doc (status IN approved/rejected/waived)
     // must have owner_review_status='confirmed'
-    const { data: appWithLead } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('lead_user_id')
-      .eq('id', id)
-      .single();
-
-    const hasApplicationLead = !!(appWithLead as any)?.lead_user_id;
+    const hasApplicationLead = !!typedApp.lead_user_id;
     
-    const tier1ReviewedDocs = docs.filter((d: any) =>
+    const tier1ReviewedDocs = docs.filter((d) =>
       ['approved', 'rejected', 'waived'].includes(d.status)
     );
     
     const unconfirmedDocs = hasApplicationLead
-      ? tier1ReviewedDocs.filter((d: any) => d.owner_review_status !== 'confirmed')
+      ? tier1ReviewedDocs.filter((d) => d.owner_review_status !== 'confirmed')
       : [];
 
     // ── Pre-flight checks ──────────────────────────────────────────────────────
@@ -82,23 +102,23 @@ export async function GET(
         detail:
           docsNotCleared.length === 0
             ? 'All required documents are approved or waived.'
-            : `${docsNotCleared.length} required document(s) still need review: ${docsNotCleared.map((d: any) => d.label).join(', ')}.`,
+            : `${docsNotCleared.length} required document(s) still need review: ${docsNotCleared.map((d) => d.label).join(', ')}.`,
       },
       {
         name: 'Stanton review status is Approved',
         key: 'stanton_approved',
-        passed: (app as any).stanton_review_status === 'approved',
+        passed: typedApp.stanton_review_status === 'approved',
         detail:
-          (app as any).stanton_review_status === 'approved'
+          typedApp.stanton_review_status === 'approved'
             ? 'Stanton review status is Approved.'
-            : `Stanton review status is "${(app as any).stanton_review_status}". Must be "approved".`,
+            : `Stanton review status is "${typedApp.stanton_review_status}". Must be "approved".`,
       },
       {
         name: 'HHA Application has been generated',
         key: 'hha_generated',
-        passed: !!(app as any).hha_application_file,
-        detail: (app as any).hha_application_file
-          ? `HHA on file: ${(app as any).hha_application_file}`
+        passed: !!typedApp.hha_application_file,
+        detail: typedApp.hha_application_file
+          ? `HHA on file: ${typedApp.hha_application_file}`
           : 'HHA Application file has not been generated yet.',
       },
       {
@@ -110,23 +130,23 @@ export async function GET(
         detail: hasApplicationLead
           ? unconfirmedDocs.length === 0
             ? 'All tier-1 reviews confirmed by Application Lead.'
-            : `${unconfirmedDocs.length} document(s) awaiting Lead confirmation: ${unconfirmedDocs.map((d: any) => d.label).join(', ')}.`
+            : `${unconfirmedDocs.length} document(s) awaiting Lead confirmation: ${unconfirmedDocs.map((d) => d.label).join(', ')}.`
           : 'No Application Lead assigned; tier-2 confirmation not required.',
       },
     ];
 
     const packet_summary = {
-      applicant_name: (app as any).head_of_household_name,
-      building_address: (app as any).building_address,
-      unit_number: (app as any).unit_number,
+      applicant_name: typedApp.head_of_household_name,
+      building_address: typedApp.building_address,
+      unit_number: typedApp.unit_number,
       doc_counts: docCounts,
       total_docs: docs.length,
-      hha_file: (app as any).hha_application_file ?? null,
-      total_annual_income: (app as any).total_annual_income ?? null,
-      stanton_reviewer: (app as any).stanton_reviewer ?? null,
-      stanton_review_date: (app as any).stanton_review_date ?? null,
-      packet_locked: (app as any).packet_locked,
-      hach_packet_revision: (app as any).hach_packet_revision,
+      hha_file: typedApp.hha_application_file ?? null,
+      total_annual_income: typedApp.total_annual_income ?? null,
+      stanton_reviewer: typedApp.stanton_reviewer ?? null,
+      stanton_review_date: typedApp.stanton_review_date ?? null,
+      packet_locked: typedApp.packet_locked,
+      hach_packet_revision: typedApp.hach_packet_revision,
     };
 
     return NextResponse.json({

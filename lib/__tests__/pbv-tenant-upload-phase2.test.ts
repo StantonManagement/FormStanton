@@ -1,7 +1,7 @@
 /**
  * PBV Tenant Upload Phase 2 Tests — Read Endpoint
  *
- * Tests for GET /api/pbv-full-app/[token]/documents
+ * Tests for GET /api/t/[token]/pbv-full-app/documents
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';

@@ -87,6 +87,7 @@ export const buildingToLLC: Record<string, string> = {
 };
 
 export const buildingUnits: Record<string, string[]> = {
+  "10 Wolcott St": ["1N", "1S", "2N", "2S", "3E", "3N", "3S"],
   "90-100 Park St": ["1", "2", "3", "4", "5 - A", "5 - B", "5 - C", "5 - D", "5 - E", "7 - A", "7 - B", "9", "10", "Retail 1", "Retail 2"],
   "97-103 Maple Ave": ["A2", "B1 - A", "B1 - B", "B1 - C", "B2", "B3", "B4 - A", "B4 - C", "C1 - -", "C2", "C3", "C4", "C4 - A", "C4 - B", "D1", "D2", "D3", "D4 - A", "D4 - B", "Retail 1", "Retail 2"],
   "222-224 Maple Ave": ["1N", "1S", "2N", "2S", "3N", "3S"],
@@ -105,16 +106,16 @@ export const buildingUnits: Record<string, string[]> = {
   "69-73 Chestnut St": ["71A", "71B", "71C", "71D", "71E", "73A", "73B", "73C", "73D", "73E"],
   "91 Edwards St": ["90A", "90B", "90C"],
   "93-95 Maple Ave": ["1", "2", "3"],
-  "31-33 Park St": ["Retail 1"],
+  "31-33 Park St": ["Retail 1", "1N", "1S", "2N", "2S", "3N", "3S"],
   "67-73 Park St": ["201", "202", "302", "COM 67 Park", "COM 75 Park"],
   "83-91 Park St": ["201", "202", "203", "301", "302", "303", "COM 83 Park", "COM 91 Park"],
   "57-59 Park St": ["2W", "COM 57 Park"],
   "179 Affleck St": ["1N", "1S", "2N", "2S", "3N", "3S", "4N", "4S"],
-  "144-146 Affleck St": ["1S", "2N", "2S", "3N", "3S"],
+  "144-146 Affleck St": ["1N", "1S", "2N", "2S", "3N", "3S"],
   "178 Affleck St": ["1", "2", "3", "4", "4S"],
   "182-184 Affleck St": ["1", "2"],
   "190-192 Affleck St": ["1N", "1S", "2N", "2S", "3N", "3S"],
-  "195 Affleck St": ["1B", "2A", "2B", "3A", "3B", "4A", "4B"],
+  "195 Affleck St": ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"],
   "88-90 Ward St": ["1A", "1B", "2A", "2B", "3A", "3B"],
   "865 Broad St": ["A1", "A2", "A3", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "D1", "D2", "D3", "D4"],
   "142 Seymour St": ["1", "2"],
@@ -122,9 +123,9 @@ export const buildingUnits: Record<string, string[]> = {
   "164 Seymour St": ["1", "2", "3"],
   "167 Seymour St": ["1NE", "1NW", "1SE", "1SW", "2NE", "2NW", "2SE", "2SW", "3NE", "3NW", "3SE", "3SW"],
   "169 Seymour St": ["1N", "1S", "2N", "2S", "2W", "3N", "3S", "3W", "4N", "4S", "4W"],
-  "170 Seymour St": ["1N", "1S", "2S", "3N", "3S"],
+  "170 Seymour St": ["1N", "1S", "2N", "2S", "3N", "3S"],
   "180 Seymour St": ["1", "2"],
-  "213-217 Buckingham St": ["202", "203", "205", "206", "207", "301", "302", "304", "305", "306", "307", "406", "407"],
+  "213-217 Buckingham St": ["101", "102", "103", "201", "202", "203", "204", "205", "206", "207", "301", "302", "303", "304", "305", "306", "307", "401", "402", "403", "404", "405", "406", "407"],
   "23-31 Squire St": ["1A", "1B", "1C", "1D", "2A", "2B", "2C", "2D", "2E", "2F"],
 };
 
@@ -278,3 +279,56 @@ export const appfolioNameToAddress: Record<string, string> = {
 export const buildingToAssetId: Record<string, string> = Object.fromEntries(
   Object.entries(appfolioNameToAddress).map(([afName, address]) => [address, appfolioNameToAssetId[afName]])
 );
+
+// Building zipcode mapping for income limit lookups
+// Hartford MSA (25540) - all use same HUD limits
+export const buildingToZipcode: Record<string, string> = {
+  // 06106 - Downtown/South
+  "90-100 Park St": "06106",
+  "97-103 Maple Ave": "06106",
+  "222-224 Maple Ave": "06106",
+  "43-45 Franklin Ave": "06106",
+  "47 Franklin Ave": "06106",
+  "228-230 Maple Ave": "06106",
+  "236 Maple Ave": "06106",
+  "93-95 Maple Ave": "06106",
+  "31-33 Park St": "06106",
+  
+  // 06114 - South End
+  "15-17 Whitmore Street": "06114",
+  "36 Whitmore Street": "06114",
+  "38-40 Whitmore Street": "06114",
+  
+  // 06105 - West End
+  "57-59 Park St": "06105",
+  "67-73 Park St": "06105",
+  "83-91 Park St": "06105",
+  "10 Wolcott St": "06105",
+  "179 Affleck St": "06105",
+  "144-146 Affleck St": "06105",
+  "178 Affleck St": "06105",
+  "182-184 Affleck St": "06105",
+  "190-192 Affleck St": "06105",
+  "195 Affleck St": "06105",
+  "88-90 Ward St": "06105",
+  "865 Broad St": "06105",
+  
+  // 06120 - North End
+  "142 Seymour St": "06120",
+  "158 Seymour St": "06120",
+  "160 Wooster St": "06120",
+  "164 Seymour St": "06120",
+  "165 Westland St": "06120",
+  "167 Seymour St": "06120",
+  "169 Seymour St": "06120",
+  "170 Seymour St": "06120",
+  "180 Seymour St": "06120",
+  "213-217 Buckingham St": "06120",
+  "23-31 Squire St": "06120",
+  "110 Martin St": "06120",
+  "120 Martin St": "06120",
+  "152-154 Wooster St": "06120",
+  "1721-1739 Main St": "06120",
+  "69-73 Chestnut St": "06120",
+  "91 Edwards St": "06120",
+};

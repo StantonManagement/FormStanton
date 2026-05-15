@@ -202,6 +202,7 @@ function ActivityTimeline({ applicationId }: { applicationId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('');
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -272,7 +273,7 @@ function ActivityTimeline({ applicationId }: { applicationId: string }) {
       )}
 
       {!loading && !error && events.length > 0 && (
-        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+        <div style={{ maxHeight: timelineExpanded ? 'none' : 400, overflowY: timelineExpanded ? 'visible' : 'auto', position: 'relative' }}>
           {events.map((event, idx) => (
             <div
               key={event.id}
@@ -303,6 +304,17 @@ function ActivityTimeline({ applicationId }: { applicationId: string }) {
           ))}
         </div>
       )}
+
+      {!loading && !error && events.length > 0 && (
+        <div style={{ padding: '8px 16px', borderTop: `1px solid ${C.border}` }}>
+          <button
+            onClick={() => setTimelineExpanded((v) => !v)}
+            style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            {timelineExpanded ? '▲ Collapse timeline' : `▼ Show all ${events.length} events`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -311,6 +323,8 @@ function CorrespondenceLog({ applicationId }: { applicationId: string }) {
   const [entries, setEntries] = useState<CorrespondenceEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updateError, setUpdateError] = useState('');
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showCallDialog, setShowCallDialog] = useState(false);
 
@@ -334,6 +348,7 @@ function CorrespondenceLog({ applicationId }: { applicationId: string }) {
   }, [fetchEntries]);
 
   const updateStatus = async (id: string, status: CorrespondenceEntry['status']) => {
+    setUpdateError('');
     try {
       const res = await fetch(`/api/admin/pbv/correspondence/${id}`, {
         method: 'PATCH',
@@ -343,7 +358,8 @@ function CorrespondenceLog({ applicationId }: { applicationId: string }) {
       if (!res.ok) throw new Error('Failed to update');
       fetchEntries();
     } catch (e: any) {
-      alert(e.message);
+      setUpdateError(e.message);
+      setTimeout(() => setUpdateError(''), 4000);
     }
   };
 
@@ -420,6 +436,10 @@ function CorrespondenceLog({ applicationId }: { applicationId: string }) {
         <div style={{ padding: 16, color: C.reject, background: '#fef2f2' }}>{error}</div>
       )}
 
+      {updateError && (
+        <div style={{ padding: '8px 16px', color: C.reject, background: '#fef2f2', fontSize: 12 }}>{updateError}</div>
+      )}
+
       {!loading && !error && entries.length === 0 && (
         <div style={{ padding: 32, textAlign: 'center', color: C.textMuted }}>No correspondence logged yet.</div>
       )}
@@ -474,8 +494,22 @@ function CorrespondenceLog({ applicationId }: { applicationId: string }) {
                 )}
 
                 <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4, whiteSpace: 'pre-wrap' }}>
-                  {entry.body.length > 200 ? entry.body.slice(0, 200) + '...' : entry.body}
+                  {entry.body.length > 200 && !expandedEntries.has(entry.id)
+                    ? entry.body.slice(0, 200) + '…'
+                    : entry.body}
                 </div>
+                {entry.body.length > 200 && (
+                  <button
+                    onClick={() => setExpandedEntries((prev) => {
+                      const next = new Set(prev);
+                      next.has(entry.id) ? next.delete(entry.id) : next.add(entry.id);
+                      return next;
+                    })}
+                    style={{ fontSize: 11, color: C.accent, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4 }}
+                  >
+                    {expandedEntries.has(entry.id) ? 'Show less' : 'Show more'}
+                  </button>
+                )}
 
                 <div style={{ fontSize: 11, color: C.textSubtle, marginTop: 6 }}>
                   Logged by {entry.logged_by_name ?? 'Unknown'}
@@ -520,10 +554,12 @@ function LogEmailDialog({
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [status, setStatus] = useState<'awaiting_their_response' | 'awaiting_our_response' | 'resolved'>('resolved');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSave = async () => {
     if (!body.trim()) return;
     setSaving(true);
+    setSaveError('');
     try {
       const res = await fetch(`/api/admin/pbv/applications/${applicationId}/correspondence`, {
         method: 'POST',
@@ -541,7 +577,7 @@ function LogEmailDialog({
       onSaved();
       onClose();
     } catch (e: any) {
-      alert(e.message);
+      setSaveError(e.message);
     } finally {
       setSaving(false);
     }
@@ -631,6 +667,9 @@ function LogEmailDialog({
           </div>
         </div>
 
+        {saveError && (
+          <div style={{ padding: '8px 20px', color: C.reject, background: '#fef2f2', fontSize: 12 }}>{saveError}</div>
+        )}
         <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
@@ -682,10 +721,12 @@ function LogCallDialog({
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [status, setStatus] = useState<'awaiting_their_response' | 'awaiting_our_response' | 'resolved'>('resolved');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleSave = async () => {
     if (!notes.trim()) return;
     setSaving(true);
+    setSaveError('');
     try {
       const res = await fetch(`/api/admin/pbv/applications/${applicationId}/correspondence`, {
         method: 'POST',
@@ -703,7 +744,7 @@ function LogCallDialog({
       onSaved();
       onClose();
     } catch (e: any) {
-      alert(e.message);
+      setSaveError(e.message);
     } finally {
       setSaving(false);
     }
@@ -782,6 +823,9 @@ function LogCallDialog({
           </div>
         </div>
 
+        {saveError && (
+          <div style={{ padding: '8px 20px', color: C.reject, background: '#fef2f2', fontSize: 12 }}>{saveError}</div>
+        )}
         <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}

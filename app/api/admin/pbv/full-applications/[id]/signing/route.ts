@@ -6,17 +6,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getSessionUser } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { loadTemplate, generatePacketSignatures } from '@/lib/signing/packet-template';
-import { writePbvApplicationEvent } from '@/lib/events/application-events';
+import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireAuth();
-  if (authError) return authError;
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
 
   const user = await getSessionUser();
   if (!user) {
@@ -103,7 +105,7 @@ export async function GET(
       // Write event
       await writePbvApplicationEvent({
         applicationId,
-        eventType: 'signing_packet_created',
+        eventType: ApplicationEventType.SIGNING_PACKET_CREATED,
         actorUserId: user.userId,
         actorDisplayName: user.displayName,
         payload: {

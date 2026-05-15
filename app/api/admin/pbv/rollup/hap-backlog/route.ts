@@ -6,14 +6,16 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { isAuthenticated } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const authError = await requireAuth();
-  if (authError) return authError;
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     // Calculate 7 days ago

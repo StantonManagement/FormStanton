@@ -6,6 +6,20 @@ import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/app
 
 export const dynamic = 'force-dynamic';
 
+interface ApplicationData {
+  id: string;
+  packet_locked: boolean;
+  stanton_review_status: string;
+  hha_application_file: string | null;
+  hach_packet_revision: number | null;
+}
+
+interface DocumentData {
+  required: boolean;
+  status: string;
+  label: string;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -53,7 +67,9 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
     }
 
-    if ((app as any).packet_locked) {
+    const typedApp = app as unknown as ApplicationData;
+
+    if (typedApp.packet_locked) {
       return NextResponse.json(
         { success: false, message: 'Packet is already locked and submitted to HACH.' },
         { status: 409 }
@@ -67,9 +83,9 @@ export async function POST(
       .eq('anchor_type', 'pbv_full_application')
       .eq('anchor_id', id);
 
-    const docs = documents ?? [];
+    const docs = (documents ?? []) as unknown as DocumentData[];
     const requiredNotCleared = docs.filter(
-      (d: any) => d.required && d.status !== 'approved' && d.status !== 'waived'
+      (d) => d.required && d.status !== 'approved' && d.status !== 'waived'
     );
 
     type FailedCheck = { key: string; detail: string };
@@ -81,13 +97,13 @@ export async function POST(
         detail: `${requiredNotCleared.length} required document(s) not yet approved or waived.`,
       });
     }
-    if ((app as any).stanton_review_status !== 'approved') {
+    if (typedApp.stanton_review_status !== 'approved') {
       failedChecks.push({
         key: 'stanton_approved',
-        detail: `Stanton review status is "${(app as any).stanton_review_status}", must be "approved".`,
+        detail: `Stanton review status is "${typedApp.stanton_review_status}", must be "approved".`,
       });
     }
-    if (!(app as any).hha_application_file) {
+    if (!typedApp.hha_application_file) {
       failedChecks.push({
         key: 'hha_generated',
         detail: 'HHA Application file has not been generated.',
@@ -105,7 +121,7 @@ export async function POST(
       );
     }
 
-    const newRevision = ((app as any).hach_packet_revision ?? 0) + 1;
+    const newRevision = (typedApp.hach_packet_revision ?? 0) + 1;
     const now = new Date().toISOString();
 
     // Atomically lock and stamp the application
@@ -125,14 +141,10 @@ export async function POST(
     if (updateErr) throw updateErr;
 
     // Write application event
-    const eventType =
-      newRevision > 1
-        ? ApplicationEventType.HANDOFF_SENT
-        : ApplicationEventType.HANDOFF_SENT;
-
+    // Note: newRevision > 1 indicates a resend, but we use same event type
     await writePbvApplicationEvent({
       applicationId: id,
-      eventType,
+      eventType: ApplicationEventType.HANDOFF_SENT,
       actorUserId: sessionUser.userId,
       actorDisplayName: sessionUser.displayName,
       payload: {

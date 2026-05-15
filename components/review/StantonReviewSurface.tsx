@@ -43,6 +43,7 @@ interface Doc {
   required: boolean; 
   display_order: number; 
   requires_signature: boolean; 
+  category?: string;
   revision?: number;
   file_name?: string | null;
   storage_path?: string | null;
@@ -167,9 +168,9 @@ export default function StantonReviewSurface({
     }
   }, [onDocumentAction, documents, showToast]);
 
-  const handleRejectSubmit = useCallback(async (docId: string, reasonCode: string, reasonText: string | undefined, internalNotes?: string) => {
+  const handleRejectSubmit = useCallback(async (docId: string, reasonKey: string | null, reasonText: string | undefined, internalNotes?: string) => {
     try {
-      await onDocumentAction('reject', docId, { reasonCode, reasonText, internalNotes });
+      await onDocumentAction('reject', docId, { reasonKey, reasonText, internalNotes });
       setRejectingDoc(null);
       showToast(`Rejected - ${documents.find(d => d.id === docId)?.label}`, 'success');
     } catch (error: any) {
@@ -381,16 +382,40 @@ export default function StantonReviewSurface({
     }
   }, [workspaceId]);
 
+  // Separate custom docs from standard docs
   const standardDocs = documents.filter((d) => d.doc_type !== 'custom');
   const customDocs = documents.filter((d) => d.doc_type === 'custom');
 
-  // Group standard documents by category for display
+  // Fixed category order per PRD-14 Phase 4
+  const CATEGORY_ORDER = ['income', 'assets', 'medical_childcare', 'immigration', 'signed_forms'];
+  const CATEGORY_LABELS: Record<string, string> = {
+    income: 'Income Verification',
+    assets: 'Banking & Assets',
+    medical_childcare: 'Medical & Childcare',
+    immigration: 'Citizenship & Immigration',
+    signed_forms: 'Signed Forms',
+  };
+
+  // Group standard documents by category, sort within each category
   const groupedDocs = standardDocs.reduce<Record<string, Doc[]>>((acc, doc) => {
-    const category = doc.doc_type || 'Documents';
+    const category = doc.category || 'other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(doc);
     return acc;
   }, {});
+
+  // Sort documents within each category by (display_order, person_slot)
+  Object.keys(groupedDocs).forEach((key) => {
+    groupedDocs[key].sort((a, b) => {
+      const orderDiff = (a.display_order ?? 0) - (b.display_order ?? 0);
+      if (orderDiff !== 0) return orderDiff;
+      return (a.person_slot ?? 0) - (b.person_slot ?? 0);
+    });
+  });
+
+  // Get sorted category entries based on fixed order (skip empty categories)
+  const sortedCategories = CATEGORY_ORDER.filter((cat) => groupedDocs[cat]?.length > 0)
+    .map((cat) => [cat, groupedDocs[cat]] as const);
 
   // Prepare workspace tabs if workspace data exists
   const workspaceTabs = workspaceData ? [
@@ -431,7 +456,7 @@ export default function StantonReviewSurface({
       )}
 
       {/* Document sections */}
-      {Object.entries(groupedDocs).map(([category, categoryDocs]) => (
+      {sortedCategories.map(([category, categoryDocs]) => (
         <div key={category} className="bg-white border border-gray-200">
           <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
             <div className="flex justify-between items-center">
@@ -443,7 +468,7 @@ export default function StantonReviewSurface({
                     !categoryDocs.every(d => selectedDocIds.has(d.id))
                   }
                   onChange={(checked) => handleSelectAllInCategory(categoryDocs.map(d => d.id), checked)}
-                  label={category}
+                  label={CATEGORY_LABELS[category] || category}
                 />
               </div>
               <div className="text-xs text-gray-500">

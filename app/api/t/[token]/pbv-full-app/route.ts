@@ -4,6 +4,8 @@ import { encryptSsn, ssnLastFour } from '@/lib/ssnEncryption';
 import { getApplicableMembers } from '@/lib/memberFilter';
 import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { recomputeApplicationDocSummary } from '@/lib/recomputeApplicationDocs';
+import { validateReadyToFinalize } from '@/lib/pbv/finalizeValidation';
+import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 
 function computeAge(dob: string): number | null {
   if (!dob) return null;
@@ -27,7 +29,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at')
+      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -143,13 +145,109 @@ export async function GET(
       }
     }
 
+    // Use shared helper to determine if ready for finalize (complete)
+    const finalizeCheck = intake_submitted ? await validateReadyToFinalize(app.id) : { ready: false, missing: { documents: [], signatures: [] } };
+
     const next_step = !intake_submitted
       ? 'intake'
       : !signatures_complete
       ? 'signatures'
       : ((document_summary?.missing ?? 0) + (document_summary?.rejected ?? 0) > 0)
       ? 'documents'
-      : 'complete';
+      : finalizeCheck.ready
+      ? 'complete'
+      : 'documents';
+
+    // Fetch preapp household data for pre-population (if linked and intake not yet submitted)
+    let preapp_household_data: {
+      hoh_name?: string;
+      hoh_dob?: string;
+      household_members?: Array<{
+        name: string;
+        dob: string;
+        relationship: string;
+        income_sources: string[];
+        annual_income: number;
+      }>;
+    } | null = null;
+
+    if (!intake_submitted && app.preapp_id) {
+      const { data: preapp } = await supabaseAdmin
+        .from('pbv_preapplications')
+        .select('hoh_name, hoh_dob, household_members')
+        .eq('id', app.preapp_id)
+        .maybeSingle();
+
+      if (preapp) {
+        preapp_household_data = {
+          hoh_name: preapp.hoh_name,
+          hoh_dob: preapp.hoh_dob,
+          household_members: Array.isArray(preapp.household_members) ? preapp.household_members : [],
+        };
+      }
+    }
+
+    // PRD-20: Full document list for already_submitted screen
+    let documents: Array<{
+      id: string;
+      doc_type: string;
+      label: string;
+      person_slot: number;
+      person_name?: string;
+      status: string;
+      category?: string;
+      display_order: number;
+    }> = [];
+
+    if (intake_submitted) {
+      const { data: docs } = await supabaseAdmin
+        .from('application_documents')
+        .select('id, doc_type, label, person_slot, status, category, display_order, person_name')
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', app.id)
+        .order('display_order', { ascending: true })
+        .order('person_slot', { ascending: true });
+
+      if (docs) {
+        documents = docs.map(d => ({
+          id: d.id,
+          doc_type: d.doc_type,
+          label: d.label,
+          person_slot: d.person_slot,
+          person_name: d.person_name ?? undefined,
+          status: d.status,
+          category: d.category ?? undefined,
+          display_order: d.display_order,
+        }));
+      }
+    }
+
+    // PRD-20: Completed signatures with signer attribution
+    let signatures: Array<{
+      id: string;
+      document_id: string;
+      signer_name: string;
+      signed_at: string;
+      document_label: string;
+    }> = [];
+
+    if (intake_submitted) {
+      const { data: sigs } = await supabaseAdmin
+        .from('pbv_signature_audit_log')
+        .select('id, document_id, signer_name, signed_at, document_id!inner(label)')
+        .eq('application_id', app.id)
+        .order('signed_at', { ascending: true });
+
+      if (sigs) {
+        signatures = sigs.map((s: any) => ({
+          id: s.id,
+          document_id: s.document_id,
+          signer_name: s.signer_name,
+          signed_at: s.signed_at,
+          document_label: s.document_id?.label ?? 'Unknown Document',
+        }));
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -164,6 +262,12 @@ export async function GET(
         signature_progress,
         document_summary,
         next_step,
+        submitted_at: app.submitted_at,
+        preapp_household_data,
+        // PRD-20: Additional fields for already_submitted screen
+        head_of_household_name: app.head_of_household_name,
+        documents,
+        signatures,
       },
     });
   } catch (error: any) {
@@ -176,21 +280,13 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ token: string }> }
 ) {
-  try {
-    const { token } = await context.params;
-
-    const { data: app, error: appError } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('id, building_address, unit_number')
-      .eq('tenant_access_token', token)
-      .maybeSingle();
-
-    if (appError) throw appError;
-
-    if (!app) {
-      return NextResponse.json({ success: false, message: 'Not found' }, { status: 404 });
-    }
-
+  const { token } = await context.params;
+  return withTenantContext(
+    request,
+    token,
+    'intake',
+    async (app) => {
+      try {
     // Duplicate submission guard
     const { count: existingCount } = await supabaseAdmin
       .from('pbv_household_members')
@@ -198,15 +294,12 @@ export async function POST(
       .eq('full_application_id', app.id);
 
     if ((existingCount ?? 0) > 0) {
-      return NextResponse.json(
-        { success: false, message: 'Application intake already submitted' },
-        { status: 409 }
-      );
+      return { body: { success: false, message: 'Application intake already submitted' }, status: 409 };
     }
 
     const body = await request.json().catch(() => null);
     if (!body) {
-      return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
+      return { body: { success: false, message: 'Invalid request body' }, status: 400 };
     }
 
     const {
@@ -226,49 +319,28 @@ export async function POST(
     } = body;
 
     if (!hoh_name?.trim()) {
-      return NextResponse.json(
-        { success: false, message: 'Head of household name is required' },
-        { status: 400 }
-      );
+      return { body: { success: false, message: 'Head of household name is required' }, status: 400 };
     }
     if (!hoh_dob) {
-      return NextResponse.json(
-        { success: false, message: 'Head of household date of birth is required' },
-        { status: 400 }
-      );
+      return { body: { success: false, message: 'Head of household date of birth is required' }, status: 400 };
     }
     if (!Array.isArray(household_members) || household_members.length === 0) {
-      return NextResponse.json(
-        { success: false, message: 'At least one household member is required' },
-        { status: 400 }
-      );
+      return { body: { success: false, message: 'At least one household member is required' }, status: 400 };
     }
 
     for (let i = 0; i < household_members.length; i++) {
       const m = household_members[i];
       if (!m.name?.trim()) {
-        return NextResponse.json(
-          { success: false, message: `Member ${i + 1}: name is required` },
-          { status: 400 }
-        );
+        return { body: { success: false, message: `Member ${i + 1}: name is required` }, status: 400 };
       }
       if (!m.dob) {
-        return NextResponse.json(
-          { success: false, message: `Member ${i + 1}: date of birth is required` },
-          { status: 400 }
-        );
+        return { body: { success: false, message: `Member ${i + 1}: date of birth is required` }, status: 400 };
       }
       if (i === 0 && !m.relationship) {
-        return NextResponse.json(
-          { success: false, message: 'Head of household relationship is required' },
-          { status: 400 }
-        );
+        return { body: { success: false, message: 'Head of household relationship is required' }, status: 400 };
       }
       if (i > 0 && !m.relationship) {
-        return NextResponse.json(
-          { success: false, message: `Member ${i + 1}: relationship is required` },
-          { status: 400 }
-        );
+        return { body: { success: false, message: `Member ${i + 1}: relationship is required` }, status: 400 };
       }
     }
 
@@ -286,13 +358,8 @@ export async function POST(
       let ssn_encrypted: string | null = null;
       let ssn_last_four: string | null = null;
       if (m.ssn?.replace(/\D/g, '').length >= 4) {
-        try {
-          ssn_encrypted = encryptSsn(m.ssn.trim());
-          ssn_last_four = ssnLastFour(m.ssn.trim());
-        } catch {
-          // SSN_ENCRYPTION_KEY not set or malformed — skip encryption
-          console.warn(`Member ${slot}: SSN encryption skipped (key not configured)`);
-        }
+        ssn_encrypted = encryptSsn(m.ssn.trim());
+        ssn_last_four = ssnLastFour(m.ssn.trim());
       }
 
       // Derive boolean income flags from income_sources array
@@ -442,6 +509,7 @@ export async function POST(
             person_slot: 0,
             status: 'missing',
             created_by: 'system',
+            category: template.category,
           });
         } else {
           const matched = getApplicableMembers(
@@ -463,6 +531,7 @@ export async function POST(
               person_slot: slot,
               status: 'missing',
               created_by: 'system',
+              category: template.category,
             });
           }
         }
@@ -481,10 +550,7 @@ export async function POST(
         .from('pbv_household_members')
         .delete()
         .eq('full_application_id', app.id);
-      return NextResponse.json(
-        { success: false, message: 'Failed to prepare your document checklist. Please try submitting again.' },
-        { status: 500 }
-      );
+      return { body: { success: false, message: 'Failed to prepare your document checklist. Please try submitting again.' }, status: 500 };
     }
 
     // Commit point: stamp intake_submitted_at only after everything succeeded.
@@ -495,9 +561,12 @@ export async function POST(
 
     if (commitError) throw commitError;
 
-    return NextResponse.json({ success: true, data: { id: app.id } });
+    return { body: { success: true, data: { id: app.id } }, status: 200 };
   } catch (error: any) {
     console.error('PBV full-app POST error:', error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return { body: { success: false, message: error.message }, status: 500 };
   }
+    },
+    'id, building_address, unit_number, submitted_at'
+  );
 }

@@ -193,12 +193,12 @@ export async function getRealSessionUser(): Promise<SessionUser | null> {
   };
 }
 
-export async function requireAuth(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error('Unauthorized');
+export async function requireAuth(): Promise<NextResponse | null> {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
-  return user;
+  return null;
 }
 
 // Check if a session user has a specific permission (admin action implies all others)

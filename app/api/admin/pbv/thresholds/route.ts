@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isAuthenticated } from '@/lib/auth';
 
 export async function GET() {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { data, error } = await supabaseAdmin
       .from('pbv_income_thresholds')
@@ -18,6 +22,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
 
@@ -25,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'thresholds array required' }, { status: 400 });
     }
 
-    const rows: { household_size: number; income_limit: number; effective_date: string }[] = [];
+    const rows: { household_size: number; income_limit: number; effective_date: string; zipcode?: string | null }[] = [];
 
     for (const t of body.thresholds) {
       const household_size = Number(t.household_size);
@@ -51,25 +59,26 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      rows.push({ household_size, income_limit, effective_date });
+      const zipcode = t.zipcode !== undefined ? (t.zipcode || null) : undefined;
+      rows.push({ household_size, income_limit, effective_date, zipcode });
     }
 
-    // Delete all existing rows for these household sizes then insert fresh rows
-    // (upsert by household_size — no unique constraint exists, so we delete+insert)
-    const sizes = rows.map((r) => r.household_size);
-    const { error: delError } = await supabaseAdmin
+    // Use upsert to avoid race condition (delete+insert is not atomic)
+    // Match on unique constraint: household_size + zipcode + effective_date
+    const { data, error: upsertError } = await supabaseAdmin
       .from('pbv_income_thresholds')
-      .delete()
-      .in('household_size', sizes);
+      .upsert(
+        rows.map((r) => ({
+          household_size: r.household_size,
+          income_limit: r.income_limit,
+          effective_date: r.effective_date,
+          zipcode: r.zipcode ?? null,
+        })),
+        { onConflict: 'household_size,zipcode,effective_date' }
+      )
+      .select('id, household_size, income_limit, effective_date, zipcode');
 
-    if (delError) throw delError;
-
-    const { data, error: insError } = await supabaseAdmin
-      .from('pbv_income_thresholds')
-      .insert(rows)
-      .select('id, household_size, income_limit, effective_date');
-
-    if (insError) throw insError;
+    if (upsertError) throw upsertError;
 
     return NextResponse.json({ success: true, data });
   } catch (err: any) {

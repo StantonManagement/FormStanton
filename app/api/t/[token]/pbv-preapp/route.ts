@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { HouseholdMember } from '@/types/compliance';
+import { buildingToZipcode } from '@/lib/buildings';
 
 export async function GET(
   _request: NextRequest,
@@ -160,13 +161,21 @@ export async function POST(
 
     const bedroom_count = bedroomRow?.bedroom_count ?? null;
 
-    const { data: thresholdRow } = await supabaseAdmin
+    const zipcode = buildingToZipcode[unit.building] ?? null;
+    const thresholdQuery = supabaseAdmin
       .from('pbv_income_thresholds')
       .select('income_limit')
       .eq('household_size', Math.min(household_size, 8))
       .order('effective_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    
+    if (zipcode) {
+      thresholdQuery.eq('zipcode', zipcode);
+    } else {
+      thresholdQuery.is('zipcode', null);
+    }
+    
+    const { data: thresholdRow } = await thresholdQuery.maybeSingle();
 
     const income_limit = thresholdRow?.income_limit ?? null;
     const income_ok = income_limit === null || total_household_income <= income_limit;

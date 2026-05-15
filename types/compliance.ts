@@ -480,6 +480,7 @@ export type QualificationResult =
   | 'over_income'
   | 'citizenship_issue'
   | 'over_income_and_citizenship'
+  | 'needs_citizenship_review'
 
 export type PbvReviewStatus = 'pending' | 'approved' | 'denied' | 'needs_info'
 

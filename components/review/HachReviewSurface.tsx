@@ -137,7 +137,7 @@ export default function HachReviewSurface({
     setRejectingDoc(doc);
   }, []);
 
-  const handleRejectSubmit = useCallback(async (docId: string, reasonCode: string, reasonText: string | undefined, internalNotes?: string) => {
+  const handleRejectSubmit = useCallback(async (docId: string, reasonKey: string | null, reasonText: string | undefined, internalNotes?: string) => {
     const doc = documents.find(d => d.id === docId);
     if (!doc) return;
 
@@ -145,12 +145,12 @@ export default function HachReviewSurface({
     const snapshot = documents;
     setDocuments(prev => prev.map(d =>
       d.id === docId
-        ? { ...d, latest_action: { action: 'rejected', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: reasonText ?? reasonCode } }
+        ? { ...d, latest_action: { action: 'rejected', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: reasonText ?? reasonKey ?? 'Rejected' } }
         : d
     ));
 
     try {
-      const result = await onDocumentAction('reject', docId, { reasonCode, reasonText });
+      const result = await onDocumentAction('reject', docId, { reasonKey: reasonKey, reasonText: reasonText });
       setRejectingDoc(null);
 
       // Determine toast message based on notification result

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { buildingUnits, buildings } from '@/lib/buildings';
+import { buildingUnits, buildings, buildingToZipcode } from '@/lib/buildings';
 import { checkRateLimit } from '@/lib/rateLimiter';
 import type { HouseholdMember } from '@/types/compliance';
 
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       household_members,
       citizenship_answer,
       signature_data,
+      language,
     } = body;
 
     // --- Validation ---
@@ -88,13 +89,21 @@ export async function POST(request: NextRequest) {
       0,
     );
 
-    const { data: thresholdRow } = await supabaseAdmin
+    const zipcode = buildingToZipcode[building_address] ?? null;
+    const thresholdQuery = supabaseAdmin
       .from('pbv_income_thresholds')
       .select('income_limit')
       .eq('household_size', Math.min(household_size, 8))
       .order('effective_date', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    
+    if (zipcode) {
+      thresholdQuery.eq('zipcode', zipcode);
+    } else {
+      thresholdQuery.is('zipcode', null);
+    }
+    
+    const { data: thresholdRow } = await thresholdQuery.maybeSingle();
 
     const income_limit = thresholdRow?.income_limit ?? null;
     const income_ok = income_limit === null || total_household_income <= income_limit;
@@ -134,7 +143,7 @@ export async function POST(request: NextRequest) {
         signature_data,
         signature_date: new Date().toISOString().split('T')[0],
         stanton_review_status: 'pending',
-        language: 'en',
+        language: ['en', 'es', 'pt'].includes(language) ? language : 'en',
         created_by: 'open_enrollment',
         unit_not_in_canonical_list,
         submission_source: 'open_enrollment',

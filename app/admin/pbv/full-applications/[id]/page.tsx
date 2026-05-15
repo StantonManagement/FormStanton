@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
 import NotificationTimeline from '@/components/admin/NotificationTimeline';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
@@ -30,13 +31,50 @@ export default function PbvFullApplicationDetailPage() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [saveMsgIsError, setSaveMsgIsError] = useState(false);
   const [generatingHha, setGeneratingHha] = useState(false);
   const [hhaMsg, setHhaMsg] = useState('');
   const [exportingHach, setExportingHach] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const [showSendToHach, setShowSendToHach] = useState(false);
   const [showReopen, setShowReopen] = useState(false);
   const [sendToHachPermission, setSendToHachPermission] = useState(false);
+
+  // SMS notification state
+  const [sendingSms, setSendingSms] = useState<string|null>(null);
+  const [smsResult, setSmsResult] = useState<{type:string;success:boolean;message:string}|null>(null);
+
+  const handleSendSms = useCallback(async (notificationType: string) => {
+    if (!detail) return;
+    setSendingSms(notificationType);
+    setSmsResult(null);
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_type: notificationType }),
+      });
+      const json = await res.json();
+      setSmsResult({
+        type: notificationType,
+        success: json.success,
+        message: json.success ? 'SMS sent successfully' : (json.message || 'Failed to send'),
+      });
+      if (json.success) {
+        // Refresh notification timeline
+        fetchDetail();
+      }
+    } catch (e: any) {
+      setSmsResult({
+        type: notificationType,
+        success: false,
+        message: e.message || 'Failed to send SMS',
+      });
+    } finally {
+      setSendingSms(null);
+    }
+  }, [detail]);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true); setFetchError('');
@@ -73,8 +111,8 @@ export default function PbvFullApplicationDetailPage() {
         case 'reject':
           url = `/api/admin/applications/${ANCHOR_TYPE}/${detail.id}/documents/${docId}/reject`;
           body = {
-            reason_code: data?.reasonCode,
-            reason_text: data?.reasonText,
+            rejection_reason_key: data?.reasonKey,
+            rejection_reason: data?.reasonText,
             internal_notes: data?.internalNotes,
           };
           break;
@@ -131,9 +169,9 @@ export default function PbvFullApplicationDetailPage() {
       });
       const json = await res.json();
       if(!json.success) throw new Error(json.message||'Save failed');
-      setSaveMsg('Saved.'); await fetchDetail();
-    } catch(e:unknown){ setSaveMsg(e instanceof Error?e.message:'Save failed'); }
-    finally{ setSaving(false); setTimeout(()=>setSaveMsg(''),3000); }
+      setSaveMsgIsError(false); setSaveMsg('Saved.'); await fetchDetail();
+    } catch(e:unknown){ setSaveMsgIsError(true); setSaveMsg(e instanceof Error?e.message:'Save failed'); }
+    finally{ setSaving(false); setTimeout(()=>{ setSaveMsg(''); setSaveMsgIsError(false); },3000); }
   };
 
   const handleGenerateHha = async () => {
@@ -169,7 +207,7 @@ export default function PbvFullApplicationDetailPage() {
       a.href=url;
       const match=res.headers.get('content-disposition')?.match(/filename="([^"]+)"/);
       a.download=match?.[1]??'hach_package.zip'; a.click(); URL.revokeObjectURL(url);
-    } catch(e:unknown){ alert(e instanceof Error?e.message:'Export failed'); }
+    } catch(e:unknown){ setExportError(e instanceof Error?e.message:'Export failed'); setTimeout(()=>setExportError(''),5000); }
     finally{ setExportingHach(false); }
   };
 
@@ -358,7 +396,8 @@ export default function PbvFullApplicationDetailPage() {
               className="px-5 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
               {saving?'Saving...':'Save Review'}
             </button>
-            {saveMsg&&<span className="text-xs text-[var(--muted)]">{saveMsg}</span>}
+            {saveMsg&&<span className={`text-xs ${saveMsgIsError?'text-red-600':'text-[var(--muted)]'}`}>{saveMsg}</span>}
+            {exportError&&<span className="text-xs text-red-600">{exportError}</span>}
           </div>
         </div>
       </section>
@@ -414,7 +453,7 @@ export default function PbvFullApplicationDetailPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-[var(--muted)] truncate">{detail.magic_link}</span>
               <button type="button"
-                onClick={()=>{navigator.clipboard.writeText(detail.magic_link);setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);}}
+                onClick={()=>{copyToClipboard(detail.magic_link);setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);}}
                 className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline whitespace-nowrap">
                 {linkCopied?'Copied!':'Copy'}
               </button>
@@ -455,12 +494,69 @@ export default function PbvFullApplicationDetailPage() {
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
         </div>
-        <div className="px-5 py-4">
-          <NotificationTimeline
-            applicationId={detail.id}
-            optedOut={!!detail.sms_opted_out_at}
-            onResendMagicLink={fetchDetail}
-          />
+        <div className="px-5 py-4 space-y-4">
+          {/* Manual SMS Send Buttons */}
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--muted)]">Send notifications manually (staff-controlled):</p>
+            
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleSendSms('magic_link_initial')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'magic_link_initial' ? 'Sending...' : 'Send Magic Link'}
+              </button>
+              
+              <button
+                onClick={() => handleSendSms('docs_upload_reminder')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs border border-[var(--border)] text-[var(--ink)] rounded-none hover:bg-[var(--bg-section)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'docs_upload_reminder' ? 'Sending...' : 'Send Doc Reminder'}
+              </button>
+              
+              {detail.hach_review_status === 'approved_by_hach' && (
+                <button
+                  onClick={() => handleSendSms('hach_approved_signing_ready')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs border border-green-600 text-green-700 rounded-none hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hach_approved_signing_ready' ? 'Sending...' : 'Send HACH Approval Notice'}
+                </button>
+              )}
+              
+              {detail.packet_locked && (
+                <button
+                  onClick={() => handleSendSms('hap_executed_move_in')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-none hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hap_executed_move_in' ? 'Sending...' : 'Send HAP Executed Notice'}
+                </button>
+              )}
+            </div>
+            
+            {!!detail.sms_opted_out_at && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2">
+                Tenant has opted out of SMS notifications.
+              </p>
+            )}
+            
+            {smsResult && (
+              <div className={`text-xs p-2 rounded-none ${smsResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {smsResult.message}
+              </div>
+            )}
+          </div>
+          
+          <div className="border-t border-[var(--divider)] pt-4">
+            <NotificationTimeline
+              applicationId={detail.id}
+              optedOut={!!detail.sms_opted_out_at}
+              onResendMagicLink={fetchDetail}
+            />
+          </div>
         </div>
       </section>
 

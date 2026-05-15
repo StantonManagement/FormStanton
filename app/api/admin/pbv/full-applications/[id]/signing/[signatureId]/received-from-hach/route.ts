@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, getSessionUser } from '@/lib/auth';
+import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { writePbvApplicationEvent } from '@/lib/events/application-events';
 
@@ -14,8 +14,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; signatureId: string }> }
 ) {
-  const authError = await requireAuth();
-  if (authError) return authError;
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
 
   const user = await getSessionUser();
   if (!user) {

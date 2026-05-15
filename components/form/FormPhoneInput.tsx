@@ -52,6 +52,7 @@ const FormPhoneInput = forwardRef<HTMLInputElement, FormPhoneInputProps>(
         <input
           ref={ref}
           type="tel"
+          autoComplete="tel"
           value={display}
           onChange={handleChange}
           onBlur={handleBlur}

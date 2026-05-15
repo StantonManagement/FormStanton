@@ -139,14 +139,22 @@ export default function SigningPage() {
   useEffect(() => {
     const checkPermission = async () => {
       try {
-        const response = await fetch('/api/admin/pbv/full-applications/preflight');
+        const response = await fetch('/api/admin/me/permissions');
         if (response.ok) {
           const data = await response.json();
-          // This is a simplified check - in reality you'd check the specific permission
-          setHasExecutePermission(true);
+          if (data.success) {
+            const canExecute =
+              data.data.isSuperAdmin ||
+              data.data.permissions?.some(
+                (p: { resource: string; action: string }) =>
+                  p.resource === 'pbv-full-applications' && p.action === 'execute_hap'
+              );
+            setHasExecutePermission(Boolean(canExecute));
+          }
         }
       } catch {
-        // Permission check failed
+        // Permission check failed — deny by default
+        setHasExecutePermission(false);
       }
     };
     checkPermission();

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 interface Tab {
@@ -14,9 +15,16 @@ interface TabNavigationProps {
 }
 
 export default function TabNavigation({ tabs, activeTab, onTabClick, completedTabs = [] }: TabNavigationProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [activeTab]);
+
   return (
-    <div className="border-b border-[var(--divider)] bg-[var(--bg-section)]">
-      <div className="flex overflow-x-auto scrollbar-hide">
+    <div className="border-b border-[var(--divider)] bg-[var(--bg-section)] relative">
+      <div ref={scrollRef} className="flex overflow-x-auto scrollbar-hide">
         {tabs.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const isCompleted = completedTabs.includes(tab.id);
@@ -24,6 +32,7 @@ export default function TabNavigation({ tabs, activeTab, onTabClick, completedTa
           return (
             <button
               key={tab.id}
+              ref={isActive ? activeRef : undefined}
               type="button"
               onClick={() => onTabClick(tab.id)}
               className={`
@@ -61,6 +70,8 @@ export default function TabNavigation({ tabs, activeTab, onTabClick, completedTa
           );
         })}
       </div>
+      {/* Right-edge fade — visual cue that the tab bar scrolls horizontally */}
+      <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[var(--bg-section)] to-transparent" />
     </div>
   );
 }

@@ -22,6 +22,12 @@ export type AnchorType = 'pbv_full_application';
 // --- Event type enum -----------------------------------------------------------
 
 export const ApplicationEventType = {
+  // Application lifecycle - PRD-15
+  APPLICATION_SUBMITTED: 'application.submitted',
+
+  // Multi-signer observability - PRD-18
+  TENANT_SIGNER_COMPLETED: 'tenant.signer_completed',
+
   // Document lifecycle - Phase 1
   DOCUMENT_UPLOADED_BY_STAFF: 'document.uploaded_by_staff',
   DOCUMENT_RECATEGORIZED:     'document.recategorized',
@@ -80,6 +86,15 @@ export type ApplicationEventType =
 // --- Payload shapes per event type --------------------------------------------
 
 export interface EventPayloadMap {
+  'application.submitted': {
+    submitted_at: string;
+  };
+  'tenant.signer_completed': {
+    signer_id: string;
+    slot: number;
+    name: string;
+    completed_at: string;
+  };
   'document.uploaded_by_staff': {
     doc_type: string;
     label: string;
@@ -99,6 +114,7 @@ export interface EventPayloadMap {
     doc_type: string;
     label: string;
     rejection_reason: string;
+    rejection_reason_key?: string | null;
   };
   'document.waived': {
     doc_type: string;
@@ -334,7 +350,12 @@ export function subscribeToApplicationEvents(fn: EventSubscriber): void {
 
 function _notifySubscribers(eventType: ApplicationEventType, applicationId: string, eventId: string): void {
   for (const fn of _subscribers) {
-    try { fn(eventType, applicationId, eventId); } catch { /* fire-and-forget */ }
+    try {
+      fn(eventType, applicationId, eventId);
+    } catch (subscriberError) {
+      console.error(`[application-events] Subscriber failed for ${eventType}:`, subscriberError);
+      // Continue with other subscribers - don't let one failure block others
+    }
   }
 }
 
