@@ -39,7 +39,22 @@ For Date (label at y=139.6), underline estimated at y≈143-145, text placed at 
 
 | Iteration | Change | Result |
 |-----------|--------|--------|
-| 1 (initial) | Name: y=187 x=72, Sig: y=183 x=324, Date: y=147 x=72 | TBD — see filled PDF |
+| 1 (initial) | Name: y=187 x=72, Sig: y=183 h=40 x=324, Date: y=147 x=72 | Text below labels — wrong. Labels are below fill lines. |
+| 2 | Name: y=194, Sig: y=188 h=40, Date: y=154 | pdfminer verify: Name detected at y=191.7 (12.2pt above label ✓), Date at y=151.7 (12.1pt above label ✓). Sig image top at y=228 overlaps body text at y=218. |
+| 3 (final) | Sig: y=183 h=30 (top=213, 5pt below body text) | All three fields verified by pdfminer extraction of filled PDF. PASS. |
+
+## Final Verified Positions
+
+```
+y=218.0  "start of that absence."  [body text ends]
+y=213.0  [signature image top, 5pt clearance]
+y=194.0  → hoh_printed_name text placed here (bbox_bottom=191.7)
+y=183.0  [signature image bottom]
+y=179.5  "Head of Household Printed Name" label
+y=179.5  "Signature" label
+y=154.0  → signature_date text placed here (bbox_bottom=151.7)
+y=139.6  "Date" label
+```
 
 ## Tooling
 
