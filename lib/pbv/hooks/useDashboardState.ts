@@ -50,9 +50,10 @@ export function useDashboardState(token: string) {
     setState({ status: 'loading' });
 
     try {
-      const [bootstrapRes, formsRes] = await Promise.all([
+      const [bootstrapRes, formsRes, uploadRes] = await Promise.all([
         tenantFetch(`/api/t/${token}/pbv-full-app`),
         tenantFetch(`/api/t/${token}/pbv-full-app/forms`),
+        tenantFetch(`/api/t/${token}/pbv-full-app/upload-summary`),
       ]);
 
       if (!bootstrapRes.ok) throw new Error('Failed to load application state.');
@@ -72,9 +73,18 @@ export function useDashboardState(token: string) {
       const formsSigned = forms.filter((f) => f.signatures_complete).length;
       const formsTotal = forms.length;
 
-      const uploadSummary = d.document_summary ?? {};
-      const uploadTotal = (uploadSummary.total ?? 0) as number;
-      const uploadComplete = (uploadSummary.complete ?? 0) as number;
+      let uploadTotal = 0;
+      let uploadComplete = 0;
+      if (uploadRes.ok) {
+        const uploadJson = await uploadRes.json();
+        uploadTotal = uploadJson.data?.total ?? 0;
+        uploadComplete = uploadJson.data?.complete ?? 0;
+      } else {
+        // Fallback to bootstrap document_summary if upload-summary endpoint unavailable
+        const uploadSummary = d.document_summary ?? {};
+        uploadTotal = (uploadSummary.total ?? 0) as number;
+        uploadComplete = (uploadSummary.complete ?? 0) as number;
+      }
 
       const canSubmit =
         summarySign &&
