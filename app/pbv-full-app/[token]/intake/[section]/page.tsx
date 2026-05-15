@@ -67,8 +67,10 @@ export default function IntakeSectionPage({ params }: Props) {
     localIntakeData ??
     (state.status === 'ready' ? state.data.intake_data : {});
 
-  const language: PreferredLanguage =
+  const bootstrapLanguage: PreferredLanguage =
     state.status === 'ready' ? state.data.preferred_language : 'en';
+  const [languageOverride, setLanguageOverride] = useState<PreferredLanguage | null>(null);
+  const language: PreferredLanguage = languageOverride ?? bootstrapLanguage;
 
   const visibleSections = useSectionVisibility(intakeData);
   const currentSlug = section as SectionSlug;
@@ -144,6 +146,7 @@ export default function IntakeSectionPage({ params }: Props) {
       isLastSection={isLastSection}
       onBack={handleBack}
       onNext={handleNext}
+      onLanguageChange={setLanguageOverride}
     >
       <SectionRenderer
         slug={currentSlug}

@@ -18,7 +18,7 @@ import type { SaveStatus } from '@/lib/pbv/hooks/useSectionAutoSave';
 import type { PreferredLanguage } from '@/types/compliance';
 import SaveStatusIndicator from './SaveStatusIndicator';
 import PickUpLaterButton from './PickUpLaterButton';
-import { FormButton } from '@/components/form';
+import LanguageSwitcher from './LanguageSwitcher';
 
 interface Props {
   token: string;
@@ -33,6 +33,7 @@ interface Props {
   isLastSection?: boolean;
   onBack: () => void;
   onNext: () => void;
+  onLanguageChange?: (lang: PreferredLanguage) => void;
   children: ReactNode;
 }
 
@@ -73,6 +74,7 @@ export default function IntakeShell({
   isLastSection = false,
   onBack,
   onNext,
+  onLanguageChange,
   children,
 }: Props) {
   const progress = totalSections > 0 ? (sectionNumber / totalSections) * 100 : 0;
@@ -93,6 +95,9 @@ export default function IntakeShell({
                 lastSavedAt={lastSavedAt}
                 language={language}
               />
+              {onLanguageChange && (
+                <LanguageSwitcher current={language} onChange={onLanguageChange} />
+              )}
               <PickUpLaterButton token={token} language={language} />
             </div>
           </div>
