@@ -31,12 +31,14 @@ const statusLabel: Record<CardStatus, Record<string, string>> = {
   locked:      { en: 'Locked', es: 'Bloqueado', pt: 'Bloqueado' },
   pending:     { en: 'To do', es: 'Pendiente', pt: 'A fazer' },
   in_progress: { en: 'In progress', es: 'En progreso', pt: 'Em andamento' },
-  complete:    { en: 'Complete ✓', es: 'Completo ✓', pt: 'Completo ✓' },
+  complete:    { en: 'Complete \u2713', es: 'Completo \u2713', pt: 'Completo \u2713' },
 };
 
 export default function DashboardCard({ title, subtitle, status, actionLabel, onAction, icon }: Props) {
   const isComplete = status === 'complete';
   const isLocked = status === 'locked';
+  // Language is derived from parent — DashboardCard is language-agnostic at prop level;
+  // TenantDashboard passes pre-translated title/subtitle/actionLabel strings.
 
   return (
     <div className={`bg-white border border-[var(--border)] p-4 flex items-start gap-4 ${isComplete ? 'opacity-75' : ''}`}>
@@ -58,7 +60,7 @@ export default function DashboardCard({ title, subtitle, status, actionLabel, on
           status === 'in_progress' ? 'text-amber-600' :
           'text-[var(--muted)]'
         }`}>
-          {statusLabel[status].en}
+          {statusLabel[status].en /* parent owns translation of title/subtitle/action */}
         </p>
       </div>
 
