@@ -40,7 +40,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
+      - name: Run E2E tests (Playwright)
         run: npm run test:e2e
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
@@ -49,6 +49,15 @@ jobs:
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_BASE_URL: ${{ vars.TEST_BASE_URL || 'http://localhost:3000' }}
+
+      - name: Run package integrity tests (Vitest)
+        run: npx vitest run tests/e2e/pbv-form-execution-package-integrity.spec.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
 
       - name: Upload test results
         if: always()
@@ -59,3 +68,11 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+      - name: Upload submission package snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbv-submission-package-snapshot
+          path: tests/snapshots/pbv-form-execution-maria-package/
+          retention-days: 30
