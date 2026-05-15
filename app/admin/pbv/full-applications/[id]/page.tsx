@@ -45,6 +45,12 @@ export default function PbvFullApplicationDetailPage() {
   const [sendingSms, setSendingSms] = useState<string|null>(null);
   const [smsResult, setSmsResult] = useState<{type:string;success:boolean;message:string}|null>(null);
 
+  // Staff-assisted session state
+  const [assistedActive, setAssistedActive] = useState(false);
+  const [assistedStarting, setAssistedStarting] = useState(false);
+  const [assistedEnding, setAssistedEnding] = useState(false);
+  const [assistedMsg, setAssistedMsg] = useState('');
+
   const handleSendSms = useCallback(async (notificationType: string) => {
     if (!detail) return;
     setSendingSms(notificationType);
@@ -73,6 +79,46 @@ export default function PbvFullApplicationDetailPage() {
       });
     } finally {
       setSendingSms(null);
+    }
+  }, [detail]);
+
+  const startAssistedSession = useCallback(async () => {
+    if (!detail) return;
+    setAssistedStarting(true);
+    setAssistedMsg('');
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/assisted-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to start');
+      setAssistedActive(true);
+      setAssistedMsg('Assisted session started. Opening tenant portal...');
+      window.open(json.data.tenantUrl, '_blank', 'noopener');
+    } catch (e: any) {
+      setAssistedMsg(e.message || 'Failed to start assisted session');
+    } finally {
+      setAssistedStarting(false);
+    }
+  }, [detail]);
+
+  const endAssistedSession = useCallback(async () => {
+    if (!detail) return;
+    setAssistedEnding(true);
+    setAssistedMsg('');
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/assisted-session`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to end');
+      setAssistedActive(false);
+      setAssistedMsg('Assisted session ended.');
+    } catch (e: any) {
+      setAssistedMsg(e.message || 'Failed to end assisted session');
+    } finally {
+      setAssistedEnding(false);
     }
   }, [detail]);
 
@@ -458,6 +504,37 @@ export default function PbvFullApplicationDetailPage() {
                 {linkCopied?'Copied!':'Copy'}
               </button>
             </div>
+          </div>
+          <div className="pt-2 border-t border-[var(--divider)]">
+            <p className="text-xs text-[var(--muted)] mb-2 font-medium">Staff-Assisted Session</p>
+            {assistedActive ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                  <span className="font-medium">Session active</span>
+                  <span className="text-amber-600">— tenant portal is open</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={endAssistedSession}
+                  disabled={assistedEnding}
+                  className="text-xs underline text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-50"
+                >
+                  {assistedEnding ? 'Ending…' : 'End assisted session'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={startAssistedSession}
+                disabled={assistedStarting}
+                className="px-3 py-1.5 bg-[var(--primary)] text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {assistedStarting ? 'Starting…' : 'Start assisted session'}
+              </button>
+            )}
+            {assistedMsg && (
+              <p className="mt-1.5 text-xs text-[var(--muted)]">{assistedMsg}</p>
+            )}
           </div>
         </div>
       </section>
