@@ -30,7 +30,9 @@ function dropMiddleInitials(name: string): string {
   if (parts.length <= 2) return name;
   const filtered = parts.filter((p, i) => {
     if (i === 0 || i === parts.length - 1) return true;
-    return p.length > 1;
+    // Strip trailing punctuation (e.g. "A." → "A") before checking if it's an initial
+    const stripped = p.replace(/[.\-,]+$/, '');
+    return stripped.length > 1;
   });
   return filtered.join(' ');
 }
