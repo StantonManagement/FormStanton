@@ -31,7 +31,7 @@ export async function GET(
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
       .select('id')
-      .eq('access_token', token)
+      .eq('tenant_access_token', token)
       .maybeSingle();
 
     if (!app) {

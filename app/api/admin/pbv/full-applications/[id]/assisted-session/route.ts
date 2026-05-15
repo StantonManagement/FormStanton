@@ -31,7 +31,7 @@ export async function POST(
     // Verify application exists
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, head_of_household_name, access_token')
+      .select('id, head_of_household_name, tenant_access_token')
       .eq('id', applicationId)
       .maybeSingle();
 
@@ -63,7 +63,7 @@ export async function POST(
       getClientIp(request)
     );
 
-    const tenantUrl = `/pbv-full-app/${app.access_token}`;
+    const tenantUrl = `/pbv-full-app/${(app as any).tenant_access_token}`;
 
     return NextResponse.json({
       success: true,
