@@ -23,6 +23,8 @@ import { shouldGenerateForm } from '@/lib/pbv/conditional-rules';
 import { resolveFieldData } from '@/lib/pbv/form-generation/field-mapping';
 import { stampForm } from '@/lib/pbv/form-generation/stamper';
 import { getSourcePdf, sha256Hex } from '@/lib/pbv/form-generation/source-pdfs';
+import { generateSummaryPdf } from '@/lib/pbv/summary-doc/generate-summary';
+import { SUMMARY_TEMPLATE_VERSION } from '@/lib/pbv/summary-doc/content';
 import type { IntakeData, HouseholdMember } from '@/lib/pbv/form-generation/field-mapping';
 
 export async function POST(
@@ -185,6 +187,81 @@ export async function POST(
       }
     }
 
+    // ── 5. Generate summary document ────────────────────────────────────────
+    const preferredLang = (fullApp.preferred_language ?? 'en') as 'en' | 'es' | 'pt';
+    const summaryLang: 'en' | 'es' | 'pt' =
+      preferredLang === 'pt' ? 'pt' : preferredLang === 'es' ? 'es' : 'en';
+
+    let summaryGenerated = false;
+    let summaryError: string | null = null;
+
+    try {
+      const hoh = members.find((m) => m.slot === 1);
+      const hohName = hoh?.name ?? '';
+
+      // Load upload requirements for this application
+      const { data: docReqs } = await supabaseAdmin
+        .from('pbv_document_requirements')
+        .select('category_key, label')
+        .eq('full_application_id', fullApp.id)
+        .order('display_order', { ascending: true })
+        .limit(20);
+
+      const uploads = (docReqs ?? []).map((r: any) => ({
+        category_key: r.category_key as string,
+        label: r.label as string | undefined,
+      }));
+
+      const formEntries = generated.map((g) => ({
+        form_id: g.form_id,
+        display_name: g.form_id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      }));
+
+      const summaryPdfBytes = await generateSummaryPdf({
+        hohName,
+        applicationId: fullApp.id,
+        language: summaryLang,
+        submissionLanguage: language,
+        forms: formEntries,
+        uploads,
+        generatedAt: new Date(),
+      });
+
+      const summaryStoragePath = `pbv/${fullApp.id}/summary-${summaryLang}-unsigned.pdf`;
+
+      const { error: summaryUploadError } = await supabaseAdmin.storage
+        .from('pbv-forms')
+        .upload(summaryStoragePath, summaryPdfBytes, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (summaryUploadError) throw summaryUploadError;
+
+      // Idempotent upsert into pbv_summary_documents
+      const { error: summaryUpsertError } = await supabaseAdmin
+        .from('pbv_summary_documents')
+        .upsert(
+          {
+            full_application_id: fullApp.id,
+            language: summaryLang,
+            template_version: SUMMARY_TEMPLATE_VERSION,
+            pdf_storage_path: summaryStoragePath,
+            created_by: 'system',
+          },
+          { onConflict: 'full_application_id' }
+        );
+
+      if (summaryUpsertError) throw summaryUpsertError;
+
+      summaryGenerated = true;
+    } catch (err: any) {
+      // Summary generation failure is non-fatal: federal forms are still returned.
+      // Log and include in response for observability.
+      console.error('[generate-forms] Summary doc generation failed:', err);
+      summaryError = err.message ?? 'Summary generation failed';
+    }
+
     return {
       body: {
         success: true,
@@ -193,6 +270,12 @@ export async function POST(
           skipped,
           total_generated: generated.length,
           language,
+          summary: {
+            generated: summaryGenerated,
+            language: summaryLang,
+            template_version: SUMMARY_TEMPLATE_VERSION,
+            error: summaryError,
+          },
         },
       },
       status: 200,
