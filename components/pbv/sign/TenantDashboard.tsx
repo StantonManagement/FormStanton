@@ -31,7 +31,8 @@ interface CopyMap {
   card3_sub_pending: (done: number, total: number) => string;
   card3_sub_done: string;
   card4_title: string;
-  card4_sub: string;
+  card4_sub_pending: (n: number) => string;
+  card4_sub_done: string;
   start: string;
   resume: string;
   submit_btn: string;
@@ -54,7 +55,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card3_sub_pending: (done, total) => `${done} of ${total} uploaded.`,
     card3_sub_done: 'All documents uploaded.',
     card4_title: 'Other adults in your household',
-    card4_sub: 'Coming soon — additional adult signing.',
+    card4_sub_pending: (n) => `${n} adult${n !== 1 ? 's' : ''} still need${n === 1 ? 's' : ''} to sign.`,
+    card4_sub_done: 'All adults have signed.',
     start: 'Start',
     resume: 'Resume',
     submit_btn: 'Submit my application',
@@ -75,7 +77,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card3_sub_pending: (done, total) => `${done} de ${total} subidos.`,
     card3_sub_done: 'Todos los documentos subidos.',
     card4_title: 'Otros adultos en su hogar',
-    card4_sub: 'Pr\u00f3ximamente \u2014 firma de adultos adicionales.',
+    card4_sub_pending: (n) => `${n} adulto${n !== 1 ? 's' : ''} a\u00fan deb${n === 1 ? 'e' : 'en'} firmar.`,
+    card4_sub_done: 'Todos los adultos han firmado.',
     start: 'Comenzar',
     resume: 'Continuar',
     submit_btn: 'Enviar mi solicitud',
@@ -97,7 +100,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card3_sub_pending: (done, total) => `${done} de ${total} enviados.`,
     card3_sub_done: 'Todos os documentos enviados.',
     card4_title: 'Outros adultos na sua fam\u00edlia',
-    card4_sub: 'Em breve \u2014 assinatura de adultos adicionais.',
+    card4_sub_pending: (n) => `${n} adulto${n !== 1 ? 's' : ''} ainda precisa${n !== 1 ? 'm' : ''} assinar.`,
+    card4_sub_done: 'Todos os adultos assinaram.',
     start: 'Iniciar',
     resume: 'Retomar',
     submit_btn: 'Enviar minha solicita\u00e7\u00e3o',
@@ -189,8 +193,10 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
 
           <DashboardCard
             title={c.card4_title}
-            subtitle={c.card4_sub}
-            status="pending"
+            subtitle={data.additional_signers_needed ? c.card4_sub_pending(data.additional_signers_pending_count) : c.card4_sub_done}
+            status={data.additional_signers_needed ? 'pending' : 'complete'}
+            actionLabel={data.additional_signers_needed ? c.start : undefined}
+            onAction={() => router.push(`/pbv-full-app/${token}/sign/additional-signers`)}
           />
         </div>
 

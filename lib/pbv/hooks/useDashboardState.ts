@@ -34,6 +34,7 @@ export interface DashboardData {
   upload_total: number;
   upload_complete: number;
   additional_signers_needed: boolean;
+  additional_signers_pending_count: number;
   can_submit: boolean;
 }
 
@@ -50,10 +51,11 @@ export function useDashboardState(token: string) {
     setState({ status: 'loading' });
 
     try {
-      const [bootstrapRes, formsRes, uploadRes] = await Promise.all([
+      const [bootstrapRes, formsRes, uploadRes, signersRes] = await Promise.all([
         tenantFetch(`/api/t/${token}/pbv-full-app`),
         tenantFetch(`/api/t/${token}/pbv-full-app/forms`),
         tenantFetch(`/api/t/${token}/pbv-full-app/upload-summary`),
+        tenantFetch(`/api/t/${token}/pbv-full-app/additional-signers`),
       ]);
 
       if (!bootstrapRes.ok) throw new Error('Failed to load application state.');
@@ -86,12 +88,19 @@ export function useDashboardState(token: string) {
         uploadComplete = (uploadSummary.complete ?? 0) as number;
       }
 
+      let additionalSignersPendingCount = 0;
+      if (signersRes.ok) {
+        const signersJson = await signersRes.json().catch(() => ({}));
+        additionalSignersPendingCount = (signersJson as any).data?.pending_count ?? 0;
+      }
+
       const canSubmit =
         summarySign &&
         formsTotal > 0 &&
         formsSigned >= formsTotal &&
         uploadTotal > 0 &&
-        uploadComplete >= uploadTotal;
+        uploadComplete >= uploadTotal &&
+        additionalSignersPendingCount === 0;
 
       setState({
         status: 'ready',
@@ -107,7 +116,8 @@ export function useDashboardState(token: string) {
           forms_signed: formsSigned,
           upload_total: uploadTotal,
           upload_complete: uploadComplete,
-          additional_signers_needed: false,
+          additional_signers_needed: additionalSignersPendingCount > 0,
+          additional_signers_pending_count: additionalSignersPendingCount,
           can_submit: canSubmit,
         },
       });
