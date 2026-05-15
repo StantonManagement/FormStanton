@@ -42,6 +42,31 @@ export async function cleanupTestData(applicationId: string): Promise<void> {
     .eq('anchor_type', 'pbv_full_application')
     .eq('anchor_id', applicationId);
 
+  // 5a. Delete pbv_signature_events (child of pbv_form_documents)
+  const { data: formDocs } = await supabaseTestClient
+    .from('pbv_form_documents')
+    .select('id')
+    .eq('full_application_id', applicationId);
+
+  if (formDocs && formDocs.length > 0) {
+    const formDocIds = formDocs.map((d) => d.id);
+    await supabaseTestClient
+      .from('pbv_signature_events')
+      .delete()
+      .in('form_document_id', formDocIds);
+
+    await supabaseTestClient
+      .from('pbv_form_documents')
+      .delete()
+      .in('id', formDocIds);
+  }
+
+  // 5b. Delete pbv_summary_documents
+  await supabaseTestClient
+    .from('pbv_summary_documents')
+    .delete()
+    .eq('full_application_id', applicationId);
+
   // 5. Delete pbv_household_members
   await supabaseTestClient
     .from('pbv_household_members')
