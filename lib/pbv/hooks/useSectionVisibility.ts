@@ -17,6 +17,7 @@ import {
   type SectionSlug,
   type IntakeData,
 } from '@/lib/pbv/intake-schema';
+import { computeAge } from '@/lib/pbv/age';
 import {
   sectionIiiZeroIncomeAnyAdult,
   shouldRenderSectionVIMedical,
@@ -35,7 +36,7 @@ function deriveMembers(intakeData: IntakeData): HouseholdMember[] {
     slot: m.slot,
     name: m.name,
     relationship: m.relationship,
-    age: m.is_minor ? 10 : 30,
+    age: computeAge(m.dob) ?? 0,
     date_of_birth: m.dob,
     disability: m.disability,
     student: m.student,
