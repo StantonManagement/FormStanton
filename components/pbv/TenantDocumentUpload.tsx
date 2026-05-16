@@ -24,6 +24,7 @@ interface Document {
   uploaded_at: string | null;
   category?: string;
   display_order?: number;
+  file_url?: string | null;
 }
 
 interface TenantDocumentUploadProps {
@@ -46,6 +47,7 @@ const translations = {
     status_rejected: 'Needs Replacement',
     upload_btn: 'Upload',
     replace_btn: 'Replace',
+    view_btn: 'View',
     uploading: 'Uploading...',
     error_file_size: 'File too large (max 25MB)',
     error_file_type: 'Invalid file type',
@@ -70,6 +72,7 @@ const translations = {
     status_rejected: 'Necesita Reemplazo',
     upload_btn: 'Subir',
     replace_btn: 'Reemplazar',
+    view_btn: 'Ver',
     uploading: 'Subiendo...',
     error_file_size: 'Archivo demasiado grande (máx 25MB)',
     error_file_type: 'Tipo de archivo inválido',
@@ -94,6 +97,7 @@ const translations = {
     status_rejected: 'Precisa Substituir',
     upload_btn: 'Enviar',
     replace_btn: 'Substituir',
+    view_btn: 'Ver',
     uploading: 'Enviando...',
     error_file_size: 'Arquivo muito grande (máx 25MB)',
     error_file_type: 'Tipo de arquivo inválido',
@@ -419,9 +423,19 @@ export default function TenantDocumentUpload({
                             )}
                           </div>
 
-                          {/* Upload button */}
-                          {canUpload && (
-                            <div className="flex-shrink-0">
+                          {/* View + Upload buttons */}
+                          <div className="flex-shrink-0 flex flex-col gap-2 items-end">
+                            {doc.file_url && (
+                              <a
+                                href={doc.file_url!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center min-w-[100px] min-h-[44px] px-4 py-2 text-sm font-semibold border border-[var(--primary)] text-[var(--primary)] hover:opacity-75 transition-opacity"
+                              >
+                                {t.view_btn}
+                              </a>
+                            )}
+                            {canUpload && (
                               <button
                                 type="button"
                                 disabled={isUploading}
@@ -443,9 +457,8 @@ export default function TenantDocumentUpload({
                                   <span>{t.upload_btn}</span>
                                 )}
                               </button>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
                       </div>
                     );
                   })}

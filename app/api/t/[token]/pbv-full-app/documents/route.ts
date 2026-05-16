@@ -93,7 +93,7 @@ export async function GET(
     // Read documents from application_documents (PRD-03 anchor pattern)
     const { data: documents, error: docsError } = await supabaseAdmin
       .from('application_documents')
-      .select('id, doc_type, label, required, person_slot, status, rejection_reason, rejection_reason_key, revision, created_at, updated_at, category, display_order')
+      .select('id, doc_type, label, required, person_slot, status, rejection_reason, rejection_reason_key, revision, created_at, updated_at, category, display_order, storage_path')
       .eq('anchor_type', 'pbv_full_application')
       .eq('anchor_id', app.id)
       .order('display_order', { ascending: true })
@@ -141,6 +141,20 @@ export async function GET(
       );
     }
 
+    // Generate signed URLs for uploaded docs (submitted | approved | rejected)
+    const signedUrls: Record<string, string> = {};
+    const uploadedDocs = (documents ?? []).filter(
+      (d) => (d.status === 'submitted' || d.status === 'approved' || d.status === 'rejected') && d.storage_path
+    );
+    await Promise.all(
+      uploadedDocs.map(async (d) => {
+        const { data: signed } = await supabaseAdmin.storage
+          .from('submissions')
+          .createSignedUrl(d.storage_path!, 300);
+        if (signed?.signedUrl) signedUrls[d.id] = signed.signedUrl;
+      })
+    );
+
     // Map to response shape
     const mappedDocs = (documents ?? []).map(doc => {
       // Build rejection reason display (template → free-text → generic fallback)
@@ -178,6 +192,7 @@ export async function GET(
         uploaded_at: doc.status === 'missing' ? null : (doc.updated_at ?? doc.created_at),
         category: doc.category ?? 'custom',
         display_order: doc.display_order ?? 0,
+        file_url: signedUrls[doc.id] ?? null,
       };
     });
 
