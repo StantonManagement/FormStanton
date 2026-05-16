@@ -6,19 +6,7 @@ import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { recomputeApplicationDocSummary } from '@/lib/recomputeApplicationDocs';
 import { validateReadyToFinalize } from '@/lib/pbv/finalizeValidation';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
-
-function computeAge(dob: string): number | null {
-  if (!dob) return null;
-  const dobDate = new Date(dob);
-  if (isNaN(dobDate.getTime())) return null;
-  const today = new Date();
-  let age = today.getFullYear() - dobDate.getFullYear();
-  const m = today.getMonth() - dobDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
-    age--;
-  }
-  return age;
-}
+import { computeAge } from '@/lib/pbv/age';
 
 export async function GET(
   _request: NextRequest,
@@ -29,7 +17,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name, intake_status, signing_status, submission_language')
+      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name, intake_status, signing_status, submission_language, intake_data')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -283,6 +271,7 @@ export async function GET(
         signing_status: app.signing_status ?? null,
         submission_language: app.submission_language ?? null,
         hoh_member_id,
+        intake_data: app.intake_data ?? {},
       },
     });
   } catch (error: any) {
