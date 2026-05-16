@@ -52,7 +52,7 @@ export default function SummarySignPage({ params }: Props) {
 
     // If intake not complete (no signing_status), can't generate yet
     if (!data.signing_status || data.signing_status === 'not_started') {
-      router.push('/pbv-full-app');
+      router.push(`/pbv-full-app/${token}/dashboard`);
       return;
     }
 
