@@ -81,12 +81,15 @@ export default function IntakeSectionPage({ params }: Props) {
 
   // Track active section data for auto-save
   const [sectionData, setSectionData] = useState<Record<string, unknown> | null>(null);
-  const { saveStatus, lastSavedAt } = useSectionAutoSave(
+  const { saveStatus, lastSavedAt, saveNow } = useSectionAutoSave(
     token,
     currentSlug,
     sectionData,
     !!sectionData
   );
+
+  const [navigating, setNavigating] = useState(false);
+  const [navError, setNavError] = useState('');
 
   const handleSectionChange = useCallback(
     (slug: SectionSlug, data: Record<string, unknown>) => {
@@ -97,7 +100,19 @@ export default function IntakeSectionPage({ params }: Props) {
     [intakeData]
   );
 
-  const navigateTo = (slug: SectionSlug) => {
+  const navigateTo = async (slug: SectionSlug) => {
+    if (sectionData) {
+      setNavigating(true);
+      setNavError('');
+      try {
+        await saveNow();
+      } catch {
+        setNavError('Could not save. Please try again.');
+        setNavigating(false);
+        return;
+      }
+      setNavigating(false);
+    }
     router.push(`/pbv-full-app/${token}/intake/${slug}`);
   };
 
@@ -142,9 +157,12 @@ export default function IntakeSectionPage({ params }: Props) {
       sectionTitle={sectionTitle}
       saveStatus={saveStatus}
       lastSavedAt={lastSavedAt}
-      canGoBack={currentIndex > 0}
-      canGoNext={!isReviewSection && isSectionComplete(currentSlug, intakeData)}
+      canGoBack={currentIndex > 0 && !navigating}
+      canGoNext={!isReviewSection && isSectionComplete(currentSlug, intakeData) && !navigating}
       isLastSection={isLastSection}
+      isReviewSection={isReviewSection}
+      navigating={navigating}
+      navError={navError}
       onBack={handleBack}
       onNext={handleNext}
       onLanguageChange={setLanguageOverride}

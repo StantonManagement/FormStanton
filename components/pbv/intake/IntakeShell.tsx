@@ -31,6 +31,9 @@ interface Props {
   canGoBack: boolean;
   canGoNext: boolean;
   isLastSection?: boolean;
+  isReviewSection?: boolean;
+  navigating?: boolean;
+  navError?: string;
   onBack: () => void;
   onNext: () => void;
   onLanguageChange?: (lang: PreferredLanguage) => void;
@@ -61,6 +64,18 @@ const sectionOfLabels: Record<PreferredLanguage, (n: number, t: number) => strin
   pt: (n, t) => `Seção ${n} de ${t}`, // PT: tentative — review
 };
 
+const reviewLabels: Record<PreferredLanguage, string> = {
+  en: 'Review',
+  es: 'Revisión',
+  pt: 'Revisão', // PT: tentative — review
+};
+
+const savingLabels: Record<PreferredLanguage, string> = {
+  en: 'Saving…',
+  es: 'Guardando…',
+  pt: 'Salvando…', // PT: tentative — review
+};
+
 export default function IntakeShell({
   token,
   language,
@@ -72,12 +87,15 @@ export default function IntakeShell({
   canGoBack,
   canGoNext,
   isLastSection = false,
+  isReviewSection = false,
+  navigating = false,
+  navError = '',
   onBack,
   onNext,
   onLanguageChange,
   children,
 }: Props) {
-  const progress = totalSections > 0 ? (sectionNumber / totalSections) * 100 : 0;
+  const progress = isReviewSection ? 100 : totalSections > 0 ? (sectionNumber / totalSections) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-[var(--paper)] flex flex-col">
@@ -87,7 +105,9 @@ export default function IntakeShell({
           {/* Row 1: section label + save indicator + pick-up-later */}
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs text-[var(--muted)] font-medium">
-              {sectionOfLabels[language]?.(sectionNumber, totalSections)}
+              {isReviewSection
+                ? reviewLabels[language]
+                : sectionOfLabels[language]?.(sectionNumber, totalSections)}
             </span>
             <div className="flex items-center gap-3">
               <SaveStatusIndicator
@@ -134,7 +154,11 @@ export default function IntakeShell({
 
       {/* Footer navigation */}
       <footer className="sticky bottom-0 bg-white border-t border-[var(--border)] px-4 py-3 z-20">
-        <div className="max-w-lg mx-auto flex gap-3">
+        <div className="max-w-lg mx-auto">
+        {navError && (
+          <p className="text-xs text-[var(--error)] mb-2">{navError}</p>
+        )}
+        <div className="flex gap-3">
           {canGoBack && (
             <button
               type="button"
@@ -147,11 +171,12 @@ export default function IntakeShell({
           <button
             type="button"
             onClick={onNext}
-            disabled={!canGoNext}
+            disabled={!canGoNext || navigating}
             className="flex-1 min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
-            {isLastSection ? submitLabels[language] : nextLabels[language]}
+            {navigating ? savingLabels[language] : isLastSection ? submitLabels[language] : nextLabels[language]}
           </button>
+        </div>
         </div>
       </footer>
     </div>
