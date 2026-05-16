@@ -23,7 +23,7 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export interface UseSectionAutoSaveResult {
   saveStatus: SaveStatus;
   lastSavedAt: Date | null;
-  saveNow: () => void;
+  saveNow: () => Promise<void>;
   clearError: () => void;
 }
 
@@ -76,9 +76,9 @@ export function useSectionAutoSave<T extends Record<string, unknown>>(
     }
   }, []);
 
-  const saveNow = useCallback(() => {
+  const saveNow = useCallback((): Promise<void> => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    doSave();
+    return doSave();
   }, [doSave]);
 
   // Debounced auto-save on data change
