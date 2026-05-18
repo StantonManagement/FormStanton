@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateGenericFormPdf } from '@/lib/documentGenerator';
+import { sanitizeStorageSegment } from '@/lib/storageKeys';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('photo_') && value instanceof File) {
         const file = value as File;
-        const fileName = `${Date.now()}-${key}-${file.name}`;
+        const fileName = `${Date.now()}-${key}-${sanitizeStorageSegment(file.name)}`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('form-photos')

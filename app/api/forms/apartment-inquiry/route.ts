@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeStorageSegment } from '@/lib/storageKeys';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
       for (const file of incomeFiles) {
         if (file.size === 0) continue;
         const buf = Buffer.from(await file.arrayBuffer());
-        const key = `apartment-inquiry/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        const key = `apartment-inquiry/${Date.now()}-${sanitizeStorageSegment(file.name)}`;
         const { error: upErr } = await supabase.storage.from('form-photos').upload(key, buf, { contentType: file.type });
         if (!upErr) {
           const { data: urlData } = supabase.storage.from('form-photos').getPublicUrl(key);
