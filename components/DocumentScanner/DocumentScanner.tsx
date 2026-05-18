@@ -59,6 +59,19 @@ function isHeicFile(file: File): boolean {
   return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
 }
 
+/**
+ * Detect iOS / iPadOS so we can drop the `capture` attribute and expose Apple's
+ * native "Scan Documents" option in the file-picker action sheet (iOS 16+).
+ * iPadOS reports as Mac, so check touch points as a secondary signal.
+ */
+function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  // iPadOS 13+ identifies as MacIntel but supports touch
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
+
 function averageScores(pages: CapturedPage[]): QualityScores {
   if (pages.length === 0) {
     return { blur: 0, brightness: 0, resolution: 0 };
@@ -389,11 +402,24 @@ export default function DocumentScanner({
 
   return (
     <div className="space-y-4">
+      {/*
+        On iOS we deliberately omit `capture` so the file picker shows Apple's
+        native "Scan Documents" option alongside Take Photo / Photo Library
+        (iOS 16+). On Android we keep `capture="environment"` when the user
+        tapped "Take Photo" so they go straight to the camera without an
+        extra tap (Android has no native scanner in the file picker).
+      */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*,.heic,.heif"
-        capture={captureMode === 'camera' ? 'environment' : undefined}
+        capture={
+          isIOSDevice()
+            ? undefined
+            : captureMode === 'camera'
+            ? 'environment'
+            : undefined
+        }
         className="hidden"
         onChange={handleFileSelect}
       />

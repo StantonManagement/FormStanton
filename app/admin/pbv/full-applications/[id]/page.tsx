@@ -305,9 +305,19 @@ export default function PbvFullApplicationDetailPage() {
             {' · '}{detail.household_size} person{detail.household_size!==1?'s':''}
           </p>
         </div>
-        <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
-          {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
-        </span>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/pbv-full-app/${detail.tenant_access_token}/print`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
+          >
+            View tenant copy
+          </a>
+          <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
+            {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">

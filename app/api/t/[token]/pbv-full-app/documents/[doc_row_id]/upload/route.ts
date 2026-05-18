@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 import sharp from 'sharp';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function POST(
         // -- Step 2: Fetch and validate document row
         const { data: doc, error: docError } = await supabaseAdmin
           .from('application_documents')
-          .select('id, doc_type, label, status, revision, person_slot, anchor_id, file_name, storage_path, uploaded_by_display_name, uploaded_by_role, uploaded_by_user_id, upload_source, updated_at, rejection_reason')
+          .select('id, doc_type, label, status, revision, person_slot, anchor_id, file_name, storage_path, file_hash, uploaded_by_display_name, uploaded_by_role, uploaded_by_user_id, upload_source, updated_at, rejection_reason')
           .eq('id', doc_row_id)
           .eq('anchor_type', 'pbv_full_application')
           .eq('anchor_id', app.id)
@@ -116,35 +117,37 @@ export async function POST(
           payload: { batch_id: batchId, source_label: 'tenant_upload', file_count: 1 },
         });
 
-        // -- Step 6: Update document row + storage upload
+        // -- Step 6: Compute file hash + Update document row + storage upload
         const newRevision = doc.revision + 1;
         const ext = finalFileName.split('.').pop() ?? 'bin';
         const fileName = `${doc.doc_type}_r${newRevision}.${ext}`;
         const storagePath = `pbv-documents/${app.id}/${doc_row_id}/${newRevision}.${ext}`;
+
+        // Compute SHA-256 hash of file content for dedup detection (PRD-41 F1)
+        const fileHash = createHash('sha256').update(fileBuffer).digest('hex');
 
         const updateData = {
           revision: newRevision,
           status: 'submitted' as const,
           file_name: fileName,
           storage_path: storagePath,
+          file_hash: fileHash,
           uploaded_by_role: 'tenant' as const,
           uploaded_by_user_id: null,
           uploaded_by_display_name: 'Tenant',
-          upload_source: 'tenant_portal' as const,
+          upload_source: 'portal' as const,
           updated_at: new Date().toISOString(),
           rejection_reason: isReplace ? null : undefined,
         };
 
-        const query = supabaseAdmin
+        const baseQuery = supabaseAdmin
           .from('application_documents')
           .update(updateData)
           .eq('id', doc_row_id);
 
-        if (!isReplace) {
-          query.eq('status', 'missing');
-        }
-
-        const { error: updateError } = await query;
+        const { error: updateError } = isReplace
+          ? await baseQuery
+          : await baseQuery.eq('status', 'missing');
         if (updateError) {
           throw new Error(`Failed to update document: ${updateError.message}`);
         }
@@ -183,6 +186,7 @@ export async function POST(
                 status: isReplace ? (doc.rejection_reason ? 'rejected' : 'submitted') : 'missing',
                 file_name: isReplace ? doc.file_name : null,
                 storage_path: isReplace ? doc.storage_path : null,
+                file_hash: isReplace ? doc.file_hash : null,
                 uploaded_by_role: isReplace ? doc.uploaded_by_role : null,
                 uploaded_by_user_id: isReplace ? doc.uploaded_by_user_id : null,
                 uploaded_by_display_name: isReplace ? doc.uploaded_by_display_name : null,

@@ -8,7 +8,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardCard, { type CardStatus } from './DashboardCard';
+import DocumentProgressBar from './DocumentProgressBar';
+import ApplicationStatusBanner, { type ApplicationReviewStatus } from './ApplicationStatusBanner';
 import { tenantFetch } from '@/lib/tenantFetch';
+import { getOfficeContact } from '@/lib/pbv/officeContacts';
 import type { DashboardData } from '@/lib/pbv/hooks/useDashboardState';
 import type { PreferredLanguage } from '@/types/compliance';
 
@@ -28,6 +31,7 @@ interface CopyMap {
   card2_sub_locked: string;
   card2_sub_pending: (signed: number, total: number) => string;
   card3_title: string;
+  card3_title_action_required: (n: number) => string;
   card3_sub_pending: (done: number, total: number) => string;
   card3_sub_done: string;
   card4_title: string;
@@ -39,6 +43,8 @@ interface CopyMap {
   submitting: string;
   submit_error: string;
   submit_disabled_reason: string;
+  download_copy: string;
+  download_copy_sub: string;
 }
 
 const copy: Record<PreferredLanguage, CopyMap> = {
@@ -52,7 +58,9 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card2_sub_locked: 'Complete the summary step first.',
     card2_sub_pending: (signed, total) => `${signed} of ${total} forms signed.`,
     card3_title: 'Upload required documents',
+    card3_title_action_required: (n) => `Replace rejected documents (${n})`,
     card3_sub_pending: (done, total) => `${done} of ${total} uploaded.`,
+  // Note: card3 now uses DocumentProgressBar component instead of text subtitle
     card3_sub_done: 'All documents uploaded.',
     card4_title: 'Other adults in your household',
     card4_sub_pending: (n) => `${n} adult${n !== 1 ? 's' : ''} still need${n === 1 ? 's' : ''} to sign.`,
@@ -63,6 +71,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submitting: 'Submitting\u2026',
     submit_error: 'Could not submit: ',
     submit_disabled_reason: 'Complete all tasks above before submitting.',
+    download_copy: 'Download my application copy',
+    download_copy_sub: 'Get a PDF copy of your submitted application for your records.',
   },
   es: {
     title: 'Panel de Solicitud',
@@ -74,6 +84,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card2_sub_locked: 'Complete primero el paso del resumen.',
     card2_sub_pending: (signed, total) => `${signed} de ${total} formularios firmados.`,
     card3_title: 'Subir documentos requeridos',
+    card3_title_action_required: (n) => `Reemplazar documentos rechazados (${n})`,
     card3_sub_pending: (done, total) => `${done} de ${total} subidos.`,
     card3_sub_done: 'Todos los documentos subidos.',
     card4_title: 'Otros adultos en su hogar',
@@ -85,6 +96,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submitting: 'Enviando\u2026',
     submit_error: 'No se pudo enviar: ',
     submit_disabled_reason: 'Complete todas las tareas para enviar.',
+    download_copy: 'Descargar copia de mi solicitud',
+    download_copy_sub: 'Obtenga una copia PDF de su solicitud para sus archivos.',
   },
   pt: {
     // PT: tentative — review
@@ -96,7 +109,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     card2_title: 'Revisar e assinar os formul\u00e1rios obrigat\u00f3rios',
     card2_sub_locked: 'Complete primeiro a etapa do resumo.',
     card2_sub_pending: (signed, total) => `${signed} de ${total} formul\u00e1rios assinados.`,
-    card3_title: 'Enviar documentos obrigat\u00f3rios',
+    card3_title: 'Enviar documentos obrigatórios',
+    card3_title_action_required: (n) => `Substituir documentos rejeitados (${n})`,
     card3_sub_pending: (done, total) => `${done} de ${total} enviados.`,
     card3_sub_done: 'Todos os documentos enviados.',
     card4_title: 'Outros adultos na sua fam\u00edlia',
@@ -108,6 +122,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submitting: 'Enviando\u2026',
     submit_error: 'N\u00e3o foi poss\u00edvel enviar: ',
     submit_disabled_reason: 'Conclua todas as tarefas acima para enviar.',
+    download_copy: 'Baixar c\u00f3pia da solicita\u00e7\u00e3o',
+    download_copy_sub: 'Obtenha uma c\u00f3pia PDF da sua solicita\u00e7\u00e3o para seus registros.',
   },
 };
 
@@ -137,6 +153,12 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
       : data.upload_complete > 0
       ? 'in_progress'
       : 'pending';
+  
+  // F4: Action-required surfacing — change documents card when action_required
+  const isActionRequired = data.application_review_status === 'action_required';
+  const card3Title = isActionRequired && data.rejected_documents_count > 0
+    ? c.card3_title_action_required(data.rejected_documents_count)
+    : c.card3_title;
   const card3Sub =
     card3Status === 'complete'
       ? c.card3_sub_done
@@ -157,11 +179,33 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
     }
   };
 
+  // Office contact for banner (hardcoded V1 per PRD-36)
+  const officeContact = getOfficeContact(data.building_address);
+
   return (
     <div className="min-h-screen bg-[var(--paper)]">
       <div className="max-w-lg mx-auto px-4 py-8">
         <h1 className="font-serif text-2xl text-[var(--primary)] mb-1">{c.title}</h1>
         <p className="text-sm text-[var(--muted)] mb-6">{c.subtitle}</p>
+
+        {/* PRD-36 / F5: Banner renders whenever intake is complete.
+            If application_review_status is null (just submitted, office hasn't acted yet),
+            default to 'submitted' so the tenant gets the acknowledgment they need. */}
+        {data.intake_status === 'complete' && (
+          <ApplicationStatusBanner
+            status={(data.application_review_status ?? 'submitted') as ApplicationReviewStatus}
+            statusAt={data.application_review_status_at}
+            statusNote={data.application_review_status_note}
+            rejectedCount={data.rejected_documents_count}
+            language={lang}
+            officeContact={officeContact}
+            onActionRequiredClick={
+              isActionRequired
+                ? () => router.push(`/pbv-full-app/${token}/documents?filter=rejected`)
+                : undefined
+            }
+          />
+        )}
 
         <div className="space-y-3">
           <DashboardCard
@@ -184,11 +228,26 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
           />
 
           <DashboardCard
-            title={c.card3_title}
-            subtitle={card3Sub}
+            title={card3Title}
+            subtitle={
+              <DocumentProgressBar
+                uploaded={data.upload_complete}
+                total={data.upload_total}
+                optionalUploaded={data.optional_uploaded_count}
+                language={lang}
+              />
+            }
             status={card3Status}
-            actionLabel={card3Status === 'complete' ? undefined : card3Status === 'in_progress' ? c.resume : c.start}
-            onAction={() => router.push(`/pbv-full-app/${token}/documents`)}
+            actionLabel={
+              isActionRequired
+                ? c.start
+                : card3Status === 'complete'
+                ? undefined
+                : card3Status === 'in_progress'
+                ? c.resume
+                : c.start
+            }
+            onAction={() => router.push(`/pbv-full-app/${token}/documents${isActionRequired ? '?filter=rejected' : ''}`)}
           />
 
           <DashboardCard
@@ -199,6 +258,25 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
             onAction={() => router.push(`/pbv-full-app/${token}/sign/additional-signers`)}
           />
         </div>
+
+        {/* Download application copy link - only when complete */}
+        {data.intake_status === 'complete' && (
+          <div className="mt-6 pt-6 border-t border-[var(--border)]">
+            <a
+              href={`/api/t/${token}/pbv-full-app/print/download`}
+              download
+              className="flex items-center justify-center gap-2 text-sm text-[var(--primary)] hover:opacity-75 transition-opacity"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>{c.download_copy}</span>
+            </a>
+            <p className="text-xs text-[var(--muted)] text-center mt-1">{c.download_copy_sub}</p>
+          </div>
+        )}
 
         <div className="mt-8">
           {submitError && (

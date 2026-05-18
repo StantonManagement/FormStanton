@@ -6,6 +6,7 @@ export const NotificationType = {
   HACH_APPROVED_SIGNING_READY: 'hach_approved_signing_ready',
   SIGNING_REMINDER:           'signing_reminder',
   HAP_EXECUTED_MOVE_IN:       'hap_executed_move_in',
+  PBV_PREFLIGHT_CHECKLIST:    'pbv_preflight_checklist',
 } as const;
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];

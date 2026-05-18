@@ -396,7 +396,8 @@ export async function getFreshActivity(userId: string): Promise<FreshActivityEve
     supabaseAdmin.from('pbv_full_applications').select('id').eq('lead_user_id', userId),
     supabaseAdmin
       .from('application_events')
-      .select('full_application_id')
+      .select('anchor_id')
+      .eq('anchor_type', 'pbv_full_application')
       .eq('actor_user_id', userId)
       .gte('created_at', cutoffDate.toISOString()),
   ]);
@@ -404,7 +405,7 @@ export async function getFreshActivity(userId: string): Promise<FreshActivityEve
   const appIdSet = new Set<string>();
   assignedDocs?.forEach((d) => appIdSet.add(d.application_id));
   leadApps?.forEach((a) => appIdSet.add(a.id));
-  actedEvents?.forEach((e) => appIdSet.add(e.full_application_id));
+  actedEvents?.forEach((e) => appIdSet.add(e.anchor_id));
 
   const appIds = Array.from(appIdSet);
   if (appIds.length === 0) return [];
@@ -438,9 +439,10 @@ export async function getFreshActivity(userId: string): Promise<FreshActivityEve
   const { data: events, error } = await supabaseAdmin
     .from('application_events')
     .select(
-      `id, event_type, actor_display_name, created_at, full_application_id, document_id, payload`
+      `id, event_type, actor_display_name, created_at, anchor_id, document_id, payload`
     )
-    .in('full_application_id', appIds)
+    .eq('anchor_type', 'pbv_full_application')
+    .in('anchor_id', appIds)
     .in('event_type', eventTypes)
     .gte('created_at', cutoffDate.toISOString())
     .order('created_at', { ascending: false });
@@ -460,13 +462,13 @@ export async function getFreshActivity(userId: string): Promise<FreshActivityEve
   }
 
   return (events ?? []).map((e) => {
-    const app = appMap.get(e.full_application_id);
+    const app = appMap.get(e.anchor_id);
     return {
       event_id: e.id,
       event_type: e.event_type,
       actor_display_name: e.actor_display_name,
       created_at: e.created_at,
-      application_id: e.full_application_id,
+      application_id: e.anchor_id,
       head_of_household_name: app?.head_of_household_name ?? 'Unknown',
       building_address: app?.building_address ?? '',
       unit_number: app?.unit_number ?? '',
@@ -492,8 +494,9 @@ export async function getStaleTouched(userId: string): Promise<StaleTouchedApp[]
     const { data: events, error: eventsError } = await supabaseAdmin
       .from('application_events')
       .select(
-        `full_application_id, event_type, actor_user_id, actor_display_name, created_at`
+        `anchor_id, event_type, actor_user_id, actor_display_name, created_at`
       )
+      .eq('anchor_type', 'pbv_full_application')
       .eq('actor_user_id', userId)
       .lte('created_at', staleThreshold.toISOString())
       .order('created_at', { ascending: false });
@@ -503,8 +506,8 @@ export async function getStaleTouched(userId: string): Promise<StaleTouchedApp[]
     // Group by app and get most recent
     const latestByApp = new Map<string, (typeof events)[0]>();
     (events ?? []).forEach((e) => {
-      if (!latestByApp.has(e.full_application_id)) {
-        latestByApp.set(e.full_application_id, e);
+      if (!latestByApp.has(e.anchor_id)) {
+        latestByApp.set(e.anchor_id, e);
       }
     });
 
@@ -561,8 +564,9 @@ export async function getRecentlyCompleted(userId: string, limit: number = 10): 
   const { data: events, error } = await supabaseAdmin
     .from('application_events')
     .select(
-      `id, event_type, created_at, full_application_id, document_id, payload`
+      `id, event_type, created_at, anchor_id, document_id, payload`
     )
+    .eq('anchor_type', 'pbv_full_application')
     .eq('actor_user_id', userId)
     .in('event_type', ['document.approved', 'document.rejected', 'document.waived'])
     .order('created_at', { ascending: false })
@@ -572,7 +576,7 @@ export async function getRecentlyCompleted(userId: string, limit: number = 10): 
   if (!events || events.length === 0) return [];
 
   // Get app info
-  const appIds = [...new Set(events.map((e) => e.full_application_id))];
+  const appIds = [...new Set(events.map((e) => e.anchor_id))];
   const { data: apps } = await supabaseAdmin
     .from('pbv_full_applications')
     .select('id, head_of_household_name, building_address, unit_number')
@@ -595,7 +599,7 @@ export async function getRecentlyCompleted(userId: string, limit: number = 10): 
   const docMap = new Map((docs ?? []).map((d) => [d.id, { doc_type: d.doc_type, label: d.label }]));
 
   return events.map((e) => {
-    const app = appMap.get(e.full_application_id);
+    const app = appMap.get(e.anchor_id);
     const doc = e.document_id ? docMap.get(e.document_id) : null;
     const action = e.event_type.replace('document.', '') as RecentlyCompletedDoc['action'];
 
@@ -605,7 +609,7 @@ export async function getRecentlyCompleted(userId: string, limit: number = 10): 
       label: doc?.label ?? 'Unknown document',
       action,
       acted_at: e.created_at,
-      application_id: e.full_application_id,
+      application_id: e.anchor_id,
       head_of_household_name: app?.head_of_household_name ?? 'Unknown',
       building_address: app?.building_address ?? '',
       unit_number: app?.unit_number ?? '',
@@ -654,58 +658,87 @@ export async function getWorkloadByReviewer(
     .eq('is_active', true);
 
   if (usersError) throw usersError;
-  if (!users) return [];
+  if (!users || users.length === 0) return [];
 
-  const results: WorkloadReviewer[] = [];
+  const userIds = users.map((u) => u.id);
 
-  for (const user of users) {
-    // Current assignments
-    const { data: assigned } = await supabaseAdmin
+  // ── Batched queries: 3 total round-trips regardless of user count ──────────
+  const [
+    { data: allAssigned, error: assignedError },
+    { data: allReviewed, error: reviewedError },
+    { data: allActivity, error: activityError },
+  ] = await Promise.all([
+    // All current assignments across users
+    supabaseAdmin
       .from('assigned_documents')
-      .select('status, assigned_at')
-      .eq('assigned_to_user_id', user.id);
-
-    // Reviewed in date range
-    const { data: reviewed } = await supabaseAdmin
+      .select('assigned_to_user_id, status, assigned_at')
+      .in('assigned_to_user_id', userIds),
+    // All review events in date range across users
+    supabaseAdmin
       .from('application_events')
-      .select('id, created_at')
-      .eq('actor_user_id', user.id)
+      .select('actor_user_id, created_at')
+      .in('actor_user_id', userIds)
       .in('event_type', ['document.approved', 'document.rejected', 'document.waived'])
       .gte('created_at', dateRange.from.toISOString())
-      .lte('created_at', dateRange.to.toISOString());
-
-    // Last activity
-    const { data: lastActivity } = await supabaseAdmin
+      .lte('created_at', dateRange.to.toISOString()),
+    // All events ordered by recency — folded per-user below to find max created_at
+    supabaseAdmin
       .from('application_events')
-      .select('created_at')
-      .eq('actor_user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1);
+      .select('actor_user_id, created_at')
+      .in('actor_user_id', userIds)
+      .order('created_at', { ascending: false }),
+  ]);
 
-    const assignedCount = assigned?.length ?? 0;
-    const awaitingCount = (assigned ?? []).filter(
+  if (assignedError) throw assignedError;
+  if (reviewedError) throw reviewedError;
+  if (activityError) throw activityError;
+
+  // Group by user_id in memory (cheap — datasets are small)
+  const assignedByUser = new Map<string, Array<{ status: string; assigned_at: string }>>();
+  (allAssigned ?? []).forEach((row) => {
+    const arr = assignedByUser.get(row.assigned_to_user_id) ?? [];
+    arr.push({ status: row.status, assigned_at: row.assigned_at });
+    assignedByUser.set(row.assigned_to_user_id, arr);
+  });
+
+  const reviewedCountByUser = new Map<string, number>();
+  (allReviewed ?? []).forEach((row) => {
+    reviewedCountByUser.set(row.actor_user_id, (reviewedCountByUser.get(row.actor_user_id) ?? 0) + 1);
+  });
+
+  // Most recent activity per user (first occurrence due to DESC order)
+  const lastActivityByUser = new Map<string, string>();
+  (allActivity ?? []).forEach((row) => {
+    if (!lastActivityByUser.has(row.actor_user_id)) {
+      lastActivityByUser.set(row.actor_user_id, row.created_at);
+    }
+  });
+
+  const results: WorkloadReviewer[] = users.map((user) => {
+    const assigned = assignedByUser.get(user.id) ?? [];
+    const assignedCount = assigned.length;
+    const awaitingCount = assigned.filter(
       (d) => d.status === 'submitted' || d.status === 'flagged_for_rereview'
     ).length;
-    const resubmittedCount = (assigned ?? []).filter((d) => d.status === 'flagged_for_rereview').length;
+    const resubmittedCount = assigned.filter((d) => d.status === 'flagged_for_rereview').length;
 
-    // Calculate average age of assignments
-    const ages = (assigned ?? []).map((d) => {
+    const ages = assigned.map((d) => {
       const assignedAt = new Date(d.assigned_at);
       return Math.floor((Date.now() - assignedAt.getTime()) / (1000 * 60 * 60 * 24));
     });
     const avgAge = ages.length > 0 ? ages.reduce((a, b) => a + b, 0) / ages.length : 0;
 
-    results.push({
+    return {
       user_id: user.id,
       display_name: user.display_name,
       assigned_count: assignedCount,
       awaiting_review_count: awaitingCount,
       resubmitted_count: resubmittedCount,
       avg_age_days: Math.round(avgAge * 10) / 10,
-      reviewed_last_7_days: reviewed?.length ?? 0,
-      last_activity_at: lastActivity?.[0]?.created_at ?? null,
-    });
-  }
+      reviewed_last_7_days: reviewedCountByUser.get(user.id) ?? 0,
+      last_activity_at: lastActivityByUser.get(user.id) ?? null,
+    };
+  });
 
   // Sort by assigned count descending
   return results.sort((a, b) => b.assigned_count - a.assigned_count);
@@ -856,8 +889,9 @@ export async function getRecentOverrides(
   const { data: events, error } = await supabaseAdmin
     .from('application_events')
     .select(
-      `full_application_id, created_at, actor_display_name, payload`
+      `anchor_id, created_at, actor_display_name, payload`
     )
+    .eq('anchor_type', 'pbv_full_application')
     .in('event_type', ['handoff.sent', 'handoff.revised'])
     .gte('created_at', cutoffDate.toISOString())
     .order('created_at', { ascending: false });
@@ -873,7 +907,7 @@ export async function getRecentOverrides(
   if (overrideEvents.length === 0) return [];
 
   // Get app info
-  const appIds = [...new Set(overrideEvents.map((e) => e.full_application_id))];
+  const appIds = [...new Set(overrideEvents.map((e) => e.anchor_id))];
   const { data: apps } = await supabaseAdmin
     .from('pbv_full_applications')
     .select('id, head_of_household_name, building_address, unit_number')
@@ -887,11 +921,11 @@ export async function getRecentOverrides(
   );
 
   return overrideEvents.map((e) => {
-    const app = appMap.get(e.full_application_id);
+    const app = appMap.get(e.anchor_id);
     const payload = e.payload as Record<string, unknown>;
 
     return {
-      application_id: e.full_application_id,
+      application_id: e.anchor_id,
       head_of_household_name: app?.head_of_household_name ?? 'Unknown',
       building_address: app?.building_address ?? '',
       unit_number: app?.unit_number ?? '',

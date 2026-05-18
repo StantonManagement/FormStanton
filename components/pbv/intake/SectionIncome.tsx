@@ -49,12 +49,14 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     none_label: 'No income of any kind',
     amount_label: 'Monthly amount ($)',
     annual_label: 'Estimated annual income ($)',
+    annual_caption: 'Auto-calculated from monthly. Edit to override.',
     zero_note: 'This person will need to complete a zero-income declaration.',
   },
   es: {
     none_label: 'Sin ingresos de ningún tipo',
     amount_label: 'Monto mensual ($)',
     annual_label: 'Ingreso anual estimado ($)',
+    annual_caption: 'Calculado automáticamente desde el monto mensual. Edite para anular.',
     zero_note: 'Esta persona deberá completar una declaración de cero ingresos.',
   },
   pt: {
@@ -62,6 +64,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     none_label: 'Nenhuma renda de nenhum tipo',
     amount_label: 'Valor mensal ($)',
     annual_label: 'Renda anual estimada ($)',
+    annual_caption: 'Calculado automaticamente a partir do valor mensal. Edite para substituir.', // PT: tentative — review
     zero_note: 'Esta pessoa precisará preencher uma declaração de renda zero.',
   },
 };
@@ -149,6 +152,26 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
     updateMemberIncome(slot, { income_sources: sources });
   };
 
+  const recomputeAnnual = (slot: number) => {
+    setByMember((prev) => {
+      const member = prev.find((m) => m.member_slot === slot);
+      if (!member || member.annual_was_manually_edited) return prev;
+      const totalMonthly = member.income_sources
+        .filter((s) => s.type !== 'none' && s.has_income)
+        .reduce((sum, s) => sum + (s.amount_monthly ?? 0), 0);
+      if (totalMonthly === 0) return prev;
+      const updated = prev.map((m) =>
+        m.member_slot === slot ? { ...m, annual_income: totalMonthly * 12 } : m
+      );
+      emit(updated);
+      return updated;
+    });
+  };
+
+  const handleAnnualManualEdit = (slot: number, value: number) => {
+    updateMemberIncome(slot, { annual_income: value, annual_was_manually_edited: true });
+  };
+
   const currentMember = byMember[currentAdultIndex];
   if (!currentMember) return null;
 
@@ -211,6 +234,7 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
                             parseFloat(e.target.value) || 0
                           )
                         }
+                        onBlur={() => recomputeAnnual(currentMember.member_slot)}
                         className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
                       />
                     </FormField>
@@ -222,7 +246,7 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
 
           {/* Annual total */}
           {currentMember.has_any_income && (
-            <FormField label={c.annual_label} htmlFor="annual_income">
+            <FormField label={c.annual_label} htmlFor="annual_income" helperText={c.annual_caption}>
               <input
                 id="annual_income"
                 type="number"
@@ -230,9 +254,10 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
                 min={0}
                 value={currentMember.annual_income || ''}
                 onChange={(e) =>
-                  updateMemberIncome(currentMember.member_slot, {
-                    annual_income: parseFloat(e.target.value) || 0,
-                  })
+                  handleAnnualManualEdit(
+                    currentMember.member_slot,
+                    parseFloat(e.target.value) || 0
+                  )
                 }
                 className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
               />

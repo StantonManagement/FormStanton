@@ -153,32 +153,36 @@ export default function IntakeShell({
       </main>
 
       {/* Footer navigation */}
-      <footer className="sticky bottom-0 bg-white border-t border-[var(--border)] px-4 py-3 z-20">
-        <div className="max-w-lg mx-auto">
-        {navError && (
-          <p className="text-xs text-[var(--error)] mb-2">{navError}</p>
-        )}
-        <div className="flex gap-3">
-          {canGoBack && (
+      {/* F7: Review section has its own submit button inside SectionReview.
+           Don't render the footer nav bar on review — it creates a duplicate disabled button. */}
+      {!isReviewSection && (
+        <footer className="sticky bottom-0 bg-white border-t border-[var(--border)] px-4 py-3 z-20">
+          <div className="max-w-lg mx-auto">
+          {navError && (
+            <p className="text-xs text-[var(--error)] mb-2">{navError}</p>
+          )}
+          <div className="flex gap-3">
+            {canGoBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="min-h-[44px] px-4 border border-[var(--border)] text-sm text-[var(--body)] hover:bg-[var(--paper)] transition-colors"
+              >
+                {backLabels[language]}
+              </button>
+            )}
             <button
               type="button"
-              onClick={onBack}
-              className="min-h-[44px] px-4 border border-[var(--border)] text-sm text-[var(--body)] hover:bg-[var(--paper)] transition-colors"
+              onClick={onNext}
+              disabled={!canGoNext || navigating}
+              className="flex-1 min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity"
             >
-              {backLabels[language]}
+              {navigating ? savingLabels[language] : isLastSection ? submitLabels[language] : nextLabels[language]}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={!canGoNext || navigating}
-            className="flex-1 min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-90 transition-opacity"
-          >
-            {navigating ? savingLabels[language] : isLastSection ? submitLabels[language] : nextLabels[language]}
-          </button>
-        </div>
-        </div>
-      </footer>
+          </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

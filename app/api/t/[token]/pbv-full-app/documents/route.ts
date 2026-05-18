@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { resolveBucket } from '@/lib/storage/resolveBucket';
+import { filterByTriggers } from '@/lib/pbv/applyDocumentTriggers';
+import type { IntakeData } from '@/lib/pbv/intake-schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +55,10 @@ export async function GET(
       );
     }
 
-    // Resolve token → application
+    // Resolve token → application (include intake_snapshot for F4 trigger filtering)
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, packet_locked, form_submission_id')
+      .select('id, packet_locked, form_submission_id, intake_snapshot')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -148,15 +151,23 @@ export async function GET(
     );
     await Promise.all(
       uploadedDocs.map(async (d) => {
+        const bucket = resolveBucket({ doc_type: d.doc_type, category: d.category });
         const { data: signed } = await supabaseAdmin.storage
-          .from('submissions')
+          .from(bucket)
           .createSignedUrl(d.storage_path!, 300);
         if (signed?.signedUrl) signedUrls[d.id] = signed.signedUrl;
       })
     );
 
+    // F4: Apply intake-based trigger filter so tenant only sees relevant docs.
+    // Uses intake_snapshot (immutable post-submit) when available, else skip filter.
+    const intakeSnapshot = app.intake_snapshot as IntakeData | null;
+    const rawDocs = intakeSnapshot
+      ? filterByTriggers(documents ?? [], intakeSnapshot)
+      : (documents ?? []);
+
     // Map to response shape
-    const mappedDocs = (documents ?? []).map(doc => {
+    const mappedDocs = rawDocs.map(doc => {
       // Build rejection reason display (template → free-text → generic fallback)
       let rejectionReasonDisplay: string | null = null;
       if (doc.status === 'rejected') {
@@ -184,7 +195,7 @@ export async function GET(
         label: translations[doc.doc_type] ?? doc.label, // Use translation if available, fallback to original
         required: doc.required,
         person_slot: doc.person_slot,
-        status: doc.status as 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived',
+        status: doc.status as 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived' | 'no_longer_required',
         rejection_reason: doc.rejection_reason ?? null,
         rejection_reason_key: doc.rejection_reason_key ?? null,
         rejection_reason_display: rejectionReasonDisplay,
@@ -196,12 +207,15 @@ export async function GET(
       };
     });
 
+    // F4: Exclude no_longer_required docs from tenant view entirely
+    const visibleDocs = mappedDocs.filter((d) => d.status !== 'no_longer_required');
+
     return NextResponse.json({
       success: true,
       data: {
         application_id: app.id,
         packet_locked: app.packet_locked ?? false,
-        documents: mappedDocs,
+        documents: visibleDocs,
       },
     });
 

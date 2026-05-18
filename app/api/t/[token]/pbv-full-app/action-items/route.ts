@@ -21,7 +21,7 @@ export async function GET(
     // Validate token and get application
     const { data: application, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, head_of_household_name, head_of_household_id')
+      .select('id, head_of_household_name')
       .eq('tenant_access_token', token)
       .single();
 

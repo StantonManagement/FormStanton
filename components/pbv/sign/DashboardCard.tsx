@@ -13,7 +13,7 @@ export type CardStatus = 'locked' | 'pending' | 'in_progress' | 'complete';
 
 interface Props {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   status: CardStatus;
   actionLabel?: string;
   onAction?: () => void;
@@ -53,7 +53,7 @@ export default function DashboardCard({ title, subtitle, status, actionLabel, on
           {title}
         </p>
         {subtitle && (
-          <p className="text-xs text-[var(--muted)] mt-0.5">{subtitle}</p>
+          <div className="mt-0.5">{subtitle}</div>
         )}
         <p className={`text-xs mt-1 ${
           status === 'complete' ? 'text-emerald-600' :

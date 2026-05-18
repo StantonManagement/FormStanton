@@ -95,6 +95,7 @@ export interface IntakeMemberIncome {
   income_sources: IntakeIncomeSource[];
   has_any_income: boolean;
   annual_income: number;
+  annual_was_manually_edited?: boolean;
 }
 
 export interface IntakeIncome {
@@ -198,7 +199,6 @@ export interface IntakeData {
   criminal_history?: IntakeCriminalHistory;
   dv_homeless_ra?: IntakeDvHomelessRa;
   household_expenses?: IntakeHouseholdExpenses;
-  _resume_section?: SectionSlug;
   _last_saved_at?: string;
 }
 
@@ -234,11 +234,15 @@ export function isSectionComplete(slug: SectionSlug, intakeData: IntakeData): bo
     }
     case 'criminal_history': {
       const ch = intakeData.criminal_history;
-      return !!(ch?.by_member && ch.by_member.every((m) => typeof m.has_criminal_history === 'boolean'));
+      return !!(ch?.by_member && ch.by_member.length > 0 && ch.by_member.every((m) => typeof m.has_criminal_history === 'boolean' && m.has_criminal_history !== null));
     }
     case 'dv_homeless_ra': {
       const dv = intakeData.dv_homeless_ra;
-      return typeof dv?.dv_status === 'boolean' && typeof dv?.homeless_at_admission === 'boolean';
+      return (
+        typeof dv?.dv_status === 'boolean' && dv.dv_status !== null &&
+        typeof dv?.homeless_at_admission === 'boolean' && dv.homeless_at_admission !== null &&
+        typeof dv?.reasonable_accommodation_requested === 'boolean' && dv.reasonable_accommodation_requested !== null
+      );
     }
     case 'household_expenses': {
       return !!intakeData.household_expenses;

@@ -29,7 +29,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     alt_title: 'Alternate Contact (optional)',
     alt_name: 'Name',
     alt_phone: 'Phone',
-    at_least_one: 'Please provide at least one phone number.',
+    at_least_one: 'At least one phone number is required.',
+    phone_required_note: 'At least one phone number is required (required)',
   },
   es: {
     phone_home: 'Teléfono de casa',
@@ -39,7 +40,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     alt_title: 'Contacto alternativo (opcional)',
     alt_name: 'Nombre',
     alt_phone: 'Teléfono',
-    at_least_one: 'Por favor, proporcione al menos un número de teléfono.',
+    at_least_one: 'Se requiere al menos un número de teléfono.',
+    phone_required_note: 'Se requiere al menos un número de teléfono (obligatorio)',
   },
   pt: {
     // PT: tentative — review
@@ -50,7 +52,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     alt_title: 'Contato alternativo (opcional)',
     alt_name: 'Nome',
     alt_phone: 'Telefone',
-    at_least_one: 'Por favor, forneça pelo menos um número de telefone.',
+    at_least_one: 'Pelo menos um número de telefone é obrigatório.',
+    phone_required_note: 'Pelo menos um número de telefone é obrigatório (obrigatório)', // PT: tentative — review
   },
 };
 
@@ -82,6 +85,10 @@ export default function SectionContact({ language, intakeData, onChange }: Props
   return (
     <div className="space-y-6">
       <FormSection background>
+        <p className="text-xs text-[var(--muted)] mb-2" role="note" aria-label={c.phone_required_note}>
+          <span aria-hidden="true">*</span> {c.at_least_one}
+        </p>
+
         <FormField label={c.phone_cell} htmlFor="phone_cell">
           <FormPhoneInput
             value={phoneCell}

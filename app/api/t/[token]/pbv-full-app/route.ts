@@ -17,7 +17,7 @@ export async function GET(
 
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name, intake_status, signing_status, submission_language, intake_data')
+      .select('id, building_address, unit_number, preapp_id, phone, preferred_language, language_confirmed_at, submitted_at, head_of_household_name, intake_status, signing_status, submission_language, intake_data, intake_snapshot, intake_snapshot_at, resume_section, application_review_status, application_review_status_at, application_review_status_note')
       .eq('tenant_access_token', token)
       .maybeSingle();
 
@@ -76,8 +76,18 @@ export async function GET(
 
     // Document summary from application_documents
     let document_summary: Record<string, number> | null = null;
+    let rejected_documents_count = 0;
     if (intake_submitted) {
       document_summary = await recomputeApplicationDocSummary(app.id) as unknown as Record<string, number>;
+      
+      // Count rejected documents for action_required status
+      const { count: rejectedCount } = await supabaseAdmin
+        .from('application_documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', app.id)
+        .eq('status', 'rejected');
+      rejected_documents_count = rejectedCount ?? 0;
     }
 
     const signature_progress: Array<{
@@ -271,7 +281,15 @@ export async function GET(
         signing_status: app.signing_status ?? null,
         submission_language: app.submission_language ?? null,
         hoh_member_id,
-        intake_data: app.intake_data ?? {},
+        // F3: Return snapshot when complete, workspace when in-progress
+        intake_data: (app.intake_status === 'complete' ? app.intake_snapshot : app.intake_data) ?? {},
+        intake_snapshot_at: app.intake_snapshot_at ?? null,
+        resume_section: app.resume_section ?? null,
+        // PRD-36: Application review status fields
+        application_review_status: app.application_review_status ?? null,
+        application_review_status_at: app.application_review_status_at ?? null,
+        application_review_status_note: app.application_review_status_note ?? null,
+        rejected_documents_count: rejected_documents_count,
       },
     });
   } catch (error: any) {
@@ -356,7 +374,7 @@ export async function POST(
       const m = household_members[i];
       const slot = i + 1;
       const age = computeAge(m.dob);
-      const signature_required = age !== null && age >= 18;
+      const signature_required = !m.is_minor && age !== null && age >= 18;
 
       // Encrypt SSN if provided (never log the plaintext)
       let ssn_encrypted: string | null = null;

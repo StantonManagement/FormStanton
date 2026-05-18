@@ -419,7 +419,10 @@ function PbvFullAppPage() {
     if (!options?.silent) setPageState('loading');
     try {
       const res = await tenantFetch(`/api/t/${token}/pbv-full-app`);
-      if (!res.ok) throw new Error('This link is invalid or has expired.');
+      if (!res.ok) {
+        if (res.status === 404) throw new Error('This link is invalid or has expired. Please use the link sent to you.');
+        throw new Error('We\'re having a technical issue. Please try again in a moment, or call the office at (860) 527-3813.');
+      }
       const { data } = await res.json();
 
       // Check if already submitted first
@@ -481,28 +484,40 @@ function PbvFullAppPage() {
         });
       }
 
-      // ── PRD-25 dispatcher: route by intake_status / signing_status ────────
+      // ── PRD-40 F10 dispatcher: intake_status is the sole routing signal ─────
+      // Precedence (strict):
+      //   1. not_started  → /intake (always, regardless of legacy intake_submitted)
+      //   2. in_progress  → /intake/{resume_section}
+      //   3. complete     → /dashboard
+      //   4. fallback     → /intake
       const intakeStatus = data.intake_status as string | undefined;
       const signingStatus = data.signing_status as string | undefined;
 
-      if (!options?.silent && intakeStatus && intakeStatus !== 'not_started') {
-        // Intake in-progress or complete: dispatch into new intake SPA
+      if (!options?.silent) {
+        const hint: string = data.preferred_language ?? 'en';
+        if (hint === 'en' || hint === 'es' || hint === 'pt') {
+          setLanguage(hint as PreferredLanguage);
+        }
+
+        if (!intakeStatus || intakeStatus === 'not_started') {
+          router.push(`/pbv-full-app/${token}/intake`);
+          return;
+        }
         if (intakeStatus === 'in_progress') {
-          const resumeSection = (data.intake_data as any)?._resume_section ?? 'household';
+          const resumeSection = data.resume_section ?? 'household';
           router.push(`/pbv-full-app/${token}/intake/${resumeSection}`);
           return;
         }
         if (intakeStatus === 'complete') {
           if (!signingStatus || signingStatus === 'not_started' ||
               signingStatus === 'summary_signed' || signingStatus === 'in_progress') {
-            // PRD-26 dashboard
             router.push(`/pbv-full-app/${token}/dashboard`);
             return;
           }
-          // signing complete → fall through to existing docs/finalize flow
+          // signing complete → fall through to legacy docs/finalize flow below
         }
       }
-      // ── End PRD-25 dispatcher ───────────────────────────────────────────────
+      // ── End PRD-40 F10 dispatcher ──────────────────────────────────────────
 
       if (data.intake_submitted) {
         if (!options?.silent) {
@@ -517,15 +532,6 @@ function PbvFullAppPage() {
       }
 
       if (!options?.silent) {
-        const hint: string = data.preferred_language ?? 'en';
-        if (hint === 'en' || hint === 'es' || hint === 'pt') {
-          setLanguage(hint as PreferredLanguage);
-        }
-        // If intake_status = not_started and no existing intake, go to intake landing
-        if (intakeStatus === 'not_started' && !data.intake_submitted) {
-          router.push(`/pbv-full-app/${token}/intake`);
-          return;
-        }
         setPageState('landing');
       }
     } catch (err: any) {

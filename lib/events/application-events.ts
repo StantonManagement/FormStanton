@@ -24,6 +24,7 @@ export type AnchorType = 'pbv_full_application';
 export const ApplicationEventType = {
   // Application lifecycle - PRD-15
   APPLICATION_SUBMITTED: 'application.submitted',
+  STAFF_ESCALATION_REQUIRED: 'staff.escalation_required',
 
   // Multi-signer observability - PRD-18
   TENANT_SIGNER_COMPLETED: 'tenant.signer_completed',
@@ -34,6 +35,7 @@ export const ApplicationEventType = {
   DOCUMENT_APPROVED:          'document.approved',
   DOCUMENT_REJECTED:          'document.rejected',
   DOCUMENT_WAIVED:            'document.waived',
+  DOCUMENT_DEFERRED:          'document.deferred',
 
   // Handoff lifecycle - Phase 2
   HANDOFF_SENT:               'handoff.sent',
@@ -53,6 +55,19 @@ export const ApplicationEventType = {
 
   // Tenant document upload - Phase PRD-03
   DOCUMENT_UPLOADED_BY_TENANT: 'document.uploaded_by_tenant',
+
+  // Document card stack analytics - PRD-42 F7
+  DOCUMENT_CARD_VIEWED:           'document_card.viewed',
+  DOCUMENT_CARD_COMPLETED:        'document_card.completed',
+  DOCUMENT_CARD_DEFERRED:         'document_card.deferred',
+  DOCUMENT_CARD_SKIPPED:          'document_card.skipped',
+  DOCUMENT_CARD_DEACTIVATED:      'document_card.deactivated',
+  DOCUMENT_SCANNER_OPENED:         'document_card.scanner_opened',
+  DOCUMENT_SCANNER_RETAKE:        'document_card.scanner_retake',
+  DOCUMENT_UPLOAD_SUCCESS:          'document_card.upload_success',
+  DOCUMENT_UPLOAD_FAILED:         'document_card.upload_failed',
+  DOCUMENT_STACK_STARTED:         'document_card.stack_started',
+  DOCUMENT_SIDESHEET_OPENED:      'document_card.sidesheet_opened',
 
   // Application lifecycle - PRD-04
   APPLICATION_CREATED:        'pbv_full_application.created',
@@ -89,6 +104,11 @@ export interface EventPayloadMap {
   'application.submitted': {
     submitted_at: string;
   };
+  'staff.escalation_required': {
+    reason: string;
+    reminders_sent: number;
+    missing_docs_count?: number;
+  };
   'tenant.signer_completed': {
     signer_id: string;
     slot: number;
@@ -119,6 +139,11 @@ export interface EventPayloadMap {
   'document.waived': {
     doc_type: string;
     label: string;
+  };
+  'document.deferred': {
+    document_id: string;
+    doc_type: string;
+    scheduled_reminder_at?: string;
   };
   'handoff.sent': {
     hach_review_status: string;
@@ -227,6 +252,57 @@ export interface EventPayloadMap {
     doc_type: string;
     label: string;
     file_name: string;
+  };
+
+  // Document card stack analytics payloads - PRD-42 F7
+  'document_card.viewed': {
+    doc_type: string;
+    card_index: number;
+    total_cards: number;
+    status: string;
+  };
+  'document_card.completed': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    revision: number;
+    time_on_card_ms?: number;
+  };
+  'document_card.deferred': {
+    doc_type: string;
+    card_index: number;
+    time_on_card_ms?: number;
+  };
+  'document_card.skipped': {
+    reason?: string;
+    timestamp: number;
+  };
+  'document_card.deactivated': {
+    doc_type: string;
+  };
+  'document_card.scanner_opened': {
+    doc_type: string;
+    mode?: 'initial' | 'append' | 'retake' | 'reupload_after_rejection';
+  };
+  'document_card.scanner_retake': {
+    doc_type: string;
+    page_count: number;
+  };
+  'document_card.upload_success': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    page_count?: number;
+  };
+  'document_card.upload_failed': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    error: string;
+  };
+  'document_card.stack_started': {
+    total_docs: number;
+    deferred_docs: number;
+  };
+  'document_card.sidesheet_opened': {
+    from_stage: string;
   };
 
   'pbv_full_application.created': {

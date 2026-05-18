@@ -27,6 +27,7 @@ export interface BootstrapData {
   submitted_at: string | null;
   phone_hint: string | null;
   head_of_household_name: string;
+  resume_section: string | null;
 }
 
 export type BootstrapState =
@@ -43,8 +44,8 @@ export function useIntakeBootstrap(token: string) {
     try {
       const res = await tenantFetch(`/api/t/${token}/pbv-full-app`);
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(text || 'This link is invalid or has expired.');
+        if (res.status === 404) throw new Error('This link is invalid or has expired. Please use the link sent to you.');
+        throw new Error('We\'re having a technical issue. Please try again in a moment, or call the office at (860) 527-3813.');
       }
       const json = await res.json();
       const d = json.data ?? json;
@@ -62,6 +63,7 @@ export function useIntakeBootstrap(token: string) {
           submitted_at: d.submitted_at ?? null,
           phone_hint: d.phone_hint ?? null,
           head_of_household_name: d.head_of_household_name ?? '',
+          resume_section: d.resume_section ?? null,
         },
       });
     } catch (err: any) {

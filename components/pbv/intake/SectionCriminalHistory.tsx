@@ -17,6 +17,10 @@ import type {
   SectionSlug,
 } from '@/lib/pbv/intake-schema';
 
+type MemberCriminalWithNeutral = Omit<IntakeMemberCriminal, 'has_criminal_history'> & {
+  has_criminal_history: boolean | null;
+};
+
 interface Props {
   language: PreferredLanguage;
   intakeData: IntakeData;
@@ -30,6 +34,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     no: 'No',
     details_label: 'Please provide details (offense, date, disposition)',
     details_hint: 'Include the nature of the offense, date, and outcome.',
+    confidentiality: 'This information helps us assess eligibility and priority. Your answer is kept confidential per Stanton policy and will not be shared without your consent.',
   },
   es: {
     question: '¿Esta persona ha sido condenada o ha declarado culpable o no contest por un delito grave en los últimos 5 años?',
@@ -37,6 +42,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     no: 'No',
     details_label: 'Por favor, proporcione detalles (delito, fecha, resolución)',
     details_hint: 'Incluya la naturaleza del delito, fecha y resultado.',
+    confidentiality: 'Esta información nos ayuda a evaluar la elegibilidad y prioridad. Su respuesta se mantiene confidencial según la política de Stanton y no se compartirá sin su consentimiento.',
   },
   pt: {
     // PT: tentative — review
@@ -45,6 +51,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     no: 'Não',
     details_label: 'Forneça detalhes (infração, data, disposição)',
     details_hint: 'Inclua a natureza da infração, data e resultado.',
+    confidentiality: 'Esta informação nos ajuda a avaliar elegibilidade e prioridade. Sua resposta é mantida confidencial conforme a política da Stanton e não será compartilhada sem seu consentimento.', // PT: tentative — review
   },
 };
 
@@ -55,23 +62,23 @@ export default function SectionCriminalHistory({ language, intakeData, onChange 
 
   const existing = intakeData.criminal_history;
 
-  const [byMember, setByMember] = useState<IntakeMemberCriminal[]>(() =>
+  const [byMember, setByMember] = useState<MemberCriminalWithNeutral[]>(() =>
     adults.map((adult) => {
       const ex = existing?.by_member?.find((m) => m.member_slot === adult.slot);
-      return ex ?? { member_slot: adult.slot, member_name: adult.name, has_criminal_history: false };
+      return ex ? { ...ex, has_criminal_history: ex.has_criminal_history } : { member_slot: adult.slot, member_name: adult.name, has_criminal_history: null };
     })
   );
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const emit = (updated: IntakeMemberCriminal[]) => {
-    const payload: IntakeCriminalHistory = { by_member: updated };
+  const emit = (updated: MemberCriminalWithNeutral[]) => {
+    const payload: IntakeCriminalHistory = { by_member: updated as IntakeMemberCriminal[] };
     onChange('criminal_history', payload as unknown as Record<string, unknown>);
   };
 
   useEffect(() => { emit(byMember); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const update = (slot: number, patch: Partial<IntakeMemberCriminal>) => {
+  const update = (slot: number, patch: Partial<MemberCriminalWithNeutral>) => {
     const updated = byMember.map((m) => m.member_slot === slot ? { ...m, ...patch } : m);
     setByMember(updated);
     emit(updated);
@@ -90,8 +97,9 @@ export default function SectionCriminalHistory({ language, intakeData, onChange 
     >
       <FormSection background>
         <p className="text-sm text-[var(--body)]">{c.question}</p>
+        <p className="text-xs text-[var(--muted)] mt-1">{c.confidentiality}</p>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-3" role="radiogroup" aria-required="true">
           <label className="flex items-center gap-2 text-sm min-h-[44px]">
             <input type="radio" name={`criminal_${current.member_slot}`}
               checked={current.has_criminal_history === true}

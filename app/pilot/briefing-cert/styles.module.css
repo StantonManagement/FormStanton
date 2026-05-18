@@ -207,9 +207,4 @@
   .signaturePlaceholder {
     border-bottom: 1px solid #000 !important;
   }
-
-  body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-  }
 }

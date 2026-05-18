@@ -14,6 +14,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { ALWAYS_SECTIONS, type IntakeData } from '@/lib/pbv/intake-schema';
 import { getApplicableMembers } from '@/lib/memberFilter';
+import { persistDocumentTriggers } from '@/lib/pbv/applyDocumentTriggers';
+import { sendTenantNotification } from '@/lib/notifications/send';
+import { buildPreflightDocList } from '@/lib/notifications/buildPreflightDocList';
+import { NotificationType } from '@/lib/notifications/types';
 
 const REQUIRED_SECTIONS: string[] = ALWAYS_SECTIONS;
 
@@ -75,11 +79,46 @@ export async function POST(
       };
     }
 
+    // F1: Send pre-flight checklist SMS (non-blocking)
+    try {
+      const language = (current?.preferred_language ?? current?.submission_language ?? 'en') as 'en' | 'es' | 'pt';
+      const docList = await buildPreflightDocList(app.id, language);
+      
+      // Extract tenant name from head_of_household_name or fallback
+      const tenantName: string = app.head_of_household_name ?? 'there';
+      
+      // Generate magic link using existing token
+      const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/t/${token}`;
+      
+      // Generate unique event ID for idempotency
+      const bridgeEventId = `intake-complete-${app.id}-${completedAt}`;
+      
+      await sendTenantNotification({
+        applicationId: app.id,
+        notificationType: NotificationType.PBV_PREFLIGHT_CHECKLIST,
+        interpolations: {
+          tenant_name: tenantName,
+          doc_list: docList.docListText,
+          magic_link: magicLink,
+        },
+        triggeredByEventId: bridgeEventId,
+      });
+      
+      console.log(`[intake/complete] Pre-flight checklist sent for application ${app.id}`);
+    } catch (notificationError: any) {
+      // Don't fail intake completion if notification fails
+      console.error('[intake/complete] Pre-flight checklist notification failed (non-fatal):', notificationError);
+    }
+
+    // F2: Write immutable snapshot and clear workspace
     const { error: updateError } = await supabaseAdmin
       .from('pbv_full_applications')
       .update({
         intake_status: 'complete',
         intake_completed_at: completedAt,
+        intake_snapshot: intakeData,
+        intake_snapshot_at: completedAt,
+        intake_data: '{}',
         updated_at: completedAt,
       })
       .eq('id', app.id);
@@ -144,6 +183,11 @@ async function bridgeIntakeToDatabase(
       }
     }
 
+    // Compute annual income from monthly amounts (intake collects monthly, bridge stores annual)
+    const annualIncome = (memberIncome?.income_sources ?? [])
+      .filter(src => src.has_income && typeof src.amount_monthly === 'number')
+      .reduce((sum, src) => sum + ((src.amount_monthly as number) * 12), 0);
+
     const employed = incomeSources.includes('employment');
     const hasSsi = incomeSources.includes('ssi');
     const hasSs = incomeSources.includes('ss');
@@ -172,7 +216,7 @@ async function bridgeIntakeToDatabase(
       relationship: i === 0 ? 'head' : (m.relationship || 'other'),
       ssn_encrypted: ssnEncrypted,
       ssn_last_four: ssnLast4,
-      annual_income: memberIncome?.annual_income ?? 0,
+      annual_income: annualIncome,
       income_sources: incomeSources,
       employed,
       has_ssi: hasSsi,
@@ -257,6 +301,15 @@ async function bridgeIntakeToDatabase(
   } catch (seedError: any) {
     await supabaseAdmin.from('pbv_household_members').delete().eq('full_application_id', appId);
     throw new Error('Failed to seed documents: ' + seedError.message);
+  }
+
+  // F4: Apply intake-based document triggers — mark docs whose conditions
+  // are no longer met as 'no_longer_required'. Non-blocking: log only.
+  const triggerResult = await persistDocumentTriggers(appId, intakeData);
+  if (triggerResult.error) {
+    console.error('[intake/complete] Document trigger apply failed (non-fatal):', triggerResult.error);
+  } else {
+    console.log(`[intake/complete] Document triggers: ${triggerResult.deactivated} deactivated, ${triggerResult.activated} activated`);
   }
 }
 

@@ -603,6 +603,8 @@ export default function StantonReviewSurface({
         <DocumentViewer
           document={viewingDoc}
           context="stanton"
+          anchorType={anchorType}
+          anchorId={anchorId}
           onClose={() => setViewingDoc(null)}
         />
       )}

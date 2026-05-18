@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { tenantFetch } from '@/lib/tenantFetch';
 import dynamic from 'next/dynamic';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
+import { getDocHelp } from '@/lib/pbv/docTypeHelp';
+import DedupApplyDialog from './DedupApplyDialog';
+import MultiFileDropZone from './MultiFileDropZone';
 
 const DocumentScanner = dynamic(
   () => import('@/components/DocumentScanner/DocumentScanner'),
@@ -45,7 +48,8 @@ const translations = {
     status_submitted: 'Submitted',
     status_approved: 'Approved',
     status_rejected: 'Needs Replacement',
-    upload_btn: 'Upload',
+    scan_btn: 'Scan',
+    upload_btn: 'Upload file',
     replace_btn: 'Replace',
     view_btn: 'View',
     uploading: 'Uploading...',
@@ -60,6 +64,8 @@ const translations = {
     category_immigration: 'Citizenship & Immigration',
     category_signed_forms: 'Signed Forms',
     category_custom: 'Additional Documents',
+    help_icon: '?',
+    help_label: 'What is this?',
   },
   es: {
     title: 'Documentos Requeridos',
@@ -70,7 +76,8 @@ const translations = {
     status_submitted: 'Enviado',
     status_approved: 'Aprobado',
     status_rejected: 'Necesita Reemplazo',
-    upload_btn: 'Subir',
+    scan_btn: 'Escanear',
+    upload_btn: 'Subir archivo',
     replace_btn: 'Reemplazar',
     view_btn: 'Ver',
     uploading: 'Subiendo...',
@@ -85,6 +92,8 @@ const translations = {
     category_immigration: 'Ciudadanía e Inmigración',
     category_signed_forms: 'Formularios Firmados',
     category_custom: 'Documentos Adicionales',
+    help_icon: '?',
+    help_label: '¿Qué es esto?',
   },
   pt: {
     title: 'Documentos Necessários',
@@ -95,7 +104,8 @@ const translations = {
     status_submitted: 'Enviado',
     status_approved: 'Aprovado',
     status_rejected: 'Precisa Substituir',
-    upload_btn: 'Enviar',
+    scan_btn: 'Digitalizar',
+    upload_btn: 'Enviar arquivo',
     replace_btn: 'Substituir',
     view_btn: 'Ver',
     uploading: 'Enviando...',
@@ -110,6 +120,8 @@ const translations = {
     category_immigration: 'Cidadania e Imigração',
     category_signed_forms: 'Formulários Assinados',
     category_custom: 'Documentos Adicionais',
+    help_icon: '?',
+    help_label: 'O que é isso?',
   },
 };
 
@@ -144,6 +156,13 @@ export default function TenantDocumentUpload({
   const [isLocked, setIsLocked] = useState(packetLocked);
   const [scanningDocId, setScanningDocId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [expandedHelp, setExpandedHelp] = useState<Set<string>>(new Set());
+  
+  // F1: Dedup dialog state
+  const [dedupDialogOpen, setDedupDialogOpen] = useState(false);
+  const [dedupFilename, setDedupFilename] = useState('');
+  const [dedupSourceDocId, setDedupSourceDocId] = useState('');
+  const [dedupSlots, setDedupSlots] = useState<Array<{ id: string; doc_type: string; label: string; category: string | null; person_slot: number | null }>>([]);
 
   // Fixed category order per PRD-14 Phase 4
   const CATEGORY_ORDER = ['income', 'assets', 'medical_childcare', 'immigration', 'signed_forms', 'custom'];
@@ -181,6 +200,18 @@ export default function TenantDocumentUpload({
     });
   };
 
+  const toggleHelp = (docId: string) => {
+    setExpandedHelp((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) {
+        next.delete(docId);
+      } else {
+        next.add(docId);
+      }
+      return next;
+    });
+  };
+
   const loadDocuments = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -207,9 +238,84 @@ export default function TenantDocumentUpload({
     loadDocuments();
   }, [loadDocuments]);
 
-  const uploadedCount = documents.filter((d) => d.status !== 'missing').length;
-  const totalCount = documents.length;
-  const requiredCount = documents.filter((d) => d.required && d.status === 'missing').length;
+  const requiredDocs = documents.filter((d) => d.required);
+  const uploadedCount = requiredDocs.filter((d) => d.status !== 'missing').length;
+  const totalCount = requiredDocs.length;
+  const requiredCount = requiredDocs.filter((d) => d.status === 'missing').length;
+  const optionalUploadedCount = documents.filter((d) => !d.required && d.status !== 'missing').length;
+
+  // F1: Check for dedup after successful upload
+  const checkForDedup = useCallback(
+    async (docId: string, filename: string, wasReplace: boolean) => {
+      // Don't trigger dedup on file replacement - only on first upload
+      if (wasReplace) return;
+
+      try {
+        // Call by-hash endpoint
+        const response = await tenantFetch(
+          `/api/t/${token}/pbv-full-app/documents/by-hash?hash=${encodeURIComponent('pending')}&exclude_doc_id=${docId}`,
+          { method: 'GET' }
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+        if (!result.success) return;
+
+        const compatibleSlots = result.data?.compatible_missing_slots ?? [];
+        
+        // Only show dialog if there are compatible slots
+        if (compatibleSlots.length > 0) {
+          setDedupSourceDocId(docId);
+          setDedupFilename(filename);
+          setDedupSlots(compatibleSlots);
+          setDedupDialogOpen(true);
+        }
+      } catch (err) {
+        // Silently fail - dedup is a UX enhancement, not critical
+        console.error('[Dedup check] Failed:', err);
+      }
+    },
+    [token]
+  );
+
+  // F1: Apply dedup selections
+  const handleDedupApply = useCallback(
+    async (selectedIds: string[]) => {
+      if (selectedIds.length === 0) {
+        setDedupDialogOpen(false);
+        return;
+      }
+
+      try {
+        const response = await tenantFetch(
+          `/api/t/${token}/pbv-full-app/documents/bulk-apply`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source_doc_id: dedupSourceDocId,
+              target_doc_ids: selectedIds,
+            }),
+          }
+        );
+
+        const result = await response.json();
+        
+        if (result.success) {
+          // Refresh documents to show applied changes
+          loadDocuments();
+        } else {
+          console.error('[Bulk apply] Failed:', result.message);
+        }
+      } catch (err) {
+        console.error('[Bulk apply] Error:', err);
+      } finally {
+        setDedupDialogOpen(false);
+      }
+    },
+    [dedupSourceDocId, token, loadDocuments]
+  );
 
   const handleFileChange = useCallback(
     async (docId: string, file: File) => {
@@ -232,6 +338,10 @@ export default function TenantDocumentUpload({
       }
 
       setUploadingId(docId);
+
+      // Check if this is a replacement (doc already has file)
+      const doc = documents.find((d) => d.id === docId);
+      const isReplace = doc?.status === 'submitted' || doc?.status === 'rejected';
 
       try {
         const formData = new FormData();
@@ -261,19 +371,35 @@ export default function TenantDocumentUpload({
         );
         setDocuments(updatedDocs);
         onDocumentsChange?.(updatedDocs);
+
+        // F1: Check for dedup (only on first upload, not replacement)
+        // Note: We pass 'false' for wasReplace since this was a successful new upload
+        await checkForDedup(docId, file.name, false);
       } catch (err: any) {
         setError(err.message || t.error_upload);
       } finally {
         setUploadingId(null);
       }
     },
-    [documents, token, onDocumentsChange, t]
+    [documents, token, onDocumentsChange, t, checkForDedup]
   );
 
   const handleScannerComplete = useCallback(
     async (docId: string, file: File, _metadata: ScannerMetadata) => {
       setScanningDocId(null);
       await handleFileChange(docId, file);
+    },
+    [handleFileChange]
+  );
+
+  const handleFileInputChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>, docId: string) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        await handleFileChange(docId, file);
+      }
+      // Reset input so the same file can be selected again
+      event.target.value = '';
     },
     [handleFileChange]
   );
@@ -329,7 +455,30 @@ export default function TenantDocumentUpload({
             {requiredCount} {t.required.toLowerCase()} {requiredCount === 1 ? 'document' : 'documents'} {language === 'en' ? 'remaining' : language === 'es' ? 'pendiente' : 'pendente'}
           </p>
         )}
+        {optionalUploadedCount > 0 && (
+          <p className="text-xs text-[var(--muted)] mt-1">
+            +{optionalUploadedCount} {language === 'en' ? 'optional uploaded' : language === 'es' ? 'opcional subido' : 'opcional enviado'}
+          </p>
+        )}
       </div>
+
+      {/* F2: Multi-file drop zone */}
+      {!isLocked && (
+        <MultiFileDropZone
+          token={token}
+          language={language}
+          missingSlots={documents
+            .filter((d) => d.status === 'missing')
+            .map((d) => ({
+              id: d.id,
+              doc_type: d.doc_type,
+              label: d.label,
+              category: d.category || null,
+              person_slot: d.person_slot,
+            }))}
+          onUploadsComplete={loadDocuments}
+        />
+      )}
 
       {/* Error message */}
       {error && (
@@ -391,7 +540,25 @@ export default function TenantDocumentUpload({
                               ) : (
                                 <span className="text-xs text-[var(--muted)]">({t.optional})</span>
                               )}
+                              {/* Help icon */}
+                              <button
+                                type="button"
+                                onClick={() => toggleHelp(doc.id)}
+                                className="ml-1 w-5 h-5 rounded-full border border-[var(--muted)] text-[var(--muted)] text-xs flex items-center justify-center hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+                                title={t.help_label as string}
+                                aria-label={t.help_label as string}
+                                aria-expanded={expandedHelp.has(doc.id)}
+                              >
+                                {t.help_icon}
+                              </button>
                             </div>
+
+                            {/* Help text - expandable */}
+                            {expandedHelp.has(doc.id) && (
+                              <p className="text-xs text-[var(--muted)] ml-4 mb-2 max-w-md">
+                                {getDocHelp(doc.doc_type, language)}
+                              </p>
+                            )}
 
                             {doc.person_slot > 0 && (
                               <p className="text-xs text-[var(--muted)] ml-4">
@@ -423,7 +590,7 @@ export default function TenantDocumentUpload({
                             )}
                           </div>
 
-                          {/* View + Upload buttons */}
+                          {/* View + Scan + Upload buttons */}
                           <div className="flex-shrink-0 flex flex-col gap-2 items-end">
                             {doc.file_url && (
                               <a
@@ -436,29 +603,60 @@ export default function TenantDocumentUpload({
                               </a>
                             )}
                             {canUpload && (
-                              <button
-                                type="button"
-                                disabled={isUploading}
-                                onClick={() => setScanningDocId(doc.id)}
-                                className={`
-                                  inline-flex items-center justify-center
-                                  min-w-[100px] min-h-[44px] px-4 py-2
-                                  text-sm font-semibold
-                                  transition-opacity hover:opacity-90
-                                  ${isUploading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[var(--primary)] text-white cursor-pointer'}
-                                `}
-                                style={{ touchAction: 'manipulation' }}
-                              >
-                                {isUploading ? (
-                                  <span>{t.uploading}</span>
-                                ) : isReplace ? (
-                                  <span>{t.replace_btn}</span>
-                                ) : (
-                                  <span>{t.upload_btn}</span>
-                                )}
-                              </button>
+                              <>
+                                {/* Scan button - opens camera scanner */}
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => setScanningDocId(doc.id)}
+                                  className={`
+                                    inline-flex items-center justify-center
+                                    min-w-[100px] min-h-[44px] px-4 py-2
+                                    text-sm font-semibold
+                                    transition-opacity hover:opacity-90
+                                    ${isUploading ? 'bg-gray-300 cursor-not-allowed' : 'bg-[var(--primary)] text-white cursor-pointer'}
+                                  `}
+                                  style={{ touchAction: 'manipulation' }}
+                                >
+                                  {isUploading ? (
+                                    <span>{t.uploading}</span>
+                                  ) : isReplace ? (
+                                    <span>{t.replace_btn}</span>
+                                  ) : (
+                                    <span>{t.scan_btn}</span>
+                                  )}
+                                </button>
+                                {/* Upload file button - desktop PDF path */}
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => {
+                                    const input = document.getElementById(`file-input-${doc.id}`) as HTMLInputElement | null;
+                                    input?.click();
+                                  }}
+                                  className={`
+                                    inline-flex items-center justify-center
+                                    min-w-[100px] min-h-[44px] px-4 py-2
+                                    text-sm font-semibold border border-[var(--primary)]
+                                    transition-opacity hover:opacity-90
+                                    ${isUploading ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white text-[var(--primary)] cursor-pointer'}
+                                  `}
+                                  style={{ touchAction: 'manipulation' }}
+                                >
+                                  {isUploading ? t.uploading : t.upload_btn}
+                                </button>
+                                {/* Hidden file input for desktop upload - one per doc row */}
+                                <input
+                                  id={`file-input-${doc.id}`}
+                                  type="file"
+                                  accept="application/pdf,image/*,.heic,.heif"
+                                  className="hidden"
+                                  onChange={(e) => handleFileInputChange(e, doc.id)}
+                                />
+                              </>
                             )}
                           </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -492,6 +690,16 @@ export default function TenantDocumentUpload({
           </div>
         </div>
       )}
+
+      {/* F1: Dedup Apply Dialog */}
+      <DedupApplyDialog
+        isOpen={dedupDialogOpen}
+        filename={dedupFilename}
+        compatibleSlots={dedupSlots}
+        language={language}
+        onClose={() => setDedupDialogOpen(false)}
+        onApply={handleDedupApply}
+      />
     </div>
   );
 }

@@ -37,7 +37,7 @@ export async function POST(
     // ── 1. Load application state ───────────────────────────────────────────
     const { data: fullApp, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, intake_data, intake_status, submission_language, preferred_language')
+      .select('id, intake_data, intake_snapshot, intake_status, submission_language, preferred_language')
       .eq('id', app.id)
       .maybeSingle();
 
@@ -55,7 +55,8 @@ export async function POST(
       };
     }
 
-    const intakeData = (fullApp.intake_data ?? {}) as IntakeData;
+    // F4: Read from snapshot; fall back to intake_data only for legacy rows pre-backfill
+    const intakeData = ((fullApp.intake_snapshot ?? fullApp.intake_data) ?? {}) as IntakeData;
 
     // Derive submission language: preferred es→es, pt→es, en→en, default en
     const rawLang = fullApp.submission_language ?? fullApp.preferred_language ?? 'en';

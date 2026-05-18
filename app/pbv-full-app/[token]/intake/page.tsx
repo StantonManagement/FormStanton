@@ -9,9 +9,42 @@
  * "Start" navigates to the first section: /pbv-full-app/[token]/intake/household
  */
 
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useIntakeBootstrap } from '@/lib/pbv/hooks/useIntakeBootstrap';
+import { buildingUnits } from '@/lib/buildings';
+import { tenantFetch } from '@/lib/tenantFetch';
 import type { PreferredLanguage } from '@/types/compliance';
+
+const unitCopy: Record<PreferredLanguage, {
+  your_unit: string;
+  building_label: string;
+  unit_label: string;
+  building_wrong: string;
+  saving: string;
+}> = {
+  en: {
+    your_unit: 'Your Unit',
+    building_label: 'Building',
+    unit_label: 'Unit',
+    building_wrong: 'Building doesn\u2019t look right? Call our office at (860) 527-3813.',
+    saving: 'Saving…',
+  },
+  es: {
+    your_unit: 'Su unidad',
+    building_label: 'Edificio',
+    unit_label: 'Unidad',
+    building_wrong: '¿El edificio no es correcto? Llame a nuestra oficina al (860) 527-3813.',
+    saving: 'Guardando…',
+  },
+  pt: {
+    your_unit: 'Sua unidade',
+    building_label: 'Edifício',
+    unit_label: 'Unidade',
+    building_wrong: 'Edifício não parece correto? Ligue para nosso escritório: (860) 527-3813.',
+    saving: 'Salvando…',
+  },
+};
 
 const copy: Record<PreferredLanguage, {
   title: string;
@@ -80,15 +113,47 @@ export default function IntakeLandingPage() {
   const language: PreferredLanguage =
     state.status === 'ready' ? state.data.preferred_language : 'en';
   const intakeData = state.status === 'ready' ? state.data.intake_data : {};
+  const resumeSection = state.status === 'ready' ? state.data.resume_section : null;
   const c = copy[language] ?? copy.en;
+  const uc = unitCopy[language] ?? unitCopy.en;
 
   const isResume =
     state.status === 'ready' && state.data.intake_status === 'in_progress';
 
-  const handleStart = () => {
-    const resumeSection =
-      (intakeData as any)?._resume_section ?? 'household';
-    router.push(`/pbv-full-app/${token}/intake/${isResume ? resumeSection : 'household'}`);
+  // Unit pre-selection state
+  const buildingAddress = state.status === 'ready' ? state.data.building_address : '';
+  const initialUnit = state.status === 'ready' ? state.data.unit_number : '';
+  const [selectedUnit, setSelectedUnit] = useState('');
+  const [unitSaving, setUnitSaving] = useState(false);
+
+  const knownUnits = buildingAddress ? (buildingUnits[buildingAddress] ?? null) : null;
+
+  useEffect(() => {
+    if (initialUnit) setSelectedUnit(initialUnit);
+  }, [initialUnit]);
+
+  const handleStart = async () => {
+    // Persist unit change if different from the original
+    if (selectedUnit && selectedUnit !== initialUnit) {
+      setUnitSaving(true);
+      try {
+        const res = await tenantFetch(`/api/t/${token}/pbv-full-app/unit`, {
+          method: 'PATCH',
+          body: { unit_number: selectedUnit },
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          console.error('[intake-landing] unit update failed:', json);
+        }
+      } catch (err) {
+        console.error('[intake-landing] unit update error:', err);
+      } finally {
+        setUnitSaving(false);
+      }
+    }
+
+    const targetSection = resumeSection ?? 'household';
+    router.push(`/pbv-full-app/${token}/intake/${isResume ? targetSection : 'household'}`);
   };
 
   if (state.status === 'loading') {
@@ -119,6 +184,40 @@ export default function IntakeLandingPage() {
           {c.time_estimate}
         </p>
 
+        {/* Building / Unit confirmation card */}
+        {buildingAddress && (
+          <div className="border border-[var(--border)] bg-white p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">{uc.your_unit}</p>
+
+            <div className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-2 text-sm">
+              <span className="text-[var(--muted)]">{uc.building_label}</span>
+              <span className="font-medium text-[var(--body)]">{buildingAddress}</span>
+
+              <span className="text-[var(--muted)]">{uc.unit_label}</span>
+              <div>
+                {knownUnits ? (
+                  <select
+                    value={selectedUnit}
+                    onChange={(e) => setSelectedUnit(e.target.value)}
+                    className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
+                  >
+                    {!knownUnits.includes(selectedUnit) && selectedUnit && (
+                      <option value={selectedUnit}>{selectedUnit}</option>
+                    )}
+                    {knownUnits.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="font-medium text-[var(--body)]">{selectedUnit}</span>
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs text-[var(--muted)]">{uc.building_wrong}</p>
+          </div>
+        )}
+
         <ol className="space-y-4">
           {[
             { title: c.step1_title, desc: c.step1_desc },
@@ -147,9 +246,10 @@ export default function IntakeLandingPage() {
           <button
             type="button"
             onClick={handleStart}
-            className="w-full min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+            disabled={unitSaving}
+            className="w-full min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {isResume ? c.resume_btn : c.start_btn}
+            {unitSaving ? uc.saving : (isResume ? c.resume_btn : c.start_btn)}
           </button>
         </div>
       </footer>

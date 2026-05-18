@@ -55,13 +55,13 @@ export async function POST(
     const mergedIntakeData = {
       ...existingIntakeData,
       [section]: sectionData,
-      _resume_section: section,
       _last_saved_at: new Date().toISOString(),
     };
 
     const updatePayload: Record<string, unknown> = {
       intake_data: mergedIntakeData,
       intake_status: 'in_progress',
+      resume_section: section,
       updated_at: new Date().toISOString(),
     };
 

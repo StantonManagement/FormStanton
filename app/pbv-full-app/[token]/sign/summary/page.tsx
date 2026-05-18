@@ -50,8 +50,8 @@ export default function SummarySignPage({ params }: Props) {
     // If we already have forms, no need to generate
     if (data.forms.length > 0) return;
 
-    // If intake not complete (no signing_status), can't generate yet
-    if (!data.signing_status || data.signing_status === 'not_started') {
+    // If intake not complete, can't generate forms yet
+    if (data.intake_status !== 'complete') {
       router.push(`/pbv-full-app/${token}/dashboard`);
       return;
     }

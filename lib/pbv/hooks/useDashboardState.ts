@@ -34,9 +34,18 @@ export interface DashboardData {
   forms_signed: number;
   upload_total: number;
   upload_complete: number;
+  optional_uploaded_count: number;
   additional_signers_needed: boolean;
   additional_signers_pending_count: number;
   can_submit: boolean;
+  // PRD-36: Application review status fields
+  application_review_status: string | null;
+  application_review_status_at: string | null;
+  application_review_status_note: string | null;
+  rejected_documents_count: number;
+  intake_status: string | null;
+  // PRD-36: For office contact lookup
+  building_address: string | null;
 }
 
 export type DashboardState =
@@ -78,15 +87,18 @@ export function useDashboardState(token: string) {
 
       let uploadTotal = 0;
       let uploadComplete = 0;
+      let optionalUploadedCount = 0;
       if (uploadRes.ok) {
         const uploadJson = await uploadRes.json();
         uploadTotal = uploadJson.data?.total ?? 0;
         uploadComplete = uploadJson.data?.complete ?? 0;
+        optionalUploadedCount = uploadJson.data?.optional_complete ?? 0;
       } else {
         // Fallback to bootstrap document_summary if upload-summary endpoint unavailable
         const uploadSummary = d.document_summary ?? {};
         uploadTotal = (uploadSummary.total ?? 0) as number;
         uploadComplete = (uploadSummary.complete ?? 0) as number;
+        optionalUploadedCount = 0;
       }
 
       let additionalSignersPendingCount = 0;
@@ -117,9 +129,17 @@ export function useDashboardState(token: string) {
           forms_signed: formsSigned,
           upload_total: uploadTotal,
           upload_complete: uploadComplete,
+          optional_uploaded_count: optionalUploadedCount,
           additional_signers_needed: additionalSignersPendingCount > 0,
           additional_signers_pending_count: additionalSignersPendingCount,
           can_submit: canSubmit,
+          // PRD-36: Application review status fields from bootstrap
+          application_review_status: (d.application_review_status as string | null) ?? null,
+          application_review_status_at: (d.application_review_status_at as string | null) ?? null,
+          application_review_status_note: (d.application_review_status_note as string | null) ?? null,
+          rejected_documents_count: (d.rejected_documents_count as number) ?? 0,
+          intake_status: (d.intake_status as string | null) ?? null,
+          building_address: (d.building_address as string | null) ?? null,
         },
       });
     } catch (err: any) {
