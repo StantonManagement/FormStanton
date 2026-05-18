@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { translations, Language } from '@/lib/translations';
 import { getErrorMessage } from '@/lib/errorMessage';
+import { buildings, buildingUnits } from '@/lib/buildings';
+import BuildingAutocomplete from '@/components/BuildingAutocomplete';
 
 interface InsuranceUpdateModalProps {
   isOpen: boolean;
@@ -12,7 +14,6 @@ interface InsuranceUpdateModalProps {
 
 export default function InsuranceUpdateModal({ isOpen, onClose, language }: InsuranceUpdateModalProps) {
   const [step, setStep] = useState<'lookup' | 'upload'>('lookup');
-  const [phone, setPhone] = useState('');
   const [buildingAddress, setBuildingAddress] = useState('');
   const [unitNumber, setUnitNumber] = useState('');
   const [submissionId, setSubmissionId] = useState('');
@@ -33,7 +34,7 @@ export default function InsuranceUpdateModal({ isOpen, onClose, language }: Insu
       const response = await fetch('/api/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, buildingAddress, unitNumber }),
+        body: JSON.stringify({ buildingAddress, unitNumber }),
       });
 
       const data = await response.json();
@@ -89,7 +90,6 @@ export default function InsuranceUpdateModal({ isOpen, onClose, language }: Insu
 
   const handleClose = () => {
     setStep('lookup');
-    setPhone('');
     setBuildingAddress('');
     setUnitNumber('');
     setSubmissionId('');
@@ -138,42 +138,42 @@ export default function InsuranceUpdateModal({ isOpen, onClose, language }: Insu
         ) : step === 'lookup' ? (
           <form onSubmit={handleLookup} className="space-y-4">
             <p className="text-sm text-gray-600">
-              {language === 'en' ? 'Enter your information to find your submission:' :
-               language === 'es' ? 'Ingrese su información para encontrar su envío:' :
-               'Insira suas informações para encontrar seu envio:'}
+              {language === 'en' ? 'Select your building and unit to find your submission:' :
+               language === 'es' ? 'Seleccione su edificio y unidad para encontrar su envío:' :
+               'Selecione seu prédio e unidade para encontrar seu envio:'}
             </p>
 
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">{t.phone}</span>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-              />
-            </label>
-
-            <label className="block">
               <span className="text-sm font-medium text-gray-700">{t.building}</span>
-              <input
-                type="text"
-                required
+              <BuildingAutocomplete
                 value={buildingAddress}
-                onChange={(e) => setBuildingAddress(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                onChange={(val) => {
+                  setBuildingAddress(val);
+                  setUnitNumber('');
+                }}
+                buildings={buildings}
+                required
               />
             </label>
 
             <label className="block">
               <span className="text-sm font-medium text-gray-700">{t.unit}</span>
-              <input
-                type="text"
+              <select
                 required
+                disabled={!buildingAddress || !(buildingUnits[buildingAddress]?.length)}
                 value={unitNumber}
                 onChange={(e) => setUnitNumber(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
-              />
+                className="mt-1 block w-full rounded-none border border-[var(--border)] bg-[var(--bg-input)] text-[var(--ink)] px-4 py-3 focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors duration-200 disabled:opacity-50"
+              >
+                <option value="">
+                  {!buildingAddress
+                    ? (language === 'en' ? '-- Select a building first --' : language === 'es' ? '-- Seleccione un edificio primero --' : '-- Selecione um prédio primeiro --')
+                    : (language === 'en' ? '-- Select unit --' : language === 'es' ? '-- Seleccione unidad --' : '-- Selecione unidade --')}
+                </option>
+                {(buildingUnits[buildingAddress] ?? []).map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
             </label>
 
             {error && (

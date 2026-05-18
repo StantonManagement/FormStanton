@@ -161,11 +161,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, buildingAddress, unitNumber } = await request.json();
+    const { buildingAddress, unitNumber } = await request.json();
 
-    if (!phone || !buildingAddress || !unitNumber) {
+    if (!buildingAddress || !unitNumber) {
       return NextResponse.json(
-        { success: false, message: 'Phone, building address, and unit number are required' },
+        { success: false, message: 'Building address and unit number are required' },
         { status: 400 }
       );
     }
@@ -173,7 +173,6 @@ export async function POST(request: NextRequest) {
     const { data: submission, error } = await supabaseAdmin
       .from('submissions')
       .select('*')
-      .eq('phone', phone)
       .eq('building_address', buildingAddress)
       .eq('unit_number', unitNumber)
       .order('created_at', { ascending: false })
