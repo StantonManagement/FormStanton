@@ -1,6 +1,8 @@
 # Path 1 — iOS Native Scanner Enabled (2026-05-18)
 
-**One-line summary:** Dropped `capture="environment"` on iOS so Apple's native "Scan Documents" appears in the file-picker action sheet. Android behavior unchanged.
+> **Correction (2026-05-18 later in session):** I overstated the iOS upside. Removing `capture="environment"` does NOT directly surface "Scan Documents" in Safari's file-picker action sheet. The sheet shows Photo Library / Take Photo or Video / Choose Files. "Scan Documents" lives inside the iOS Files app, reached via Choose Files → ⋯ menu in the top-right → Scan Documents. That's 3 taps deep behind an icon most tenants will never find. Real-world impact of this change is therefore **smaller than originally described** — it removes the forced-camera behavior (tenants can now pick a previously-taken photo from Photo Library), but does not meaningfully expose Apple's scanner. The change is still net-positive and worth keeping, but the discoverability story for Apple's scanner is poor enough that PRD-45 now covers iOS too rather than deferring to Apple.
+
+**One-line summary:** Dropped `capture="environment"` on iOS so the file-picker action sheet shows Photo Library + Take Photo + Choose Files instead of jumping straight to the camera. Android behavior unchanged.
 
 ## Why
 

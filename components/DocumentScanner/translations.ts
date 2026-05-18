@@ -23,6 +23,20 @@ export interface ScannerStrings {
   scannerError: string;
   captureError: string;
   uploadError: string;
+  // Live preview scanner (PRD-45)
+  scanDocumentBtn: string;
+  secondaryTakePhoto: string;
+  secondaryChooseFile: string;
+  permissionPromptTitle: string;
+  permissionPromptBody: string;
+  permissionAllow: string;
+  permissionDenied: string;
+  permissionNoCamera: string;
+  captureNow: string;
+  holdSteady: string;
+  noDocumentDetected: string;
+  lowLightWarning: string;
+  firstScanTooltip: string;
 }
 
 export const translations: Record<ScannerLanguage, ScannerStrings> = {
@@ -49,6 +63,20 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     scannerError: 'Scanner unavailable. Using original image.',
     captureError: 'Unable to process file. Try another image.',
     uploadError: 'Upload failed. Please try again.',
+    // Live preview scanner (PRD-45)
+    scanDocumentBtn: 'Scan document',
+    secondaryTakePhoto: 'Take photo',
+    secondaryChooseFile: 'Choose file',
+    permissionPromptTitle: 'Use your camera?',
+    permissionPromptBody: "We'll use your camera to scan this document. The image stays on your phone until you tap Submit.",
+    permissionAllow: 'Allow camera',
+    permissionDenied: 'Camera access blocked. Using photo upload instead. To enable the scanner, allow camera in browser settings.',
+    permissionNoCamera: 'No camera detected. Using photo upload instead.',
+    captureNow: 'Capture now',
+    holdSteady: 'Hold steady',
+    noDocumentDetected: 'Position the document in the frame',
+    lowLightWarning: "It's dark — try moving to better light",
+    firstScanTooltip: "Hold the document flat in the frame. We'll capture automatically when steady.",
   },
   es: {
     takePhoto: 'Tomar Foto',
@@ -73,6 +101,20 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     scannerError: 'Escáner no disponible. Se usará la imagen original.',
     captureError: 'No se pudo procesar el archivo. Intente con otra imagen.',
     uploadError: 'No se pudo subir. Inténtelo nuevamente.',
+    // Live preview scanner (PRD-45)
+    scanDocumentBtn: 'Escanear documento',
+    secondaryTakePhoto: 'Tomar foto',
+    secondaryChooseFile: 'Elegir archivo',
+    permissionPromptTitle: '¿Usar tu cámara?',
+    permissionPromptBody: 'Usaremos tu cámara para escanear este documento. La imagen permanece en tu teléfono hasta que toques Enviar.',
+    permissionAllow: 'Permitir cámara',
+    permissionDenied: 'Acceso a la cámara bloqueado. Usando subida de foto en su lugar. Para habilitar el escáner, permite la cámara en la configuración del navegador.',
+    permissionNoCamera: 'No se detectó cámara. Usando subida de foto en su lugar.',
+    captureNow: 'Capturar ahora',
+    holdSteady: 'Mantener firme',
+    noDocumentDetected: 'Coloca el documento en el marco',
+    lowLightWarning: 'Está oscuro — intenta mejor luz',
+    firstScanTooltip: 'Mantén el documento plano en el marco. Capturaremos automáticamente cuando esté estable.',
   },
   pt: {
     takePhoto: 'Tirar Foto',
@@ -97,5 +139,19 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     scannerError: 'Scanner indisponível. Usando imagem original.',
     captureError: 'Não foi possível processar o arquivo. Tente outra imagem.',
     uploadError: 'Falha no envio. Tente novamente.',
+    // Live preview scanner (PRD-45)
+    scanDocumentBtn: 'Digitalizar documento',
+    secondaryTakePhoto: 'Tirar foto',
+    secondaryChooseFile: 'Escolher arquivo',
+    permissionPromptTitle: 'Usar sua câmera?',
+    permissionPromptBody: 'Usaremos sua câmera para digitalizar este documento. A imagem fica no seu telefone até você tocar em Enviar.',
+    permissionAllow: 'Permitir câmera',
+    permissionDenied: 'Acesso à câmera bloqueado. Usando upload de foto em vez disso. Para habilitar o scanner, permita a câmera nas configurações do navegador.',
+    permissionNoCamera: 'Nenhuma câmera detectada. Usando upload de foto em vez disso.',
+    captureNow: 'Capturar agora',
+    holdSteady: 'Manter firme',
+    noDocumentDetected: 'Posicione o documento no quadro',
+    lowLightWarning: 'Está escuro — tente melhor luz',
+    firstScanTooltip: 'Mantenha o documento plano no quadro. Capturaremos automaticamente quando estiver estável.',
   },
 };

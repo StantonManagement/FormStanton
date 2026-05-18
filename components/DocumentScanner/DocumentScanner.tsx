@@ -1,6 +1,8 @@
 'use client';
 
-import { type ChangeEvent, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useMemo, useRef, useState, useCallback } from 'react';
+import { usePermissionPrompt } from './usePermissionPrompt';
+import LivePreviewStage from './LivePreviewStage';
 import { PDFDocument } from 'pdf-lib';
 import { evaluateImageQuality, QualityScores } from './quality';
 import { translations, ScannerLanguage } from './translations';
@@ -32,7 +34,7 @@ interface DocumentScannerProps {
 }
 
 type CaptureMode = 'camera' | 'file';
-type Stage = 'entry' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'submitting';
+type Stage = 'entry' | 'live_preview' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'submitting';
 
 interface CapturedPage {
   id: string;
@@ -200,6 +202,22 @@ export default function DocumentScanner({
 
   const isSingleMode = !multiPage;
   const canAddMorePages = pages.length < maxPages;
+
+  // Live preview support detection (PRD-45)
+  const liveSupported = useMemo(() => {
+    return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  }, []);
+
+  // Permission prompt for live preview
+  const permissionPrompt = usePermissionPrompt({
+    onGranted: useCallback((stream: MediaStream) => {
+      setStage('live_preview');
+    }, []),
+    onDenied: useCallback((reason: string) => {
+      setError(reason === 'no_camera' ? t.permissionNoCamera : t.permissionDenied);
+      setStage('entry');
+    }, [t]),
+  });
 
   const warningMessages = useMemo(() => {
     if (!currentPage) {
@@ -428,20 +446,57 @@ export default function DocumentScanner({
         <div className="space-y-4">
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.instructionsTitle}</h3>
           <p className="text-sm text-[var(--ink)] leading-relaxed">{instructions}</p>
-          <button
-            type="button"
-            onClick={() => openCaptureInput('camera')}
-            className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
-          >
-            {t.takePhoto}
-          </button>
-          <button
-            type="button"
-            onClick={() => openCaptureInput('file')}
-            className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
-          >
-            {t.chooseFile}
-          </button>
+
+          {liveSupported ? (
+            // New live preview entry: single primary CTA + secondary text links
+            <>
+              <button
+                type="button"
+                onClick={permissionPrompt.openPrePrompt}
+                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.scanDocumentBtn}
+              </button>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => openCaptureInput('camera')}
+                  className="text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+                >
+                  {t.secondaryTakePhoto}
+                </button>
+                <span className="text-[var(--muted)]">·</span>
+                <button
+                  type="button"
+                  onClick={() => openCaptureInput('file')}
+                  className="text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+                >
+                  {t.secondaryChooseFile}
+                </button>
+              </div>
+            </>
+          ) : (
+            // Fallback: existing two-button layout for unsupported browsers
+            <>
+              <button
+                type="button"
+                onClick={() => openCaptureInput('camera')}
+                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.takePhoto}
+              </button>
+              <button
+                type="button"
+                onClick={() => openCaptureInput('file')}
+                className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+              >
+                {t.chooseFile}
+              </button>
+            </>
+          )}
+
+          {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+
           <button
             type="button"
             onClick={onCancel}
@@ -450,6 +505,54 @@ export default function DocumentScanner({
             {t.cancel}
           </button>
         </div>
+      )}
+
+      {/* Permission pre-prompt modal */}
+      {permissionPrompt.state.kind === 'pre_prompt' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-6 max-w-sm mx-4 space-y-4 rounded-none">
+            <h3 className="font-serif text-lg text-[var(--primary)]">{t.permissionPromptTitle}</h3>
+            <p className="text-sm text-[var(--ink)] leading-relaxed">{t.permissionPromptBody}</p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={permissionPrompt.acceptPrePrompt}
+                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.permissionAllow}
+              </button>
+              <button
+                type="button"
+                onClick={permissionPrompt.cancel}
+                className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+              >
+                {t.cancel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Requesting spinner */}
+      {permissionPrompt.state.kind === 'requesting' && (
+        <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
+      )}
+
+      {/* Live preview stage */}
+      {stage === 'live_preview' && permissionPrompt.state.kind === 'granted' && (
+        <LivePreviewStage
+          stream={permissionPrompt.state.stream}
+          language={language}
+          onCancel={() => {
+            permissionPrompt.cancel();
+            setStage('entry');
+          }}
+          onCapture={async (blob) => {
+            permissionPrompt.cancel();
+            setStage('processing');
+            await processImageBlob(blob, 'scanner', false);
+          }}
+        />
       )}
 
       {stage === 'processing' && (
@@ -544,7 +647,11 @@ export default function DocumentScanner({
             {canAddMorePages && (
               <button
                 type="button"
-                onClick={() => setStage('entry')}
+                onClick={() => {
+                  // Reset current page and go to entry (which shows Scan document when liveSupported)
+                  resetCurrentPage();
+                  setStage('entry');
+                }}
                 className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
               >
                 {t.addPage}
