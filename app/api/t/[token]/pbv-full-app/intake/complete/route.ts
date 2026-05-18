@@ -85,7 +85,7 @@ export async function POST(
       const docList = await buildPreflightDocList(app.id, language);
       
       // Extract tenant name from head_of_household_name or fallback
-      const tenantName: string = app.head_of_household_name ?? 'there';
+      const tenantName: string = (app.head_of_household_name as string | null | undefined) ?? 'there';
       
       // Generate magic link using existing token
       const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/t/${token}`;

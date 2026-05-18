@@ -74,7 +74,7 @@ export async function POST(
     // Fetch target documents
     const { data: targetDocs, error: targetError } = await supabaseAdmin
       .from('application_documents')
-      .select('id, anchor_id, status, category, person_slot, revision')
+      .select('id, anchor_id, status, category, person_slot, revision, doc_type, label')
       .in('id', target_doc_ids)
       .eq('anchor_type', 'pbv_full_application');
 
@@ -166,8 +166,9 @@ export async function POST(
         documentId: target.id,
         payload: {
           doc_type: target.doc_type,
-          applied_from_source: source_doc_id,
+          label: target.label,
           file_name: sourceDoc.file_name,
+          applied_from_source: source_doc_id,
         },
       });
     }

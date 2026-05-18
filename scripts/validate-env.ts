@@ -4,6 +4,12 @@
  * Checks that all required environment variables are present and valid
  */
 
+// Skip validation on Vercel (env vars are runtime-only in production/preview)
+if (process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview') {
+  console.log('🔍 Vercel build detected - skipping env validation (runtime env vars)');
+  process.exit(0);
+}
+
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';

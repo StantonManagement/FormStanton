@@ -359,11 +359,10 @@ export default function MultiFileDropZone({
       try {
         await tenantFetch(`/api/t/${token}/pbv-full-app/documents/bulk-apply`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: {
             source_doc_id: currentDedup.sourceDocId,
             target_doc_ids: selectedIds,
-          }),
+          },
         });
       } catch (err) {
         console.error('[MultiFileDropZone] Bulk apply failed:', err);

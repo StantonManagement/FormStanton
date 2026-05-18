@@ -17,6 +17,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import DocumentCardStackLanding from './DocumentCardStackLanding';
 import DocumentCard, { type DocumentCardData } from './DocumentCard';
+export type { DocumentCardData } from './DocumentCard';
 import type { SupportedLanguage } from '@/lib/pbv/cards/docContent';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
 
@@ -49,9 +50,8 @@ interface DocumentCardStackProps {
   /** Navigate to dashboard */
   onComplete: () => void;
   /** Optional analytics hook */
-  useAnalytics?: () => {
-    emit: (eventType: string, payload: Record<string, unknown>) => void;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useAnalytics?: () => { emit: (eventType: any, payload: Record<string, unknown>) => void };
   /** Start at specific card index (for re-entry) */
   initialCardIndex?: number;
   /** Skip landing screen and go straight to cards */

@@ -1,5 +1,33 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Reduce serverless bundle size
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@dnd-kit/core', '@dnd-kit/sortable'],
+  },
+
+  // Handle OpenCV.js and other native modules in webpack
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+    return config;
+  },
+
+  // Image optimization
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+    ],
+  },
+
   async headers() {
     return [
       {

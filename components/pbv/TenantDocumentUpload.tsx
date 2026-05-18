@@ -292,11 +292,10 @@ export default function TenantDocumentUpload({
           `/api/t/${token}/pbv-full-app/documents/bulk-apply`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: {
               source_doc_id: dedupSourceDocId,
               target_doc_ids: selectedIds,
-            }),
+            },
           }
         );
 

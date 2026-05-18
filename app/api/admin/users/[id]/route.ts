@@ -4,16 +4,17 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const guard = await requirePermission('user-management', 'read');
     if (guard) return guard;
 
     const { data: user, error } = await supabaseAdmin
       .from('admin_users')
       .select('id, username, display_name, is_active')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error || !user) {

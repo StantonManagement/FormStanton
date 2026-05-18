@@ -4,13 +4,11 @@
  * app/pbv-full-app/[token]/documents/page.tsx
  *
  * Tenant document upload page (PRD-42 + PRD-44).
- * Replaced directory view with card stack for mobile-first linear flow.
- * PRD-44: Mid-flow re-entry, review screen, and signing handoff.
  */
 
 import { use } from 'react';
 import { useState, useCallback, useEffect } from 'react';
-import { useIntakeBootstrap } from '@/lib/pbv/hooks/useIntakeBootstrap';
+import { useIntakeBootstrap, type BootstrapData } from '@/lib/pbv/hooks/useIntakeBootstrap';
 import DocumentCardStack, { type DocumentCardData } from '@/components/pbv/cards/DocumentCardStack';
 import AlmostDoneReview from '@/components/pbv/cards/AlmostDoneReview';
 import ReEntryToast from '@/components/pbv/cards/ReEntryToast';
@@ -45,30 +43,24 @@ export default function DocumentsPage({ params }: Props) {
   const [pageView, setPageView] = useState<PageView>({ kind: 'loading' });
   const [retakeDocId, setRetakeDocId] = useState<string | null>(null);
 
-  // Fetch documents from API
+  const readyData: BootstrapData | null = state.status === 'ready' ? state.data : null;
+  const preferredLanguage = readyData?.preferred_language ?? null;
+  const submittedAt = readyData?.submitted_at ?? null;
+
   const fetchDocuments = useCallback(async (lang: PreferredLanguage = 'en') => {
     if (!token) return;
-
     setLoading(true);
     setError(null);
-
     try {
       const response = await fetch(`/api/t/${token}/pbv-full-app/documents?language=${lang}`, {
         credentials: 'include',
       });
-
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Documents not found');
-        }
-        if (response.status === 403) {
-          throw new Error('Access expired. Please contact the office.');
-        }
+        if (response.status === 404) throw new Error('Documents not found');
+        if (response.status === 403) throw new Error('Access expired. Please contact the office.');
         throw new Error('Failed to load documents');
       }
-
       const result = await response.json();
-
       if (result.success && result.data?.documents) {
         setDocuments(result.data.documents);
         setPacketLocked(result.data?.packet_locked ?? false);
@@ -84,89 +76,61 @@ export default function DocumentsPage({ params }: Props) {
     }
   }, [token]);
 
-  // Initial fetch - wait for bootstrap to resolve language
   useEffect(() => {
-    if (state.status === 'ready') {
-      const lang = (state.data.preferred_language ?? 'en') as PreferredLanguage;
-      fetchDocuments(lang);
+    if (preferredLanguage) {
+      fetchDocuments(preferredLanguage as PreferredLanguage);
     }
-  }, [state.status, state.data?.preferred_language]);
+  }, [preferredLanguage, fetchDocuments]);
 
-  // Handle upload
   const handleUpload = useCallback(
     async (docId: string, file: File, _metadata?: ScannerMetadata) => {
       const formData = new FormData();
       formData.append('file', file);
-
       const response = await fetch(`/api/t/${token}/pbv-full-app/documents/${docId}/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include',
       });
-
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
         throw new Error(result.message || 'Upload failed');
       }
-
-      // Refresh documents to get updated state
-      const lang = (state.data?.preferred_language ?? 'en') as PreferredLanguage;
+      const lang = (preferredLanguage ?? 'en') as PreferredLanguage;
       await fetchDocuments(lang);
     },
-    [token, fetchDocuments, state.data?.preferred_language]
+    [token, fetchDocuments, preferredLanguage]
   );
 
-  // Navigate to dashboard
   const handleComplete = useCallback(() => {
     window.location.href = `/pbv-full-app/${token}/dashboard`;
   }, [token]);
 
-  // Navigate to signing flow (PRD-44 F2 handoff)
   const handleProceedToSign = useCallback(() => {
-    // Navigate to the signing flow
-    // The signer page is at /pbv-full-app/signer/[member_token]
-    // We need to fetch the member token for the head of household
     window.location.href = `/pbv-full-app/${token}/sign`;
   }, [token]);
 
-  // Navigate to review screen
   const handleGoToReview = useCallback(() => {
     setPageView({ kind: 'review' });
   }, []);
 
-  // Handle retake from review screen
   const handleRetakeFromReview = useCallback((docId: string) => {
     setRetakeDocId(docId);
     setPageView({ kind: 'card_stack', initialIndex: findCardIndexById(documents, docId), showToast: null });
   }, [documents]);
 
-  // Handle back to cards from review
   const handleBackToCards = useCallback(() => {
-    // Go back to card stack at the last card or first missing
     const lastIndex = documents.length - 1;
     setPageView({ kind: 'card_stack', initialIndex: lastIndex, showToast: null });
   }, [documents.length]);
 
-  const language: PreferredLanguage = (state.data?.preferred_language ?? 'en') as PreferredLanguage;
-  const firstName = state.data?.first_name ?? 'there';
-  const applicationId = state.data?.application_id ?? '';
-
-  // Determine page view based on re-entry classification (PRD-44 F1)
   useEffect(() => {
-    if (state.status !== 'ready' || loading || documents.length === 0) return;
-
-    const isSubmitted = !!state.data?.submitted_at;
-
-    const reEntryState = classifyReEntry({
-      documents,
-      isSubmitted,
-    });
-
+    if (!readyData || loading || documents.length === 0) return;
+    const isSubmitted = !!submittedAt;
+    const reEntryState = classifyReEntry({ documents, isSubmitted });
     switch (reEntryState.kind) {
       case 'first_visit':
         setPageView({ kind: 'card_stack', initialIndex: 0, showToast: null });
         break;
-
       case 'mid_flow':
         setPageView({
           kind: 'card_stack',
@@ -174,7 +138,6 @@ export default function DocumentsPage({ params }: Props) {
           showToast: 'mid_flow',
         });
         break;
-
       case 'rejection_pending':
         setPageView({
           kind: 'card_stack',
@@ -182,23 +145,21 @@ export default function DocumentsPage({ params }: Props) {
           showToast: 'rejection_pending',
         });
         break;
-
       case 'all_complete_pending_submit':
         setPageView({ kind: 'review' });
         break;
-
       case 'submitted':
-        // PRD-20 territory - tenant already submitted
-        // Fall through to dashboard or show submitted state
         setPageView({ kind: 'submitted' });
         break;
     }
-  }, [state.status, state.data?.submitted_at, documents, loading]);
+  }, [readyData, submittedAt, documents, loading]);
 
-  // Create analytics hook factory
+  const language: PreferredLanguage = (preferredLanguage ?? 'en') as PreferredLanguage;
+  const firstName = readyData?.head_of_household_name?.split(' ')[0] ?? 'there';
+  const applicationId = readyData?.head_of_household_name ?? '';
+
   const useAnalytics = () => useCardAnalytics({ token, applicationId });
 
-  // Render loading state
   if (state.status === 'loading' || loading || pageView.kind === 'loading') {
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
@@ -207,10 +168,10 @@ export default function DocumentsPage({ params }: Props) {
     );
   }
 
-  // Render error state
   if (state.status === 'error' || error || pageView.kind === 'error') {
-    const message =
-      state.status === 'error' ? state.message : error ?? pageView.kind === 'error' ? pageView.message : 'Something went wrong';
+    const errorMessage = state.status === 'error' ? state.message : null;
+    const pageViewMessage = pageView.kind === 'error' ? pageView.message : null;
+    const message = errorMessage ?? error ?? pageViewMessage ?? 'Something went wrong';
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center px-4">
         <div className="text-center space-y-4">
@@ -226,21 +187,13 @@ export default function DocumentsPage({ params }: Props) {
     );
   }
 
-  // Render submitted state (PRD-20 territory)
   if (pageView.kind === 'submitted') {
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center px-4">
         <div className="text-center space-y-4 max-w-md">
-          <div className="text-5xl">✓</div>
-          <h1
-            className="text-2xl font-normal text-[var(--primary)]"
-            style={{ fontFamily: 'Libre Baskerville, serif' }}
-          >
-            {language === 'es'
-              ? '¡Solicitud enviada!'
-              : language === 'pt'
-              ? 'Inscrição enviada!'
-              : 'Application submitted!'}
+          <div className="text-5xl">?</div>
+          <h1 className="text-2xl font-normal text-[var(--primary)]" style={{ fontFamily: 'Libre Baskerville, serif' }}>
+            {language === 'es' ? '¡Solicitud enviada!' : language === 'pt' ? 'Inscrição enviada!' : 'Application submitted!'}
           </h1>
           <p className="text-sm text-[var(--body)]">
             {language === 'es'
@@ -253,18 +206,13 @@ export default function DocumentsPage({ params }: Props) {
             onClick={handleComplete}
             className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >
-            {language === 'es'
-              ? 'Ir al panel'
-              : language === 'pt'
-              ? 'Ir ao painel'
-              : 'Go to dashboard'}
+            {language === 'es' ? 'Ir al panel' : language === 'pt' ? 'Ir ao painel' : 'Go to dashboard'}
           </button>
         </div>
       </div>
     );
   }
 
-  // Render review screen
   if (pageView.kind === 'review') {
     return (
       <AlmostDoneReview
@@ -279,17 +227,14 @@ export default function DocumentsPage({ params }: Props) {
     );
   }
 
-  // Render card stack (default)
   return (
     <>
-      {/* Re-entry toast for mid-flow and rejection re-entry */}
       {pageView.kind === 'card_stack' && pageView.showToast && (
         <ReEntryToast
           variant={pageView.showToast === 'rejection_pending' ? 'rejection_pending' : 'mid_flow'}
           language={language}
         />
       )}
-
       <DocumentCardStack
         token={token}
         firstName={firstName}

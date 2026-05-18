@@ -252,6 +252,7 @@ export interface EventPayloadMap {
     doc_type: string;
     label: string;
     file_name: string;
+    applied_from_source?: string;
   };
 
   // Document card stack analytics payloads - PRD-42 F7
