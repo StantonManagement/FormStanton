@@ -45,6 +45,10 @@ export interface ScannerStrings {
   howToBullet2: string;
   howToBullet3: string;
   howToBullet4: string;
+  // PRD-46 — No-document-detected confirmation
+  noDocumentWarningTitle: string;
+  noDocumentWarningBody: string;
+  confirmUseAnyway: string;
 }
 
 export const translations: Record<ScannerLanguage, ScannerStrings> = {
@@ -92,6 +96,9 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     howToBullet2: "Stand directly above it. Don't take the photo at an angle.",
     howToBullet3: 'Make sure the whole document is in the frame — all four corners.',
     howToBullet4: 'Good light. Avoid shadows from your hand or phone.',
+    noDocumentWarningTitle: "We couldn't detect a document",
+    noDocumentWarningBody: "This photo doesn't appear to contain a document. Retake for best results.",
+    confirmUseAnyway: 'I understand — use this photo anyway',
   },
   es: {
     takePhoto: 'Tomar Foto',
@@ -137,6 +144,9 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     howToBullet2: 'Párate directamente encima. No tomes la foto en ángulo.',
     howToBullet3: 'Asegúrate de que todo el documento esté en el marco — las cuatro esquinas.',
     howToBullet4: 'Buena luz. Evita sombras de tu mano o teléfono.',
+    noDocumentWarningTitle: 'No pudimos detectar un documento',
+    noDocumentWarningBody: 'Esta foto no parece contener un documento. Vuelva a tomarla para mejores resultados.',
+    confirmUseAnyway: 'Entiendo — usar esta foto de todos modos',
   },
   pt: {
     takePhoto: 'Tirar Foto',
@@ -182,5 +192,8 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     howToBullet2: 'Fique diretamente acima. Não tire a foto em ângulo.',
     howToBullet3: 'Certifique-se de que todo o documento esteja no quadro — os quatro cantos.',
     howToBullet4: 'Boa luz. Evite sombras da sua mão ou telefone.',
+    noDocumentWarningTitle: 'Não conseguimos detectar um documento',
+    noDocumentWarningBody: 'Esta foto não parece conter um documento. Refaça para melhores resultados.',
+    confirmUseAnyway: 'Eu entendo — usar esta foto mesmo assim',
   },
 };

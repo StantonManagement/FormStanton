@@ -197,6 +197,7 @@ export default function DocumentScanner({
   const [currentPage, setCurrentPage] = useState<CapturedPage | null>(null);
   const [qualityOverride, setQualityOverride] = useState(false);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('camera');
+  const [useAnywayConfirmed, setUseAnywayConfirmed] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -240,6 +241,7 @@ export default function DocumentScanner({
     }
     setCurrentPage(null);
     setQualityOverride(false);
+    setUseAnywayConfirmed(false);
     setError('');
   };
 
@@ -252,7 +254,8 @@ export default function DocumentScanner({
   const processImageBlob = async (
     sourceBlob: Blob,
     method: 'scanner' | 'file_upload',
-    heicConverted: boolean
+    heicConverted: boolean,
+    liveDocumentDetected: boolean | null = null
   ) => {
     const image = await loadImageFromBlob(sourceBlob);
 
@@ -282,18 +285,23 @@ export default function DocumentScanner({
     const processedImage = await loadImageFromBlob(processedBlob);
     const quality = evaluateImageQuality(processedImage, processedImage.naturalWidth, processedImage.naturalHeight);
 
+    // If the live scanner explicitly told us no document was detected, surface as a quality flag
+    const augmentedFlags = liveDocumentDetected === false
+      ? Array.from(new Set([...quality.flags, 'no_document_detected']))
+      : quality.flags;
+
     const page: CapturedPage = {
       id: crypto.randomUUID(),
       blob: processedBlob,
       previewUrl: URL.createObjectURL(processedBlob),
-      qualityFlags: quality.flags,
+      qualityFlags: augmentedFlags,
       qualityScores: quality.scores,
       captureMethod: method,
       heicConverted,
     };
 
     setCurrentPage(page);
-    setStage(quality.flags.length > 0 ? 'warning' : 'preview');
+    setStage(augmentedFlags.length > 0 ? 'warning' : 'preview');
   };
 
   const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -568,10 +576,10 @@ export default function DocumentScanner({
             permissionPrompt.cancel();
             setStage('entry');
           }}
-          onCapture={async (blob) => {
+          onCapture={async (blob, meta) => {
             permissionPrompt.cancel();
             setStage('processing');
-            await processImageBlob(blob, 'scanner', false);
+            await processImageBlob(blob, 'scanner', false, meta?.documentDetected ?? null);
           }}
         />
       )}
@@ -580,40 +588,92 @@ export default function DocumentScanner({
         <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
       )}
 
-      {stage === 'warning' && currentPage && (
-        <div className="space-y-4">
-          <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
-          <div className="bg-[var(--bg-section)] border border-[var(--warning)]/30 p-3 rounded-none space-y-2">
-            {warningMessages.map((message) => (
-              <p key={message} className="text-sm text-[var(--ink)]">
-                {message}
-              </p>
-            ))}
+      {stage === 'warning' && currentPage && (() => {
+        const hasNoDocumentFlag = currentPage.qualityFlags.includes('no_document_detected');
+        return (
+          <div className="space-y-4">
+            <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
+
+            {hasNoDocumentFlag ? (
+              <div className="bg-[var(--bg-section)] border border-[var(--error)]/40 p-3 rounded-none space-y-1">
+                <p className="text-sm font-medium text-[var(--error)]">{t.noDocumentWarningTitle}</p>
+                <p className="text-sm text-[var(--ink)]">{t.noDocumentWarningBody}</p>
+              </div>
+            ) : (
+              <div className="bg-[var(--bg-section)] border border-[var(--warning)]/30 p-3 rounded-none space-y-2">
+                {warningMessages.map((message) => (
+                  <p key={message} className="text-sm text-[var(--ink)]">
+                    {message}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {hasNoDocumentFlag && (
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useAnywayConfirmed}
+                  onChange={(e) => setUseAnywayConfirmed(e.target.checked)}
+                  className="mt-0.5 shrink-0 w-4 h-4 accent-[var(--primary)]"
+                />
+                <span className="text-sm text-[var(--ink)]">{t.confirmUseAnyway}</span>
+              </label>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              {hasNoDocumentFlag ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQualityOverride(true);
+                      setStage('preview');
+                    }}
+                    disabled={!useAnywayConfirmed}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {t.useAnyway}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCurrentPage();
+                      setStage('entry');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                  >
+                    {t.retake}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCurrentPage();
+                      setStage('entry');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                  >
+                    {t.retake}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQualityOverride(true);
+                      setStage('preview');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+                  >
+                    {t.useAnyway}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                resetCurrentPage();
-                setStage('entry');
-              }}
-              className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
-            >
-              {t.retake}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQualityOverride(true);
-                setStage('preview');
-              }}
-              className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-            >
-              {t.useAnyway}
-            </button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {stage === 'preview' && currentPage && (
         <div className="space-y-4">
