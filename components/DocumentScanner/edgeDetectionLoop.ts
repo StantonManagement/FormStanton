@@ -44,6 +44,51 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
   const offscreenCanvas = document.createElement('canvas');
   const offscreenCtx = offscreenCanvas.getContext('2d');
 
+  // Validate quad: reject background-spanning, tiny, or skewed quads.
+  // All inputs in offscreen-canvas space (pre-scale).
+  function isValidQuad(q: Quad, frameWidth: number, frameHeight: number): boolean {
+    const frameArea = frameWidth * frameHeight;
+    // Shoelace formula for quad area
+    const area = Math.abs(
+      (q.topLeft.x * q.topRight.y - q.topRight.x * q.topLeft.y) +
+      (q.topRight.x * q.bottomRight.y - q.bottomRight.x * q.topRight.y) +
+      (q.bottomRight.x * q.bottomLeft.y - q.bottomLeft.x * q.bottomRight.y) +
+      (q.bottomLeft.x * q.topLeft.y - q.topLeft.x * q.bottomLeft.y)
+    ) / 2;
+    const areaRatio = area / frameArea;
+
+    // Reject quads spanning >85% of frame (likely viewport/background edge)
+    if (areaRatio > 0.85) return false;
+    // Reject quads <12% of frame (likely interior detail like signature box)
+    if (areaRatio < 0.12) return false;
+
+    // Reject if all 4 corners are near frame edges (background contour)
+    const edgeMargin = Math.min(frameWidth, frameHeight) * 0.04;
+    const corners = [q.topLeft, q.topRight, q.bottomRight, q.bottomLeft];
+    const cornersOnEdge = corners.filter(c =>
+      c.x < edgeMargin || c.x > frameWidth - edgeMargin ||
+      c.y < edgeMargin || c.y > frameHeight - edgeMargin
+    ).length;
+    if (cornersOnEdge >= 3) return false;
+
+    // Reject crazy aspect ratio (paper ~0.5-2.0)
+    const widthTop = Math.hypot(q.topRight.x - q.topLeft.x, q.topRight.y - q.topLeft.y);
+    const widthBottom = Math.hypot(q.bottomRight.x - q.bottomLeft.x, q.bottomRight.y - q.bottomLeft.y);
+    const heightLeft = Math.hypot(q.bottomLeft.x - q.topLeft.x, q.bottomLeft.y - q.topLeft.y);
+    const heightRight = Math.hypot(q.bottomRight.x - q.topRight.x, q.bottomRight.y - q.topRight.y);
+    const avgW = (widthTop + widthBottom) / 2;
+    const avgH = (heightLeft + heightRight) / 2;
+    if (avgW < 1 || avgH < 1) return false;
+    const aspect = avgW / avgH;
+    if (aspect < 0.4 || aspect > 2.5) return false;
+
+    // Reject if opposing sides differ by more than 50% (extreme perspective / not a real quad)
+    if (Math.abs(widthTop - widthBottom) / Math.max(widthTop, widthBottom) > 0.5) return false;
+    if (Math.abs(heightLeft - heightRight) / Math.max(heightLeft, heightRight) > 0.5) return false;
+
+    return true;
+  }
+
   // Helper to convert jscanify contour to Quad
   function contourToQuad(contour: unknown): Quad | null {
     if (!contour || !(jscanify as any).getCornerPoints) return null;
@@ -172,17 +217,21 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
             const img = (cv as { imread: (canvas: HTMLCanvasElement) => unknown }).imread(offscreenCanvas);
             const contour = (jscanify as any).findPaperContour(img);
             const rawQuad = contourToQuad(contour);
+            // Validate quad in offscreen-canvas space before scaling
+            const validQuad = rawQuad && isValidQuad(rawQuad, offscreenCanvas.width, offscreenCanvas.height)
+              ? rawQuad
+              : null;
             // Scale quad back to video-pixel space (inverse of downsample)
-            if (rawQuad && scale < 1) {
+            if (validQuad && scale < 1) {
               const inv = 1 / scale;
               quad = {
-                topLeft: { x: rawQuad.topLeft.x * inv, y: rawQuad.topLeft.y * inv },
-                topRight: { x: rawQuad.topRight.x * inv, y: rawQuad.topRight.y * inv },
-                bottomRight: { x: rawQuad.bottomRight.x * inv, y: rawQuad.bottomRight.y * inv },
-                bottomLeft: { x: rawQuad.bottomLeft.x * inv, y: rawQuad.bottomLeft.y * inv },
+                topLeft: { x: validQuad.topLeft.x * inv, y: validQuad.topLeft.y * inv },
+                topRight: { x: validQuad.topRight.x * inv, y: validQuad.topRight.y * inv },
+                bottomRight: { x: validQuad.bottomRight.x * inv, y: validQuad.bottomRight.y * inv },
+                bottomLeft: { x: validQuad.bottomLeft.x * inv, y: validQuad.bottomLeft.y * inv },
               };
             } else {
-              quad = rawQuad;
+              quad = validQuad;
             }
             if (img && typeof (img as { delete: () => void }).delete === 'function') {
               (img as { delete: () => void }).delete();

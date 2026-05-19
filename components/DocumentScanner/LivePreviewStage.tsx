@@ -81,7 +81,9 @@ export default function LivePreviewStage({
   const [detectionAvailable, setDetectionAvailable] = useState(true);
   const capturingRef = useRef(false);
 
-  const trackerRef = useRef(createStabilityTracker({ bufferSize: 12, toleranceLInf: 12 }));
+  // Tolerance is set proportional to video width once metadata loads.
+  // Default ~40px is roughly 2% of a 1920px-wide frame (handheld camera jitter).
+  const trackerRef = useRef(createStabilityTracker({ bufferSize: 10, toleranceLInf: 40 }));
   const captureRef = useRef(onCapture);
   captureRef.current = onCapture;
 
@@ -213,7 +215,7 @@ export default function LivePreviewStage({
 
       {!detectionAvailable && (
         <div className="absolute top-16 left-4 right-4 z-40 bg-black/70 px-4 py-2 rounded-none">
-          <p className="text-sm text-white/90 text-center">{t.manualOnly || 'Auto-detect unavailable — tap Capture'}</p>
+          <p className="text-sm text-white/90 text-center">Auto-detect unavailable — tap Capture</p>
         </div>
       )}
 
