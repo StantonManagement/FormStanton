@@ -14,15 +14,59 @@ interface LivePreviewStageProps {
   onCapture: (blob: Blob) => void;
 }
 
-async function ensureJscanifyLoaded(): Promise<unknown> {
-  if (typeof window !== 'undefined' && window.jscanify) {
-    return window.jscanify;
-  }
+async function ensureOpenCvLoaded(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if ((window as unknown as { cv?: unknown }).cv) return;
 
+  await new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector('script[data-opencv="true"]') as HTMLScriptElement | null;
+    if (existing && (window as unknown as { cv?: unknown }).cv) {
+      resolve();
+      return;
+    }
+    const script = existing ?? document.createElement('script');
+    script.async = true;
+    script.defer = true;
+    script.setAttribute('data-opencv', 'true');
+    script.src = 'https://docs.opencv.org/4.x/opencv.js';
+    script.onload = () => {
+      const cv = (window as unknown as { cv?: { onRuntimeInitialized?: () => void } }).cv;
+      if (cv?.onRuntimeInitialized) {
+        const original = cv.onRuntimeInitialized;
+        cv.onRuntimeInitialized = () => {
+          original();
+          resolve();
+        };
+        return;
+      }
+      resolve();
+    };
+    script.onerror = () => reject(new Error('OpenCV failed to load'));
+    if (!existing) document.body.appendChild(script);
+  });
+}
+
+async function ensureJscanifyLoaded(): Promise<unknown> {
+  // jscanify exports a class; the detection loop needs an INSTANCE so prototype
+  // methods (findPaperContour, getCornerPoints) are callable. Passing the class
+  // itself trips Safari/iOS's "class constructor without |new|" error as soon
+  // as React internals try to invoke it. Cache the instance under a dedicated
+  // window key so we don't collide with DocumentScanner.tsx which caches the
+  // class under window.jscanify for new-call use inside processImageBlob.
+  if (typeof window !== 'undefined') {
+    const cached = (window as unknown as { __jscanifyInstance?: unknown }).__jscanifyInstance;
+    if (cached) return cached;
+  }
+  // jscanify's constructor depends on the global cv (OpenCV). Load it first.
+  await ensureOpenCvLoaded();
   const mod = await import('jscanify/client');
   const Jscanify = (mod as { default?: unknown }).default ?? mod;
-  window.jscanify = Jscanify;
-  return Jscanify;
+  const Ctor = Jscanify as new () => unknown;
+  const instance = new Ctor();
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __jscanifyInstance?: unknown }).__jscanifyInstance = instance;
+  }
+  return instance;
 }
 
 export default function LivePreviewStage({
@@ -50,11 +94,16 @@ export default function LivePreviewStage({
   // Load jscanify on mount
   useEffect(() => {
     let mounted = true;
-    ensureJscanifyLoaded().then((instance) => {
-      if (mounted) {
-        setJscanifyInstance(instance);
-      }
-    });
+    ensureJscanifyLoaded()
+      .then((instance) => {
+        if (mounted) setJscanifyInstance(instance);
+      })
+      .catch((err) => {
+        // If OpenCV/jscanify can't load, the live preview gracefully degrades
+        // to a blank video feed with manual capture only. Don't crash the tree.
+        // eslint-disable-next-line no-console
+        console.warn('[LivePreviewStage] jscanify load failed; manual capture only', err);
+      });
     return () => {
       mounted = false;
     };
