@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ScannerLanguage, translations } from './translations';
 import FirstScanTooltip from './FirstScanTooltip';
 import QuadOverlay from './QuadOverlay';
@@ -83,6 +84,12 @@ export default function LivePreviewStage({
   const [stabilityState, setStabilityState] = useState<StabilityState>({ kind: 'seeking' });
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const [showLowLightWarning, setShowLowLightWarning] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Create stability tracker (stable ref)
   const trackerRef = useRef(createStabilityTracker({ bufferSize: 12, toleranceLInf: 12 }));
@@ -207,53 +214,68 @@ export default function LivePreviewStage({
 
   const t = translations[language];
 
-  return (
-    <div className="relative flex flex-col h-full">
+  const overlay = (
+    <div
+      className="fixed inset-0 z-50 bg-black"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
       {/* Low-light warning toast */}
       {showLowLightWarning && (
-        <div className="absolute top-4 left-4 right-4 z-30 bg-amber-100 border border-amber-300 px-4 py-2 rounded-none">
+        <div className="absolute top-4 left-4 right-4 z-40 bg-amber-100/95 border border-amber-300 px-4 py-2 rounded-none">
           <p className="text-sm text-amber-800 text-center">{t.lowLightWarning}</p>
         </div>
       )}
 
-      {/* Video container */}
-      <div className="relative flex-1 bg-black min-h-[300px]">
-        <video
-          ref={handleVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        {/* Quad overlay */}
-        <QuadOverlay videoRef={videoRef} quad={quad} color={overlayColor} />
-        {/* Tooltip overlay - dismiss on capture */}
-        {!tooltipDismissed && (
-          <FirstScanTooltip
-            language={language}
-            onDismiss={() => setTooltipDismissed(true)}
-          />
-        )}
-      </div>
+      {/* Video fills entire viewport */}
+      <video
+        ref={handleVideoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+      />
 
-      {/* Controls */}
-      <div className="p-4 space-y-3 bg-white">
+      {/* Quad overlay */}
+      <QuadOverlay videoRef={videoRef} quad={quad} color={overlayColor} />
+
+      {/* Tooltip overlay */}
+      {!tooltipDismissed && (
+        <FirstScanTooltip
+          language={language}
+          onDismiss={() => setTooltipDismissed(true)}
+        />
+      )}
+
+      {/* Floating controls at bottom with translucent gradient */}
+      <div
+        className="absolute left-0 right-0 bottom-0 z-40 p-4 space-y-3"
+        style={{
+          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)',
+        }}
+      >
         {/* Manual capture button */}
         <button
           type="button"
           onClick={performCapture}
-          className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+          className="w-full min-h-12 h-auto py-3 bg-[var(--primary)]/90 text-white px-4 rounded-none text-base font-medium border border-white/30 hover:bg-[var(--primary)] transition-colors duration-200"
         >
           {t.captureNow}
         </button>
         <button
           type="button"
           onClick={handleCancel}
-          className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+          className="w-full min-h-12 h-auto py-3 bg-transparent text-white px-4 rounded-none text-sm font-medium border border-white/50 hover:bg-white/10 transition-colors duration-200"
         >
           {t.cancel}
         </button>
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }
