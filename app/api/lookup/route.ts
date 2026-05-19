@@ -180,10 +180,65 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error || !submission) {
-      return NextResponse.json(
-        { success: false, message: 'No matching submission found' },
-        { status: 404 }
-      );
+      // No submission row — check tenant_lookup (canonical source) and auto-create
+      const { data: tenantRow } = await supabaseAdmin
+        .from('tenant_lookup')
+        .select('name, first_name, last_name')
+        .eq('building_address', buildingAddress)
+        .eq('unit_number', unitNumber)
+        .eq('is_current', true)
+        .not('first_name', 'is', null)
+        .neq('name', 'Occupied Unit')
+        .order('id', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (!tenantRow) {
+        return NextResponse.json(
+          { success: false, message: 'No matching submission found' },
+          { status: 404 }
+        );
+      }
+
+      const fullName = tenantRow.name ||
+        `${tenantRow.first_name || ''} ${tenantRow.last_name || ''}`.trim();
+
+      const { data: created, error: createError } = await supabaseAdmin
+        .from('submissions')
+        .insert({
+          full_name: fullName,
+          building_address: buildingAddress,
+          unit_number: unitNumber,
+          has_pets: false,
+          has_vehicle: false,
+          has_insurance: false,
+          add_insurance_to_rent: false,
+          insurance_upload_pending: true,
+          language: 'en',
+        })
+        .select()
+        .single();
+
+      if (createError || !created) {
+        console.error('Failed to create submission for tenant_lookup match:', createError);
+        return NextResponse.json(
+          { success: false, message: 'No matching submission found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        submission: {
+          id: created.id,
+          fullName: created.full_name,
+          hasInsurance: false,
+          insuranceProvider: null,
+          insurancePolicyNumber: null,
+          insuranceUploadPending: true,
+          hasInsuranceFile: false,
+        },
+      });
     }
 
     return NextResponse.json({
