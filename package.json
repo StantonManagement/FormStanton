@@ -14,7 +14,9 @@
     "test:e2e:debug": "playwright test --debug",
     "validate-env": "ts-node scripts/validate-env.ts",
     "generate-admin-password-hash": "ts-node scripts/generate-admin-password-hash.ts",
-    "prebuild": "npm run validate-env"
+    "prebuild": "npm run validate-env",
+    "predev": "npm run validate-env",
+    "check:buildings": "npx tsx scripts/check-buildings-ts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

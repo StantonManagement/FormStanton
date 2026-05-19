@@ -35,7 +35,7 @@ export async function GET(
     const { data: bedroomRow } = await supabaseAdmin
       .from('unit_bedroom_map')
       .select('bedroom_count')
-      .eq('building_address', unit.building)
+      .eq('asset_id', unit.asset_id)
       .eq('unit_number', unit.unit_number)
       .maybeSingle();
 
@@ -155,7 +155,7 @@ export async function POST(
     const { data: bedroomRow } = await supabaseAdmin
       .from('unit_bedroom_map')
       .select('bedroom_count')
-      .eq('building_address', unit.building)
+      .eq('asset_id', unit.asset_id)
       .eq('unit_number', unit.unit_number)
       .maybeSingle();
 

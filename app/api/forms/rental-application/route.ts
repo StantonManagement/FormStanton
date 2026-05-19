@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeStorageSegment } from '@/lib/storageKeys';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,7 +10,8 @@ const supabase = createClient(
 async function uploadFile(file: File, folder: string, label: string): Promise<string | null> {
   try {
     const ext = file.name.split('.').pop() ?? 'bin';
-    const fileName = `${Date.now()}-${label}.${ext}`;
+    const sanitizedName = sanitizeStorageSegment(file.name.replace(/\.[^.]+$/, ''));
+    const fileName = `${Date.now()}-${label}_${sanitizedName}.${sanitizeStorageSegment(ext)}`;
     const { data, error } = await supabase.storage
       .from('form-photos')
       .upload(`rental-application/${folder}/${fileName}`, file, {

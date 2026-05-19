@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generatePetAddendumPdf } from '@/lib/documentGenerator';
+import { sanitizeStorageSegment } from '@/lib/storageKeys';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,15 +26,15 @@ export async function POST(request: NextRequest) {
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('pet_') && key.includes('_photo_') && value instanceof File) {
         const file = value as File;
-        const fileName = `${Date.now()}-${key}-${file.name}`;
-        
+        const fileName = `${Date.now()}-${key}-${sanitizeStorageSegment(file.name)}`;
+
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('form-photos')
           .upload(`pet-approval/${fileName}`, file, {
             contentType: file.type,
             upsert: false,
           });
-        
+
         if (uploadError) {
           console.error('Photo upload error:', uploadError);
         } else {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
       if (key.startsWith('pet_') && key.endsWith('_vaccination') && value instanceof File) {
         const file = value as File;
-        const fileName = `${Date.now()}-${key}-${file.name}`;
+        const fileName = `${Date.now()}-${key}-${sanitizeStorageSegment(file.name)}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('form-photos')
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
       if (key.startsWith('pet_') && key.endsWith('_spay_neuter') && value instanceof File) {
         const file = value as File;
-        const fileName = `${Date.now()}-${key}-${file.name}`;
+        const fileName = `${Date.now()}-${key}-${sanitizeStorageSegment(file.name)}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('form-photos')

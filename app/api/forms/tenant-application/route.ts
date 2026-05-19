@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { sanitizeStorageSegment } from '@/lib/storageKeys';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +13,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 async function uploadFile(file: File, prefix: string): Promise<string | null> {
   if (!file || file.size === 0) return null;
   const buf = Buffer.from(await file.arrayBuffer());
-  const key = `${prefix}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const key = `${prefix}/${Date.now()}-${sanitizeStorageSegment(file.name)}`;
   const { error } = await supabase.storage.from('form-photos').upload(key, buf, { contentType: file.type });
   if (error) { console.error('Upload error:', error); return null; }
   const { data } = supabase.storage.from('form-photos').getPublicUrl(key);
