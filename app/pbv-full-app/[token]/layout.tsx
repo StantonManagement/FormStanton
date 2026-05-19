@@ -11,6 +11,7 @@
 
 import { use } from 'react';
 import AssistedBanner from '@/components/pbv/AssistedBanner';
+import DebugErrorOverlay from '@/components/pbv/DebugErrorOverlay';
 
 interface Props {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export default function PbvFullAppLayout({ children, params }: Props) {
     <>
       <AssistedBannerWrapper token={token} />
       {children}
+      <DebugErrorOverlay />
     </>
   );
 }
