@@ -37,6 +37,14 @@ export interface ScannerStrings {
   noDocumentDetected: string;
   lowLightWarning: string;
   firstScanTooltip: string;
+  // F4 — Entry-stage capture guidance (PRD-46)
+  inlineTip: string;
+  howToTitle: string;
+  howToIntro: string;
+  howToBullet1: string;
+  howToBullet2: string;
+  howToBullet3: string;
+  howToBullet4: string;
 }
 
 export const translations: Record<ScannerLanguage, ScannerStrings> = {
@@ -77,6 +85,13 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentDetected: 'Position the document in the frame',
     lowLightWarning: "It's dark — try moving to better light",
     firstScanTooltip: "Hold the document flat in the frame. We'll capture automatically when steady.",
+    inlineTip: 'Hold the document flat. All four corners in the frame. Good light.',
+    howToTitle: 'How to take a good photo',
+    howToIntro: 'A few quick tips help us approve your document on the first try.',
+    howToBullet1: 'Lay the document on a flat, dark surface. A table works well.',
+    howToBullet2: "Stand directly above it. Don't take the photo at an angle.",
+    howToBullet3: 'Make sure the whole document is in the frame — all four corners.',
+    howToBullet4: 'Good light. Avoid shadows from your hand or phone.',
   },
   es: {
     takePhoto: 'Tomar Foto',
@@ -115,6 +130,13 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentDetected: 'Coloca el documento en el marco',
     lowLightWarning: 'Está oscuro — intenta mejor luz',
     firstScanTooltip: 'Mantén el documento plano en el marco. Capturaremos automáticamente cuando esté estable.',
+    inlineTip: 'Mantén el documento plano. Las cuatro esquinas en el marco. Buena luz.',
+    howToTitle: 'Cómo tomar una buena foto',
+    howToIntro: 'Algunos consejos rápidos para aprobar tu documento la primera vez.',
+    howToBullet1: 'Coloca el documento sobre una superficie plana y oscura. Una mesa funciona bien.',
+    howToBullet2: 'Párate directamente encima. No tomes la foto en ángulo.',
+    howToBullet3: 'Asegúrate de que todo el documento esté en el marco — las cuatro esquinas.',
+    howToBullet4: 'Buena luz. Evita sombras de tu mano o teléfono.',
   },
   pt: {
     takePhoto: 'Tirar Foto',
@@ -153,5 +175,12 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentDetected: 'Posicione o documento no quadro',
     lowLightWarning: 'Está escuro — tente melhor luz',
     firstScanTooltip: 'Mantenha o documento plano no quadro. Capturaremos automaticamente quando estiver estável.',
+    inlineTip: 'Mantenha o documento plano. Os quatro cantos no quadro. Boa iluminação.',
+    howToTitle: 'Como tirar uma boa foto',
+    howToIntro: 'Algumas dicas rápidas para aprovarmos seu documento na primeira vez.',
+    howToBullet1: 'Coloque o documento sobre uma superfície plana e escura. Uma mesa funciona bem.',
+    howToBullet2: 'Fique diretamente acima. Não tire a foto em ângulo.',
+    howToBullet3: 'Certifique-se de que todo o documento esteja no quadro — os quatro cantos.',
+    howToBullet4: 'Boa luz. Evite sombras da sua mão ou telefone.',
   },
 };

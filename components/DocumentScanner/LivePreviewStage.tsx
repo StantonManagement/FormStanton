@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { ScannerLanguage } from './translations';
+import { ScannerLanguage, translations } from './translations';
 import FirstScanTooltip from './FirstScanTooltip';
 import QuadOverlay from './QuadOverlay';
 import { startDetectionLoop, type Quad } from './edgeDetectionLoop';
@@ -156,14 +156,7 @@ export default function LivePreviewStage({
     );
   }, []);
 
-  // Get translations for low light warning
-  const t = {
-    lowLightWarning: language === 'en'
-      ? "It's dark — try moving to better light"
-      : language === 'es'
-      ? 'Está oscuro — intenta mejor luz'
-      : 'Está escuro — tente melhor luz',
-  };
+  const t = translations[language];
 
   return (
     <div className="relative flex flex-col h-full">
@@ -200,16 +193,16 @@ export default function LivePreviewStage({
         <button
           type="button"
           onClick={performCapture}
-          className="w-full min-h-[48px] bg-[var(--primary)] text-white px-4 py-3 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+          className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
         >
-          Capture now
+          {t.captureNow}
         </button>
         <button
           type="button"
           onClick={handleCancel}
-          className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+          className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
         >
-          Cancel
+          {t.cancel}
         </button>
       </div>
     </div>

@@ -447,13 +447,34 @@ export default function DocumentScanner({
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.instructionsTitle}</h3>
           <p className="text-sm text-[var(--ink)] leading-relaxed">{instructions}</p>
 
+          <div className="bg-[var(--bg-section)] border-l-2 border-[var(--primary)] pl-3 py-2">
+            <p className="text-sm text-[var(--ink)] leading-snug">
+              {t.inlineTip}
+            </p>
+          </div>
+
+          <details className="border border-[var(--border)] rounded-none">
+            <summary className="px-3 py-2 cursor-pointer text-sm font-medium text-[var(--ink)] hover:bg-[var(--bg-section)]">
+              {t.howToTitle}
+            </summary>
+            <div className="px-3 pb-3 pt-1 space-y-2">
+              <p className="text-sm text-[var(--ink)] leading-relaxed">{t.howToIntro}</p>
+              <ul className="text-sm text-[var(--ink)] leading-relaxed list-disc pl-5 space-y-1">
+                <li>{t.howToBullet1}</li>
+                <li>{t.howToBullet2}</li>
+                <li>{t.howToBullet3}</li>
+                <li>{t.howToBullet4}</li>
+              </ul>
+            </div>
+          </details>
+
           {liveSupported ? (
             // New live preview entry: single primary CTA + secondary text links
             <>
               <button
                 type="button"
                 onClick={permissionPrompt.openPrePrompt}
-                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
               >
                 {t.scanDocumentBtn}
               </button>
@@ -481,7 +502,7 @@ export default function DocumentScanner({
               <button
                 type="button"
                 onClick={() => openCaptureInput('camera')}
-                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
               >
                 {t.takePhoto}
               </button>
@@ -500,7 +521,7 @@ export default function DocumentScanner({
           <button
             type="button"
             onClick={onCancel}
-            className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+            className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
           >
             {t.cancel}
           </button>
@@ -561,7 +582,7 @@ export default function DocumentScanner({
 
       {stage === 'warning' && currentPage && (
         <div className="space-y-4">
-          <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full border border-[var(--border)] rounded-none" />
+          <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
           <div className="bg-[var(--bg-section)] border border-[var(--warning)]/30 p-3 rounded-none space-y-2">
             {warningMessages.map((message) => (
               <p key={message} className="text-sm text-[var(--ink)]">
@@ -569,14 +590,14 @@ export default function DocumentScanner({
               </p>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               type="button"
               onClick={() => {
                 resetCurrentPage();
                 setStage('entry');
               }}
-              className="flex-1 min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
             >
               {t.retake}
             </button>
@@ -586,7 +607,7 @@ export default function DocumentScanner({
                 setQualityOverride(true);
                 setStage('preview');
               }}
-              className="flex-1 min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
             >
               {t.useAnyway}
             </button>
@@ -597,25 +618,25 @@ export default function DocumentScanner({
       {stage === 'preview' && currentPage && (
         <div className="space-y-4">
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.previewTitle}</h3>
-          <img src={currentPage.previewUrl} alt="Preview" className="w-full border border-[var(--border)] rounded-none" />
+          <img src={currentPage.previewUrl} alt="Preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
           {!qualityOverride && currentPage.qualityFlags.length > 0 && (
             <p className="text-xs text-[var(--muted)]">{t.scannerError}</p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               type="button"
               onClick={() => {
                 resetCurrentPage();
                 setStage('entry');
               }}
-              className="flex-1 min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
             >
               {t.retake}
             </button>
             <button
               type="button"
               onClick={commitCurrentPage}
-              className="flex-1 min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
             >
               {isSingleMode ? t.useThis : t.useThisPage}
             </button>
@@ -652,7 +673,7 @@ export default function DocumentScanner({
                   resetCurrentPage();
                   setStage('entry');
                 }}
-                className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+                className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
               >
                 {t.addPage}
               </button>
@@ -661,14 +682,14 @@ export default function DocumentScanner({
               type="button"
               onClick={() => finalizeSubmit(pages)}
               disabled={pages.length === 0}
-              className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
+              className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
             >
               {t.submit}
             </button>
             <button
               type="button"
               onClick={onCancel}
-              className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+              className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
             >
               {t.cancel}
             </button>
