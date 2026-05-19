@@ -29,16 +29,45 @@ type Entry = {
   detail: string;
 };
 
+const STORAGE_KEY = 'pbv_debug_overlay_entries_v1';
+
+function loadEntries(): Entry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveEntries(entries: Entry[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  } catch {
+    // ignore quota / serialization failures
+  }
+}
+
 function DebugErrorOverlayInner() {
   const search = useSearchParams();
   const enabled = search?.get('debug') === '1';
 
-  const [entries, setEntries] = useState<Entry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [dismissed, setDismissed] = useState(false);
   const idRef = useRef(0);
 
   useEffect(() => {
     if (!enabled) return;
+
+    // Seed idRef from any persisted entries so new ids don't collide
+    const persisted = loadEntries();
+    if (persisted.length > 0) {
+      idRef.current = Math.max(...persisted.map((e) => e.id));
+    }
 
     const push = (kind: Entry['kind'], title: string, detail: string) => {
       idRef.current += 1;
@@ -49,7 +78,11 @@ function DebugErrorOverlayInner() {
         title,
         detail,
       };
-      setEntries((prev) => [entry, ...prev].slice(0, 20));
+      // Read latest from storage (in case the crash unmounted us between events)
+      const current = loadEntries();
+      const next = [entry, ...current].slice(0, 20);
+      saveEntries(next);
+      setEntries(next);
       setDismissed(false);
     };
 
@@ -156,7 +189,10 @@ function DebugErrorOverlayInner() {
         <span style={{ color: '#888' }}>({entries.length})</span>
         <button
           type="button"
-          onClick={() => setEntries([])}
+          onClick={() => {
+            saveEntries([]);
+            setEntries([]);
+          }}
           style={{ marginLeft: 'auto', background: 'transparent', color: '#0f0', border: '1px solid #0f0', padding: '2px 8px' }}
         >
           clear
