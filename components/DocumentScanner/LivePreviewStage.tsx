@@ -166,6 +166,8 @@ export default function LivePreviewStage({
   // Attach stream to video element when it mounts
   const handleVideoRef = useCallback(
     (node: HTMLVideoElement | null) => {
+      // Store in ref so performCapture can access it
+      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
       if (node) {
         node.srcObject = streamRef.current;
       }
@@ -235,8 +237,10 @@ export default function LivePreviewStage({
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Quad overlay */}
-      <QuadOverlay videoRef={videoRef} quad={quad} color={overlayColor} />
+      {/* Quad overlay - needs positioned container matching video */}
+      <div className="absolute inset-0 z-20">
+        <QuadOverlay videoRef={videoRef} quad={quad} color={overlayColor} />
+      </div>
 
       {/* Tooltip overlay */}
       {!tooltipDismissed && (
