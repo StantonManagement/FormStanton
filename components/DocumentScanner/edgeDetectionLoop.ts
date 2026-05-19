@@ -167,13 +167,23 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
         // Run jscanify detection
         let quad: Quad | null = null;
         if (jscanify && (jscanify as any).findPaperContour) {
-          // Convert canvas to cv.Mat
           const cv = (window as unknown as { cv: unknown }).cv;
           if (cv) {
             const img = (cv as { imread: (canvas: HTMLCanvasElement) => unknown }).imread(offscreenCanvas);
             const contour = (jscanify as any).findPaperContour(img);
-            quad = contourToQuad(contour);
-            // Cleanup cv.Mat
+            const rawQuad = contourToQuad(contour);
+            // Scale quad back to video-pixel space (inverse of downsample)
+            if (rawQuad && scale < 1) {
+              const inv = 1 / scale;
+              quad = {
+                topLeft: { x: rawQuad.topLeft.x * inv, y: rawQuad.topLeft.y * inv },
+                topRight: { x: rawQuad.topRight.x * inv, y: rawQuad.topRight.y * inv },
+                bottomRight: { x: rawQuad.bottomRight.x * inv, y: rawQuad.bottomRight.y * inv },
+                bottomLeft: { x: rawQuad.bottomLeft.x * inv, y: rawQuad.bottomLeft.y * inv },
+              };
+            } else {
+              quad = rawQuad;
+            }
             if (img && typeof (img as { delete: () => void }).delete === 'function') {
               (img as { delete: () => void }).delete();
             }
@@ -199,7 +209,11 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
           adaptFps();
         }
       } catch (err) {
-        // Silently fail detection - don't break the loop
+        // Log first failure for debugging, then continue silently
+        if (state.frameCount < 2) {
+          // eslint-disable-next-line no-console
+          console.warn('[edgeDetectionLoop] detection error (frame 0-1):', err);
+        }
         onQuad(null);
       }
     }

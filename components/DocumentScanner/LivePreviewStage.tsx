@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -48,17 +48,10 @@ async function ensureOpenCvLoaded(): Promise<void> {
 }
 
 async function ensureJscanifyLoaded(): Promise<unknown> {
-  // jscanify exports a class; the detection loop needs an INSTANCE so prototype
-  // methods (findPaperContour, getCornerPoints) are callable. Passing the class
-  // itself trips Safari/iOS's "class constructor without |new|" error as soon
-  // as React internals try to invoke it. Cache the instance under a dedicated
-  // window key so we don't collide with DocumentScanner.tsx which caches the
-  // class under window.jscanify for new-call use inside processImageBlob.
   if (typeof window !== 'undefined') {
     const cached = (window as unknown as { __jscanifyInstance?: unknown }).__jscanifyInstance;
     if (cached) return cached;
   }
-  // jscanify's constructor depends on the global cv (OpenCV). Load it first.
   await ensureOpenCvLoaded();
   const mod = await import('jscanify/client');
   const Jscanify = (mod as { default?: unknown }).default ?? mod;
@@ -84,19 +77,28 @@ export default function LivePreviewStage({
   const [stabilityState, setStabilityState] = useState<StabilityState>({ kind: 'seeking' });
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const [showLowLightWarning, setShowLowLightWarning] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
+  const [detectionAvailable, setDetectionAvailable] = useState(true);
+  const capturingRef = useRef(false);
 
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
-
-  // Create stability tracker (stable ref)
   const trackerRef = useRef(createStabilityTracker({ bufferSize: 12, toleranceLInf: 12 }));
-
-  // Stable capture function ref to avoid dependency issues
   const captureRef = useRef(onCapture);
   captureRef.current = onCapture;
+
+  // Attach stream to video element
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.srcObject = stream;
+    const tryPlay = () => {
+      v.play().catch(() => { /* ignore */ });
+    };
+    if (v.readyState >= 1) {
+      tryPlay();
+    } else {
+      v.addEventListener('loadedmetadata', tryPlay, { once: true });
+    }
+  }, [stream]);
 
   // Load jscanify on mount
   useEffect(() => {
@@ -106,9 +108,8 @@ export default function LivePreviewStage({
         if (mounted) setJscanifyInstance(instance);
       })
       .catch((err) => {
-        // If OpenCV/jscanify can't load, the live preview gracefully degrades
-        // to a blank video feed with manual capture only. Don't crash the tree.
-        // eslint-disable-next-line no-console
+        if (!mounted) return;
+        setDetectionAvailable(false);
         console.warn('[LivePreviewStage] jscanify load failed; manual capture only', err);
       });
     return () => {
@@ -116,9 +117,9 @@ export default function LivePreviewStage({
     };
   }, []);
 
-  // Start detection loop when jscanify is ready
+  // Start detection loop when both jscanify and video are ready
   useEffect(() => {
-    if (!jscanifyInstance || !videoRef.current) return;
+    if (!jscanifyInstance || !videoReady) return;
 
     let autoCaptured = false;
 
@@ -131,26 +132,19 @@ export default function LivePreviewStage({
       },
       onQuad: (detectedQuad) => {
         setQuad(detectedQuad);
-
-        // Push to stability tracker
         const state = trackerRef.current.push(detectedQuad);
         setStabilityState(state);
 
-        // Update overlay color based on stability
         if (detectedQuad === null) {
-          // No overlay when seeking
           setOverlayColor('amber');
         } else if (state.kind === 'armed') {
           setOverlayColor('green');
         } else {
-          // unstable, warming -> amber
           setOverlayColor('amber');
         }
 
-        // Auto-capture when armed (stable for buffer duration)
         if (state.kind === 'armed' && !autoCaptured) {
           autoCaptured = true;
-          // Small delay to let the green overlay render briefly
           setTimeout(() => {
             performCapture();
           }, 100);
@@ -161,52 +155,42 @@ export default function LivePreviewStage({
     return () => {
       stopLoop();
     };
-  }, [jscanifyInstance]);
-
-  // Attach stream to video element when it mounts
-  const handleVideoRef = useCallback(
-    (node: HTMLVideoElement | null) => {
-      // Store in ref so performCapture can access it
-      (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
-      if (node) {
-        node.srcObject = streamRef.current;
-      }
-    },
-    []
-  );
+  }, [jscanifyInstance, videoReady]);
 
   const handleCancel = useCallback(() => {
-    // Stop all tracks to release camera
     streamRef.current.getTracks().forEach((track) => track.stop());
     onCancel();
   }, [onCancel]);
 
   const performCapture = useCallback(() => {
+    if (capturingRef.current) return;
     const video = videoRef.current;
-    if (!video) return;
-
-    // Dismiss tooltip on capture
+    if (!video || !video.videoWidth || !video.videoHeight) {
+      setTimeout(() => performCapture(), 100);
+      return;
+    }
+    capturingRef.current = true;
     setTooltipDismissed(true);
 
-    // Create canvas at native video resolution
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      capturingRef.current = false;
+      return;
+    }
 
-    // Draw current frame
     ctx.drawImage(video, 0, 0);
 
-    // Convert to blob
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          // Stop camera
           streamRef.current.getTracks().forEach((track) => track.stop());
-          // Use ref to get current onCapture
           captureRef.current(blob);
+        } else {
+          capturingRef.current = false;
         }
       },
       'image/jpeg',
@@ -221,28 +205,31 @@ export default function LivePreviewStage({
       className="fixed inset-0 z-50 bg-black"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      {/* Low-light warning toast */}
       {showLowLightWarning && (
         <div className="absolute top-4 left-4 right-4 z-40 bg-amber-100/95 border border-amber-300 px-4 py-2 rounded-none">
           <p className="text-sm text-amber-800 text-center">{t.lowLightWarning}</p>
         </div>
       )}
 
-      {/* Video fills entire viewport */}
+      {!detectionAvailable && (
+        <div className="absolute top-16 left-4 right-4 z-40 bg-black/70 px-4 py-2 rounded-none">
+          <p className="text-sm text-white/90 text-center">{t.manualOnly || 'Auto-detect unavailable — tap Capture'}</p>
+        </div>
+      )}
+
       <video
-        ref={handleVideoRef}
+        ref={videoRef}
         autoPlay
         playsInline
         muted
+        onLoadedMetadata={() => setVideoReady(true)}
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Quad overlay - needs positioned container matching video */}
       <div className="absolute inset-0 z-20">
         <QuadOverlay videoRef={videoRef} quad={quad} color={overlayColor} />
       </div>
 
-      {/* Tooltip overlay */}
       {!tooltipDismissed && (
         <FirstScanTooltip
           language={language}
@@ -250,7 +237,6 @@ export default function LivePreviewStage({
         />
       )}
 
-      {/* Floating controls at bottom with translucent gradient */}
       <div
         className="absolute left-0 right-0 bottom-0 z-40 p-4 space-y-3"
         style={{
@@ -258,7 +244,6 @@ export default function LivePreviewStage({
           background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 60%, transparent 100%)',
         }}
       >
-        {/* Manual capture button */}
         <button
           type="button"
           onClick={performCapture}
@@ -277,7 +262,7 @@ export default function LivePreviewStage({
     </div>
   );
 
-  if (!mounted || typeof document === 'undefined') {
+  if (typeof document === 'undefined') {
     return null;
   }
 
