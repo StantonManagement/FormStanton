@@ -1,11 +1,18 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { buildings } from '@/lib/buildings';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { PbvPreapplication, QualificationResult, PbvReviewStatus, HouseholdMember } from '@/types/compliance';
+import {
+  DataTable,
+  type ColumnDef,
+  BadgeCell,
+  MoneyCell,
+  DateCell,
+} from '@/components/admin/DataTable';
 
 type ListRow = Pick<
   PbvPreapplication,
@@ -177,11 +184,148 @@ export default function PbvPreappsPage() {
     }
   };
 
-  const duplicateKeys = rows.reduce((acc, r) => {
+  const duplicateKeys = useMemo(() => rows.reduce((acc, r) => {
     const k = `${r.building_address}||${r.unit_number}`;
     acc[k] = (acc[k] ?? 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>), [rows]);
+
+  const buildingOptions = useMemo(
+    () => buildings.map((b) => ({ value: b, label: b })),
+    []
+  );
+
+  const columns = useMemo<ColumnDef<ListRow>[]>(
+    () => [
+      {
+        id: 'unit_number',
+        accessorKey: 'unit_number',
+        header: 'Unit',
+        cell: ({ row }) => {
+          const isDuplicate = duplicateKeys[`${row.building_address}||${row.unit_number}`] > 1;
+          return (
+            <div className="flex items-center gap-2 text-sm text-[var(--ink)]">
+              <span className="font-medium">{row.unit_number}</span>
+              {row.unit_not_in_canonical_list && (
+                <BadgeCell value="unit_flag" label="Unit?" variant="amber" />
+              )}
+              {isDuplicate && <BadgeCell value="duplicate" label="Duplicate" variant="gray" />}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'building_address',
+        accessorKey: 'building_address',
+        header: 'Building',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: buildingOptions,
+            multi: true,
+          },
+        },
+        cell: ({ value }) => <span className="text-sm text-[var(--muted)]">{value as string}</span>,
+      },
+      {
+        id: 'hoh_name',
+        accessorKey: 'hoh_name',
+        header: 'HoH Name',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+        },
+      },
+      {
+        id: 'household_size',
+        accessorKey: 'household_size',
+        header: 'HH Size',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => row.household_size.toString(),
+        },
+      },
+      {
+        id: 'total_household_income',
+        accessorKey: 'total_household_income',
+        header: 'Total Income',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => (row.total_household_income ?? 0).toString(),
+        },
+        cell: ({ value }) => <MoneyCell value={Number(value) || 0} />, 
+      },
+      {
+        id: 'income_limit',
+        accessorKey: 'income_limit',
+        header: 'Limit',
+        meta: {
+          align: 'right',
+          csvValue: (row) => (row.income_limit ?? 0).toString(),
+        },
+        cell: ({ value }) => <MoneyCell value={Number(value) || 0} />, 
+      },
+      {
+        id: 'qualification_result',
+        accessorKey: 'qualification_result',
+        header: 'Result',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: (Object.entries(QUAL_LABELS) as [QualificationResult, string][]).map(([value, label]) => ({ value, label })),
+            multi: true,
+          },
+          csvValue: (row) => QUAL_LABELS[row.qualification_result],
+        },
+        cell: ({ row }) => (
+          <BadgeCell
+            value={row.qualification_result}
+            variant={row.qualification_result === 'likely_qualifies' ? 'green' : row.qualification_result === 'over_income' ? 'red' : 'amber'}
+            label={QUAL_LABELS[row.qualification_result]}
+          />
+        ),
+      },
+      {
+        id: 'stanton_review_status',
+        accessorKey: 'stanton_review_status',
+        header: 'Review',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: (Object.entries(REVIEW_LABELS) as [PbvReviewStatus, string][]).map(([value, label]) => ({ value, label })),
+          },
+          csvValue: (row) => REVIEW_LABELS[row.stanton_review_status],
+        },
+        cell: ({ row }) => (
+          <BadgeCell
+            value={row.stanton_review_status}
+            variant={row.stanton_review_status === 'approved' ? 'green' : row.stanton_review_status === 'denied' ? 'red' : row.stanton_review_status === 'needs_info' ? 'yellow' : 'gray'}
+            label={REVIEW_LABELS[row.stanton_review_status]}
+          />
+        ),
+      },
+      {
+        id: 'created_at',
+        accessorKey: 'created_at',
+        header: 'Submitted',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.created_at,
+        },
+        cell: ({ value }) => <DateCell value={value as string} />, 
+      },
+    ],
+    [duplicateKeys, buildingOptions]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--paper)] flex flex-col">
@@ -238,18 +382,7 @@ export default function PbvPreappsPage() {
             ))}
           </select>
 
-          <select
-            value={filterBuilding}
-            onChange={(e) => setFilterBuilding(e.target.value)}
-            className="px-3 py-2 border border-[var(--border)] rounded-none text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
-          >
-            <option value="">All buildings</option>
-            {buildings.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-
-          {(filterQual || filterReview || filterBuilding) && (
+          {(filterQual || filterReview) && (
             <button
               type="button"
               onClick={() => { setFilterQual(''); setFilterReview(''); setFilterBuilding(''); }}
@@ -269,71 +402,23 @@ export default function PbvPreappsPage() {
       <div className="flex flex-1 min-h-0">
         {/* Table */}
         <div className={`flex-1 overflow-auto p-6 ${selectedId ? 'hidden lg:block' : ''}`}>
-          {error && (
-            <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
-          )}
-
-          {loading ? (
-            <div className="text-sm text-[var(--muted)] py-8 text-center">Loading...</div>
-          ) : rows.length === 0 ? (
-            <div className="bg-white border border-[var(--border)] py-16 text-center">
-              <p className="text-[var(--muted)] text-sm">No pre-applications found.</p>
-            </div>
-          ) : (
-            <div className="bg-white border border-[var(--border)]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-[var(--bg-section)] border-b border-[var(--divider)]">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Unit</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">HoH Name</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">HH Size</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Total Income</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Limit</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Result</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Review</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Submitted</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => openDetail(row.id)}
-                      className={`border-b border-[var(--divider)] hover:bg-[var(--bg-section)] cursor-pointer transition-colors ${selectedId === row.id ? 'bg-blue-50/40' : ''}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-[var(--ink)] flex items-center gap-1.5 flex-wrap">
-                          {row.unit_number}
-                          {row.unit_not_in_canonical_list && (
-                            <span className="text-[10px] font-medium px-1 py-px bg-amber-100 text-amber-700 border border-amber-200 leading-none">Unit?</span>
-                          )}
-                          {duplicateKeys[`${row.building_address}||${row.unit_number}`] > 1 && (
-                            <span className="text-[10px] font-medium px-1 py-px bg-orange-100 text-orange-700 border border-orange-200 leading-none">Duplicate</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-[var(--muted)] mt-0.5">{row.building_address}</div>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--ink)]">{row.hoh_name}</td>
-                      <td className="px-4 py-3 text-right text-[var(--ink)]">{row.household_size}</td>
-                      <td className="px-4 py-3 text-right text-[var(--ink)]">{formatCurrency(row.total_household_income)}</td>
-                      <td className="px-4 py-3 text-right text-[var(--muted)]">{formatCurrency(row.income_limit)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium border ${QUAL_COLORS[row.qualification_result]}`}>
-                          {QUAL_LABELS[row.qualification_result]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium border ${REVIEW_COLORS[row.stanton_review_status]}`}>
-                          {REVIEW_LABELS[row.stanton_review_status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable<ListRow>
+            data={rows}
+            columns={columns}
+            urlNamespace="preapps"
+            getRowId={(row) => row.id}
+            loading={loading}
+            enableGlobalSearch={true}
+            enableColumnFilters={true}
+            enableColumnVisibility={true}
+            enableCsvExport={true}
+            onRowClick={(row) => openDetail(row.id)}
+            emptyState={error ? (
+              <div className="p-12 text-center text-sm text-red-600">{error}</div>
+            ) : (
+              <div className="p-12 text-center text-sm text-[var(--muted)]">No pre-applications found.</div>
+            )}
+          />
         </div>
 
         {/* Detail drawer */}
@@ -381,7 +466,7 @@ export default function PbvPreappsPage() {
   );
 }
 
-// ── Thresholds panel (inlined from admin/pbv/thresholds) ─────────────────────
+// ── Thresholds panel (inlined from admin/pbv/thresholds) ──
 
 interface Threshold {
   id?: string;
@@ -885,7 +970,7 @@ function DetailContent({
                 <div>
                   <p className="font-medium text-[var(--ink)]">{m.name}</p>
                   <p className="text-xs text-[var(--muted)] mt-0.5">
-                    {m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)} · DOB: {formatDate(m.dob)}
+                    {m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)} -+ DOB: {formatDate(m.dob)}
                   </p>
                   {m.income_sources?.length > 0 && (
                     <p className="text-xs text-[var(--muted)] mt-0.5">
@@ -988,7 +1073,7 @@ function DetailContent({
           <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
 
           <div className="space-y-4">
-            {/* ── Inline phone capture (no phone yet, user clicked the combined button) ── */}
+            {/* Inline phone capture (no phone yet, user clicked the combined button) */}
             {inlinePhoneMode && (
               <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
                 <p className="text-sm font-medium text-[var(--ink)]">Phone number required to send invitation</p>
@@ -1020,7 +1105,7 @@ function DetailContent({
               </div>
             )}
 
-            {/* ── Combined action button / confirm / progress / done / error ── */}
+            {/* Combined action button / confirm / progress / done / error */}
             {chainStep === 'idle' && !smsSent && !inlinePhoneMode && (() => {
               let label: string;
               if (!approved) label = 'Approve & Send Invitation';
@@ -1202,3 +1287,4 @@ function StatusPill({ ok, okLabel, failLabel }: { ok: boolean; okLabel: string; 
     </span>
   );
 }
+

@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { copyToClipboard } from '@/lib/copyToClipboard';
+import {
+  DataTable,
+  type ColumnDef,
+  DateCell,
+  BadgeCell,
+} from '@/components/admin/DataTable';
 
 interface FullAppRow {
   id: string;
@@ -51,18 +57,6 @@ function deriveDisplayStatus(row: FullAppRow): string {
   if (row.stanton_review_status === 'under_review') return 'Under Review';
   if (row.stanton_review_status === 'needs_info') return 'Needs Info';
   return 'Intake Submitted';
-}
-
-function statusBadge(status: string) {
-  const map: Record<string, string> = {
-    Approved: 'bg-green-100 text-green-800 border-green-200',
-    Denied: 'bg-red-100 text-red-800 border-red-200',
-    'Under Review': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Intake Submitted': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    'Needs Info': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    Invited: 'bg-gray-100 text-gray-700 border-gray-200',
-  };
-  return map[status] ?? 'bg-gray-100 text-gray-700 border-gray-200';
 }
 
 export default function PbvFullApplicationsPage() {
@@ -168,10 +162,201 @@ export default function PbvFullApplicationsPage() {
     }
   };
 
-  const filtered = rows.filter((r) => {
-    if (filterIntakeOnly && !r.intake_submitted_at) return false;
-    return true;
-  });
+  const statusFilterOptions = useMemo(() => {
+    const statuses = new Set<string>();
+    rows.forEach((row) => {
+      statuses.add(row.stanton_review_status ?? '');
+    });
+    return Array.from(statuses)
+      .filter(Boolean)
+      .map((value) => ({
+        value,
+        label: value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      }));
+  }, [rows]);
+
+  const buildingFilterOptions = useMemo(() => {
+    const buildings = new Set<string>();
+    rows.forEach((row) => {
+      if (row.building_address) buildings.add(row.building_address);
+    });
+    return Array.from(buildings).map((value) => ({ value, label: value }));
+  }, [rows]);
+
+  const tableData = useMemo(() => {
+    if (!filterIntakeOnly) return rows;
+    return rows.filter((row) => !!row.intake_submitted_at);
+  }, [rows, filterIntakeOnly]);
+
+  const columns = useMemo<ColumnDef<FullAppRow>[]>(
+    () => [
+      {
+        id: 'head_of_household_name',
+        accessorKey: 'head_of_household_name',
+        header: 'Head of Household',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.head_of_household_name,
+        },
+        cell: ({ row }) => {
+          const unreadTotal = (row.workspace_unread_counts?.stanton ?? 0) + (row.workspace_unread_counts?.shared ?? 0);
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-[var(--ink)]">{row.head_of_household_name}</span>
+              {unreadTotal > 0 && (
+                <span className="px-2 py-0.5 text-[10px] font-semibold bg-red-600 text-white">
+                  {unreadTotal}
+                </span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'building_address',
+        accessorKey: 'building_address',
+        header: 'Building',
+        enableSorting: true,
+        enableFiltering: buildingFilterOptions.length > 0,
+        meta: {
+          filter: buildingFilterOptions.length > 0 ? { type: 'select', options: buildingFilterOptions } : undefined,
+          csvValue: (row) => row.building_address,
+        },
+      },
+      {
+        id: 'unit_number',
+        accessorKey: 'unit_number',
+        header: 'Unit',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.unit_number,
+        },
+      },
+      {
+        id: 'stanton_review_status',
+        accessorKey: 'stanton_review_status',
+        header: 'Status',
+        enableFiltering: statusFilterOptions.length > 0,
+        meta: {
+          filter: statusFilterOptions.length > 0 ? { type: 'select', options: statusFilterOptions } : undefined,
+          csvValue: (row) => deriveDisplayStatus(row),
+        },
+        cell: ({ row }) => {
+          const displayStatus = deriveDisplayStatus(row);
+          const variant =
+            displayStatus === 'Approved'
+              ? 'green'
+              : displayStatus === 'Denied'
+              ? 'red'
+              : displayStatus === 'Needs Info'
+              ? 'yellow'
+              : displayStatus === 'Under Review'
+              ? 'blue'
+              : displayStatus === 'Intake Submitted'
+              ? 'indigo'
+              : 'gray';
+          return (
+            <BadgeCell
+              value={displayStatus}
+              variant={variant}
+              label={displayStatus}
+            />
+          );
+        },
+      },
+      {
+        id: 'assignees',
+        header: 'Assignees',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => (row.assignees ?? []).map((a) => `${a.display_name} (${a.count})`).join('; '),
+        },
+        cell: ({ row }) => {
+          if (!row.assignees || row.assignees.length === 0) {
+            return <span className="text-xs text-[var(--muted)]">—</span>;
+          }
+          return (
+            <div className="flex items-center gap-1">
+              {row.assignees.slice(0, 3).map((assignee) => (
+                <span
+                  key={assignee.user_id}
+                  className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-medium"
+                  title={`${assignee.display_name} (${assignee.count} docs)`}
+                >
+                  {getInitials(assignee.display_name)}
+                </span>
+              ))}
+              {row.total_assignees && row.total_assignees > 3 && (
+                <span className="text-xs text-[var(--muted)]">+{row.total_assignees - 3}</span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'created_at',
+        accessorKey: 'created_at',
+        header: 'Invited',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.created_at,
+        },
+        cell: ({ value }) => <DateCell value={value as string} />, 
+      },
+      {
+        id: 'intake_submitted_at',
+        accessorKey: 'intake_submitted_at',
+        header: 'Intake Submitted',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.intake_submitted_at ?? '',
+        },
+        cell: ({ value }) => <DateCell value={(value as string) ?? undefined} />, 
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        enableHiding: false,
+        meta: {
+          align: 'right',
+          csvValue: () => '',
+        },
+        cell: ({ row }) => (
+          <div className="flex gap-2 justify-end" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => handleCopyLink(row)}
+              className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline"
+            >
+              {copiedId === row.id ? 'Copied!' : 'Copy Link'}
+            </button>
+            {!row.intake_submitted_at && (
+              <button
+                type="button"
+                onClick={() => handleRegenerateToken(row)}
+                disabled={regeneratingId === row.id}
+                className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline disabled:opacity-50"
+              >
+                {regeneratingId === row.id ? 'New Link…' : 'New Link'}
+              </button>
+            )}
+            <Link
+              href={`/admin/pbv/full-applications/${row.id}`}
+              className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline"
+            >
+              Detail →
+            </Link>
+          </div>
+        ),
+      },
+    ],
+    [buildingFilterOptions, copiedId, handleCopyLink, handleRegenerateToken, regeneratingId, statusFilterOptions]
+  );
 
   return (
     <div className="p-6 space-y-4">
@@ -226,121 +411,25 @@ export default function PbvFullApplicationsPage() {
         </button>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-[var(--muted)]">Loading...</p>
-      ) : error ? (
-        <p className="text-sm text-red-600">{error}</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-[var(--muted)]">No applications found.</p>
-      ) : (
-        <div className="overflow-x-auto border border-[var(--border)]">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-[var(--bg-section)] border-b border-[var(--divider)]">
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Head of Household</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Building</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Unit</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Status</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Assignees</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Invited</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Intake</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--ink)]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--divider)]">
-              {filtered.map((row) => {
-                const displayStatus = deriveDisplayStatus(row);
-                return (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-[var(--bg-section)] transition-colors bg-white cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
-                    tabIndex={0}
-                    role="button"
-                    onClick={() => router.push(`/admin/pbv/full-applications/${row.id}`)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        router.push(`/admin/pbv/full-applications/${row.id}`);
-                      }
-                    }}
-                  >
-                    <td className="px-4 py-3 font-medium text-[var(--ink)]">
-                      <div className="flex items-center gap-2">
-                        <span className="hover:underline">
-                          {row.head_of_household_name}
-                        </span>
-                        {row.workspace_unread_counts && (row.workspace_unread_counts.stanton > 0 || row.workspace_unread_counts.shared > 0) && (
-                          <span className="px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
-                            {row.workspace_unread_counts.stanton + row.workspace_unread_counts.shared}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--muted)]">{row.building_address}</td>
-                    <td className="px-4 py-3 text-[var(--muted)]">{row.unit_number}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 text-xs border font-medium ${statusBadge(displayStatus)}`}>
-                        {displayStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {row.assignees && row.assignees.length > 0 ? (
-                          <>
-                            {row.assignees.map((assignee) => (
-                              <span
-                                key={assignee.user_id}
-                                className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-medium"
-                                title={`${assignee.display_name} (${assignee.count} docs)`}
-                              >
-                                {getInitials(assignee.display_name)}
-                              </span>
-                            ))}
-                            {row.total_assignees && row.total_assignees > 3 && (
-                              <span className="text-xs text-[var(--muted)]">+{row.total_assignees - 3}</span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-xs text-[var(--muted)]">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.created_at)}</td>
-                    <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.intake_submitted_at)}</td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(row)}
-                          className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline"
-                        >
-                          {copiedId === row.id ? 'Copied!' : 'Copy Link'}
-                        </button>
-                        {!row.intake_submitted_at && (
-                          <button
-                            type="button"
-                            onClick={() => handleRegenerateToken(row)}
-                            disabled={regeneratingId === row.id}
-                            className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline disabled:opacity-50"
-                          >
-                            {regeneratingId === row.id ? '...' : 'New Link'}
-                          </button>
-                        )}
-                        <Link
-                          href={`/admin/pbv/full-applications/${row.id}`}
-                          className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline"
-                        >
-                          Detail →
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="bg-white border border-[var(--border)]">
+        <DataTable<FullAppRow>
+          data={tableData}
+          columns={columns}
+          urlNamespace="full-apps"
+          getRowId={(row) => row.id}
+          loading={loading}
+          enableGlobalSearch={true}
+          enableColumnFilters={true}
+          enableColumnVisibility={true}
+          enableCsvExport={true}
+          onRowClick={(row) => router.push(`/admin/pbv/full-applications/${row.id}`)}
+          emptyState={
+            error
+              ? <div className="py-12 text-center text-sm text-red-600">{error}</div>
+              : <div className="py-12 text-center text-sm text-[var(--muted)]">No applications found.</div>
+          }
+        />
+      </div>
 
       {showInvite && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">

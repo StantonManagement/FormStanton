@@ -2,7 +2,13 @@
 
 import React from 'react';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  DataTable,
+  type ColumnDef,
+  DateCell,
+  BadgeCell,
+} from '@/components/admin/DataTable';
 
 interface AuditEntry {
   id: string;
@@ -61,17 +67,6 @@ function getActionColor(action: string): string {
   return ACTION_COLORS[prefix] || 'bg-gray-50 text-gray-700 border-gray-200';
 }
 
-function formatTimestamp(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
 export default function AuditLogPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,12 +78,24 @@ export default function AuditLogPage() {
   const [filterUsername, setFilterUsername] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [tableState, setTableState] = useState({
+    sorting: [] as { id: string; desc: boolean }[],
+    pagination: { pageIndex: 0, pageSize: 50 },
+  });
+
   const fetchLog = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: '50' });
+      const params = new URLSearchParams({
+        page: String(tableState.pagination.pageIndex + 1),
+        limit: String(tableState.pagination.pageSize),
+      });
       if (filterAction) params.set('action', filterAction);
       if (filterUsername) params.set('username', filterUsername);
+      if (tableState.sorting.length > 0) {
+        const sort = tableState.sorting[0];
+        params.set('sort', `${sort.id}:${sort.desc ? 'desc' : 'asc'}`);
+      }
 
       const res = await fetch(`/api/admin/audit-log?${params}`);
       const data = await res.json();
@@ -103,16 +110,88 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, filterAction, filterUsername]);
+  }, [filterAction, filterUsername, tableState]);
 
   useEffect(() => {
     fetchLog();
   }, [fetchLog]);
 
   const handleFilter = () => {
-    setPage(1);
+    setTableState((prev) => ({ ...prev, pagination: { ...prev.pagination, pageIndex: 0 } }));
     fetchLog();
   };
+
+  const columns = useMemo<ColumnDef<AuditEntry>[]>(
+    () => [
+      {
+        id: 'created_at',
+        accessorKey: 'created_at',
+        header: 'Time',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.created_at,
+        },
+        cell: ({ value }) => <DateCell value={value as string} format="datetime" />, 
+      },
+      {
+        id: 'username',
+        accessorKey: 'username',
+        header: 'User',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.username,
+        },
+      },
+      {
+        id: 'action',
+        accessorKey: 'action',
+        header: 'Action',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => ACTION_LABELS[row.action] || row.action,
+        },
+        cell: ({ value }) => (
+          <BadgeCell
+            value={value as string}
+            label={ACTION_LABELS[value as string] || (value as string)}
+            variant="blue"
+          />
+        ),
+      },
+      {
+        id: 'entity',
+        header: 'Entity',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => `${row.entity_type ?? ''}${row.entity_id ? `#${row.entity_id}` : ''}`,
+        },
+        cell: ({ row }) => (
+          row.entity_type ? (
+            <span className="text-xs text-[var(--muted)] font-mono">
+              {row.entity_type}
+              {row.entity_id && <span className="ml-1 opacity-60">#{row.entity_id.slice(0, 8)}</span>}
+            </span>
+          ) : null
+        ),
+      },
+      {
+        id: 'ip_address',
+        accessorKey: 'ip_address',
+        header: 'IP',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => row.ip_address ?? '',
+          className: 'font-mono text-xs text-[var(--muted)]',
+        },
+        cell: ({ value }) => <span>{(value as string) ?? '—'}</span>,
+      },
+    ],
+    []
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -169,102 +248,40 @@ export default function AuditLogPage() {
         )}
       </div>
 
-      {/* Table */}
       <div className="bg-white border border-[var(--border)] overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-center text-[var(--muted)]">Loading...</div>
-        ) : entries.length === 0 ? (
-          <div className="p-12 text-center text-[var(--muted)]">No audit entries found.</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-section)]">
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Time</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">User</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Action</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Entity</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">IP</th>
-                <th className="px-4 py-2.5 w-8"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <React.Fragment key={entry.id}>
-                  <tr
-                    className="border-b border-[var(--divider)] hover:bg-[var(--bg)] cursor-pointer transition-colors duration-150"
-                    onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
-                  >
-                    <td className="px-4 py-2.5 text-[var(--ink)] whitespace-nowrap">
-                      {formatTimestamp(entry.created_at)}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-[var(--primary)]">
-                      {entry.username}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`inline-block px-2 py-0.5 border text-xs font-medium ${getActionColor(entry.action)}`}>
-                        {ACTION_LABELS[entry.action] || entry.action}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-[var(--muted)] text-xs font-mono">
-                      {entry.entity_type && (
-                        <span>
-                          {entry.entity_type}
-                          {entry.entity_id && <span className="ml-1 opacity-60">#{entry.entity_id.slice(0, 8)}</span>}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-[var(--muted)] text-xs font-mono">
-                      {entry.ip_address || '—'}
-                    </td>
-                    <td className="px-4 py-2.5 text-[var(--muted)]">
-                      <span className={`text-xs transition-transform duration-150 inline-block ${expandedId === entry.id ? 'rotate-90' : ''}`}>▶</span>
-                    </td>
-                  </tr>
-                  {expandedId === entry.id && (
-                    <tr className="bg-[var(--bg)]">
-                      <td colSpan={6} className="px-4 py-3">
-                        <div className="text-xs font-mono text-[var(--ink)] bg-white border border-[var(--divider)] p-3 max-h-48 overflow-auto">
-                          <pre className="whitespace-pre-wrap">{JSON.stringify(entry.details, null, 2)}</pre>
-                        </div>
-                        <div className="mt-2 text-xs text-[var(--muted)] flex gap-4">
-                          <span>ID: {entry.id}</span>
-                          {entry.user_id && <span>User ID: {entry.user_id}</span>}
-                          <span>Full timestamp: {new Date(entry.created_at).toISOString()}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable<AuditEntry>
+          data={entries}
+          columns={columns}
+          urlNamespace="audit-log"
+          getRowId={(row) => row.id}
+          loading={loading}
+          enableGlobalSearch={true}
+          enableColumnFilters={true}
+          enableColumnVisibility={true}
+          enableCsvExport={true}
+          manualPagination
+          manualSorting
+          pageCount={totalPages}
+          onStateChange={(state) => {
+            setTableState((prev) => ({
+              sorting: state.sorting ?? prev.sorting,
+              pagination: state.pagination ?? prev.pagination,
+            }));
+          }}
+          expandedRowRenderer={(row) => (
+            <div className="text-xs font-mono text-[var(--ink)] bg-white border border-[var(--divider)] p-3 space-y-2">
+              <pre className="whitespace-pre-wrap">{JSON.stringify(row.details, null, 2)}</pre>
+              <div className="flex flex-wrap gap-4 text-[var(--muted)]">
+                <span>ID: {row.id}</span>
+                {row.user_id && <span>User ID: {row.user_id}</span>}
+                <span>Full timestamp: {new Date(row.created_at).toISOString()}</span>
+                <span>IP: {row.ip_address ?? '—'}</span>
+              </div>
+            </div>
+          )}
+          emptyState={<div className="p-12 text-center text-[var(--muted)]">No audit entries found.</div>}
+        />
       </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <div className="text-sm text-[var(--muted)]">
-            Page {page} of {totalPages}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page <= 1}
-              className="px-3 py-1.5 border border-[var(--border)] text-sm rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page >= totalPages}
-              className="px-3 py-1.5 border border-[var(--border)] text-sm rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

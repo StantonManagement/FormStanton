@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/lib/adminAuthContext';
 import { Users, Plus, Eye, EyeOff } from 'lucide-react';
+import {
+  DataTable,
+  type ColumnDef,
+  BadgeCell,
+  DateCell,
+  MonoCell,
+} from '@/components/admin/DataTable';
 
 interface Role {
   id: string;
@@ -29,6 +36,12 @@ interface AdminUser {
   departments: { id: string; name: string; code: string } | null;
   user_roles: Array<{ role_id: string; roles: { id: string; name: string; code: string } }>;
 }
+
+type AdminUserRow = AdminUser & {
+  department_name: string | null;
+  role_names: string[];
+  role_names_join: string;
+};
 
 export default function UsersPage() {
   const { hasPermission, isSuperAdmin, startImpersonate } = useAdminAuth();
@@ -175,6 +188,196 @@ export default function UsersPage() {
     });
   };
 
+  const tableRows = useMemo<AdminUserRow[]>(
+    () =>
+      users.map((user) => {
+        const roleNames = user.user_roles.map((ur) => ur.roles.name);
+        return {
+          ...user,
+          department_name: user.departments?.name ?? null,
+          role_names: roleNames,
+          role_names_join: roleNames.join(', '),
+        };
+      }),
+    [users]
+  );
+
+  const departmentOptions = useMemo(
+    () =>
+      departments.map((dept) => ({
+        value: dept.id,
+        label: dept.name,
+      })),
+    [departments]
+  );
+
+  const statusOptions = useMemo(
+    () => [
+      { value: 'true', label: 'Active' },
+      { value: 'false', label: 'Inactive' },
+    ],
+    []
+  );
+
+  const columns = useMemo<ColumnDef<AdminUserRow>[]>(
+    () => [
+      {
+        id: 'display_name',
+        accessorKey: 'display_name',
+        header: 'Name',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.display_name,
+        },
+        cell: ({ value }) => (
+          <span className="text-sm font-medium text-[var(--primary)]">{value as string}</span>
+        ),
+      },
+      {
+        id: 'username',
+        accessorKey: 'username',
+        header: 'Username',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.username,
+          className: 'font-mono text-xs',
+        },
+        cell: ({ value }) => <MonoCell value={value as string} />,
+      },
+      {
+        id: 'department_id',
+        accessorKey: 'department_id',
+        header: 'Department',
+        enableSorting: true,
+        enableFiltering: departmentOptions.length > 0,
+        meta: {
+          filter: departmentOptions.length > 0 ? { type: 'select', options: departmentOptions } : undefined,
+          csvValue: (row) => row.department_name ?? '',
+        },
+        cell: ({ row }) =>
+          row.department_name ? (
+            <span className="text-xs text-[var(--ink)]">{row.department_name}</span>
+          ) : (
+            <span className="text-xs italic text-[var(--muted)]">None</span>
+          ),
+      },
+      {
+        id: 'role_names_join',
+        accessorKey: 'role_names_join',
+        header: 'Roles',
+        enableSorting: false,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.role_names.join('; '),
+        },
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {row.role_names.length === 0 ? (
+              <span className="text-xs text-[var(--muted)] italic">No roles</span>
+            ) : (
+              row.role_names.map((role) => (
+                <span key={role} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">
+                  {role}
+                </span>
+              ))
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'is_active',
+        accessorKey: 'is_active',
+        header: 'Status',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'select', options: statusOptions },
+          csvValue: (row) => (row.is_active ? 'active' : 'inactive'),
+        },
+        cell: ({ row }) =>
+          row.is_active ? (
+            <BadgeCell value="active" variant="green" label="Active" />
+          ) : (
+            <BadgeCell value="inactive" variant="red" label="Inactive" />
+          ),
+      },
+      {
+        id: 'last_login_at',
+        accessorKey: 'last_login_at',
+        header: 'Last Login',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.last_login_at ?? '',
+        },
+        cell: ({ value }) =>
+          value ? (
+            <DateCell value={value as string} format="datetime" />
+          ) : (
+            <span className="text-xs text-[var(--muted)]">Never</span>
+          ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        enableHiding: false,
+        meta: {
+          align: 'right',
+          className: 'whitespace-nowrap',
+          csvValue: () => '',
+        },
+        cell: ({ row }) => (
+          <div className="flex gap-2 justify-end">
+            {isSuperAdmin && row.is_active && !row.is_super_admin && (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleImpersonate(row);
+                }}
+                disabled={impersonatingId === row.id}
+                className="px-2.5 py-1 border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs rounded-none hover:bg-indigo-100 transition-colors duration-200 ease-out disabled:opacity-50"
+              >
+                {impersonatingId === row.id ? 'Switching…' : 'View As'}
+              </button>
+            )}
+            {canWrite && (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEdit(row);
+                }}
+                className="px-2.5 py-1 border border-[var(--border)] text-xs rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+              >
+                Edit
+              </button>
+            )}
+            {canAdmin && (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleToggleActive(row);
+                }}
+                className={`px-2.5 py-1 border text-xs rounded-none transition-colors duration-200 ease-out ${
+                  row.is_active
+                    ? 'border-red-200 text-red-600 hover:bg-red-50'
+                    : 'border-green-200 text-green-600 hover:bg-green-50'
+                }`}
+              >
+                {row.is_active ? 'Deactivate' : 'Activate'}
+              </button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [canAdmin, canWrite, departmentOptions, handleImpersonate, handleToggleActive, impersonatingId, isSuperAdmin, openEdit, statusOptions]
+  );
+
   if (!canAdmin && !canWrite) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -212,97 +415,19 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* User table */}
       <div className="bg-white border border-[var(--border)] overflow-hidden mb-6">
-        {loading ? (
-          <div className="p-12 text-center text-[var(--muted)]">Loading...</div>
-        ) : users.length === 0 ? (
-          <div className="p-12 text-center text-[var(--muted)]">No users found.</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-section)]">
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Username</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Department</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Roles</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Last Login</th>
-                <th className="px-4 py-2.5 text-xs font-medium text-[var(--muted)] uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-[var(--divider)] hover:bg-[var(--bg)] transition-colors duration-150">
-                  <td className="px-4 py-3 font-medium text-[var(--primary)]">{u.display_name}</td>
-                  <td className="px-4 py-3 text-[var(--ink)] font-mono text-xs">{u.username}</td>
-                  <td className="px-4 py-3 text-xs text-[var(--muted)]">
-                    {u.departments?.name ?? <span className="italic">None</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {u.user_roles.length === 0 ? (
-                        <span className="text-xs text-[var(--muted)] italic">No roles</span>
-                      ) : (
-                        u.user_roles.map((ur) => (
-                          <span key={ur.role_id} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200">
-                            {ur.roles.name}
-                          </span>
-                        ))
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-0.5 border text-xs font-medium ${
-                      u.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-[var(--muted)] text-xs">
-                    {u.last_login_at
-                      ? new Date(u.last_login_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                      : 'Never'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      {isSuperAdmin && u.is_active && !u.is_super_admin && (
-                        <button
-                          onClick={() => handleImpersonate(u)}
-                          disabled={impersonatingId === u.id}
-                          className="px-2.5 py-1 border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs rounded-none hover:bg-indigo-100 transition-colors duration-200 ease-out disabled:opacity-50"
-                          title="See the app exactly as this user sees it. API calls will be gated by their permissions."
-                        >
-                          {impersonatingId === u.id ? 'Switching...' : 'View As'}
-                        </button>
-                      )}
-                      {canWrite && (
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="px-2.5 py-1 border border-[var(--border)] text-xs rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {canAdmin && (
-                        <button
-                          onClick={() => handleToggleActive(u)}
-                          className={`px-2.5 py-1 border text-xs rounded-none transition-colors duration-200 ease-out ${
-                            u.is_active
-                              ? 'border-red-200 text-red-600 hover:bg-red-50'
-                              : 'border-green-200 text-green-600 hover:bg-green-50'
-                          }`}
-                        >
-                          {u.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable<AdminUserRow>
+          data={tableRows}
+          columns={columns}
+          urlNamespace="users"
+          getRowId={(row) => row.id}
+          loading={loading}
+          enableGlobalSearch={true}
+          enableColumnFilters={true}
+          enableColumnVisibility={true}
+          enableCsvExport={true}
+          emptyState={<div className="p-12 text-center text-[var(--muted)]">No users found.</div>}
+        />
       </div>
 
       {/* Create User Modal */}

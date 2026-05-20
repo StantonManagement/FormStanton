@@ -17,11 +17,12 @@ You are building from `docs/fullApp-Plan/52-pbv-scanner-scanic-ship_prd_2026-05-
 
 ## Shell protocol
 
-- `npm install` (this PRD adds Scanic and removes jscanify) — explicit timeout 120s, single retry with `--prefer-offline --no-audit --no-fund` if hung.
-- `npx tsc --noEmit` ~60s.
-- `npm run build` ~300s — this is the gate that crashed in PRD-48. If the minifier errors, debug the WASM config; do not work around by reverting.
-- No `npm run dev` from agent commands.
-- If 2 retries on the same command still hang, stop and report.
+See `docs/SHELL-PROTOCOL.md`. PRD-specific deviations:
+- `npm install scanic` is the only install — explicit timeout 120s, single retry with `--prefer-offline --no-audit --no-fund` if hung.
+- `npm uninstall jscanify` once.
+- `npm run build` — this is the gate that crashed in PRD-48. If the minifier errors, debug the WASM config or switch to Path B per PRD §F2; do NOT silently revert.
+
+**Critical:** for type-checking, use `node ./node_modules/typescript/bin/tsc --noEmit`, NOT `node ./node_modules/typescript/bin/tsc --noEmit`. The npx layer hangs on Windows.
 
 ---
 
@@ -157,7 +158,7 @@ Resolve every match. Code references should be removed. Doc references in `docs/
 
 ### Step 7 — Type check
 
-`npx tsc --noEmit`. Must pass.
+`node ./node_modules/typescript/bin/tsc --noEmit`. Must pass.
 
 ### Step 8 — Build (the gate that bit PRD-48)
 
@@ -205,7 +206,7 @@ Write `docs/build-reports/52-pbv-scanner-scanic-ship_build-report_2026-05-19.md`
 
 1. Branch `feat/pbv-scanner-scanic-ship-52` pushed to origin.
 2. All 11 verification gates passed (or honestly documented as deferred with explanation).
-3. `npx tsc --noEmit` clean.
+3. `node ./node_modules/typescript/bin/tsc --noEmit` clean.
 4. `npm run build` clean — no minifier errors, no WASM warnings.
 5. `grep -r jscanify` and `grep -r docs.opencv.org` return zero matches in code.
 6. PR opened against `main`, Ready for Review (not Draft).

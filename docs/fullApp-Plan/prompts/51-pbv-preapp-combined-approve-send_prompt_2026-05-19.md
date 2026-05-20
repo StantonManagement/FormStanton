@@ -17,10 +17,10 @@ This is a small, contained UI change — one file modified, no API changes, no m
 
 ## Shell protocol
 
-Standard rules:
-- `npx tsc --noEmit` ~60s, `npm run build` ~300s, single retry on hang, no `npm run dev` from agent.
-- No installs in this PRD — no new deps.
-- Burned 2 retries and stuck? Stop. Report.
+See `docs/SHELL-PROTOCOL.md`. PRD-specific deviations:
+- One migration in this PRD (F0 phone column) — create the `.sql` file, do NOT execute it. Supabase migrations are applied on deploy, not by build agents.
+
+**Critical:** for type-checking, use `node ./node_modules/typescript/bin/tsc --noEmit`, NOT `node ./node_modules/typescript/bin/tsc --noEmit`. The npx layer hangs on Windows due to binary-resolution + AV overhead. This protocol applies to all PRDs going forward.
 
 ---
 
@@ -28,24 +28,30 @@ Standard rules:
 
 | File | Change |
 |---|---|
-| `app/admin/pbv/preapps/page.tsx` | F1 — add `handleApproveAndSendInvitation` chain handler + per-step UI state. F2 — replace existing "Create Full Application Invitation" and "Send SMS Invitation" buttons with one combined button. F3 — inline confirm panel showing phone + language. F4 — preserve magic-link display + Copy Link + View Full Application link. |
+| `supabase/migrations/<timestamp>_pbv_preapp_phone.sql` | F0 — new migration adding `pbv_preapplications.phone` column (nullable). |
+| `types/compliance.ts` | F0 — add `phone: string | null` to `PbvPreapplication`. |
+| `app/api/admin/pbv/preapps/[id]/route.ts` (or wherever preapp edits happen) | F0 — accept `phone` on the PATCH path. If no edit route exists, add one. |
+| `app/api/admin/pbv/full-applications/route.ts` | F0 — accept and store `phone` on insert (column already exists on `pbv_full_applications`). |
+| `app/admin/pbv/preapps/page.tsx` | F0 — editable phone field in the detail panel (inline edit, Save/Cancel, format via `lib/phoneParser.ts`). F1 — `handleApproveAndSendInvitation` chain handler. F2 — replace existing Create + Send buttons with one combined button. F3 — inline confirm panel showing phone + language. Inline phone-entry shown if phone missing when user clicks the combined button. F4 — preserve magic-link display + Copy Link + View Full Application link. |
+| `lib/phoneParser.ts` | Reuse — do not modify. |
 
-That's the entire change surface. No other files.
+**Files NOT to touch:** `lib/notifications/**`, `app/api/admin/pbv/full-applications/[id]/send-sms/route.ts`, `app/api/admin/pbv/preapps/[id]/review/route.ts`, any tenant-facing surface, any HACH-facing surface.
 
 ---
 
-## Files NOT to touch
+## Files NOT to touch (revised)
 
-- `app/api/admin/pbv/preapps/[id]/review/route.ts`
-- `app/api/admin/pbv/full-applications/route.ts`
+- `app/api/admin/pbv/preapps/[id]/review/route.ts` — review action only; phone editing is a separate concern (see F0).
 - `app/api/admin/pbv/full-applications/[id]/send-sms/route.ts`
 - `lib/notifications/**`
 - `lib/phoneParser.ts` (use as-is; don't modify)
-- Any translation file
+- Any translation file (admin is English-only)
 - Any tenant-facing or HACH-facing component
-- Any migration
+- The public preapp form (`app/pbv-preapp/page.tsx`) — phone is NOT collected on the tenant-facing form.
 
-If you find a fix you think is needed in any of these, stop and ask.
+**Files now in scope (revised from prior version):** the create-full-app endpoint (`app/api/admin/pbv/full-applications/route.ts`) and the preapp PATCH route are in scope because F0 needs phone propagation end-to-end. The previous version of this prompt incorrectly listed both as off-limits.
+
+If you find a fix you think is needed elsewhere, stop and ask.
 
 ---
 
@@ -61,6 +67,30 @@ If you find a fix you think is needed in any of these, stop and ask.
    - The existing "Send SMS Invitation" button (~line 902).
    - The inline confirm pattern used by the Delete-application section (~line 929) — match this pattern for the new confirm panel.
 3. Verify how the page detects: (a) qualified vs not, (b) presence/absence of phone on `detail`, (c) whether a full_app already exists for this preapp. The existing code already gates these; reuse the same conditions.
+
+### Step 0.5 — Phone on preapp (F0)
+
+Before any UI work, ship the data path. Order:
+
+1. **Migration:** create `supabase/migrations/<timestamp>_pbv_preapp_phone.sql`:
+   ```sql
+   ALTER TABLE pbv_preapplications ADD COLUMN phone TEXT;
+   COMMENT ON COLUMN pbv_preapplications.phone IS 'Tenant phone for SMS invitations and pre-invite outreach. Captured manually by staff.';
+   ```
+   Use the next available timestamp consistent with existing migration naming.
+
+2. **Type:** add `phone: string | null` to `PbvPreapplication` in `types/compliance.ts`.
+
+3. **PATCH endpoint:** find the existing preapp edit route (search for `PATCH` handlers under `app/api/admin/pbv/preapps/`). If one exists, add `phone` to its accepted fields. If not, create `app/api/admin/pbv/preapps/[id]/route.ts` with a minimal PATCH that accepts `{ phone }`, validates via `lib/phoneParser.ts`, updates the row, audit-logs per existing pattern.
+
+4. **Create-full-app endpoint** (`app/api/admin/pbv/full-applications/route.ts`): accept `phone` in the request body, store it on the inserted `pbv_full_applications.phone` column. Backward-compatible — `phone` is optional in the request.
+
+5. **Admin preapp detail page (`app/admin/pbv/preapps/page.tsx`):** add an editable phone field in the existing "Head of Household" / contact section. Pattern:
+   - Display: formatted via `lib/phoneParser.ts`. "Not set" when null.
+   - Edit: pencil icon or "Edit" link → input + Save/Cancel buttons.
+   - Save: PATCH to the route from step 3. Optimistic update of local `detail.phone`.
+
+Type-check after F0 is complete: `node ./node_modules/typescript/bin/tsc --noEmit`.
 
 ### Step 1 — Add chain state + handler
 
@@ -107,10 +137,9 @@ Remove:
 Render in their place a single combined button whose label and disabled state come from the table in PRD §F2:
 
 ```
-- chainStep === 'idle' && qualified && hasPhone && !approved → "Approve & Send Invitation"  (primary)
-- chainStep === 'idle' && qualified && hasPhone && approved && !fullAppResult → "Create & Send Invitation"  (primary)
-- chainStep === 'idle' && qualified && hasPhone && fullAppResult && !smsSent → "Send Invitation"  (primary)
-- chainStep === 'idle' && qualified && !hasPhone → "Send Invitation" disabled, with helper text "No phone number on file"
+- chainStep === 'idle' && qualified && !approved → "Approve & Send Invitation"  (primary)
+- chainStep === 'idle' && qualified && approved && !fullAppResult → "Create & Send Invitation"  (primary)
+- chainStep === 'idle' && qualified && fullAppResult && !smsSent → "Send Invitation"  (primary)
 - !qualified → button hidden entirely
 - chainStep === 'confirming' → confirm panel from Step 2
 - chainStep === 'approving' → button shows "Approving..." disabled
@@ -119,6 +148,14 @@ Render in their place a single combined button whose label and disabled state co
 - chainStep === 'done' → non-interactive green panel "Invitation sent ✓" (or "Sent via email (SMS failed)" for email-fallback)
 - chainStep === 'error' → red error panel showing the failed step + message + "Retry [step]" button that re-runs from that step only
 ```
+
+**`hasPhone` pre-check is back, now that F0 puts phone on the preapp.** Compute `hasPhone = !!detail.phone`. When the user clicks the combined button (chain in `idle`):
+- If `hasPhone`: proceed to the confirm panel (Step 2) as normal.
+- If `!hasPhone`: show an inline phone input above the confirm panel with a Save button. After save (PATCH preapp + update local `detail.phone`), automatically proceed to the confirm panel showing the now-populated phone.
+
+No page navigation. The user never leaves the preapp detail. The previous "send-sms fails, navigate to full_app to add phone" workflow is now obsolete — this PR replaces it.
+
+In the combined handler (F1), when calling create-full-app, pass `phone: detail.phone` so the value propagates to `pbv_full_applications.phone`. The send-sms step then sees a phone on the full_app and proceeds normally.
 
 Keep visible regardless of `chainStep`:
 - The magic-link display block (~line 888) once `fullAppResult` exists.
@@ -133,7 +170,7 @@ For "already approved" detection, use `detail.stanton_review_status === 'approve
 
 ### Step 5 — Type check
 
-`npx tsc --noEmit`. Must pass.
+`node ./node_modules/typescript/bin/tsc --noEmit`. Must pass.
 
 ### Step 6 — Build
 
@@ -150,7 +187,7 @@ Per PRD-51 Gates 1-8. Document each in the build report:
 - **Gate 5** (email fallback): UI screenshot of "Sent via email (SMS failed)" — if you can't reach a state where Twilio fails in dev, document the code path and unit-test the rendering logic instead.
 - **Gate 6** (hard failure mid-chain): mock or temporarily break `/send-sms`, screenshot the error panel + retry button.
 - **Gate 7** (not qualified): screenshot showing no combined button, Deny / Needs Info visible.
-- **Gate 8** (build): paste of `npx tsc --noEmit` and `npm run build` output.
+- **Gate 8** (build): paste of `node ./node_modules/typescript/bin/tsc --noEmit` and `npm run build` output.
 
 ### Step 8 — Build report
 
@@ -161,7 +198,7 @@ Write `docs/build-reports/51-pbv-preapp-combined-approve-send_build-report_2026-
 ## What "done" looks like
 
 1. Branch `feat/pbv-preapp-combined-approve-send-51` pushed to origin.
-2. `npx tsc --noEmit` clean.
+2. `node ./node_modules/typescript/bin/tsc --noEmit` clean.
 3. `npm run build` clean.
 4. PR opened against `main` with PRD link in description. (Not Draft — this one is ready to merge after Alex's review.)
 5. Build report at `docs/build-reports/51-pbv-preapp-combined-approve-send_build-report_2026-05-19.md`.

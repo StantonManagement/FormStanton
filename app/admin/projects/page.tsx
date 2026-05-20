@@ -1,10 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useProjects } from '@/lib/useProjects';
 import { ProjectStatusBadge } from '@/components/projects';
 import type { ProjectStatus } from '@/types/compliance';
+import type { ProjectListItem } from '@/lib/useProjects';
+import {
+  DataTable,
+  type ColumnDef,
+  DateCell,
+} from '@/components/admin/DataTable';
+import { Plus, Trash2 } from 'lucide-react';
 
 export default function ProjectsListPage() {
   const router = useRouter();
@@ -63,13 +70,113 @@ export default function ProjectsListPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--paper)]">
-        <div className="text-[var(--muted)]">Loading projects...</div>
-      </div>
-    );
-  }
+  const statusOptions = useMemo(
+    () =>
+      Array.from(new Set(projects.map((p) => p.status).filter(Boolean))).map((value) => ({
+        value,
+        label: String(value)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
+      })),
+    [projects]
+  );
+
+  const columns = useMemo<ColumnDef<ProjectListItem>[]>(
+    () => [
+      {
+        id: 'name',
+        accessorKey: 'name',
+        header: 'Name',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.name,
+          className: 'group',
+        },
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[var(--ink)]">{row.name}</span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setConfirmDeleteId(row.id);
+                setDeleteError('');
+              }}
+              className="ml-auto opacity-0 transition-opacity text-[var(--muted)] hover:text-[var(--error)] group-hover:opacity-100"
+              aria-label={`Delete ${row.name}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ),
+      },
+      {
+        id: 'status',
+        accessorKey: 'status',
+        header: 'Status',
+        enableSorting: true,
+        enableFiltering: statusOptions.length > 0,
+        meta: {
+          filter: statusOptions.length > 0 ? { type: 'select', options: statusOptions } : undefined,
+          csvValue: (row) => row.status,
+        },
+        cell: ({ value }) => <ProjectStatusBadge status={value as ProjectStatus} />,
+      },
+      {
+        id: 'deadline',
+        accessorKey: 'deadline',
+        header: 'Deadline',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.deadline ?? '',
+        },
+        cell: ({ value }) =>
+          value ? (
+            <DateCell value={value as string} format="long" />
+          ) : (
+            <span className="text-sm text-[var(--muted)]">—</span>
+          ),
+      },
+      {
+        id: 'unit_count',
+        accessorKey: 'unit_count',
+        header: 'Units',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => String(row.unit_count),
+        },
+        cell: ({ value }) => (
+          <span className="text-sm text-[var(--muted)]">{value as number}</span>
+        ),
+      },
+      {
+        id: 'completion_percent',
+        accessorKey: 'completion_percent',
+        header: '% Complete',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => `${row.completion_percent}`,
+        },
+        cell: ({ row }) =>
+          row.unit_count > 0 ? (
+            <span
+              className={`text-sm font-medium ${
+                row.completion_percent === 100 ? 'text-[var(--success)]' : 'text-[var(--ink)]'
+              }`}
+            >
+              {row.completion_percent}%
+            </span>
+          ) : (
+            <span className="text-sm text-[var(--muted)]">—</span>
+          ),
+      },
+    ],
+    [statusOptions]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--paper)]">
@@ -83,8 +190,9 @@ export default function ProjectsListPage() {
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
           >
+            <Plus className="h-4 w-4" />
             New Project
           </button>
         </div>
@@ -95,71 +203,36 @@ export default function ProjectsListPage() {
           <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
 
-        {projects.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-[var(--border)]">
-            <svg className="w-12 h-12 text-[var(--muted)] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-[var(--muted)]">No projects yet. Create your first project.</p>
-          </div>
-        ) : (
-          <div className="bg-white border border-[var(--border)]">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-[var(--bg-section)] border-b border-[var(--divider)]">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Deadline</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Units</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">% Complete</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projects.map((p) => (
-                  <tr
-                    key={p.id}
-                    onClick={() => router.push(`/admin/projects/${p.id}`)}
-                    className="group border-b border-[var(--divider)] hover:bg-[var(--bg-section)] cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3 font-medium text-[var(--ink)]">
-                      <div className="flex items-center gap-2">
-                        <span>{p.name}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); setDeleteError(''); }}
-                          className="ml-auto opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--error)] transition-colors duration-200"
-                          title="Delete project"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <ProjectStatusBadge status={p.status as ProjectStatus} />
-                    </td>
-                    <td className="px-4 py-3 text-[var(--muted)]">
-                      {p.deadline || '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[var(--muted)]">{p.unit_count}</td>
-                    <td className="px-4 py-3 text-right">
-                      {p.unit_count > 0 ? (
-                        <span className={`text-sm font-medium ${
-                          p.completion_percent === 100 ? 'text-[var(--success)]' : 'text-[var(--ink)]'
-                        }`}>
-                          {p.completion_percent}%
-                        </span>
-                      ) : (
-                        <span className="text-[var(--muted)]">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="bg-white border border-[var(--border)]">
+          <DataTable<ProjectListItem>
+            data={projects}
+            columns={columns}
+            urlNamespace="projects"
+            getRowId={(row) => row.id}
+            loading={loading}
+            enableGlobalSearch={true}
+            enableColumnFilters={true}
+            enableColumnVisibility={true}
+            enableCsvExport={true}
+            onRowClick={(row) => router.push(`/admin/projects/${row.id}`)}
+            emptyState={
+              <div className="text-center py-16 flex flex-col items-center gap-3">
+                <svg className="w-12 h-12 text-[var(--muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="text-sm text-[var(--muted)]">No projects yet. Create your first project.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] text-sm text-[var(--primary)] hover:bg-[var(--bg-section)] transition-colors rounded-none"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Project
+                </button>
+              </div>
+            }
+          />
+        </div>
       </div>
 
       {/* Delete Confirm Modal */}

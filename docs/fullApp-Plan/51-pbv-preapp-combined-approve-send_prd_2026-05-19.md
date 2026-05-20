@@ -50,13 +50,15 @@ Deny and Needs-Info paths are unchanged — they stay separate because they're d
 
 ## Non-Goals
 
-- **No server-side wrapper endpoint.** The combined action lives in client-side handler code that chains the three existing endpoints. Auditing already happens at each endpoint.
-- **No changes to the send-sms endpoint.** It already handles phone validation, language, blocked states, email fallback.
-- **No changes to the SMS message body.** Templates live in `lib/notifications/*`.
+- **No server-side wrapper endpoint** for the chain. Combined action is client-side, calling three existing endpoints sequentially. Auditing happens at each.
+- **No changes to the send-sms endpoint.** Already handles phone validation, language, blocked states, email fallback.
+- **No changes to the SMS message body.**
 - **No changes to Deny / Needs Info buttons.**
+- **No phone collection on the public preapp form.** Phone is staff-entered in admin only (DB pull, AppFolio, direct entry). The public form stays as-is.
 - **No new analytics events.** Each endpoint already audits.
-- **No batch/bulk version.** This is a per-preapp action. Bulk could come later if Tess/Kristine ask.
-- **No "create-only without SMS" alternative button.** Removed by replacement. If staff needs to create without sending (testing / edge cases), they can hit the API directly or we add a CLI script later.
+- **No batch/bulk version.**
+- **No "create-only without SMS" alternative button.**
+- **No automatic "request more info" SMS** triggered from the preapp edit screen. F0 adds the phone field; a future PRD could add a "Send a text" button if you want it. Not in scope here.
 
 ---
 
@@ -66,7 +68,7 @@ Deny and Needs-Info paths are unchanged — they stay separate because they're d
 |---|---|
 | Staff (Tess, Kristine, Alex) reviewing a qualified preapp | One button, one confirm. SMS goes out in the applicant's preferred language. ~3 seconds end to end on the happy path. |
 | Staff reviewing a non-qualified preapp | Approve action is disabled or hidden (existing behavior — verify). The combined button is also disabled/hidden. Deny / Needs Info stay accessible. |
-| Staff reviewing a preapp without a phone number | Combined button is disabled, with a visible reason ("no phone on file — add a phone number first"). Approve via the existing review path still works. |
+| Staff reviewing a preapp whose full_app will have no phone | Combined button runs through approve + create-full-app, then fails gracefully at the SMS step with a "no phone on file" message and a Retry button. Staff adds phone via the existing full_app edit path, returns, retries. Phone capture is not in this PRD's scope. |
 | Staff reviewing a preapp where SMS was already sent | Sees "Invitation sent ✓" non-interactive state. The full-app link + Copy Link + "View Full Application" link stay visible. |
 | Tenant | No change to what they receive. Same SMS, same link, same destination. |
 
@@ -87,8 +89,8 @@ Deny and Needs-Info paths are unchanged — they stay separate because they're d
 
 5. **Guardrails:**
    - Button hidden if `qualification_result !== 'likely_qualifies'` (matches existing Approve button gating — verify).
-   - Button disabled with reason if no phone on file.
    - Button disabled if a step is in-flight.
+   - Phone is editable directly on the preapp detail page (see F0 below). If `detail.phone` is empty, the combined button shows a small inline phone input + Save before the user can click confirm. This eliminates the page-jump-to-add-phone-elsewhere flow that prior drafts of this PRD assumed.
 
 6. **Per-step progress text.** "Approving... → Creating application... → Sending invitation... → Sent ✓" — each transition rendered, so staff understands what's happening if any step pauses.
 
@@ -101,6 +103,26 @@ Deny and Needs-Info paths are unchanged — they stay separate because they're d
 ---
 
 ## Detailed Changes
+
+### F0 — Phone on preapp (data path)
+
+**Rationale:** Staff may want to text an applicant *before* deciding to send the full application invitation (e.g., to confirm information, request a corrected income figure). That can't happen if phone only exists on `pbv_full_applications`, which doesn't exist until the invitation is sent. Phone belongs on the preapp.
+
+**Migration** (`supabase/migrations/<timestamp>_pbv_preapp_phone.sql`):
+```sql
+ALTER TABLE pbv_preapplications ADD COLUMN phone TEXT;
+COMMENT ON COLUMN pbv_preapplications.phone IS 'Tenant phone for SMS invitations and pre-invite outreach. Captured manually by staff (DB pull, AppFolio, or direct entry).';
+```
+
+Nullable. No backfill — staff adds it as they review existing preapps.
+
+**Type** (`types/compliance.ts`): add `phone: string | null` to `PbvPreapplication`.
+
+**PATCH endpoint** for editing preapp phone: reuse the existing edit pattern (search the codebase for the route that already updates other preapp fields — likely `PATCH /api/admin/pbv/preapps/[id]` or a generic update endpoint). If no edit endpoint exists yet, add a minimal one that accepts `{ phone }` and stores it. Audit-log per existing pattern.
+
+**Create-full-app endpoint** (`POST /api/admin/pbv/full-applications`): accept a `phone` parameter and store it on the new `pbv_full_applications.phone` column. The combined handler (F1) passes `detail.phone` through.
+
+**Preapp detail page UI:** add an editable phone field to the "Head of Household" / contact section (or wherever the existing per-preapp fields are displayed). Inline edit — click to enter edit mode, Save / Cancel. Format via `lib/phoneParser.ts` for display.
 
 ### F1 — Add combined handler
 
@@ -227,11 +249,22 @@ Keep all three. They're independent of the button consolidation and provide a ma
 - Watch progress: Approving... → Creating application... → Sending invitation... → Sent ✓.
 - Verify a real SMS arrives (or a test SMS in dev mode), and `pbv_full_applications` has a new row with `tenant_access_token`.
 
-### Gate 2 — No phone on file
+### Gate 2 — Phone editing on preapp + propagation
 
-- Find or create a preapp with `phone IS NULL`.
-- Button is disabled, with helper text indicating why.
-- Approve via the existing review path still works.
+- Open a preapp detail page. Edit the phone field inline, save. Confirm:
+  - Stored on `pbv_preapplications.phone` (verify in DB or via a refetch).
+  - Display reformats via `lib/phoneParser.ts`.
+- Click the combined button. Confirm panel shows the entered phone.
+- Run the chain. Verify `pbv_full_applications.phone` matches what was on the preapp.
+- SMS goes out to that number.
+
+### Gate 2b — Missing phone on combined-button click
+
+- Open a qualified preapp with `phone IS NULL`.
+- Click the combined button.
+- UI shows an inline phone input + Save before the confirm panel is reachable.
+- Enter phone, save, then proceed to confirm and chain.
+- No page navigation required.
 
 ### Gate 3 — Already approved (idempotent)
 

@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import {
+  DataTable,
+  type ColumnDef,
+  DateCell,
+  MonoCell,
+  BadgeCell,
+} from '@/components/admin/DataTable';
 
 interface TowRow {
   submission_id: string;
@@ -429,6 +436,291 @@ export default function TowListPage() {
     load();
   };
 
+  const autoRows = data?.auto_flagged_moveouts.rows ?? [];
+  const permitRows = data?.tow_list.rows ?? [];
+
+  const autoColumns = useMemo<ColumnDef<TowRow>[]>(
+    () => [
+      {
+        id: 'former_tenant',
+        header: 'Former Tenant',
+        accessorKey: 'full_name',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+          csvValue: (row) => row.full_name ?? '',
+        },
+        cell: ({ value }) => <span className="text-xs text-[var(--ink)]">{(value as string) || '—'}</span>,
+      },
+      {
+        id: 'unit_building',
+        header: 'Unit / Building',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => `${row.unit_number} · ${row.building_address}`,
+        },
+        cell: ({ row }) => (
+          <span className="text-xs text-[var(--ink)]">
+            {row.unit_number} · <span className="text-[var(--muted)]">{row.building_address}</span>
+          </span>
+        ),
+      },
+      {
+        id: 'current_tenant',
+        header: 'Current Tenant',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.current_tenant_name ?? '',
+        },
+        cell: ({ row }) => (
+          row.current_tenant_name
+            ? <span className="text-xs font-medium text-[var(--primary)]">{row.current_tenant_name}</span>
+            : <span className="text-xs italic text-[var(--muted)]">No tenant on file</span>
+        ),
+      },
+      {
+        id: 'vehicle_plate',
+        header: 'Plate',
+        accessorKey: 'vehicle_plate',
+        meta: {
+          csvValue: (row) => row.vehicle_plate ?? '',
+        },
+        cell: ({ value }) => <MonoCell value={(value as string) ?? '—'} />, 
+      },
+      {
+        id: 'vehicle_desc',
+        header: 'Vehicle',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => vehicleDesc(row),
+        },
+        cell: ({ row }) => <span className="text-xs text-[var(--ink)]">{vehicleDesc(row)}</span>,
+      },
+      {
+        id: 'actions',
+        header: 'Action',
+        enableSorting: false,
+        enableHiding: false,
+        meta: {
+          align: 'right',
+          csvValue: () => '',
+        },
+        cell: ({ row }) => (
+          <button
+            onClick={() => revokeMoveOut(row.submission_id)}
+            className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
+          >
+            Revoke & add to tow list
+          </button>
+        ),
+      },
+    ],
+    [revokeMoveOut]
+  );
+
+  const permitColumns = useMemo<ColumnDef<TowRow>[]>(
+    () => [
+      {
+        id: 'vehicle_plate',
+        accessorKey: 'vehicle_plate',
+        header: 'Plate',
+        meta: {
+          csvValue: (row) => row.vehicle_plate ?? '',
+        },
+        cell: ({ value }) => <MonoCell value={(value as string) ?? '—'} />, 
+      },
+      {
+        id: 'vehicle_desc',
+        header: 'Vehicle',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => vehicleDesc(row),
+        },
+        cell: ({ row }) => <span className="text-xs text-[var(--ink)]">{vehicleDesc(row)}</span>,
+      },
+      {
+        id: 'unit_building',
+        header: 'Unit / Building',
+        meta: {
+          csvValue: (row) => `${row.unit_number} · ${row.building_address}`,
+        },
+        cell: ({ row }) => (
+          <span className="text-xs text-[var(--ink)]">
+            {row.unit_number} · <span className="text-[var(--muted)]">{row.building_address}</span>
+          </span>
+        ),
+      },
+      {
+        id: 'former_tenant',
+        header: 'Former Tenant',
+        accessorKey: 'full_name',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.full_name ?? '',
+        },
+        cell: ({ value }) => <span className="text-xs text-[var(--ink)]">{(value as string) || '—'}</span>,
+      },
+      {
+        id: 'reason',
+        header: 'Why flagged',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => `${REVOKE_REASON_LABELS[row.permit_revoked_reason || ''] || row.permit_revoked_reason || ''}${row.permit_revoked_notes ? ` - ${row.permit_revoked_notes}` : ''}`,
+        },
+        cell: ({ row }) => (
+          <div className="text-xs text-[var(--ink)]">
+            <div className="font-medium text-[var(--primary)]">
+              {REVOKE_REASON_LABELS[row.permit_revoked_reason || ''] || row.permit_revoked_reason || '—'}
+            </div>
+            <div className="text-[10px] text-[var(--muted)] mt-0.5">
+              Permit revoked on {formatDate(row.permit_revoked_at)}
+              {row.permit_revoked_by && ` by ${row.permit_revoked_by}`}
+              — plate was on file, promoted here automatically.
+            </div>
+            {row.permit_revoked_notes && (
+              <div className="text-[10px] text-[var(--muted)] italic mt-0.5">“{row.permit_revoked_notes}”</div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Action',
+        enableSorting: false,
+        enableHiding: false,
+        meta: {
+          align: 'right',
+          csvValue: () => '',
+        },
+        cell: ({ row }) => (
+          <div className="flex gap-1 justify-end">
+            <button
+              onClick={() => markTowed(row.submission_id)}
+              className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
+            >
+              Mark towed
+            </button>
+            <button
+              onClick={() => clearFromList(row.submission_id)}
+              className="px-2 py-1 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+            >
+              Clear
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [clearFromList, markTowed]
+  );
+
+  const manualColumns = useMemo<ColumnDef<ManualRow>[]>(
+    () => [
+      {
+        id: 'vehicle_plate',
+        accessorKey: 'vehicle_plate',
+        header: 'Plate',
+        meta: {
+          csvValue: (row) => row.vehicle_plate ?? '',
+        },
+        cell: ({ value }) => <MonoCell value={(value as string) ?? '—'} />, 
+      },
+      {
+        id: 'vehicle_desc',
+        header: 'Vehicle',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => vehicleDesc(row),
+        },
+        cell: ({ row }) => <span className="text-xs text-[var(--ink)]">{vehicleDesc(row)}</span>,
+      },
+      {
+        id: 'unit_building',
+        header: 'Unit / Building',
+        meta: {
+          csvValue: (row) => `${row.unit_number ?? ''}${row.unit_number && row.building_address ? ' · ' : ''}${row.building_address ?? ''}`,
+        },
+        cell: ({ row }) => (
+          <span className="text-xs text-[var(--ink)]">
+            {row.unit_number ? `${row.unit_number}` : ''}
+            {row.unit_number && row.building_address ? ' · ' : ''}
+            {row.building_address ? <span className="text-[var(--muted)]">{row.building_address}</span> : !row.unit_number ? '—' : ''}
+          </span>
+        ),
+      },
+      {
+        id: 'tenant_name',
+        accessorKey: 'tenant_name',
+        header: 'Tenant',
+        meta: {
+          csvValue: (row) => row.tenant_name ?? '',
+        },
+        cell: ({ value }) => <span className="text-xs text-[var(--ink)]">{(value as string) || '—'}</span>,
+      },
+      {
+        id: 'reason_source',
+        header: 'Reason / Source',
+        enableSorting: false,
+        meta: {
+          csvValue: (row) => `${row.reason ?? ''} (${row.source})${row.notes ? ` - ${row.notes}` : ''}`,
+        },
+        cell: ({ row }) => (
+          <div className="text-xs text-[var(--ink)] space-y-1">
+            <div>{row.reason || '—'}</div>
+            <BadgeCell
+              value={row.source}
+              variant={row.source === 'submission_search' ? 'blue' : 'gray'}
+              label={row.source === 'submission_search' ? 'From submission' : 'Manual'}
+            />
+            {row.notes && <div className="text-[10px] text-[var(--muted)] italic">“{row.notes}”</div>}
+          </div>
+        ),
+      },
+      {
+        id: 'added_at',
+        accessorKey: 'added_at',
+        header: 'Added',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.added_at,
+        },
+        cell: ({ row }) => (
+          <div className="text-xs text-[var(--muted)]">
+            <DateCell value={row.added_at} format="datetime" />
+            <div className="text-[10px]">by {row.added_by}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Action',
+        enableSorting: false,
+        enableHiding: false,
+        meta: {
+          align: 'right',
+          csvValue: () => '',
+        },
+        cell: ({ row }) => (
+          <div className="flex gap-1 justify-end">
+            <button
+              onClick={() => manualAction(row.id, 'mark_towed')}
+              className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
+            >
+              Mark towed
+            </button>
+            <button
+              onClick={() => manualAction(row.id, 'clear')}
+              className="px-2 py-1 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
+            >
+              Clear
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [manualAction]
+  );
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {showAddModal && (
@@ -490,55 +782,18 @@ export default function TowListPage() {
               Revoking the permit will promote the vehicle to the tow list if a plate is on file.
             </p>
           </div>
-          <div className="overflow-x-auto border border-[var(--border)]">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-[var(--bg-section)]">
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Former Tenant</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Unit / Building</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Current Tenant</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Plate</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Vehicle</th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.auto_flagged_moveouts.rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-[var(--muted)] border border-[var(--divider)]">
-                      No move-outs detected.
-                    </td>
-                  </tr>
-                ) : (
-                  data.auto_flagged_moveouts.rows.map(r => (
-                    <tr key={r.submission_id} className="bg-white hover:bg-[var(--bg-section)]">
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{r.full_name || '\u2014'}</td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                        {r.unit_number} &middot; <span className="text-[var(--muted)]">{r.building_address}</span>
-                      </td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                        {r.current_tenant_name
-                          ? <span className="text-[var(--primary)] font-medium">{r.current_tenant_name}</span>
-                          : <span className="text-[var(--muted)] italic">No tenant on file</span>
-                        }
-                      </td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)] font-mono">
-                        {r.vehicle_plate || <span className="text-[var(--muted)]">\u2014</span>}
-                      </td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{vehicleDesc(r)}</td>
-                      <td className="px-2 py-1.5 text-xs text-right border border-[var(--divider)]">
-                        <button
-                          onClick={() => revokeMoveOut(r.submission_id)}
-                          className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
-                        >
-                          Revoke &amp; add to tow list
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="bg-white border border-[var(--border)]">
+            <DataTable<TowRow>
+              data={autoRows}
+              columns={autoColumns}
+              urlNamespace="tow-auto"
+              getRowId={(row) => row.submission_id}
+              enableGlobalSearch={true}
+              enableColumnFilters={true}
+              enableColumnVisibility={true}
+              enableCsvExport={true}
+              emptyState={<div className="py-6 text-center text-xs text-[var(--muted)]">No move-outs detected.</div>}
+            />
           </div>
         </section>
       )}
@@ -556,70 +811,18 @@ export default function TowListPage() {
               the vehicle was automatically promoted here. Mark as towed once action is taken, or clear if it is a false alarm.
             </p>
           </div>
-          <div className="overflow-x-auto border border-[var(--border)]">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-[var(--bg-section)]">
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Plate</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Vehicle</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Unit / Building</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Former Tenant</th>
-                  <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Why flagged</th>
-                  <th className="px-2 py-2 text-right text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.tow_list.rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-[var(--muted)] border border-[var(--divider)]">
-                      Tow list is empty.
-                    </td>
-                  </tr>
-                ) : (
-                  data.tow_list.rows.map(r => (
-                    <tr key={r.submission_id} className="bg-white hover:bg-[var(--bg-section)]">
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)] font-mono font-medium">
-                        {r.vehicle_plate || '\u2014'}
-                      </td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{vehicleDesc(r)}</td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                        {r.unit_number} &middot; <span className="text-[var(--muted)]">{r.building_address}</span>
-                      </td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{r.full_name || '\u2014'}</td>
-                      <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                        <div className="font-medium text-[var(--primary)]">
-                          {REVOKE_REASON_LABELS[r.permit_revoked_reason || ''] || r.permit_revoked_reason || '\u2014'}
-                        </div>
-                        <div className="text-[10px] text-[var(--muted)] mt-0.5">
-                          Permit revoked on {formatDate(r.permit_revoked_at)}
-                          {r.permit_revoked_by && ` by ${r.permit_revoked_by}`}
-                          {' \u2014 plate was on file, promoted here automatically.'}
-                        </div>
-                        {r.permit_revoked_notes && (
-                          <div className="text-[10px] text-[var(--muted)] italic mt-0.5">&ldquo;{r.permit_revoked_notes}&rdquo;</div>
-                        )}
-                      </td>
-                      <td className="px-2 py-1.5 text-xs text-right border border-[var(--divider)]">
-                        <div className="flex gap-1 justify-end">
-                          <button
-                            onClick={() => markTowed(r.submission_id)}
-                            className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
-                          >
-                            Mark towed
-                          </button>
-                          <button
-                            onClick={() => clearFromList(r.submission_id)}
-                            className="px-2 py-1 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="bg-white border border-[var(--border)]">
+            <DataTable<TowRow>
+              data={permitRows}
+              columns={permitColumns}
+              urlNamespace="tow-permit"
+              getRowId={(row) => row.submission_id}
+              enableGlobalSearch={true}
+              enableColumnFilters={true}
+              enableColumnVisibility={true}
+              enableCsvExport={true}
+              emptyState={<div className="py-6 text-center text-xs text-[var(--muted)]">Tow list is empty.</div>}
+            />
           </div>
         </section>
       )}
@@ -635,76 +838,18 @@ export default function TowListPage() {
             Vehicles added by staff &mdash; either linked to an existing submission or entered without one.
           </p>
         </div>
-        <div className="overflow-x-auto border border-[var(--border)]">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-[var(--bg-section)]">
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Plate</th>
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Vehicle</th>
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Unit / Building</th>
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Tenant</th>
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Reason / Source</th>
-                <th className="px-2 py-2 text-left text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Added</th>
-                <th className="px-2 py-2 text-right text-xs font-semibold text-[var(--muted)] uppercase border border-[var(--divider)]">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {manualRows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-[var(--muted)] border border-[var(--divider)]">
-                    No manually added entries.
-                  </td>
-                </tr>
-              ) : (
-                manualRows.map(r => (
-                  <tr key={r.id} className="bg-white hover:bg-[var(--bg-section)]">
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)] font-mono font-medium">
-                      {r.vehicle_plate || '\u2014'}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{vehicleDesc(r)}</td>
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                      {r.unit_number ? `${r.unit_number}` : ''}
-                      {r.unit_number && r.building_address ? ' \u00b7 ' : ''}
-                      {r.building_address ? <span className="text-[var(--muted)]">{r.building_address}</span> : null}
-                      {!r.unit_number && !r.building_address ? '\u2014' : null}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">{r.tenant_name || '\u2014'}</td>
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)]">
-                      <div>{r.reason || '\u2014'}</div>
-                      <div className="mt-0.5">
-                        <span className={`text-[10px] px-1 py-px leading-none ${
-                          r.source === 'submission_search' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-[var(--muted)]'
-                        }`}>
-                          {r.source === 'submission_search' ? 'From submission' : 'Manual'}
-                        </span>
-                      </div>
-                      {r.notes && <div className="text-[10px] text-[var(--muted)] italic mt-0.5">&ldquo;{r.notes}&rdquo;</div>}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs border border-[var(--divider)] text-[var(--muted)]">
-                      {formatDate(r.added_at)}
-                      <div className="text-[10px]">by {r.added_by}</div>
-                    </td>
-                    <td className="px-2 py-1.5 text-xs text-right border border-[var(--divider)]">
-                      <div className="flex gap-1 justify-end">
-                        <button
-                          onClick={() => manualAction(r.id, 'mark_towed')}
-                          className="px-2 py-1 text-xs bg-red-700 text-white rounded-none hover:bg-red-800 transition-colors duration-200 ease-out"
-                        >
-                          Mark towed
-                        </button>
-                        <button
-                          onClick={() => manualAction(r.id, 'clear')}
-                          className="px-2 py-1 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200 ease-out"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="bg-white border border-[var(--border)]">
+          <DataTable<ManualRow>
+            data={manualRows}
+            columns={manualColumns}
+            urlNamespace="tow-manual"
+            getRowId={(row) => row.id}
+            enableGlobalSearch={true}
+            enableColumnFilters={true}
+            enableColumnVisibility={true}
+            enableCsvExport={true}
+            emptyState={<div className="py-6 text-center text-xs text-[var(--muted)]">No manually added entries.</div>}
+          />
         </div>
       </section>
     </div>
