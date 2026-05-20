@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Form Utilities
  * Common validation and formatting functions for forms
  */

@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, useMemo, useRef, useState, useCallback } from 'react';
 import { usePermissionPrompt } from './usePermissionPrompt';
-import LivePreviewStage from './LivePreviewStage';
+import LivePreviewStage, { ensureScanicLoaded } from './LivePreviewStage';
 import { PDFDocument } from 'pdf-lib';
 import { evaluateImageQuality, QualityScores } from './quality';
 import { translations, ScannerLanguage } from './translations';
@@ -128,59 +128,6 @@ async function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Prom
   });
 }
 
-async function ensureOpenCvLoaded(): Promise<void> {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (window.cv) {
-    return;
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector('script[data-opencv="true"]') as HTMLScriptElement | null;
-    if (existing && window.cv) {
-      resolve();
-      return;
-    }
-
-    const script = existing ?? document.createElement('script');
-    script.async = true;
-    script.defer = true;
-    script.setAttribute('data-opencv', 'true');
-    script.src = 'https://docs.opencv.org/4.x/opencv.js';
-
-    script.onload = () => {
-      if (window.cv?.onRuntimeInitialized) {
-        const original = window.cv.onRuntimeInitialized;
-        window.cv.onRuntimeInitialized = () => {
-          original();
-          resolve();
-        };
-        return;
-      }
-      resolve();
-    };
-
-    script.onerror = () => reject(new Error('OpenCV failed to load'));
-
-    if (!existing) {
-      document.body.appendChild(script);
-    }
-  });
-}
-
-async function ensureJscanifyLoaded(): Promise<any> {
-  if (typeof window !== 'undefined' && window.jscanify) {
-    return window.jscanify;
-  }
-
-  const mod = await import('jscanify/client');
-  const Jscanify = (mod as any).default ?? mod;
-  window.jscanify = Jscanify;
-  return Jscanify;
-}
-
 export default function DocumentScanner({
   instructions,
   multiPage = true,
@@ -260,16 +207,15 @@ export default function DocumentScanner({
 
     let finalCanvas: HTMLCanvasElement;
     try {
-      await ensureOpenCvLoaded();
-      const Jscanify = await ensureJscanifyLoaded();
-      const scanner = new Jscanify();
-      const extracted = scanner.extractPaper(image, image.naturalWidth, image.naturalHeight);
+      const adapter = await ensureScanicLoaded();
+      const extracted = await adapter.extract(image);
       if (extracted instanceof HTMLCanvasElement) {
         finalCanvas = extracted;
       } else {
         throw new Error('Invalid scanner result');
       }
     } catch {
+      // Fallback: draw raw image to canvas
       finalCanvas = document.createElement('canvas');
       finalCanvas.width = image.naturalWidth;
       finalCanvas.height = image.naturalHeight;

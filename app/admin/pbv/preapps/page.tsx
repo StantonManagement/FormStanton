@@ -1,10 +1,18 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { buildings } from '@/lib/buildings';
 import { copyToClipboard } from '@/lib/copyToClipboard';
+import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { PbvPreapplication, QualificationResult, PbvReviewStatus, HouseholdMember } from '@/types/compliance';
+import {
+  DataTable,
+  type ColumnDef,
+  BadgeCell,
+  MoneyCell,
+  DateCell,
+} from '@/components/admin/DataTable';
 
 type ListRow = Pick<
   PbvPreapplication,
@@ -176,11 +184,148 @@ export default function PbvPreappsPage() {
     }
   };
 
-  const duplicateKeys = rows.reduce((acc, r) => {
+  const duplicateKeys = useMemo(() => rows.reduce((acc, r) => {
     const k = `${r.building_address}||${r.unit_number}`;
     acc[k] = (acc[k] ?? 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>), [rows]);
+
+  const buildingOptions = useMemo(
+    () => buildings.map((b) => ({ value: b, label: b })),
+    []
+  );
+
+  const columns = useMemo<ColumnDef<ListRow>[]>(
+    () => [
+      {
+        id: 'unit_number',
+        accessorKey: 'unit_number',
+        header: 'Unit',
+        cell: ({ row }) => {
+          const isDuplicate = duplicateKeys[`${row.building_address}||${row.unit_number}`] > 1;
+          return (
+            <div className="flex items-center gap-2 text-sm text-[var(--ink)]">
+              <span className="font-medium">{row.unit_number}</span>
+              {row.unit_not_in_canonical_list && (
+                <BadgeCell value="unit_flag" label="Unit?" variant="amber" />
+              )}
+              {isDuplicate && <BadgeCell value="duplicate" label="Duplicate" variant="gray" />}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'building_address',
+        accessorKey: 'building_address',
+        header: 'Building',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: buildingOptions,
+            multi: true,
+          },
+        },
+        cell: ({ value }) => <span className="text-sm text-[var(--muted)]">{value as string}</span>,
+      },
+      {
+        id: 'hoh_name',
+        accessorKey: 'hoh_name',
+        header: 'HoH Name',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: { type: 'text' },
+        },
+      },
+      {
+        id: 'household_size',
+        accessorKey: 'household_size',
+        header: 'HH Size',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => row.household_size.toString(),
+        },
+      },
+      {
+        id: 'total_household_income',
+        accessorKey: 'total_household_income',
+        header: 'Total Income',
+        enableSorting: true,
+        meta: {
+          align: 'right',
+          csvValue: (row) => (row.total_household_income ?? 0).toString(),
+        },
+        cell: ({ value }) => <MoneyCell value={Number(value) || 0} />, 
+      },
+      {
+        id: 'income_limit',
+        accessorKey: 'income_limit',
+        header: 'Limit',
+        meta: {
+          align: 'right',
+          csvValue: (row) => (row.income_limit ?? 0).toString(),
+        },
+        cell: ({ value }) => <MoneyCell value={Number(value) || 0} />, 
+      },
+      {
+        id: 'qualification_result',
+        accessorKey: 'qualification_result',
+        header: 'Result',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: (Object.entries(QUAL_LABELS) as [QualificationResult, string][]).map(([value, label]) => ({ value, label })),
+            multi: true,
+          },
+          csvValue: (row) => QUAL_LABELS[row.qualification_result],
+        },
+        cell: ({ row }) => (
+          <BadgeCell
+            value={row.qualification_result}
+            variant={row.qualification_result === 'likely_qualifies' ? 'green' : row.qualification_result === 'over_income' ? 'red' : 'amber'}
+            label={QUAL_LABELS[row.qualification_result]}
+          />
+        ),
+      },
+      {
+        id: 'stanton_review_status',
+        accessorKey: 'stanton_review_status',
+        header: 'Review',
+        enableSorting: true,
+        enableFiltering: true,
+        meta: {
+          filter: {
+            type: 'select',
+            options: (Object.entries(REVIEW_LABELS) as [PbvReviewStatus, string][]).map(([value, label]) => ({ value, label })),
+          },
+          csvValue: (row) => REVIEW_LABELS[row.stanton_review_status],
+        },
+        cell: ({ row }) => (
+          <BadgeCell
+            value={row.stanton_review_status}
+            variant={row.stanton_review_status === 'approved' ? 'green' : row.stanton_review_status === 'denied' ? 'red' : row.stanton_review_status === 'needs_info' ? 'yellow' : 'gray'}
+            label={REVIEW_LABELS[row.stanton_review_status]}
+          />
+        ),
+      },
+      {
+        id: 'created_at',
+        accessorKey: 'created_at',
+        header: 'Submitted',
+        enableSorting: true,
+        meta: {
+          csvValue: (row) => row.created_at,
+        },
+        cell: ({ value }) => <DateCell value={value as string} />, 
+      },
+    ],
+    [duplicateKeys, buildingOptions]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--paper)] flex flex-col">
@@ -237,18 +382,7 @@ export default function PbvPreappsPage() {
             ))}
           </select>
 
-          <select
-            value={filterBuilding}
-            onChange={(e) => setFilterBuilding(e.target.value)}
-            className="px-3 py-2 border border-[var(--border)] rounded-none text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
-          >
-            <option value="">All buildings</option>
-            {buildings.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-
-          {(filterQual || filterReview || filterBuilding) && (
+          {(filterQual || filterReview) && (
             <button
               type="button"
               onClick={() => { setFilterQual(''); setFilterReview(''); setFilterBuilding(''); }}
@@ -268,71 +402,23 @@ export default function PbvPreappsPage() {
       <div className="flex flex-1 min-h-0">
         {/* Table */}
         <div className={`flex-1 overflow-auto p-6 ${selectedId ? 'hidden lg:block' : ''}`}>
-          {error && (
-            <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
-          )}
-
-          {loading ? (
-            <div className="text-sm text-[var(--muted)] py-8 text-center">Loading...</div>
-          ) : rows.length === 0 ? (
-            <div className="bg-white border border-[var(--border)] py-16 text-center">
-              <p className="text-[var(--muted)] text-sm">No pre-applications found.</p>
-            </div>
-          ) : (
-            <div className="bg-white border border-[var(--border)]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-[var(--bg-section)] border-b border-[var(--divider)]">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Unit</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">HoH Name</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">HH Size</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Total Income</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Limit</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Result</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Review</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[var(--muted)] uppercase tracking-wider">Submitted</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => openDetail(row.id)}
-                      className={`border-b border-[var(--divider)] hover:bg-[var(--bg-section)] cursor-pointer transition-colors ${selectedId === row.id ? 'bg-blue-50/40' : ''}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-[var(--ink)] flex items-center gap-1.5 flex-wrap">
-                          {row.unit_number}
-                          {row.unit_not_in_canonical_list && (
-                            <span className="text-[10px] font-medium px-1 py-px bg-amber-100 text-amber-700 border border-amber-200 leading-none">Unit?</span>
-                          )}
-                          {duplicateKeys[`${row.building_address}||${row.unit_number}`] > 1 && (
-                            <span className="text-[10px] font-medium px-1 py-px bg-orange-100 text-orange-700 border border-orange-200 leading-none">Duplicate</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-[var(--muted)] mt-0.5">{row.building_address}</div>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--ink)]">{row.hoh_name}</td>
-                      <td className="px-4 py-3 text-right text-[var(--ink)]">{row.household_size}</td>
-                      <td className="px-4 py-3 text-right text-[var(--ink)]">{formatCurrency(row.total_household_income)}</td>
-                      <td className="px-4 py-3 text-right text-[var(--muted)]">{formatCurrency(row.income_limit)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium border ${QUAL_COLORS[row.qualification_result]}`}>
-                          {QUAL_LABELS[row.qualification_result]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium border ${REVIEW_COLORS[row.stanton_review_status]}`}>
-                          {REVIEW_LABELS[row.stanton_review_status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DataTable<ListRow>
+            data={rows}
+            columns={columns}
+            urlNamespace="preapps"
+            getRowId={(row) => row.id}
+            loading={loading}
+            enableGlobalSearch={true}
+            enableColumnFilters={true}
+            enableColumnVisibility={true}
+            enableCsvExport={true}
+            onRowClick={(row) => openDetail(row.id)}
+            emptyState={error ? (
+              <div className="p-12 text-center text-sm text-red-600">{error}</div>
+            ) : (
+              <div className="p-12 text-center text-sm text-[var(--muted)]">No pre-applications found.</div>
+            )}
+          />
         </div>
 
         {/* Detail drawer */}
@@ -380,7 +466,7 @@ export default function PbvPreappsPage() {
   );
 }
 
-// ── Thresholds panel (inlined from admin/pbv/thresholds) ─────────────────────
+// ── Thresholds panel (inlined from admin/pbv/thresholds) ──
 
 interface Threshold {
   id?: string;
@@ -592,17 +678,59 @@ function DetailContent({
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState('');
 
-  // Create Full Application state
-  const [creatingFullApp, setCreatingFullApp] = useState(false);
-  const [createError, setCreateError] = useState('');
+  // Full application + chain state
   const [fullAppResult, setFullAppResult] = useState<{ id: string; magic_link: string } | null>(null);
-  const [sendingSms, setSendingSms] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
+  const [emailFallback, setEmailFallback] = useState(false);
 
-  const handleCreateFullApp = async () => {
-    setCreatingFullApp(true);
-    setCreateError('');
-    try {
+  type ChainStep = 'idle' | 'confirming' | 'approving' | 'creating' | 'sending' | 'done' | 'error';
+  const [chainStep, setChainStep] = useState<ChainStep>('idle');
+  const [chainError, setChainError] = useState<{ step: ChainStep; message: string } | null>(null);
+
+  // Phone editing state
+  const [localPhone, setLocalPhone] = useState<string | null>(detail.phone);
+  const [phoneEditMode, setPhoneEditMode] = useState(false);
+  const [phoneEditValue, setPhoneEditValue] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneEditError, setPhoneEditError] = useState('');
+  // Inline phone capture before confirming chain (when hasPhone is false)
+  const [inlinePhoneMode, setInlinePhoneMode] = useState(false);
+  const [inlinePhoneValue, setInlinePhoneValue] = useState('');
+  const [inlinePhoneSaving, setInlinePhoneSaving] = useState(false);
+  const [inlinePhoneError, setInlinePhoneError] = useState('');
+
+  const qualified = detail.qualification_result === 'likely_qualifies';
+  const approved = detail.stanton_review_status === 'approved';
+  const hasPhone = !!localPhone;
+
+  const handleApproveAndSendInvitation = async (fromStep?: ChainStep) => {
+    setChainError(null);
+
+    const startFromApprove = !fromStep || fromStep === 'approving';
+    const startFromCreate = fromStep === 'creating';
+    const startFromSend = fromStep === 'sending';
+
+    let currentFullAppId = fullAppResult?.id ?? null;
+
+    // Step 1: Approve (skip if already approved or retrying from a later step)
+    if (startFromApprove && detail.stanton_review_status !== 'approved') {
+      setChainStep('approving');
+      const res = await fetch(`/api/admin/pbv/preapps/${detail.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approved' }),
+      });
+      const j = await res.json() as { success: boolean; message?: string };
+      if (!j.success) {
+        setChainError({ step: 'approving', message: j.message || 'Failed to approve preapp' });
+        setChainStep('error');
+        return;
+      }
+    }
+
+    // Step 2: Create full application (skip if already exists or retrying from send)
+    if (!startFromSend && !currentFullAppId) {
+      setChainStep('creating');
       const res = await fetch('/api/admin/pbv/full-applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -613,41 +741,83 @@ function DetailContent({
           bedroom_count: detail.bedroom_count ?? undefined,
           language: detail.language,
           preapp_id: detail.id,
+          phone: localPhone ?? undefined,
         }),
       });
-      const json = await res.json();
-      if (!json.success && res.status !== 409) {
-        throw new Error(json.message || 'Failed to create full application');
+      const j = await res.json() as { success: boolean; message?: string; data?: { id: string; magic_link: string } };
+      if (!j.success && res.status !== 409) {
+        setChainError({ step: 'creating', message: j.message || 'Failed to create full application' });
+        setChainStep('error');
+        return;
       }
-      // 409 means already exists - that's OK, just show the link
-      setFullAppResult({
-        id: json.data?.id || json.data?.id,
-        magic_link: json.data?.magic_link || json.data?.magic_link,
-      });
-    } catch (e: any) {
-      setCreateError(e.message || 'Failed to create full application');
-    } finally {
-      setCreatingFullApp(false);
+      if (j.data?.id) {
+        currentFullAppId = j.data.id;
+        setFullAppResult({ id: j.data.id, magic_link: j.data.magic_link ?? '' });
+      }
     }
+
+    if (!currentFullAppId) {
+      setChainError({ step: 'creating', message: 'Full application ID not available' });
+      setChainStep('error');
+      return;
+    }
+
+    // Step 3: Send SMS
+    setChainStep('sending');
+    const res = await fetch(`/api/admin/pbv/full-applications/${currentFullAppId}/send-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notification_type: 'magic_link_initial' }),
+    });
+    const j = await res.json() as { success: boolean; message?: string; data?: { email_sent?: boolean; note?: string } };
+    if (!j.success) {
+      setChainError({ step: 'sending', message: j.message || 'Failed to send invitation' });
+      setChainStep('error');
+      return;
+    }
+    const isEmailFallback = !!(j.data?.note && j.data.note.includes('email fallback'));
+    setEmailFallback(isEmailFallback);
+    setSmsSent(true);
+    setChainStep('done');
   };
 
-  const handleSendSms = async () => {
-    if (!fullAppResult) return;
-    setSendingSms(true);
-    try {
-      const res = await fetch(`/api/admin/pbv/full-applications/${fullAppResult.id}/send-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_type: 'magic_link_initial' }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message || 'Failed to send SMS');
-      setSmsSent(true);
-    } catch (e: any) {
-      alert(e.message || 'Failed to send SMS');
-    } finally {
-      setSendingSms(false);
+  const savePhonePatch = async (rawPhone: string): Promise<{ ok: boolean; message?: string; e164?: string }> => {
+    const res = await fetch(`/api/admin/pbv/preapps/${detail.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: rawPhone }),
+    });
+    const j = await res.json() as { success: boolean; message?: string };
+    if (!j.success) return { ok: false, message: j.message };
+    return { ok: true, e164: rawPhone };
+  };
+
+  const handleSavePhone = async () => {
+    setPhoneSaving(true);
+    setPhoneEditError('');
+    const result = await savePhonePatch(phoneEditValue.trim());
+    if (!result.ok) {
+      setPhoneEditError(result.message || 'Failed to save phone');
+    } else {
+      setLocalPhone(phoneEditValue.trim());
+      setPhoneEditMode(false);
     }
+    setPhoneSaving(false);
+  };
+
+  const handleSaveInlinePhone = async () => {
+    setInlinePhoneSaving(true);
+    setInlinePhoneError('');
+    const result = await savePhonePatch(inlinePhoneValue.trim());
+    if (!result.ok) {
+      setInlinePhoneError(result.message || 'Failed to save phone');
+      setInlinePhoneSaving(false);
+      return;
+    }
+    setLocalPhone(inlinePhoneValue.trim());
+    setInlinePhoneSaving(false);
+    setInlinePhoneMode(false);
+    setChainStep('confirming');
   };
 
   const handleGeneratePdf = async () => {
@@ -707,6 +877,55 @@ function DetailContent({
           <Row label="Unit" value={detail.unit_number} />
           <Row label="Submitted" value={formatDate(detail.created_at)} />
           <Row label="Language" value={detail.language.toUpperCase()} />
+          {/* Editable phone field */}
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[var(--muted)] shrink-0">Phone</span>
+            {!phoneEditMode ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--ink)] text-right">
+                  {localPhone
+                    ? (parsePhoneToE164(localPhone)?.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3') ?? localPhone)
+                    : <span className="text-[var(--muted)] italic">Not set</span>
+                  }
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setPhoneEditValue(localPhone ?? ''); setPhoneEditMode(true); setPhoneEditError(''); }}
+                  className="text-xs text-[var(--primary)] hover:underline shrink-0"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 items-end w-full">
+                <input
+                  type="tel"
+                  value={phoneEditValue}
+                  onChange={e => setPhoneEditValue(e.target.value)}
+                  placeholder="(860) 555-0199"
+                  className="w-full px-2 py-1 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                />
+                {phoneEditError && <p className="text-xs text-red-600">{phoneEditError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneEditMode(false)}
+                    className="text-xs text-[var(--muted)] hover:text-[var(--ink)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePhone}
+                    disabled={phoneSaving || !phoneEditValue.trim()}
+                    className="text-xs text-[var(--primary)] hover:underline disabled:opacity-50"
+                  >
+                    {phoneSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -751,7 +970,7 @@ function DetailContent({
                 <div>
                   <p className="font-medium text-[var(--ink)]">{m.name}</p>
                   <p className="text-xs text-[var(--muted)] mt-0.5">
-                    {m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)} · DOB: {formatDate(m.dob)}
+                    {m.relationship.charAt(0).toUpperCase() + m.relationship.slice(1)} -+ DOB: {formatDate(m.dob)}
                   </p>
                   {m.income_sources?.length > 0 && (
                     <p className="text-xs text-[var(--muted)] mt-0.5">
@@ -848,79 +1067,170 @@ function DetailContent({
         </div>
       </section>
 
-      {/* Create Full Application - only show when approved */}
-      {detail.stanton_review_status === 'approved' && (
+      {/* Combined Invite section — visible for qualified preapps */}
+      {qualified && (
         <section className="border-t border-[var(--divider)] pt-5">
           <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
-          
-          {!fullAppResult ? (
-            <div className="space-y-3">
-              <p className="text-sm text-[var(--muted)]">
-                Create a full application invitation for this tenant. This will use the same building, unit, and applicant information from the pre-application.
-              </p>
-              {createError && (
-                <div className="border border-red-200 bg-red-50 p-2 text-sm text-red-700">{createError}</div>
-              )}
+
+          <div className="space-y-4">
+            {/* Inline phone capture (no phone yet, user clicked the combined button) */}
+            {inlinePhoneMode && (
+              <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
+                <p className="text-sm font-medium text-[var(--ink)]">Phone number required to send invitation</p>
+                <input
+                  type="tel"
+                  value={inlinePhoneValue}
+                  onChange={e => setInlinePhoneValue(e.target.value)}
+                  placeholder="(860) 555-0199"
+                  className="w-full px-2 py-1.5 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                />
+                {inlinePhoneError && <p className="text-xs text-red-600">{inlinePhoneError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setInlinePhoneMode(false); setInlinePhoneValue(''); setInlinePhoneError(''); }}
+                    className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveInlinePhone}
+                    disabled={inlinePhoneSaving || !inlinePhoneValue.trim()}
+                    className="flex-1 py-2 text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] rounded-none transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {inlinePhoneSaving ? 'Saving...' : 'Save & Continue'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Combined action button / confirm / progress / done / error */}
+            {chainStep === 'idle' && !smsSent && !inlinePhoneMode && (() => {
+              let label: string;
+              if (!approved) label = 'Approve & Send Invitation';
+              else if (!fullAppResult) label = 'Create & Send Invitation';
+              else label = 'Send Invitation';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasPhone) {
+                      setInlinePhoneValue('');
+                      setInlinePhoneError('');
+                      setInlinePhoneMode(true);
+                    } else {
+                      setChainStep('confirming');
+                    }
+                  }}
+                  className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
+                >
+                  {label}
+                </button>
+              );
+            })()}
+
+            {chainStep === 'confirming' && (() => {
+              const e164 = parsePhoneToE164(localPhone);
+              const displayPhone = localPhone
+                ? (e164
+                  ? e164.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')
+                  : `${localPhone} (unformatted)`)
+                : 'No phone on file';
+              const langMap: Record<string, string> = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
+              const displayLang = langMap[detail.language] ?? detail.language;
+              const willApprove = detail.stanton_review_status !== 'approved';
+              const actionDesc = [
+                willApprove ? 'approve the preapp' : null,
+                !fullAppResult ? 'create the full application' : null,
+                'text them the link',
+              ].filter(Boolean).join(', ');
+              return (
+                <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium text-[var(--ink)]">{detail.hoh_name}</p>
+                    <p className="text-[var(--muted)]">{displayPhone}</p>
+                    <p className="text-[var(--muted)]">{displayLang}</p>
+                  </div>
+                  <p className="text-sm text-[var(--ink)]">This will: {actionDesc}.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChainStep('idle')}
+                      className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveAndSendInvitation()}
+                      className="flex-1 py-2 text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] rounded-none transition-colors duration-200"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {(chainStep === 'approving' || chainStep === 'creating' || chainStep === 'sending') && (
               <button
                 type="button"
-                onClick={handleCreateFullApp}
-                disabled={creatingFullApp}
-                className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+                className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none opacity-50 cursor-not-allowed"
               >
-                {creatingFullApp ? 'Creating...' : 'Create Full Application Invitation'}
+                {chainStep === 'approving' && 'Approving...'}
+                {chainStep === 'creating' && 'Creating application...'}
+                {chainStep === 'sending' && 'Sending invitation...'}
               </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 p-3">
-                <p className="text-sm text-green-800 font-medium mb-1">Full application created.</p>
-                <p className="text-xs text-green-700">Magic link ready to send to tenant.</p>
-              </div>
+            )}
 
-              {/* Phone preview */}
-              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3 text-sm">
-                <p className="text-[var(--muted)] text-xs mb-1">Recipient</p>
-                <p className="text-[var(--ink)]">{detail.hoh_name}</p>
-                <p className="text-[var(--muted)] text-xs mt-1">Language: {detail.language.toUpperCase()}</p>
+            {chainStep === 'done' && (
+              <div className={`p-3 border text-sm font-medium ${emailFallback ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                {emailFallback ? 'Sent via email (SMS failed)' : 'Invitation sent ✓'}
               </div>
+            )}
 
-              {/* Magic link display */}
-              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3">
-                <p className="text-xs text-[var(--muted)] mb-1">Magic Link</p>
-                <p className="text-xs font-mono text-[var(--ink)] break-all">{fullAppResult.magic_link}</p>
+            {chainStep === 'error' && chainError && (
+              <div className="border border-red-200 bg-red-50 p-3 space-y-2">
+                <p className="text-sm font-medium text-red-700">
+                  Failed at: {chainError.step}
+                </p>
+                <p className="text-sm text-red-600">{chainError.message}</p>
                 <button
                   type="button"
-                  onClick={() => { copyToClipboard(fullAppResult.magic_link); }}
-                  className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                  onClick={() => handleApproveAndSendInvitation(chainError.step as ChainStep)}
+                  className="w-full py-2 text-sm bg-red-600 text-white hover:bg-red-700 rounded-none transition-colors duration-200"
                 >
-                  Copy Link
+                  Retry {chainError.step}
                 </button>
               </div>
+            )}
 
-              {/* Send SMS button */}
-              {!smsSent ? (
-                <button
-                  type="button"
-                  onClick={handleSendSms}
-                  disabled={sendingSms}
-                  className="w-full py-2.5 bg-green-700 text-white text-sm font-medium rounded-none hover:bg-green-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {sendingSms ? 'Sending...' : 'Send SMS Invitation'}
-                </button>
-              ) : (
-                <div className="text-center py-2 text-sm text-green-700 font-medium">
-                  SMS sent successfully
+            {/* Magic link display — always visible once full app exists */}
+            {fullAppResult && (
+              <>
+                <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3">
+                  <p className="text-xs text-[var(--muted)] mb-1">Magic Link</p>
+                  <p className="text-xs font-mono text-[var(--ink)] break-all">{fullAppResult.magic_link}</p>
+                  <button
+                    type="button"
+                    onClick={() => { copyToClipboard(fullAppResult.magic_link); }}
+                    className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                  >
+                    Copy Link
+                  </button>
                 </div>
-              )}
 
-              <Link
-                href={`/admin/pbv/full-applications/${fullAppResult.id}`}
-                className="block w-full py-2.5 border border-[var(--border)] text-center text-[var(--ink)] text-sm font-medium rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200"
-              >
-                View Full Application →
-              </Link>
-            </div>
-          )}
+                <Link
+                  href={`/admin/pbv/full-applications/${fullAppResult.id}`}
+                  className="block w-full py-2.5 border border-[var(--border)] text-center text-[var(--ink)] text-sm font-medium rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200"
+                >
+                  View Full Application →
+                </Link>
+              </>
+            )}
+          </div>
         </section>
       )}
 
@@ -977,3 +1287,4 @@ function StatusPill({ ok, okLabel, failLabel }: { ok: boolean; okLabel: string; 
     </span>
   );
 }
+

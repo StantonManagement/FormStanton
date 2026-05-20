@@ -93,3 +93,61 @@ These look in-flight or unconfirmed. Not moving until you tell me otherwise.
 ## Execution
 
 Once approved, I'll `mv` the 17 confirmed-shipped files into `docs/shipped/` and check them off above.
+
+---
+
+## 2026-05-19 cleanup pass (Claude / Cowork)
+
+Same rule (build report exists → move to `shipped/`), applied to everything that accumulated since 2026-05-17.
+
+**Moved to `docs/shipped/`:**
+
+PRDs + prompts (build reports confirm shipped):
+- `38-pbv-followups-and-docs-cleanup` (prd + prompt)
+- `39-pbv-accept-apps-blockers` (prd + prompt)
+- `41-pbv-tenant-upload-ux` (prd + prompt + plan)
+- `43-pbv-outbound-comms` (prd + prompt)
+- `44-pbv-flow-continuity` (prd + prompt)
+- `46-pbv-scanner-mobile-polish` (prd + prompt)
+- `47-pbv-scanner-multipage-review-and-feedback` (prd + prompt)
+
+Briefs that fed shipped PRDs:
+- `prd-42-brief_card-stack-redesign.md`
+- `prd-43-brief_outbound-comms.md`
+- `prd-44-brief_flow-continuity.md`
+
+Standalone prompts (no paired PRD, work completed):
+- `49-launch-readiness-audit_prompt_2026-05-19.md` (audit complete; result at `docs/audit/49-pbv-launch-readiness-audit_2026-05-19.md`)
+- `50-launch-merge-execution_prompt_2026-05-19.md` (merge executed; report in `build-reports/`)
+
+PDF overlay pilot (validated, shipped):
+- `form-pdf-overlay-pilot_prd_2026-05-14.md`
+- `pdf-overlay-build-handoff_2026-05-14.md`
+- `pdf-overlay-validated_2026-05-14.md`
+
+**Moved to `docs/z - Archive/`:**
+
+- `48-pbv-scanner-scanic-pilot_prd_2026-05-19.md` (prd + prompt) — superseded by PRD-52.
+
+**Remaining in `fullApp-Plan/` (in flight):**
+
+- `51-pbv-preapp-combined-approve-send_prd_2026-05-19.md` + prompt
+- `52-pbv-scanner-scanic-ship_prd_2026-05-19.md` + prompt
+
+**Remaining in `fullApp-Plan/` (status unclear — leaving for Alex to triage):**
+
+- `40-pbv-trust-safety-polish_prd_2026-05-17.md` + prompt — no matching build report
+- `42-pbv-tenant-document-card-stack_prd_2026-05-17.md` + prompt — card stack is in production but no formal build report
+- `45-pbv-live-camera-scanner_prd_2026-05-18.md` + prompt — scanner is in production but no formal build report
+- All the older PRDs `06-13`, `16-19` previously flagged as "status unclear" — unchanged from 2026-05-15 review
+
+**Remaining at `docs/` root:**
+
+- `IN-FLIGHT.md` — new rolling tracker (added 2026-05-19)
+- `form-html-rendering-pilot_prd_2026-05-14.md` — status unclear, no build report
+- All reference/standing docs (`NORTH_STAR`, `PROJECT_KNOWLEDGE`, `TENANT_FORM_SPECIFICATION`, etc.) — unchanged
+
+**Open questions for Alex:**
+
+- 40 / 42 / 45 — shipped without build reports, or genuinely never shipped? If the former, write a quick build report each and move to `shipped/`. If the latter, archive.
+- `form-html-rendering-pilot_prd_2026-05-14.md` — superseded by the PDF overlay path, or still a live exploration?

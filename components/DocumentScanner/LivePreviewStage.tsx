@@ -5,8 +5,82 @@ import { createPortal } from 'react-dom';
 import { ScannerLanguage, translations } from './translations';
 import FirstScanTooltip from './FirstScanTooltip';
 import QuadOverlay from './QuadOverlay';
-import { startDetectionLoop, type Quad } from './edgeDetectionLoop';
+import { startDetectionLoop, type Quad, type DetectorAdapter, createScanicAdapter } from './edgeDetectionLoop';
 import { createStabilityTracker, type StabilityState } from './stabilityTracker';
+
+// Extend Window interface for scanic (loaded via script tag from /public/scanic/)
+// Using unknown to avoid type mismatches with actual scanic types - runtime works fine
+type ScanicScanner = {
+  initialize(): Promise<void>;
+  scan(image: HTMLCanvasElement | HTMLImageElement, options: unknown): Promise<unknown>;
+  extract(image: HTMLCanvasElement | HTMLImageElement, corners: unknown, options: unknown): Promise<unknown>;
+};
+
+declare global {
+  interface Window {
+    scanic?: { Scanner: new () => ScanicScanner };
+    __scanicInstance?: ScanicScanner;
+  }
+}
+
+// Load scanic from local /public/scanic/ directory (synced via postinstall script)
+async function ensureScanicLoaded(): Promise<DetectorAdapter> {
+  if (typeof window === 'undefined') {
+    throw new Error('Scanic can only be loaded in browser');
+  }
+  
+  // Return cached instance if available (cast to any since script-loaded)
+  if (window.__scanicInstance) {
+    return createScanicAdapter(window.__scanicInstance as unknown as import('scanic').Scanner);
+  }
+  
+  // Check if scanic script already loaded
+  if (!window.scanic?.Scanner) {
+    // Load script dynamically like OpenCV.js
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector('script[data-scanic="true"]') as HTMLScriptElement | null;
+      if (existing && window.scanic?.Scanner) {
+        resolve();
+        return;
+      }
+      
+      const script = existing ?? document.createElement('script');
+      script.async = true;
+      script.setAttribute('data-scanic', 'true');
+      script.src = '/scanic/scanic.umd.cjs';
+      
+      script.onload = () => {
+        if (window.scanic?.Scanner) {
+          resolve();
+        } else {
+          reject(new Error('Scanic loaded but Scanner not available'));
+        }
+      };
+      
+      script.onerror = () => reject(new Error('Failed to load scanic from /public/scanic/'));
+      
+      if (!existing) {
+        document.body.appendChild(script);
+      }
+    });
+  }
+  
+  // Initialize scanic
+  const Scanner = window.scanic?.Scanner;
+  if (!Scanner) {
+    throw new Error('Scanic failed to load');
+  }
+  
+  const instance = new Scanner();
+  await instance.initialize();
+  window.__scanicInstance = instance;
+  
+  // Cast to any since we load scanic via script tag without full TypeScript types
+  return createScanicAdapter(instance as unknown as import('scanic').Scanner);
+}
+
+// Re-export for DocumentScanner.tsx
+export { ensureScanicLoaded };
 
 export interface LiveCaptureMeta {
   documentDetected: boolean;
@@ -19,54 +93,6 @@ interface LivePreviewStageProps {
   onCapture: (blob: Blob, meta: LiveCaptureMeta) => void;
 }
 
-async function ensureOpenCvLoaded(): Promise<void> {
-  if (typeof window === 'undefined') return;
-  if ((window as unknown as { cv?: unknown }).cv) return;
-
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector('script[data-opencv="true"]') as HTMLScriptElement | null;
-    if (existing && (window as unknown as { cv?: unknown }).cv) {
-      resolve();
-      return;
-    }
-    const script = existing ?? document.createElement('script');
-    script.async = true;
-    script.defer = true;
-    script.setAttribute('data-opencv', 'true');
-    script.src = 'https://docs.opencv.org/4.x/opencv.js';
-    script.onload = () => {
-      const cv = (window as unknown as { cv?: { onRuntimeInitialized?: () => void } }).cv;
-      if (cv?.onRuntimeInitialized) {
-        const original = cv.onRuntimeInitialized;
-        cv.onRuntimeInitialized = () => {
-          original();
-          resolve();
-        };
-        return;
-      }
-      resolve();
-    };
-    script.onerror = () => reject(new Error('OpenCV failed to load'));
-    if (!existing) document.body.appendChild(script);
-  });
-}
-
-async function ensureJscanifyLoaded(): Promise<unknown> {
-  if (typeof window !== 'undefined') {
-    const cached = (window as unknown as { __jscanifyInstance?: unknown }).__jscanifyInstance;
-    if (cached) return cached;
-  }
-  await ensureOpenCvLoaded();
-  const mod = await import('jscanify/client');
-  const Jscanify = (mod as { default?: unknown }).default ?? mod;
-  const Ctor = Jscanify as new () => unknown;
-  const instance = new Ctor();
-  if (typeof window !== 'undefined') {
-    (window as unknown as { __jscanifyInstance?: unknown }).__jscanifyInstance = instance;
-  }
-  return instance;
-}
-
 export default function LivePreviewStage({
   stream,
   language,
@@ -77,7 +103,7 @@ export default function LivePreviewStage({
   const streamRef = useRef<MediaStream>(stream);
   const [quad, setQuad] = useState<Quad | null>(null);
   const [overlayColor, setOverlayColor] = useState<'amber' | 'green'>('amber');
-  const [jscanifyInstance, setJscanifyInstance] = useState<unknown>(null);
+  const [adapter, setAdapter] = useState<DetectorAdapter | null>(null);
   const [stabilityState, setStabilityState] = useState<StabilityState>({ kind: 'seeking' });
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const [showLowLightWarning, setShowLowLightWarning] = useState(false);
@@ -113,32 +139,32 @@ export default function LivePreviewStage({
     }
   }, [stream]);
 
-  // Load jscanify on mount
+  // Load detector adapter on mount
   useEffect(() => {
     let mounted = true;
-    ensureJscanifyLoaded()
-      .then((instance) => {
-        if (mounted) setJscanifyInstance(instance);
+    ensureScanicLoaded()
+      .then((loadedAdapter: DetectorAdapter) => {
+        if (mounted) setAdapter(loadedAdapter);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         if (!mounted) return;
         setDetectionAvailable(false);
-        console.warn('[LivePreviewStage] jscanify load failed; manual capture only', err);
+        console.warn('[LivePreviewStage] detector load failed; manual capture only', err);
       });
     return () => {
       mounted = false;
     };
   }, []);
 
-  // Start detection loop when both jscanify and video are ready
+  // Start detection loop when both adapter and video are ready
   useEffect(() => {
-    if (!jscanifyInstance || !videoReady) return;
+    if (!adapter || !videoReady) return;
 
     let autoCaptured = false;
 
     const stopLoop = startDetectionLoop({
       videoRef,
-      jscanify: jscanifyInstance,
+      adapter,
       targetFps: 8,
       onLowLight: (isLowLight) => {
         setShowLowLightWarning(isLowLight);
@@ -176,7 +202,7 @@ export default function LivePreviewStage({
     return () => {
       stopLoop();
     };
-  }, [jscanifyInstance, videoReady]);
+  }, [adapter, videoReady]);
 
   // Polling effect: set isStuck if stuck in seeking for > 8s (PRD-47)
   useEffect(() => {

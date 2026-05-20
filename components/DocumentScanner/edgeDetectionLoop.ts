@@ -7,9 +7,132 @@ export interface Quad {
   bottomRight: { x: number; y: number };
 }
 
+export interface DetectorAdapter {
+  /** Per-frame corner detection. Returns null if no document found. */
+  detect: (canvasOrVideo: HTMLCanvasElement | HTMLVideoElement) => Promise<Quad | null>;
+  /** Still-image extraction (perspective-corrected canvas). Returns null on failure. */
+  extract: (image: HTMLImageElement) => Promise<HTMLCanvasElement | null>;
+  /** True if the per-frame `detect` should be treated as async in the RAF loop. */
+  isAsync: boolean;
+}
+
+/** Create adapter for jscanify (synchronous) */
+export function createJscanifyAdapter(jscanify: unknown): DetectorAdapter {
+  return {
+    isAsync: false,
+    async detect(canvasOrVideo: HTMLCanvasElement | HTMLVideoElement): Promise<Quad | null> {
+      const cv = (window as unknown as { cv: unknown }).cv;
+      if (!cv || !jscanify || !(jscanify as any).findPaperContour) {
+        return null;
+      }
+
+      try {
+        const img = (cv as { imread: (canvas: HTMLCanvasElement) => unknown }).imread(
+          canvasOrVideo as HTMLCanvasElement
+        );
+        const contour = (jscanify as any).findPaperContour(img);
+
+        if (!contour || !(jscanify as any).getCornerPoints) {
+          if (img && typeof (img as { delete: () => void }).delete === 'function') {
+            (img as { delete: () => void }).delete();
+          }
+          return null;
+        }
+
+        const corners = (jscanify as any).getCornerPoints(contour);
+        if (!corners) {
+          if (img && typeof (img as { delete: () => void }).delete === 'function') {
+            (img as { delete: () => void }).delete();
+          }
+          return null;
+        }
+
+        const { topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner } = corners;
+        if (!topLeftCorner || !topRightCorner || !bottomLeftCorner || !bottomRightCorner) {
+          if (img && typeof (img as { delete: () => void }).delete === 'function') {
+            (img as { delete: () => void }).delete();
+          }
+          return null;
+        }
+
+        const quad: Quad = {
+          topLeft: { x: topLeftCorner.x, y: topLeftCorner.y },
+          topRight: { x: topRightCorner.x, y: topRightCorner.y },
+          bottomLeft: { x: bottomLeftCorner.x, y: bottomLeftCorner.y },
+          bottomRight: { x: bottomRightCorner.x, y: bottomRightCorner.y },
+        };
+
+        if (img && typeof (img as { delete: () => void }).delete === 'function') {
+          (img as { delete: () => void }).delete();
+        }
+
+        return quad;
+      } catch {
+        return null;
+      }
+    },
+    async extract(image: HTMLImageElement): Promise<HTMLCanvasElement | null> {
+      if (!jscanify || !(jscanify as any).extractPaper) {
+        return null;
+      }
+      try {
+        const result = (jscanify as any).extractPaper(image, image.naturalWidth, image.naturalHeight);
+        if (result instanceof HTMLCanvasElement) {
+          return result;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
+/** Create adapter for Scanic (asynchronous) */
+export function createScanicAdapter(scanner: import('scanic').Scanner): DetectorAdapter {
+  return {
+    isAsync: true,
+    async detect(canvas: HTMLCanvasElement | HTMLVideoElement): Promise<Quad | null> {
+      try {
+        // Scanic expects HTMLCanvasElement, not HTMLVideoElement
+        // We always pass offscreenCanvas which is HTMLCanvasElement
+        const result = await scanner.scan(canvas as HTMLCanvasElement, { mode: 'detect' });
+        if (!result.success || !result.corners) {
+          return null;
+        }
+
+        const { topLeft, topRight, bottomRight, bottomLeft } = result.corners;
+        if (!topLeft || !topRight || !bottomRight || !bottomLeft) {
+          return null;
+        }
+
+        return {
+          topLeft: { x: topLeft.x, y: topLeft.y },
+          topRight: { x: topRight.x, y: topRight.y },
+          bottomRight: { x: bottomRight.x, y: bottomRight.y },
+          bottomLeft: { x: bottomLeft.x, y: bottomLeft.y },
+        };
+      } catch {
+        return null;
+      }
+    },
+    async extract(image: HTMLImageElement): Promise<HTMLCanvasElement | null> {
+      try {
+        const result = await scanner.scan(image, { mode: 'extract', output: 'canvas' });
+        if (!result.success || !result.output) {
+          return null;
+        }
+        return result.output as HTMLCanvasElement;
+      } catch {
+        return null;
+      }
+    },
+  };
+}
+
 interface DetectionLoopOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  jscanify: unknown; // jscanify instance (lazy-loaded)
+  adapter: DetectorAdapter; // detector adapter (jscanify or scanic)
   targetFps: number; // default 8
   onQuad: (quad: Quad | null) => void;
   onPerfWarn?: (detectionMs: number) => void; // adaptive throttle hook
@@ -27,7 +150,7 @@ interface DetectionState {
 }
 
 export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
-  const { videoRef, jscanify, onQuad, onPerfWarn } = opts;
+  const { videoRef, adapter, onQuad, onPerfWarn } = opts;
 
   // Default target is 8 fps, with adaptive bounds
   const state: DetectionState = {
@@ -43,6 +166,9 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
   // Offscreen canvas for detection (downsampled for perf)
   const offscreenCanvas = document.createElement('canvas');
   const offscreenCtx = offscreenCanvas.getContext('2d');
+
+  // Track in-flight async detections to prevent stacking promises
+  let inFlight = false;
 
   // Validate quad: reject background-spanning, tiny, or skewed quads.
   // All inputs in offscreen-canvas space (pre-scale).
@@ -89,32 +215,6 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
     return true;
   }
 
-  // Helper to convert jscanify contour to Quad
-  function contourToQuad(contour: unknown): Quad | null {
-    if (!contour || !(jscanify as any).getCornerPoints) return null;
-
-    try {
-      const corners = (jscanify as any).getCornerPoints(contour);
-      if (!corners) return null;
-
-      const { topLeftCorner, topRightCorner, bottomLeftCorner, bottomRightCorner } = corners;
-
-      // Validate all corners exist
-      if (!topLeftCorner || !topRightCorner || !bottomLeftCorner || !bottomRightCorner) {
-        return null;
-      }
-
-      return {
-        topLeft: { x: topLeftCorner.x, y: topLeftCorner.y },
-        topRight: { x: topRightCorner.x, y: topRightCorner.y },
-        bottomLeft: { x: bottomLeftCorner.x, y: bottomLeftCorner.y },
-        bottomRight: { x: bottomRightCorner.x, y: bottomRightCorner.y },
-      };
-    } catch {
-      return null;
-    }
-  }
-
   // Helper to compute mean brightness from canvas (Y channel approximation)
   function computeBrightness(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): number {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -158,7 +258,7 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
     }
   }
 
-  function detect() {
+  async function detect() {
     if (!state.isRunning) return;
 
     const video = videoRef.current;
@@ -209,48 +309,65 @@ export function startDetectionLoop(opts: DetectionLoopOptions): () => void {
           }
         }
 
-        // Run jscanify detection
-        let quad: Quad | null = null;
-        if (jscanify && (jscanify as any).findPaperContour) {
-          const cv = (window as unknown as { cv: unknown }).cv;
-          if (cv) {
-            const img = (cv as { imread: (canvas: HTMLCanvasElement) => unknown }).imread(offscreenCanvas);
-            const contour = (jscanify as any).findPaperContour(img);
-            const rawQuad = contourToQuad(contour);
-            // Validate quad in offscreen-canvas space before scaling
-            const validQuad = rawQuad && isValidQuad(rawQuad, offscreenCanvas.width, offscreenCanvas.height)
-              ? rawQuad
-              : null;
-            // Scale quad back to video-pixel space (inverse of downsample)
-            if (validQuad && scale < 1) {
-              const inv = 1 / scale;
-              quad = {
-                topLeft: { x: validQuad.topLeft.x * inv, y: validQuad.topLeft.y * inv },
-                topRight: { x: validQuad.topRight.x * inv, y: validQuad.topRight.y * inv },
-                bottomRight: { x: validQuad.bottomRight.x * inv, y: validQuad.bottomRight.y * inv },
-                bottomLeft: { x: validQuad.bottomLeft.x * inv, y: validQuad.bottomLeft.y * inv },
-              };
-            } else {
-              quad = validQuad;
-            }
-            if (img && typeof (img as { delete: () => void }).delete === 'function') {
-              (img as { delete: () => void }).delete();
-            }
+        // Run detection via adapter (sync or async)
+        const runDetection = async () => {
+          const rawQuad = await adapter.detect(offscreenCanvas);
+          if (!state.isRunning) return;
+
+          // Validate quad in offscreen-canvas space before scaling
+          const validQuad = rawQuad && isValidQuad(rawQuad, offscreenCanvas.width, offscreenCanvas.height)
+            ? rawQuad
+            : null;
+
+          // Scale quad back to video-pixel space (inverse of downsample)
+          let quad: Quad | null;
+          if (validQuad && scale < 1) {
+            const inv = 1 / scale;
+            quad = {
+              topLeft: { x: validQuad.topLeft.x * inv, y: validQuad.topLeft.y * inv },
+              topRight: { x: validQuad.topRight.x * inv, y: validQuad.topRight.y * inv },
+              bottomRight: { x: validQuad.bottomRight.x * inv, y: validQuad.bottomRight.y * inv },
+              bottomLeft: { x: validQuad.bottomLeft.x * inv, y: validQuad.bottomLeft.y * inv },
+            };
+          } else {
+            quad = validQuad;
           }
+
+          onQuad(quad);
+        };
+
+        if (adapter.isAsync) {
+          // Async path: skip frame if detection in flight
+          if (inFlight) {
+            // Skip this frame - detection still running
+          } else {
+            inFlight = true;
+            runDetection()
+              .catch((err) => {
+                console.warn('[detect] adapter error', err);
+                onQuad(null);
+              })
+              .finally(() => {
+                inFlight = false;
+              });
+          }
+        } else {
+          // Sync path: run detection immediately
+          await runDetection();
         }
 
-        onQuad(quad);
-
-        // Track performance
-        const detectionMs = performance.now() - startTime;
-        state.perfHistory.push(detectionMs);
+        // Track performance (only for sync path - async path timing is in finally)
+        if (!adapter.isAsync) {
+          const detectionMs = performance.now() - startTime;
+          state.perfHistory.push(detectionMs);
+        }
         state.frameCount++;
         state.lastDetectionTime = now;
 
         // Log in dev mode
         if (process.env.NODE_ENV === 'development') {
           // eslint-disable-next-line no-console
-          console.log(`[jscanify] detection: ${detectionMs.toFixed(1)}ms, target fps: ${state.targetFps}`);
+          console.log(`[${adapter.isAsync ? 'scanic' : 'jscanify'}] detection, target fps: ${state.targetFps}`);
         }
 
         // Adaptive throttle check every 30 frames
