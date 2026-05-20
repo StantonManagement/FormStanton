@@ -4,6 +4,12 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
+interface ApplicationData {
+  id: string;
+  packet_locked: boolean;
+  hach_review_status: string | null;
+}
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(
@@ -49,14 +55,16 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
     }
 
-    if (!(app as any).packet_locked) {
+    const typedApp = app as unknown as ApplicationData;
+
+    if (!typedApp.packet_locked) {
       return NextResponse.json(
         { success: false, message: 'Packet is not currently locked.' },
         { status: 409 }
       );
     }
 
-    const previousHachReviewStatus = (app as any).hach_review_status ?? 'pending_hach';
+    const previousHachReviewStatus = typedApp.hach_review_status ?? 'pending_hach';
     const now = new Date().toISOString();
 
     // Atomically unlock — do NOT reset submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision

@@ -9,8 +9,12 @@
     "lint": "npx next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
     "validate-env": "ts-node scripts/validate-env.ts",
     "generate-admin-password-hash": "ts-node scripts/generate-admin-password-hash.ts",
+    "prebuild": "npm run validate-env",
     "predev": "npm run validate-env",
     "check:buildings": "npx tsx scripts/check-buildings-ts.ts"
   },
@@ -46,6 +50,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.4.5",
+    "@playwright/test": "^1.60.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jszip": "^3.4.0",
     "@types/node": "^20",
@@ -55,6 +60,7 @@
     "@types/string-similarity": "^4.0.2",
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
+    "supabase": "^2.98.2",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5",

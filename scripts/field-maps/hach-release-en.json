@@ -1,0 +1,108 @@
+{
+  "form_id": "hach-release-en",
+  "source_pdf": "docs/templates/hach-release-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "fields": [
+    {
+      "name": "applicant_name",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 637,
+      "width": 200,
+      "font_size": 9,
+      "label": "Name"
+    },
+    {
+      "name": "applicant_address",
+      "type": "text",
+      "page": 1,
+      "x": 80,
+      "y": 618,
+      "width": 220,
+      "font_size": 9,
+      "label": "Address"
+    },
+    {
+      "name": "hoh_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 181,
+      "width": 150,
+      "height": 12,
+      "label": "Signature and Printed Name of Head of Household"
+    },
+    {
+      "name": "hoh_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 184,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "spouse_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 149,
+      "width": 150,
+      "height": 12,
+      "label": "Signature and Printed Name of Spouse or Other Adult"
+    },
+    {
+      "name": "spouse_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 152,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_adult_1_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 118,
+      "width": 150,
+      "height": 12,
+      "label": "Signature and Printed Name of Other Adult"
+    },
+    {
+      "name": "other_adult_1_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 121,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_adult_2_signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 87,
+      "width": 150,
+      "height": 12,
+      "label": "Signature and Printed Name of Other Adult"
+    },
+    {
+      "name": "other_adult_2_signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 540,
+      "y": 90,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    }
+  ]
+}

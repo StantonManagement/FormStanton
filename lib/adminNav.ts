@@ -104,6 +104,16 @@ export const adminNavSections: NavSection[] = [
         href: '/admin/pbv/work',
         keywords: ['pbv', 'work', 'queue', 'review', 'my work', 'team rollup', 'pipeline'],
       },
+      {
+        label: 'PBV Reviewers',
+        href: '/admin/pbv/reviewers',
+        keywords: ['pbv', 'reviewer', 'ssn', 'access', 'permission', 'sensitive'],
+      },
+      {
+        label: 'Scheduling',
+        href: '/admin/scheduling/today',
+        keywords: ['appointment', 'schedule', 'calendar', 'booking', 'availability', 'slots'],
+      },
     ],
   },
   {
@@ -133,6 +143,21 @@ export const adminNavSections: NavSection[] = [
         label: 'Departments',
         href: '/admin/departments',
         keywords: ['department', 'team', 'group'],
+      },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      {
+        label: 'Rejection Templates',
+        href: '/admin/settings/rejection-templates',
+        keywords: ['rejection', 'template', 'sms', 'notification', 'hach', 'pbv', 'message'],
+      },
+      {
+        label: 'AMI Limits',
+        href: '/admin/settings/ami-limits',
+        keywords: ['ami', 'hud', 'income', 'limit', 'area median income', 'eligibility', 'hartford', 'msa'],
       },
     ],
   },

@@ -1,12 +1,13 @@
 'use client';
 
-import { type ChangeEvent, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useMemo, useRef, useState, useCallback } from 'react';
+import { usePermissionPrompt } from './usePermissionPrompt';
+import LivePreviewStage from './LivePreviewStage';
 import { PDFDocument } from 'pdf-lib';
-import { supabase } from '@/lib/supabase';
 import { evaluateImageQuality, QualityScores } from './quality';
 import { translations, ScannerLanguage } from './translations';
 
-export interface Metadata {
+export interface ScannerMetadata {
   capture_method: 'scanner' | 'file_upload';
   page_count: number;
   quality_flags: string[];
@@ -19,19 +20,21 @@ export interface Metadata {
   heic_converted: boolean;
 }
 
+/** @deprecated Use ScannerMetadata instead */
+export type Metadata = ScannerMetadata;
+
 interface DocumentScannerProps {
-  taskId: string;
-  projectUnitId: string;
   instructions: string;
   multiPage?: boolean;
   maxPages?: number;
+  acceptedFormats?: ('pdf' | 'jpeg')[];
   language: ScannerLanguage;
-  onComplete: (evidenceUrl: string, metadata: Metadata) => void;
+  onComplete: (file: File, metadata: ScannerMetadata) => Promise<void> | void;
   onCancel: () => void;
 }
 
 type CaptureMode = 'camera' | 'file';
-type Stage = 'entry' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'uploading';
+type Stage = 'entry' | 'live_preview' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'submitting';
 
 interface CapturedPage {
   id: string;
@@ -56,6 +59,19 @@ declare global {
 function isHeicFile(file: File): boolean {
   const name = file.name.toLowerCase();
   return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+}
+
+/**
+ * Detect iOS / iPadOS so we can drop the `capture` attribute and expose Apple's
+ * native "Scan Documents" option in the file-picker action sheet (iOS 16+).
+ * iPadOS reports as Mac, so check touch points as a secondary signal.
+ */
+function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  // iPadOS 13+ identifies as MacIntel but supports touch
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 }
 
 function averageScores(pages: CapturedPage[]): QualityScores {
@@ -96,7 +112,7 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   }
 }
 
-async function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+async function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -107,7 +123,7 @@ async function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
         resolve(blob);
       },
       'image/jpeg',
-      0.92
+      quality
     );
   });
 }
@@ -166,11 +182,10 @@ async function ensureJscanifyLoaded(): Promise<any> {
 }
 
 export default function DocumentScanner({
-  taskId,
-  projectUnitId,
   instructions,
   multiPage = true,
   maxPages = 10,
+  acceptedFormats = ['pdf', 'jpeg'],
   language,
   onComplete,
   onCancel,
@@ -182,11 +197,27 @@ export default function DocumentScanner({
   const [currentPage, setCurrentPage] = useState<CapturedPage | null>(null);
   const [qualityOverride, setQualityOverride] = useState(false);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('camera');
+  const [useAnywayConfirmed, setUseAnywayConfirmed] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isSingleMode = !multiPage;
-  const canAddMorePages = pages.length < maxPages;
+
+  // Live preview support detection (PRD-45)
+  const liveSupported = useMemo(() => {
+    return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+  }, []);
+
+  // Permission prompt for live preview
+  const permissionPrompt = usePermissionPrompt({
+    onGranted: useCallback((stream: MediaStream) => {
+      setStage('live_preview');
+    }, []),
+    onDenied: useCallback((reason: string) => {
+      setError(reason === 'no_camera' ? t.permissionNoCamera : t.permissionDenied);
+      setStage('entry');
+    }, [t]),
+  });
 
   const warningMessages = useMemo(() => {
     if (!currentPage) {
@@ -209,6 +240,7 @@ export default function DocumentScanner({
     }
     setCurrentPage(null);
     setQualityOverride(false);
+    setUseAnywayConfirmed(false);
     setError('');
   };
 
@@ -221,7 +253,8 @@ export default function DocumentScanner({
   const processImageBlob = async (
     sourceBlob: Blob,
     method: 'scanner' | 'file_upload',
-    heicConverted: boolean
+    heicConverted: boolean,
+    liveDocumentDetected: boolean | null = null
   ) => {
     const image = await loadImageFromBlob(sourceBlob);
 
@@ -247,22 +280,29 @@ export default function DocumentScanner({
       ctx.drawImage(image, 0, 0);
     }
 
-    const processedBlob = await canvasToJpegBlob(finalCanvas);
+    // Use lower quality for multi-page scans to keep PDF sizes manageable on cellular
+    const jpegQuality = multiPage && pages.length > 0 ? 0.85 : 0.92;
+    const processedBlob = await canvasToJpegBlob(finalCanvas, jpegQuality);
     const processedImage = await loadImageFromBlob(processedBlob);
     const quality = evaluateImageQuality(processedImage, processedImage.naturalWidth, processedImage.naturalHeight);
+
+    // If the live scanner explicitly told us no document was detected, surface as a quality flag
+    const augmentedFlags = liveDocumentDetected === false
+      ? Array.from(new Set([...quality.flags, 'no_document_detected']))
+      : quality.flags;
 
     const page: CapturedPage = {
       id: crypto.randomUUID(),
       blob: processedBlob,
       previewUrl: URL.createObjectURL(processedBlob),
-      qualityFlags: quality.flags,
+      qualityFlags: augmentedFlags,
       qualityScores: quality.scores,
       captureMethod: method,
       heicConverted,
     };
 
     setCurrentPage(page);
-    setStage(quality.flags.length > 0 ? 'warning' : 'preview');
+    setStage(augmentedFlags.length > 0 ? 'warning' : 'preview');
   };
 
   const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -295,18 +335,11 @@ export default function DocumentScanner({
     }
   };
 
-  const commitCurrentPage = async () => {
+  const commitCurrentPage = () => {
     if (!currentPage) return;
-
     setPages((prev) => [...prev, currentPage]);
     setCurrentPage(null);
     setQualityOverride(false);
-
-    if (isSingleMode) {
-      await finalizeUpload([...pages, currentPage]);
-      return;
-    }
-
     setStage('review_pages');
   };
 
@@ -320,25 +353,36 @@ export default function DocumentScanner({
     });
   };
 
-  const uploadBlob = async (path: string, blob: Blob, contentType: string): Promise<string> => {
-    const { error: uploadError } = await supabase.storage.from('project-evidence').upload(path, blob, {
-      contentType,
-      upsert: false,
-    });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data } = supabase.storage.from('project-evidence').getPublicUrl(path);
-    return data.publicUrl;
-  };
 
   const buildPdf = async (inputPages: CapturedPage[]): Promise<Blob> => {
     const pdfDoc = await PDFDocument.create();
+    const MAX_DIMENSION = 2400; // Cap long edge at 2400px (~200dpi for letter size), keeps file size manageable
 
     for (const page of inputPages) {
-      const bytes = await page.blob.arrayBuffer();
+      // Load image to check dimensions, downscale if necessary
+      const img = await loadImageFromBlob(page.blob);
+      const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+
+      let bytes: ArrayBuffer;
+      if (longEdge > MAX_DIMENSION) {
+        // Downscale to MAX_DIMENSION on long edge, re-encode at lower quality
+        const scale = MAX_DIMENSION / longEdge;
+        const newWidth = Math.round(img.naturalWidth * scale);
+        const newHeight = Math.round(img.naturalHeight * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Unable to create canvas context');
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        const downscaledBlob = await canvasToJpegBlob(canvas, 0.85);
+        bytes = await downscaledBlob.arrayBuffer();
+      } else {
+        bytes = await page.blob.arrayBuffer();
+      }
+
       const embedded = await pdfDoc.embedJpg(bytes);
       const scaled = embedded.scale(1);
       const pdfPage = pdfDoc.addPage([scaled.width, scaled.height]);
@@ -359,38 +403,32 @@ export default function DocumentScanner({
     return new Blob([pdfBuffer], { type: 'application/pdf' });
   };
 
-  const finalizeUpload = async (inputPages: CapturedPage[]) => {
+  const finalizeSubmit = async (inputPages: CapturedPage[]) => {
     if (inputPages.length === 0) {
       return;
     }
 
-    setStage('uploading');
+    setStage('submitting');
     setError('');
 
-    const timestamp = Date.now();
-    const basePath = `uploads/${projectUnitId}/${taskId}`;
-
     try {
-      await Promise.all(
-        inputPages.map((page, index) =>
-          uploadBlob(`${basePath}/${timestamp}_page_${index + 1}.jpeg`, page.blob, 'image/jpeg')
-        )
-      );
-
-      let finalUrl = '';
-      let format: 'pdf' | 'jpeg' = 'jpeg';
+      let finalFile: File;
+      let format: 'pdf' | 'jpeg';
 
       if (inputPages.length === 1) {
-        finalUrl = await uploadBlob(`${basePath}/${timestamp}_combined.jpeg`, inputPages[0].blob, 'image/jpeg');
+        // Single page: return as JPEG
+        finalFile = new File([inputPages[0].blob], 'document.jpeg', { type: 'image/jpeg' });
+        format = 'jpeg';
       } else {
+        // Multi-page: return as PDF
         const pdfBlob = await buildPdf(inputPages);
-        finalUrl = await uploadBlob(`${basePath}/${timestamp}_combined.pdf`, pdfBlob, 'application/pdf');
+        finalFile = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
         format = 'pdf';
       }
 
       const qualityFlags = Array.from(new Set(inputPages.flatMap((page) => page.qualityFlags)));
       const qualityScores = averageScores(inputPages);
-      const metadata: Metadata = {
+      const metadata: ScannerMetadata = {
         capture_method: inputPages.some((page) => page.captureMethod === 'scanner') ? 'scanner' : 'file_upload',
         page_count: inputPages.length,
         quality_flags: qualityFlags,
@@ -399,23 +437,7 @@ export default function DocumentScanner({
         heic_converted: inputPages.some((page) => page.heicConverted),
       };
 
-      const { error: completionError } = await supabase
-        .from('task_completions')
-        .update({
-          status: 'complete',
-          evidence_url: finalUrl,
-          completed_by: 'tenant',
-          completed_at: new Date().toISOString(),
-          evidence_metadata: metadata,
-        })
-        .eq('project_unit_id', projectUnitId)
-        .eq('project_task_id', taskId);
-
-      if (completionError) {
-        throw completionError;
-      }
-
-      onComplete(finalUrl, metadata);
+      await onComplete(finalFile, metadata);
     } catch {
       setError(t.uploadError);
       setStage(inputPages.length > 1 ? 'review_pages' : 'preview');
@@ -424,11 +446,24 @@ export default function DocumentScanner({
 
   return (
     <div className="space-y-4">
+      {/*
+        On iOS we deliberately omit `capture` so the file picker shows Apple's
+        native "Scan Documents" option alongside Take Photo / Photo Library
+        (iOS 16+). On Android we keep `capture="environment"` when the user
+        tapped "Take Photo" so they go straight to the camera without an
+        extra tap (Android has no native scanner in the file picker).
+      */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*,.heic,.heif"
-        capture={captureMode === 'camera' ? 'environment' : undefined}
+        capture={
+          isIOSDevice()
+            ? undefined
+            : captureMode === 'camera'
+            ? 'environment'
+            : undefined
+        }
         className="hidden"
         onChange={handleFileSelect}
       />
@@ -437,91 +472,249 @@ export default function DocumentScanner({
         <div className="space-y-4">
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.instructionsTitle}</h3>
           <p className="text-sm text-[var(--ink)] leading-relaxed">{instructions}</p>
-          <button
-            type="button"
-            onClick={() => openCaptureInput('camera')}
-            className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
-          >
-            {t.takePhoto}
-          </button>
-          <button
-            type="button"
-            onClick={() => openCaptureInput('file')}
-            className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
-          >
-            {t.chooseFile}
-          </button>
+
+          <div className="bg-[var(--bg-section)] border-l-2 border-[var(--primary)] pl-3 py-2">
+            <p className="text-sm text-[var(--ink)] leading-snug">
+              {t.inlineTip}
+            </p>
+          </div>
+
+          <details className="border border-[var(--border)] rounded-none">
+            <summary className="px-3 py-2 cursor-pointer text-sm font-medium text-[var(--ink)] hover:bg-[var(--bg-section)]">
+              {t.howToTitle}
+            </summary>
+            <div className="px-3 pb-3 pt-1 space-y-2">
+              <p className="text-sm text-[var(--ink)] leading-relaxed">{t.howToIntro}</p>
+              <ul className="text-sm text-[var(--ink)] leading-relaxed list-disc pl-5 space-y-1">
+                <li>{t.howToBullet1}</li>
+                <li>{t.howToBullet2}</li>
+                <li>{t.howToBullet3}</li>
+                <li>{t.howToBullet4}</li>
+              </ul>
+            </div>
+          </details>
+
+          {liveSupported ? (
+            // New live preview entry: single primary CTA + secondary text links
+            <>
+              <button
+                type="button"
+                onClick={permissionPrompt.openPrePrompt}
+                className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.scanDocumentBtn}
+              </button>
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => openCaptureInput('camera')}
+                  className="text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+                >
+                  {t.secondaryTakePhoto}
+                </button>
+                <span className="text-[var(--muted)]">·</span>
+                <button
+                  type="button"
+                  onClick={() => openCaptureInput('file')}
+                  className="text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+                >
+                  {t.secondaryChooseFile}
+                </button>
+              </div>
+            </>
+          ) : (
+            // Fallback: existing two-button layout for unsupported browsers
+            <>
+              <button
+                type="button"
+                onClick={() => openCaptureInput('camera')}
+                className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-base font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.takePhoto}
+              </button>
+              <button
+                type="button"
+                onClick={() => openCaptureInput('file')}
+                className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+              >
+                {t.chooseFile}
+              </button>
+            </>
+          )}
+
+          {error && <p className="text-sm text-[var(--error)]">{error}</p>}
+
           <button
             type="button"
             onClick={onCancel}
-            className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+            className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
           >
             {t.cancel}
           </button>
         </div>
       )}
 
-      {stage === 'processing' && (
-        <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
-      )}
-
-      {stage === 'warning' && currentPage && (
-        <div className="space-y-4">
-          <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full border border-[var(--border)] rounded-none" />
-          <div className="bg-[var(--bg-section)] border border-[var(--warning)]/30 p-3 rounded-none space-y-2">
-            {warningMessages.map((message) => (
-              <p key={message} className="text-sm text-[var(--ink)]">
-                {message}
-              </p>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                resetCurrentPage();
-                setStage('entry');
-              }}
-              className="flex-1 min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
-            >
-              {t.retake}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQualityOverride(true);
-                setStage('preview');
-              }}
-              className="flex-1 min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-            >
-              {t.useAnyway}
-            </button>
+      {/* Permission pre-prompt modal */}
+      {permissionPrompt.state.kind === 'pre_prompt' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white p-6 max-w-sm mx-4 space-y-4 rounded-none">
+            <h3 className="font-serif text-lg text-[var(--primary)]">{t.permissionPromptTitle}</h3>
+            <p className="text-sm text-[var(--ink)] leading-relaxed">{t.permissionPromptBody}</p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={permissionPrompt.acceptPrePrompt}
+                className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              >
+                {t.permissionAllow}
+              </button>
+              <button
+                type="button"
+                onClick={permissionPrompt.cancel}
+                className="text-sm text-[var(--muted)] underline hover:text-[var(--ink)] transition-colors duration-200"
+              >
+                {t.cancel}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Requesting spinner */}
+      {permissionPrompt.state.kind === 'requesting' && (
+        <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
+      )}
+
+      {/* Live preview stage */}
+      {stage === 'live_preview' && permissionPrompt.state.kind === 'granted' && (
+        <LivePreviewStage
+          stream={permissionPrompt.state.stream}
+          language={language}
+          onCancel={() => {
+            permissionPrompt.cancel();
+            setStage('entry');
+          }}
+          onCapture={async (blob, meta) => {
+            permissionPrompt.cancel();
+            setStage('processing');
+            await processImageBlob(blob, 'scanner', false, meta?.documentDetected ?? null);
+          }}
+        />
+      )}
+
+      {stage === 'processing' && (
+        <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
+      )}
+
+      {stage === 'warning' && currentPage && (() => {
+        const hasNoDocumentFlag = currentPage.qualityFlags.includes('no_document_detected');
+        return (
+          <div className="space-y-4">
+            <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
+
+            {hasNoDocumentFlag ? (
+              <div className="bg-[var(--bg-section)] border border-[var(--error)]/40 p-3 rounded-none space-y-1">
+                <p className="text-sm font-medium text-[var(--error)]">{t.noDocumentWarningTitle}</p>
+                <p className="text-sm text-[var(--ink)]">{t.noDocumentWarningBody}</p>
+              </div>
+            ) : (
+              <div className="bg-[var(--bg-section)] border border-[var(--warning)]/30 p-3 rounded-none space-y-2">
+                {warningMessages.map((message) => (
+                  <p key={message} className="text-sm text-[var(--ink)]">
+                    {message}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {hasNoDocumentFlag && (
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useAnywayConfirmed}
+                  onChange={(e) => setUseAnywayConfirmed(e.target.checked)}
+                  className="mt-0.5 shrink-0 w-4 h-4 accent-[var(--primary)]"
+                />
+                <span className="text-sm text-[var(--ink)]">{t.confirmUseAnyway}</span>
+              </label>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              {hasNoDocumentFlag ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQualityOverride(true);
+                      setStage('preview');
+                    }}
+                    disabled={!useAnywayConfirmed}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {t.useAnyway}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCurrentPage();
+                      setStage('entry');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                  >
+                    {t.retake}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCurrentPage();
+                      setStage('entry');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+                  >
+                    {t.retake}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQualityOverride(true);
+                      setStage('preview');
+                    }}
+                    className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+                  >
+                    {t.useAnyway}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {stage === 'preview' && currentPage && (
         <div className="space-y-4">
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.previewTitle}</h3>
-          <img src={currentPage.previewUrl} alt="Preview" className="w-full border border-[var(--border)] rounded-none" />
+          <img src={currentPage.previewUrl} alt="Preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
           {!qualityOverride && currentPage.qualityFlags.length > 0 && (
             <p className="text-xs text-[var(--muted)]">{t.scannerError}</p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               type="button"
               onClick={() => {
                 resetCurrentPage();
                 setStage('entry');
               }}
-              className="flex-1 min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
             >
               {t.retake}
             </button>
             <button
               type="button"
               onClick={commitCurrentPage}
-              className="flex-1 min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
+              className="w-full sm:flex-1 min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200"
             >
               {isSingleMode ? t.useThis : t.useThisPage}
             </button>
@@ -531,54 +724,72 @@ export default function DocumentScanner({
 
       {stage === 'review_pages' && (
         <div className="space-y-4">
-          <h3 className="font-serif text-lg text-[var(--primary)]">{t.pagesCaptured}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {pages.map((page, index) => (
-              <div key={page.id} className="relative border border-[var(--border)] rounded-none p-1">
-                <img src={page.previewUrl} alt={t.pageCount(index + 1)} className="w-full h-32 object-cover" />
-                <p className="text-xs text-[var(--muted)] mt-1">{t.pageCount(index + 1)}</p>
-                <button
-                  type="button"
-                  onClick={() => deletePage(page.id)}
-                  className="absolute top-1 right-1 bg-white border border-[var(--border)] w-7 h-7 text-xs rounded-none"
-                  aria-label={t.deletePage}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
+          <h2 className="font-serif text-xl text-[var(--ink)]">
+            {t.reviewTitle(pages.length)}
+          </h2>
+          <p className="text-sm text-[var(--ink-secondary)]">
+            {t.reviewHint}
+          </p>
 
-          <div className="flex flex-col gap-2">
-            {canAddMorePages && (
-              <button
-                type="button"
-                onClick={() => setStage('entry')}
-                className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-              >
-                {t.addPage}
-              </button>
-            )}
+          <ul className="space-y-3">
+            {pages.map((page, idx) => (
+              <li key={page.id} className="flex gap-3 items-start border border-[var(--border)] p-3">
+                <img
+                  src={page.previewUrl}
+                  alt={t.pageNumber(idx + 1)}
+                  className="w-24 h-32 object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none"
+                />
+                <div className="flex-1 flex flex-col gap-2">
+                  <span className="text-sm font-medium">{t.pageNumber(idx + 1)}</span>
+                  {page.qualityFlags.length > 0 && (
+                    <span className="text-xs text-amber-700">{t.qualityWarning}</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => deletePage(page.id)}
+                    className="text-sm text-[var(--danger)] underline text-left w-fit min-h-12 h-auto py-2"
+                  >
+                    {t.deletePage}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {!isSingleMode && pages.length < (maxPages ?? 30) && (
             <button
               type="button"
-              onClick={() => finalizeUpload(pages)}
-              disabled={pages.length === 0}
-              className="w-full min-h-12 bg-[var(--primary)] text-white px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
+              onClick={() => setStage('entry')}
+              className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] rounded-none"
             >
-              {t.submit}
+              {t.addPage}
             </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full min-h-12 border border-[var(--border)] text-[var(--ink)] px-4 py-3 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-            >
-              {t.cancel}
-            </button>
-          </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => finalizeSubmit(pages)}
+            disabled={pages.length === 0}
+            className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white rounded-none disabled:opacity-50"
+          >
+            {pages.length === 1 ? t.uploadOnePage : t.uploadNPages(pages.length)}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              pages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+              setPages([]);
+              setStage('entry');
+            }}
+            className="w-full min-h-12 h-auto py-3 text-[var(--ink-secondary)] underline rounded-none"
+          >
+            {t.cancelAndStartOver}
+          </button>
         </div>
       )}
 
-      {stage === 'uploading' && <div className="py-8 text-center text-sm text-[var(--muted)]">{t.uploading}</div>}
+      {stage === 'submitting' && <div className="py-8 text-center text-sm text-[var(--muted)]">{t.uploading}</div>}
 
       {error && <p className="text-sm text-[var(--error)]">{error}</p>}
     </div>

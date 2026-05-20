@@ -1,0 +1,124 @@
+{
+  "_comment": "Canonical PRD-30 test household. Maria Garcia-Rodriguez, 5-person household.",
+  "application": {
+    "building_address": "43 Frank Street",
+    "unit_number": "2B",
+    "bedroom_count": 3,
+    "preferred_language": "pt",
+    "head_of_household_name": "Maria Garcia-Rodriguez"
+  },
+  "members": [
+    {
+      "slot": 1,
+      "name": "Maria Garcia-Rodriguez",
+      "dob": "1990-03-14",
+      "relationship": "head",
+      "citizenship_status": "citizen",
+      "ssn": "100-10-0001",
+      "signature_required": true,
+      "is_head_of_household": true,
+      "income_sources": ["employment"],
+      "annual_income": 28000,
+      "disability": false,
+      "student": false,
+      "lives_elsewhere": false
+    },
+    {
+      "slot": 2,
+      "name": "Carlos Garcia-Rodriguez",
+      "dob": "1986-07-22",
+      "relationship": "spouse",
+      "citizenship_status": "eligible_non_citizen",
+      "ssn": "100-10-0002",
+      "signature_required": true,
+      "is_head_of_household": false,
+      "income_sources": ["employment"],
+      "annual_income": 42000,
+      "disability": false,
+      "student": false,
+      "lives_elsewhere": false
+    },
+    {
+      "slot": 3,
+      "name": "Diego Garcia-Rodriguez",
+      "dob": "2005-11-05",
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "ssn": "100-10-0003",
+      "signature_required": true,
+      "is_head_of_household": false,
+      "income_sources": [],
+      "annual_income": 0,
+      "disability": false,
+      "student": false,
+      "lives_elsewhere": true,
+      "_note": "Adult (19), lives elsewhere → magic-link signing path"
+    },
+    {
+      "slot": 4,
+      "name": "Sofia Garcia-Rodriguez",
+      "dob": "2016-02-18",
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "ssn": "100-10-0004",
+      "signature_required": false,
+      "is_head_of_household": false,
+      "income_sources": [],
+      "annual_income": 0,
+      "disability": false,
+      "student": true,
+      "lives_elsewhere": false
+    },
+    {
+      "slot": 5,
+      "name": "Lucas Garcia-Rodriguez",
+      "dob": "2020-09-30",
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "ssn": "100-10-0005",
+      "signature_required": false,
+      "is_head_of_household": false,
+      "income_sources": [],
+      "annual_income": 0,
+      "disability": false,
+      "student": false,
+      "lives_elsewhere": false
+    }
+  ],
+  "conditionals": {
+    "vawa": true,
+    "reasonable_accommodation": true,
+    "zero_income_member_slots": [3],
+    "section_viii_zero_income": false,
+    "carlos_immigration_docs_required": true
+  },
+  "expected_forms": {
+    "generated": [
+      "summary_doc_pt",
+      "hud_main_application",
+      "hud_9886a",
+      "hach_release",
+      "no_child_support_affidavit",
+      "citizenship_declaration",
+      "obligations_of_family",
+      "eiv_guide_receipt",
+      "debts_owed_phas",
+      "hud_92006",
+      "briefing_docs_certification",
+      "criminal_background_release",
+      "zero_income_statement"
+    ],
+    "not_generated_feature_flag_off": [
+      "vawa_certification",
+      "reasonable_accommodation_request",
+      "immigration_doc_set",
+      "lead_paint_disclosure"
+    ],
+    "total_generated_count": 13
+  },
+  "expected_signers": {
+    "maria_forms_count": 9,
+    "carlos_device_owner": "hoh_device",
+    "diego_device_owner": "self"
+  }
+}

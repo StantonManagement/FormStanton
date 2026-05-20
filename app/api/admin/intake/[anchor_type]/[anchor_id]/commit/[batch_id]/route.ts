@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PDFDocument } from 'pdf-lib';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSessionUser, requireStantonStaff } from '@/lib/auth';
 import {
@@ -157,6 +158,8 @@ export async function POST(
     pageIds: string[];
     stagingPaths: string[];
     docType: string;
+    destPath: string;
+    ext: 'jpg' | 'pdf';
     label: string;
     personSlot: number;
     revision: number;
@@ -199,6 +202,8 @@ export async function POST(
       const lastName = extractLastName(typedApp.head_of_household_name ?? '');
       const assetId = String(typedApp.building_address ?? 'UNK');
       const unit = String(typedApp.unit_number ?? '0');
+      const pageCount = group.length;
+      const ext = pageCount > 1 ? 'pdf' : 'jpg';
       const fileName = buildStantonFilename({
         assetId,
         unit,
@@ -206,7 +211,7 @@ export async function POST(
         lastName,
         personSlot: docRow.person_slot,
         revision: newRevision,
-        ext: 'jpg',
+        ext,
       });
 
       const { data: newDoc, error: insertErr } = await supabaseAdmin
@@ -222,7 +227,7 @@ export async function POST(
           revision: newRevision,
           status: 'submitted',
           file_name: fileName,
-          storage_path: `form-submissions/${anchor_id}/${docRow.doc_type}/${fileName}`,
+          storage_path: `${anchor_id}/${docRow.doc_type}/${fileName}`,
           uploaded_by_role: 'staff',
           uploaded_by_user_id: actor.userId,
           uploaded_by_display_name: actor.displayName,
@@ -250,6 +255,8 @@ export async function POST(
         pageIds: group.map((p) => p.id),
         stagingPaths: group.map((p) => p.image_path),
         docType: docRow.doc_type,
+        destPath: `${anchor_id}/${docRow.doc_type}/${fileName}`,
+        ext,
         label: docRow.label,
         personSlot: docRow.person_slot,
         revision: newRevision,
@@ -258,6 +265,10 @@ export async function POST(
       templateDocsCount++;
     } else if (assignment.target === 'custom') {
       const customLabel = assignment.custom_label?.trim() || 'Custom Document';
+
+      const customPageCount = group.length;
+      const customExt = customPageCount > 1 ? 'pdf' : 'jpg';
+      const customFileName = `custom-${nextDisplayOrder}.${customExt}`;
 
       const { data: customDoc, error: customErr } = await supabaseAdmin
         .from('application_documents')
@@ -273,8 +284,8 @@ export async function POST(
           revision: 1,
           status: 'submitted',
           original_doc_type: null,
-          file_name: `custom-${nextDisplayOrder}.jpg`,
-          storage_path: `form-submissions/${anchor_id}/custom/custom-${nextDisplayOrder}.jpg`,
+          file_name: customFileName,
+          storage_path: `${anchor_id}/custom/${customFileName}`,
           uploaded_by_role: 'staff',
           uploaded_by_user_id: actor.userId,
           uploaded_by_display_name: actor.displayName,
@@ -301,6 +312,8 @@ export async function POST(
         pageIds: group.map((p) => p.id),
         stagingPaths: group.map((p) => p.image_path),
         docType: 'custom',
+        destPath: `${anchor_id}/custom/${customFileName}`,
+        ext: customExt,
         label: customLabel,
         personSlot: 0,
         revision: 1,
@@ -352,26 +365,39 @@ export async function POST(
 
   const storageErrors: string[] = [];
   for (const committed of committedDocuments) {
-    for (let i = 0; i < committed.stagingPaths.length; i++) {
-      const stagingPath = committed.stagingPaths[i];
-      const destPath = `form-submissions/${anchor_id}/${committed.docType}/${committed.applicationDocumentId}-${i + 1}.jpg`;
+    let uploadFailed = false;
+    try {
+      const fileBuffer = await buildFinalFile(committed.stagingPaths, committed.ext);
 
-      const { error: moveErr } = await supabaseAdmin.storage
-        .from('intake-staging')
-        .move(stagingPath, destPath.replace('form-submissions/', ''));
+      const contentType = committed.ext === 'pdf' ? 'application/pdf' : 'image/jpeg';
+      const { error: uploadErr } = await supabaseAdmin.storage
+        .from('form-submissions')
+        .upload(committed.destPath, fileBuffer, { contentType, upsert: false });
 
-      if (moveErr) {
-        storageErrors.push(stagingPath);
-        await supabaseAdmin
-          .from('intake_pages')
-          .update({ storage_move_failed: true })
-          .in('id', committed.pageIds);
+      if (uploadErr) {
+        console.error('[intake/commit] Upload to form-submissions failed:', uploadErr);
+        uploadFailed = true;
       } else {
+        await supabaseAdmin.storage
+          .from('intake-staging')
+          .remove(committed.stagingPaths);
+
         await supabaseAdmin
           .from('intake_pages')
           .update({ committed_document_id: committed.applicationDocumentId })
           .in('id', committed.pageIds);
       }
+    } catch (err) {
+      console.error('[intake/commit] buildFinalFile failed:', err);
+      uploadFailed = true;
+    }
+
+    if (uploadFailed) {
+      storageErrors.push(...committed.stagingPaths);
+      await supabaseAdmin
+        .from('intake_pages')
+        .update({ storage_move_failed: true })
+        .in('id', committed.pageIds);
     }
   }
 
@@ -392,6 +418,45 @@ export async function POST(
     },
     { status: 200 }
   );
+}
+
+/**
+ * Downloads page images from intake-staging and returns a final file buffer.
+ *
+ * Single-page group  → returns the JPEG bytes as-is.
+ * Multi-page group   → embeds each JPEG as a full page in a pdf-lib PDF,
+ *                      returns the PDF bytes.
+ *
+ * storage_path written to application_documents must match the path used
+ * when uploading this buffer to form-submissions.
+ */
+async function buildFinalFile(
+  stagingPaths: string[],
+  ext: 'jpg' | 'pdf'
+): Promise<Uint8Array> {
+  const pageBuffers: Uint8Array[] = [];
+  for (const stagingPath of stagingPaths) {
+    const { data, error } = await supabaseAdmin.storage
+      .from('intake-staging')
+      .download(stagingPath);
+    if (error || !data) {
+      throw new Error(`Failed to download staging file ${stagingPath}: ${error?.message}`);
+    }
+    const arrayBuffer = await data.arrayBuffer();
+    pageBuffers.push(new Uint8Array(arrayBuffer));
+  }
+
+  if (ext === 'jpg') {
+    return pageBuffers[0];
+  }
+
+  const pdfDoc = await PDFDocument.create();
+  for (const jpegBytes of pageBuffers) {
+    const jpegImage = await pdfDoc.embedJpg(jpegBytes);
+    const page = pdfDoc.addPage([jpegImage.width, jpegImage.height]);
+    page.drawImage(jpegImage, { x: 0, y: 0, width: jpegImage.width, height: jpegImage.height });
+  }
+  return pdfDoc.save();
 }
 
 function groupByGroupId(pages: IntakePage[]): IntakePage[][] {

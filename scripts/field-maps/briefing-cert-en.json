@@ -1,0 +1,38 @@
+{
+  "form_id": "briefing-cert-en",
+  "source_pdf": "docs/templates/briefing-cert-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 790 },
+  "fields": [
+    {
+      "name": "hoh_printed_name",
+      "type": "text",
+      "page": 1,
+      "x": 72,
+      "y": 194,
+      "width": 240,
+      "font_size": 11,
+      "label": "Head of Household Printed Name"
+    },
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 1,
+      "x": 324,
+      "y": 183,
+      "width": 200,
+      "height": 30,
+      "label": "Head of Household Signature"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 72,
+      "y": 154,
+      "width": 100,
+      "font_size": 11,
+      "label": "Date"
+    }
+  ]
+}

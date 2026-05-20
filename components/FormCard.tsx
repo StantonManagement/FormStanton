@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TenantForm } from '@/lib/formsData';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface FormCardProps {
   form: TenantForm;
@@ -16,7 +17,7 @@ export default function FormCard({ form, onView, onEdit }: FormCardProps) {
     const url = form.path.startsWith('http')
       ? form.path
       : `${window.location.origin}${form.path}`;
-    navigator.clipboard.writeText(url);
+    copyToClipboard(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

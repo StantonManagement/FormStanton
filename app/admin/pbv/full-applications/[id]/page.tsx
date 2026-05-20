@@ -2,14 +2,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
+import NotificationTimeline from '@/components/admin/NotificationTimeline';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
 import ReopenPacketDialog from '@/components/review/ReopenPacketDialog';
 import PacketLockBanner from '@/components/review/PacketLockBanner';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean;revision?:number;file_name?:string|null;storage_path?:string|null;uploaded_by_role?:string|null;uploaded_by_display_name?:string|null;staff_upload_note?:string|null;original_doc_type?:string|null; }
-interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_submitted_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;members:Member[];documents:Doc[]; }
+interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_submitted_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;members:Member[];documents:Doc[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
 const STATUS_COLORS:Record<string,string> = {pending:'bg-gray-100 text-gray-700',under_review:'bg-yellow-100 text-yellow-800',needs_info:'bg-orange-100 text-orange-800',approved:'bg-green-100 text-green-800',denied:'bg-red-100 text-red-800'};
@@ -29,13 +31,96 @@ export default function PbvFullApplicationDetailPage() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [saveMsgIsError, setSaveMsgIsError] = useState(false);
   const [generatingHha, setGeneratingHha] = useState(false);
   const [hhaMsg, setHhaMsg] = useState('');
   const [exportingHach, setExportingHach] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const [showSendToHach, setShowSendToHach] = useState(false);
   const [showReopen, setShowReopen] = useState(false);
   const [sendToHachPermission, setSendToHachPermission] = useState(false);
+
+  // SMS notification state
+  const [sendingSms, setSendingSms] = useState<string|null>(null);
+  const [smsResult, setSmsResult] = useState<{type:string;success:boolean;message:string}|null>(null);
+
+  // Staff-assisted session state
+  const [assistedActive, setAssistedActive] = useState(false);
+  const [assistedStarting, setAssistedStarting] = useState(false);
+  const [assistedEnding, setAssistedEnding] = useState(false);
+  const [assistedMsg, setAssistedMsg] = useState('');
+
+  const handleSendSms = useCallback(async (notificationType: string) => {
+    if (!detail) return;
+    setSendingSms(notificationType);
+    setSmsResult(null);
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_type: notificationType }),
+      });
+      const json = await res.json();
+      setSmsResult({
+        type: notificationType,
+        success: json.success,
+        message: json.success ? 'SMS sent successfully' : (json.message || 'Failed to send'),
+      });
+      if (json.success) {
+        // Refresh notification timeline
+        fetchDetail();
+      }
+    } catch (e: any) {
+      setSmsResult({
+        type: notificationType,
+        success: false,
+        message: e.message || 'Failed to send SMS',
+      });
+    } finally {
+      setSendingSms(null);
+    }
+  }, [detail]);
+
+  const startAssistedSession = useCallback(async () => {
+    if (!detail) return;
+    setAssistedStarting(true);
+    setAssistedMsg('');
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/assisted-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to start');
+      setAssistedActive(true);
+      setAssistedMsg('Assisted session started. Opening tenant portal...');
+      window.open(json.data.tenantUrl, '_blank', 'noopener');
+    } catch (e: any) {
+      setAssistedMsg(e.message || 'Failed to start assisted session');
+    } finally {
+      setAssistedStarting(false);
+    }
+  }, [detail]);
+
+  const endAssistedSession = useCallback(async () => {
+    if (!detail) return;
+    setAssistedEnding(true);
+    setAssistedMsg('');
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${detail.id}/assisted-session`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to end');
+      setAssistedActive(false);
+      setAssistedMsg('Assisted session ended.');
+    } catch (e: any) {
+      setAssistedMsg(e.message || 'Failed to end assisted session');
+    } finally {
+      setAssistedEnding(false);
+    }
+  }, [detail]);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true); setFetchError('');
@@ -72,8 +157,8 @@ export default function PbvFullApplicationDetailPage() {
         case 'reject':
           url = `/api/admin/applications/${ANCHOR_TYPE}/${detail.id}/documents/${docId}/reject`;
           body = {
-            reason_code: data?.reasonCode,
-            reason_text: data?.reasonText,
+            rejection_reason_key: data?.reasonKey,
+            rejection_reason: data?.reasonText,
             internal_notes: data?.internalNotes,
           };
           break;
@@ -130,9 +215,9 @@ export default function PbvFullApplicationDetailPage() {
       });
       const json = await res.json();
       if(!json.success) throw new Error(json.message||'Save failed');
-      setSaveMsg('Saved.'); await fetchDetail();
-    } catch(e:unknown){ setSaveMsg(e instanceof Error?e.message:'Save failed'); }
-    finally{ setSaving(false); setTimeout(()=>setSaveMsg(''),3000); }
+      setSaveMsgIsError(false); setSaveMsg('Saved.'); await fetchDetail();
+    } catch(e:unknown){ setSaveMsgIsError(true); setSaveMsg(e instanceof Error?e.message:'Save failed'); }
+    finally{ setSaving(false); setTimeout(()=>{ setSaveMsg(''); setSaveMsgIsError(false); },3000); }
   };
 
   const handleGenerateHha = async () => {
@@ -168,7 +253,7 @@ export default function PbvFullApplicationDetailPage() {
       a.href=url;
       const match=res.headers.get('content-disposition')?.match(/filename="([^"]+)"/);
       a.download=match?.[1]??'hach_package.zip'; a.click(); URL.revokeObjectURL(url);
-    } catch(e:unknown){ alert(e instanceof Error?e.message:'Export failed'); }
+    } catch(e:unknown){ setExportError(e instanceof Error?e.message:'Export failed'); setTimeout(()=>setExportError(''),5000); }
     finally{ setExportingHach(false); }
   };
 
@@ -220,9 +305,19 @@ export default function PbvFullApplicationDetailPage() {
             {' · '}{detail.household_size} person{detail.household_size!==1?'s':''}
           </p>
         </div>
-        <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
-          {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
-        </span>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/pbv-full-app/${detail.tenant_access_token}/print`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
+          >
+            View tenant copy
+          </a>
+          <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
+            {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -357,7 +452,8 @@ export default function PbvFullApplicationDetailPage() {
               className="px-5 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
               {saving?'Saving...':'Save Review'}
             </button>
-            {saveMsg&&<span className="text-xs text-[var(--muted)]">{saveMsg}</span>}
+            {saveMsg&&<span className={`text-xs ${saveMsgIsError?'text-red-600':'text-[var(--muted)]'}`}>{saveMsg}</span>}
+            {exportError&&<span className="text-xs text-red-600">{exportError}</span>}
           </div>
         </div>
       </section>
@@ -413,11 +509,42 @@ export default function PbvFullApplicationDetailPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-[var(--muted)] truncate">{detail.magic_link}</span>
               <button type="button"
-                onClick={()=>{navigator.clipboard.writeText(detail.magic_link);setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);}}
+                onClick={()=>{copyToClipboard(detail.magic_link);setLinkCopied(true);setTimeout(()=>setLinkCopied(false),2000);}}
                 className="text-xs text-[var(--muted)] hover:text-[var(--ink)] underline whitespace-nowrap">
                 {linkCopied?'Copied!':'Copy'}
               </button>
             </div>
+          </div>
+          <div className="pt-2 border-t border-[var(--divider)]">
+            <p className="text-xs text-[var(--muted)] mb-2 font-medium">Staff-Assisted Session</p>
+            {assistedActive ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                  <span className="font-medium">Session active</span>
+                  <span className="text-amber-600">— tenant portal is open</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={endAssistedSession}
+                  disabled={assistedEnding}
+                  className="text-xs underline text-[var(--muted)] hover:text-[var(--ink)] disabled:opacity-50"
+                >
+                  {assistedEnding ? 'Ending…' : 'End assisted session'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={startAssistedSession}
+                disabled={assistedStarting}
+                className="px-3 py-1.5 bg-[var(--primary)] text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {assistedStarting ? 'Starting…' : 'Start assisted session'}
+              </button>
+            )}
+            {assistedMsg && (
+              <p className="mt-1.5 text-xs text-[var(--muted)]">{assistedMsg}</p>
+            )}
           </div>
         </div>
       </section>
@@ -447,6 +574,76 @@ export default function PbvFullApplicationDetailPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-white border border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--divider)]">
+          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          {/* Manual SMS Send Buttons */}
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--muted)]">Send notifications manually (staff-controlled):</p>
+            
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleSendSms('magic_link_initial')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'magic_link_initial' ? 'Sending...' : 'Send Magic Link'}
+              </button>
+              
+              <button
+                onClick={() => handleSendSms('docs_upload_reminder')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs border border-[var(--border)] text-[var(--ink)] rounded-none hover:bg-[var(--bg-section)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'docs_upload_reminder' ? 'Sending...' : 'Send Doc Reminder'}
+              </button>
+              
+              {detail.hach_review_status === 'approved_by_hach' && (
+                <button
+                  onClick={() => handleSendSms('hach_approved_signing_ready')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs border border-green-600 text-green-700 rounded-none hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hach_approved_signing_ready' ? 'Sending...' : 'Send HACH Approval Notice'}
+                </button>
+              )}
+              
+              {detail.packet_locked && (
+                <button
+                  onClick={() => handleSendSms('hap_executed_move_in')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-none hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hap_executed_move_in' ? 'Sending...' : 'Send HAP Executed Notice'}
+                </button>
+              )}
+            </div>
+            
+            {!!detail.sms_opted_out_at && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2">
+                Tenant has opted out of SMS notifications.
+              </p>
+            )}
+            
+            {smsResult && (
+              <div className={`text-xs p-2 rounded-none ${smsResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {smsResult.message}
+              </div>
+            )}
+          </div>
+          
+          <div className="border-t border-[var(--divider)] pt-4">
+            <NotificationTimeline
+              applicationId={detail.id}
+              optedOut={!!detail.sms_opted_out_at}
+              onResendMagicLink={fetchDetail}
+            />
+          </div>
         </div>
       </section>
 

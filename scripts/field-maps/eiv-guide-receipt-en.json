@@ -1,0 +1,28 @@
+{
+  "form_id": "eiv-guide-receipt-en",
+  "source_pdf": "docs/templates/eiv-guide-receipt-en.pdf",
+  "page_size": "letter-landscape",
+  "page_dimensions": { "width": 1224, "height": 612 },
+  "fields": [
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 2,
+      "x": 534,
+      "y": 35,
+      "width": 150,
+      "height": 12,
+      "label": "Signature"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 2,
+      "x": 700,
+      "y": 38,
+      "width": 100,
+      "font_size": 9,
+      "label": "Date"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "form_id": "debts-owed-phas-en",
+  "source_pdf": "docs/templates/debts-owed-phas-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "fields": [
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 2,
+      "x": 289,
+      "y": 58,
+      "width": 150,
+      "height": 12,
+      "label": "Signature"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 2,
+      "x": 469,
+      "y": 61,
+      "width": 100,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "printed_name",
+      "type": "text",
+      "page": 2,
+      "x": 289,
+      "y": 33,
+      "width": 200,
+      "font_size": 9,
+      "label": "Printed Name"
+    }
+  ]
+}

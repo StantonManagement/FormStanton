@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
-
 export const dynamic = 'force-dynamic';
 
 interface BulkAssignResult {
@@ -71,9 +69,6 @@ export async function POST(request: NextRequest) {
 
     const docMap = new Map(docs?.map((d) => [d.id, d]) ?? []);
 
-    // Group documents by application for workspace messages
-    const docsByApp = new Map<string, { doc: any; prevAssignee: string | null }[]>();
-
     // Process each document
     const results: BulkAssignResult[] = [];
     const now = new Date().toISOString();
@@ -84,20 +79,6 @@ export async function POST(request: NextRequest) {
         results.push({ id: docId, ok: false, reason: 'Document not found' });
         continue;
       }
-
-      // Get full application for this document
-      const { data: fullApp } = await supabaseAdmin
-        .from('pbv_full_applications')
-        .select('id, head_of_household_name')
-        .eq('form_submission_id', doc.form_submission_id)
-        .single();
-
-      if (!fullApp) {
-        results.push({ id: docId, ok: false, reason: 'Application not found' });
-        continue;
-      }
-
-      const fromUserId = doc.assigned_to_user_id;
 
       // Update the document assignment
       const { error: updateError } = await supabaseAdmin
@@ -114,58 +95,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Write the doc_assigned event
-      await writePbvApplicationEvent({
-        applicationId: fullApp.id,
-        eventType: ApplicationEventType.DOC_ASSIGNED,
-        actorUserId: sessionUser.userId,
-        actorDisplayName: sessionUser.displayName,
-        documentId: docId,
-        payload: {
-          from_user_id: fromUserId,
-          to_user_id: targetUserId,
-          note: null,
-          doc_type: doc.doc_type,
-          label: doc.label,
-        },
-      });
-
       results.push({ id: docId, ok: true });
-
-      // Group for workspace summary
-      if (!docsByApp.has(fullApp.id)) {
-        docsByApp.set(fullApp.id, []);
-      }
-      docsByApp.get(fullApp.id)!.push({ doc, prevAssignee: fromUserId });
-    }
-
-    // Post one summary workspace message per affected application
-    for (const [appId, appDocs] of docsByApp.entries()) {
-      const successCount = appDocs.filter(({ doc }) =>
-        results.find((r) => r.id === doc.id && r.ok)
-      ).length;
-
-      if (successCount === 0) continue;
-
-      const { data: app } = await supabaseAdmin
-        .from('pbv_full_applications')
-        .select('head_of_household_name')
-        .eq('id', appId)
-        .single();
-
-      const hhName = app?.head_of_household_name ?? 'Unknown';
-
-      const messageBody = targetUserId
-        ? `${sessionUser.displayName} assigned ${successCount} doc${successCount !== 1 ? 's' : ''} to ${targetUserName} (${hhName}).`
-        : `${sessionUser.displayName} unassigned ${successCount} doc${successCount !== 1 ? 's' : ''} (${hhName}).`;
-
-      await supabaseAdmin.from('stanton_workspace_messages').insert({
-        workspace_id: appId,
-        author_user_id: null, // System message
-        author_display_name: 'System',
-        author_party_org: 'stanton',
-        body: messageBody,
-      });
     }
 
     return NextResponse.json({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 interface SignatureData {
   id: string;
@@ -10,92 +10,46 @@ interface SignatureData {
   status: string;
   signature_method?: string | null;
   signed_pdf_uploaded_by_role?: string | null;
+  conditional_note?: string | null;
 }
 
 interface SignatureRowProps {
   signature: SignatureData;
   context: 'tenant' | 'staff';
-  token?: string; // Tenant token (only for tenant context)
-  onStatusChange?: () => void;
+  token?: string;
+  onUploadClick?: () => void;
+  disabled?: boolean;
 }
 
 /**
  * SignatureRow component with "Sign in-app" and "Upload signed PDF" buttons.
- * 
- * PRD V Activation:
- * - The "Sign in-app" button is ACTIVE when:
- *   1. The PRD V API endpoint exists (detected via feature check), OR
- *   2. IN_APP_SIGNATURE_ENABLED env var is set
- * - Wet-sign upload path from PRD IV remains available.
+ *
+ * PRD IV (Post-Approval Execution): "Sign in-app" button is DISABLED with tooltip.
+ * PRD V (In-App Signature Capture) will activate this button when it ships.
  */
-export default function SignatureRow({ 
-  signature, 
-  context, 
-  token,
-  onStatusChange 
+export default function SignatureRow({
+  signature,
+  context,
+  onUploadClick,
+  disabled = false,
 }: SignatureRowProps) {
-  const [inAppEnabled, setInAppEnabled] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Check if in-app signing is available
-  useEffect(() => {
-    const checkFeature = async () => {
-      // Feature flag check
-      if (process.env.NEXT_PUBLIC_IN_APP_SIGNATURE_ENABLED === 'true') {
-        setInAppEnabled(true);
-        return;
-      }
-
-      // API detection check (try to hit the consent endpoint with HEAD)
-      if (context === 'tenant' && token) {
-        try {
-          const res = await fetch(`/api/tenant/signing/${token}/${signature.id}/consent`, {
-            method: 'HEAD',
-          });
-          if (res.status !== 404) {
-            setInAppEnabled(true);
-          }
-        } catch {
-          // API not available
-        }
-      } else if (context === 'staff') {
-        // For staff, assume enabled if component rendered in admin
-        setInAppEnabled(true);
-      }
-    };
-
-    checkFeature();
-  }, [context, token, signature.id]);
+  const [isLoading] = useState(false);
 
   const isSigned = signature.status === 'signed' || signature.status === 'executed';
   const isPending = signature.status === 'pending' || signature.status === 'sent';
+  const isWaived = signature.status === 'waived';
 
-  // Determine if this user can sign
-  const canSign = isPending && (
+  // Determine if this user can interact
+  const canInteract = isPending && !disabled && (
     (context === 'tenant' && signature.signing_party.includes('tenant')) ||
     (context === 'staff' && signature.signing_party.includes('stanton'))
   );
 
-  const handleInAppSign = () => {
-    if (!inAppEnabled || !canSign) return;
-    
-    if (context === 'tenant' && token) {
-      window.location.href = `/tenant-signing/${token}/${signature.id}`;
-    } else {
-      window.location.href = `/signing/${signature.id}`;
-    }
-  };
-
-  const handleUpload = () => {
-    // Trigger upload dialog
-    // This would integrate with the existing upload flow from PRD IV
-    onStatusChange?.();
-  };
-
   // Attribution text
   const getAttribution = () => {
+    if (isWaived) return 'Waived';
     if (!isSigned) return null;
-    
+
     if (signature.signature_method === 'in_app') {
       if (signature.signed_pdf_uploaded_by_role === 'tenant') {
         return 'Signed in-app by tenant';
@@ -103,10 +57,23 @@ export default function SignatureRow({
         return 'Signed in-app by Stanton staff';
       }
     }
-    
-    return signature.signed_pdf_uploaded_by_role 
+
+    return signature.signed_pdf_uploaded_by_role
       ? `Uploaded by ${signature.signed_pdf_uploaded_by_role}`
       : 'Signed';
+  };
+
+  const getStatusBadge = () => {
+    if (isSigned) {
+      return 'bg-green-100 text-green-700';
+    }
+    if (isWaived) {
+      return 'bg-indigo-100 text-indigo-700';
+    }
+    if (isPending) {
+      return 'bg-yellow-100 text-yellow-700';
+    }
+    return 'bg-gray-100 text-gray-600';
   };
 
   return (
@@ -119,15 +86,14 @@ export default function SignatureRow({
               {signature.plain_language_description}
             </p>
           )}
+          {signature.conditional_note && (
+            <p className="text-xs text-amber-600 mt-0.5 italic">
+              {signature.conditional_note}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-1 ${
-            isSigned 
-              ? 'bg-green-100 text-green-700' 
-              : isPending 
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-gray-100 text-gray-600'
-          }`}>
+          <span className={`text-xs px-2 py-1 ${getStatusBadge()}`}>
             {signature.status}
           </span>
         </div>
@@ -138,27 +104,23 @@ export default function SignatureRow({
           {getAttribution()}
         </div>
 
-        {canSign && (
+        {canInteract && (
           <div className="flex items-center gap-2">
             <button
-              onClick={handleUpload}
+              onClick={onUploadClick}
               disabled={isLoading}
               className="px-3 py-1.5 text-xs border border-[var(--border)] bg-white hover:bg-[var(--paper)] transition-colors"
             >
               Upload signed PDF
             </button>
 
+            {/* PRD IV: Sign in-app button is disabled with tooltip */}
             <button
-              onClick={handleInAppSign}
-              disabled={isLoading || !inAppEnabled}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                inAppEnabled
-                  ? 'bg-[var(--primary)] text-white hover:opacity-90'
-                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              }`}
-              title={inAppEnabled ? 'Sign electronically' : 'Coming soon'}
+              disabled={true}
+              className="px-3 py-1.5 text-xs font-medium bg-gray-200 text-gray-500 cursor-not-allowed"
+              title="Coming soon — in-app signing capability"
             >
-              {inAppEnabled ? 'Sign in-app' : 'Sign in-app (soon)'}
+              Sign in-app
             </button>
           </div>
         )}

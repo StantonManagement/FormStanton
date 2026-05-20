@@ -1,0 +1,1 @@
+This is a plain text file. Should be rejected by upload validators (accept=PDF/JPEG/PNG/HEIC only).

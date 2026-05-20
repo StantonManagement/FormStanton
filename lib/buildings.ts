@@ -284,3 +284,56 @@ export const appfolioNameToAddress: Record<string, string> = {
 export const buildingToAssetId: Record<string, string> = Object.fromEntries(
   Object.entries(appfolioNameToAddress).map(([afName, address]) => [address, appfolioNameToAssetId[afName]])
 );
+
+// Building zipcode mapping for income limit lookups
+// Hartford MSA (25540) - all use same HUD limits
+export const buildingToZipcode: Record<string, string> = {
+  // 06106 - Downtown/South
+  "90-100 Park St": "06106",
+  "97-103 Maple Ave": "06106",
+  "222-224 Maple Ave": "06106",
+  "43-45 Franklin Ave": "06106",
+  "47 Franklin Ave": "06106",
+  "228-230 Maple Ave": "06106",
+  "236 Maple Ave": "06106",
+  "93-95 Maple Ave": "06106",
+  "31-33 Park St": "06106",
+
+  // 06114 - South End
+  "15-17 Whitmore Street": "06114",
+  "36 Whitmore Street": "06114",
+  "38-40 Whitmore Street": "06114",
+
+  // 06105 - West End
+  "57-59 Park St": "06105",
+  "67-73 Park St": "06105",
+  "83-91 Park St": "06105",
+  "10 Wolcott St": "06105",
+  "179 Affleck St": "06105",
+  "144-146 Affleck St": "06105",
+  "178 Affleck St": "06105",
+  "182-184 Affleck St": "06105",
+  "190-192 Affleck St": "06105",
+  "195 Affleck St": "06105",
+  "88-90 Ward St": "06105",
+  "865 Broad St": "06105",
+
+  // 06120 - North End
+  "142 Seymour St": "06120",
+  "158 Seymour St": "06120",
+  "160 Wooster St": "06120",
+  "164 Seymour St": "06120",
+  "165 Westland St": "06120",
+  "167 Seymour St": "06120",
+  "169 Seymour St": "06120",
+  "170 Seymour St": "06120",
+  "180 Seymour St": "06120",
+  "213-217 Buckingham St": "06120",
+  "23-31 Squire St": "06120",
+  "110 Martin St": "06120",
+  "120 Martin St": "06120",
+  "152-154 Wooster St": "06120",
+  "1721-1739 Main St": "06120",
+  "69-73 Chestnut St": "06120",
+  "91 Edwards St": "06120",
+};

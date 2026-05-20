@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 import { computeHouseholdIncome } from '@/lib/pbv/income-eligibility';
 
 /**
  * GET /api/pbv/applications/[id]/income-eligibility
  *
  * Computes or re-computes household income eligibility for a PBV application.
- * Accessible to both Stanton staff and HACH reviewers (any authenticated user).
+ * Accessible to Stanton staff unconditionally.
+ * HACH users may only access applications that Stanton has submitted to HACH
+ * (hach_review_status IS NOT NULL).
  *
  * Response: EligibilityPayload
  */
@@ -26,6 +29,26 @@ export async function GET(
         { success: false, message: 'Application ID required' },
         { status: 400 }
       );
+    }
+
+    // HACH users may only see applications that Stanton has explicitly submitted to them.
+    if (user.user_type === 'hach_admin' || user.user_type === 'hach_reviewer') {
+      const { data: app, error: appErr } = await supabaseAdmin
+        .from('pbv_full_applications')
+        .select('hach_review_status')
+        .eq('id', applicationId)
+        .single();
+
+      if (appErr || !app) {
+        return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
+      }
+
+      if (!app.hach_review_status) {
+        return NextResponse.json(
+          { success: false, message: 'Forbidden — this application has not been submitted to HACH' },
+          { status: 403 }
+        );
+      }
     }
 
     const payload = await computeHouseholdIncome(applicationId);

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { buildings } from '@/lib/buildings';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 import { PbvPreapplication, QualificationResult, PbvReviewStatus, HouseholdMember } from '@/types/compliance';
 
 type ListRow = Pick<
@@ -29,6 +31,7 @@ const QUAL_LABELS: Record<QualificationResult, string> = {
   over_income: 'Over Income',
   citizenship_issue: 'Citizenship Issue',
   over_income_and_citizenship: 'Over Income + Citizenship',
+  needs_citizenship_review: 'Needs Citizenship Review',
 };
 
 const QUAL_COLORS: Record<QualificationResult, string> = {
@@ -36,6 +39,7 @@ const QUAL_COLORS: Record<QualificationResult, string> = {
   over_income: 'bg-red-100 text-red-800 border-red-200',
   citizenship_issue: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   over_income_and_citizenship: 'bg-red-100 text-red-800 border-red-200',
+  needs_citizenship_review: 'bg-amber-100 text-amber-800 border-amber-200',
 };
 
 const REVIEW_LABELS: Record<PbvReviewStatus, string> = {
@@ -383,10 +387,14 @@ interface Threshold {
   household_size: number;
   income_limit: number;
   effective_date: string;
+  zipcode?: string | null;
 }
+
+const ZIPCODES = ['06106', '06114', '06105', '06120']; // Hartford MSA zipcodes
 
 function ThresholdsPanel() {
   const [rows, setRows] = useState<Threshold[]>([]);
+  const [selectedZipcode, setSelectedZipcode] = useState<string>('06106'); // Default to first Hartford zip
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [edits, setEdits] = useState<Record<number, { income_limit: string; effective_date: string }>>({});
@@ -399,13 +407,18 @@ function ThresholdsPanel() {
     setLoading(true);
     setError('');
     try {
+      // Fetch all thresholds, then filter by zipcode client-side
       const res = await fetch('/api/admin/pbv/thresholds');
       if (!res.ok) throw new Error('Failed to load');
       const json = await res.json();
-      const data: Threshold[] = json.data ?? [];
-      setRows(data);
+      const allData: Threshold[] = json.data ?? [];
+      // Filter by selected zipcode (or null/undefined for default)
+      const filteredData = allData.filter(
+        (t) => t.zipcode === selectedZipcode || (!t.zipcode && selectedZipcode === '06106')
+      );
+      setRows(filteredData);
       const initial: Record<number, { income_limit: string; effective_date: string }> = {};
-      for (const r of data) {
+      for (const r of filteredData) {
         initial[r.household_size] = { income_limit: String(r.income_limit), effective_date: r.effective_date };
       }
       setEdits(initial);
@@ -415,7 +428,7 @@ function ThresholdsPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedZipcode]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -434,6 +447,7 @@ function ThresholdsPanel() {
         household_size: r.household_size,
         income_limit: Number(edits[r.household_size]?.income_limit ?? r.income_limit),
         effective_date: edits[r.household_size]?.effective_date ?? r.effective_date,
+        zipcode: selectedZipcode,
       }));
       const res = await fetch('/api/admin/pbv/thresholds', {
         method: 'POST',
@@ -472,6 +486,15 @@ function ThresholdsPanel() {
           <p className="text-xs text-[var(--muted)] mt-0.5">Used for pre-application qualification math. Changes take effect on new submissions.</p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={selectedZipcode}
+            onChange={(e) => setSelectedZipcode(e.target.value)}
+            className="px-3 py-2 border border-[var(--border)] rounded-none text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
+          >
+            {ZIPCODES.map((zip) => (
+              <option key={zip} value={zip}>ZIP {zip}</option>
+            ))}
+          </select>
           {dirty && (
             <button type="button" onClick={handleReset} disabled={saving}
               className="px-4 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--bg-section)] rounded-none transition-colors duration-200 disabled:opacity-50">
@@ -568,6 +591,64 @@ function DetailContent({
   const citizenshipOk = detail.hoh_is_citizen || detail.other_adult_citizen;
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState('');
+
+  // Create Full Application state
+  const [creatingFullApp, setCreatingFullApp] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [fullAppResult, setFullAppResult] = useState<{ id: string; magic_link: string } | null>(null);
+  const [sendingSms, setSendingSms] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+
+  const handleCreateFullApp = async () => {
+    setCreatingFullApp(true);
+    setCreateError('');
+    try {
+      const res = await fetch('/api/admin/pbv/full-applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          building_address: detail.building_address,
+          unit_number: detail.unit_number,
+          head_of_household_name: detail.hoh_name,
+          bedroom_count: detail.bedroom_count ?? undefined,
+          language: detail.language,
+          preapp_id: detail.id,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success && res.status !== 409) {
+        throw new Error(json.message || 'Failed to create full application');
+      }
+      // 409 means already exists - that's OK, just show the link
+      setFullAppResult({
+        id: json.data?.id || json.data?.id,
+        magic_link: json.data?.magic_link || json.data?.magic_link,
+      });
+    } catch (e: any) {
+      setCreateError(e.message || 'Failed to create full application');
+    } finally {
+      setCreatingFullApp(false);
+    }
+  };
+
+  const handleSendSms = async () => {
+    if (!fullAppResult) return;
+    setSendingSms(true);
+    try {
+      const res = await fetch(`/api/admin/pbv/full-applications/${fullAppResult.id}/send-sms`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_type: 'magic_link_initial' }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || 'Failed to send SMS');
+      setSmsSent(true);
+    } catch (e: any) {
+      alert(e.message || 'Failed to send SMS');
+    } finally {
+      setSendingSms(false);
+    }
+  };
 
   const handleGeneratePdf = async () => {
     setPdfGenerating(true);
@@ -766,6 +847,82 @@ function DetailContent({
           </button>
         </div>
       </section>
+
+      {/* Create Full Application - only show when approved */}
+      {detail.stanton_review_status === 'approved' && (
+        <section className="border-t border-[var(--divider)] pt-5">
+          <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
+          
+          {!fullAppResult ? (
+            <div className="space-y-3">
+              <p className="text-sm text-[var(--muted)]">
+                Create a full application invitation for this tenant. This will use the same building, unit, and applicant information from the pre-application.
+              </p>
+              {createError && (
+                <div className="border border-red-200 bg-red-50 p-2 text-sm text-red-700">{createError}</div>
+              )}
+              <button
+                type="button"
+                onClick={handleCreateFullApp}
+                disabled={creatingFullApp}
+                className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingFullApp ? 'Creating...' : 'Create Full Application Invitation'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 p-3">
+                <p className="text-sm text-green-800 font-medium mb-1">Full application created.</p>
+                <p className="text-xs text-green-700">Magic link ready to send to tenant.</p>
+              </div>
+
+              {/* Phone preview */}
+              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3 text-sm">
+                <p className="text-[var(--muted)] text-xs mb-1">Recipient</p>
+                <p className="text-[var(--ink)]">{detail.hoh_name}</p>
+                <p className="text-[var(--muted)] text-xs mt-1">Language: {detail.language.toUpperCase()}</p>
+              </div>
+
+              {/* Magic link display */}
+              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3">
+                <p className="text-xs text-[var(--muted)] mb-1">Magic Link</p>
+                <p className="text-xs font-mono text-[var(--ink)] break-all">{fullAppResult.magic_link}</p>
+                <button
+                  type="button"
+                  onClick={() => { copyToClipboard(fullAppResult.magic_link); }}
+                  className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                >
+                  Copy Link
+                </button>
+              </div>
+
+              {/* Send SMS button */}
+              {!smsSent ? (
+                <button
+                  type="button"
+                  onClick={handleSendSms}
+                  disabled={sendingSms}
+                  className="w-full py-2.5 bg-green-700 text-white text-sm font-medium rounded-none hover:bg-green-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sendingSms ? 'Sending...' : 'Send SMS Invitation'}
+                </button>
+              ) : (
+                <div className="text-center py-2 text-sm text-green-700 font-medium">
+                  SMS sent successfully
+                </div>
+              )}
+
+              <Link
+                href={`/admin/pbv/full-applications/${fullAppResult.id}`}
+                className="block w-full py-2.5 border border-[var(--border)] text-center text-[var(--ink)] text-sm font-medium rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200"
+              >
+                View Full Application →
+              </Link>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Delete */}
       <section className="border-t border-[var(--divider)] pt-5">

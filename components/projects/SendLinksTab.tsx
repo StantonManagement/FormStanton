@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, Fragment } from 'react';
 import type { ProjectUnit, LinkDelivery } from '@/types/compliance';
 import type { ProjectDetail } from '@/lib/useProjectDetail';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface SendLinksTabProps {
   project: ProjectDetail;
@@ -109,14 +110,14 @@ export default function SendLinksTab({ project, units, unitsLoading, onRefresh }
 
   const handleCopy = useCallback(async (unit: ProjectUnit) => {
     const url = buildTenantUrl(unit.tenant_link_token);
-    await navigator.clipboard.writeText(url);
+    await copyToClipboard(url);
     setCopiedId(unit.id);
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
   const handleBulkCopy = useCallback(async () => {
     const lines = units.map((u) => `${u.building} \u2014 ${u.unit_number}: ${buildTenantUrl(u.tenant_link_token)}`);
-    await navigator.clipboard.writeText(lines.join('\n'));
+    await copyToClipboard(lines.join('\n'));
     setBulkCopied(true);
     setTimeout(() => setBulkCopied(false), 2000);
   }, [units]);

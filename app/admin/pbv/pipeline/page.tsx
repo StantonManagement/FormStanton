@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ interface PipelineRow {
   has_rejections: boolean;
   hach_review_status: string | null;
   missing_contact_info: boolean;
+  hach_last_inbound_days_ago: number | null;
+  hach_awaiting_response: boolean;
 }
 
 interface StaffUser {
@@ -110,18 +113,22 @@ function IncomeIcon({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PipelinePage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [rows, setRows]             = useState<PipelineRow[]>([]);
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState('');
   const [toast, setToast]           = useState('');
 
-  // Filters
-  const [building, setBuilding]           = useState('');
-  const [stage, setStage]                 = useState('');
-  const [blocked, setBlocked]             = useState('');
-  const [hasRejections, setHasRejections] = useState(false);
-  const [assignee, setAssignee]           = useState('');
+  // Filters — initialised from URL search params so back-nav restores them
+  const [buildingInput, setBuildingInput] = useState(() => searchParams.get('building') ?? '');
+  const [building, setBuilding]           = useState(() => searchParams.get('building') ?? '');
+  const [stage, setStage]                 = useState(() => searchParams.get('stage') ?? '');
+  const [blocked, setBlocked]             = useState(() => searchParams.get('blocked') ?? '');
+  const [hasRejections, setHasRejections] = useState(() => searchParams.get('rejections') === '1');
+  const [assignee, setAssignee]           = useState(() => searchParams.get('assignee') ?? '');
 
   // Selection
   const [selected, setSelected]       = useState<Set<string>>(new Set());
@@ -132,6 +139,25 @@ export default function PipelinePage() {
   const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+
+  // Debounce building filter — 300ms
+  useEffect(() => {
+    const t = setTimeout(() => setBuilding(buildingInput), 300);
+    return () => clearTimeout(t);
+  }, [buildingInput]);
+
+  // Sync filters to URL so back-nav restores them
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (building)      p.set('building', building);
+    if (stage)         p.set('stage', stage);
+    if (blocked)       p.set('blocked', blocked);
+    if (hasRejections) p.set('rejections', '1');
+    if (assignee)      p.set('assignee', assignee);
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [building, stage, blocked, hasRejections, assignee]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -261,7 +287,7 @@ export default function PipelinePage() {
     color: C.text, outline: 'none',
   };
 
-  const hasFilters = !!(building || stage || blocked || hasRejections || assignee);
+  const hasFilters = !!(buildingInput || building || stage || blocked || hasRejections || assignee);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -290,8 +316,8 @@ export default function PipelinePage() {
       {/* Filter bar */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const, marginBottom: 12 }}>
         <input
-          type="text" placeholder="Building&hellip;" value={building}
-          onChange={(e) => setBuilding(e.target.value)}
+          type="text" placeholder="Building&hellip;" value={buildingInput}
+          onChange={(e) => setBuildingInput(e.target.value)}
           style={{ ...inputBase, width: 150 }}
         />
         <select value={stage} onChange={(e) => setStage(e.target.value)} style={{ ...inputBase, cursor: 'pointer', width: 160 }}>
@@ -320,7 +346,7 @@ export default function PipelinePage() {
         </label>
         {hasFilters && (
           <button
-            onClick={() => { setBuilding(''); setStage(''); setBlocked(''); setHasRejections(false); setAssignee(''); }}
+            onClick={() => { setBuildingInput(''); setBuilding(''); setStage(''); setBlocked(''); setHasRejections(false); setAssignee(''); }}
             style={{ padding: '5px 10px', fontSize: 11, fontFamily: FONT, fontWeight: 600, background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, cursor: 'pointer' }}
           >
             Reset
@@ -431,11 +457,13 @@ export default function PipelinePage() {
                   style={{
                     borderBottom: `1px solid ${C.border}`,
                     backgroundColor: isSelected ? '#f0f9ff' : undefined,
+                    cursor: 'pointer',
                     ...staleStyle(row),
                   }}
+                  onClick={() => router.push(`/admin/pbv/pipeline/${row.id}`)}
                 >
                   {/* Checkbox */}
-                  <td style={{ padding: '10px 10px', textAlign: 'center' as const }}>
+                  <td style={{ padding: '10px 10px', textAlign: 'center' as const }} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox" checked={isSelected}
                       onChange={() => toggleRow(row.id)}
@@ -457,7 +485,7 @@ export default function PipelinePage() {
                   {/* Tenant */}
                   <td style={{ padding: '10px 12px' }}>
                     <Link
-                      href={`/admin/pbv/full-applications/${row.id}`}
+                      href={`/admin/pbv/pipeline/${row.id}`}
                       style={{ fontWeight: 500, color: C.text, textDecoration: 'none', fontSize: 13 }}
                     >
                       {row.head_of_household_name}
@@ -506,7 +534,7 @@ export default function PipelinePage() {
                   </td>
 
                   {/* Assigned To — inline dropdown */}
-                  <td style={{ padding: '10px 12px' }}>
+                  <td style={{ padding: '10px 12px' }} onClick={(e) => e.stopPropagation()}>
                     <select
                       value={row.assigned_to ?? ''}
                       disabled={assigningId === row.id}

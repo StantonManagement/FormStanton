@@ -29,7 +29,7 @@ export async function PATCH(
     // Fetch the application
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, head_of_household_name, lead_user_id, form_submission_id')
+      .select('id, head_of_household_name, lead_user_id')
       .eq('id', appId)
       .single();
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface FullAppRow {
   id: string;
@@ -116,7 +117,7 @@ export default function PbvFullApplicationsPage() {
 
   const handleCopyLink = async (row: FullAppRow) => {
     const link = `${window.location.origin}/pbv-full-app/${row.tenant_access_token}`;
-    await navigator.clipboard.writeText(link);
+    await copyToClipboard(link);
     setCopiedId(row.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -168,8 +169,6 @@ export default function PbvFullApplicationsPage() {
   };
 
   const filtered = rows.filter((r) => {
-    if (filterBuilding && !r.building_address.toLowerCase().includes(filterBuilding.toLowerCase())) return false;
-    if (filterStatus && r.stanton_review_status !== filterStatus) return false;
     if (filterIntakeOnly && !r.intake_submitted_at) return false;
     return true;
   });
@@ -267,9 +266,9 @@ export default function PbvFullApplicationsPage() {
                   >
                     <td className="px-4 py-3 font-medium text-[var(--ink)]">
                       <div className="flex items-center gap-2">
-                        <Link href={`/admin/pbv/full-applications/${row.id}`} className="hover:underline">
+                        <span className="hover:underline">
                           {row.head_of_household_name}
-                        </Link>
+                        </span>
                         {row.workspace_unread_counts && (row.workspace_unread_counts.stanton > 0 || row.workspace_unread_counts.shared > 0) && (
                           <span className="px-2 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
                             {row.workspace_unread_counts.stanton + row.workspace_unread_counts.shared}
@@ -308,7 +307,7 @@ export default function PbvFullApplicationsPage() {
                     </td>
                     <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.created_at)}</td>
                     <td className="px-4 py-3 text-[var(--muted)]">{formatDate(row.intake_submitted_at)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -359,7 +358,7 @@ export default function PbvFullApplicationsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigator.clipboard.writeText(inviteResult.magic_link)}
+                  onClick={() => copyToClipboard(inviteResult.magic_link)}
                   className="w-full py-2 px-4 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Copy Magic Link

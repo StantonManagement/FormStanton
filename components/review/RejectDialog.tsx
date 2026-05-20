@@ -2,19 +2,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-interface ReasonTemplate {
-  code: string;
-  label: string;
-  template_en: string;
-  template_es: string;
-  template_pt: string;
-  sort_order: number;
-  is_active: boolean;
+interface PbvRejectionTemplate {
+  key: string;
+  doc_type: string | null;
+  reason_en: string;
+  reason_es: string;
+  reason_pt: string;
 }
 
 interface Document {
   id: string;
   label: string;
+  doc_type?: string;
   file_name?: string | null;
 }
 
@@ -30,23 +29,27 @@ interface RejectDialogProps {
   application: Application;
   context: 'stanton' | 'hach';
   onClose: () => void;
-  onSubmit: (documentId: string, reasonCode: string, reasonText: string | undefined, internalNotes?: string) => Promise<void>;
+  onSubmit: (documentId: string, reasonKey: string | null, reasonText: string | undefined, internalNotes?: string) => Promise<void>;
 }
 
-function getLangTemplate(tpl: ReasonTemplate, lang: string): string {
-  if (lang === 'es') return tpl.template_es;
-  if (lang === 'pt') return tpl.template_pt;
-  return tpl.template_en;
+function getLocalizedReason(tpl: PbvRejectionTemplate, lang: string): string {
+  if (lang === 'es') return tpl.reason_es;
+  if (lang === 'pt') return tpl.reason_pt;
+  return tpl.reason_en;
 }
 
-function interpolateTemplate(template: string, vars: Record<string, string | undefined>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] || match);
+function getGenericFallback(lang: string): string {
+  if (lang === 'es') return 'Por favor contacte la oficina para detalles sobre por qué este documento fue rechazado.';
+  if (lang === 'pt') return 'Por favor entre em contato com o escritório para detalhes sobre por que este documento foi rejeitado.';
+  return 'Please contact the office for details on why this document was rejected.';
 }
 
 function langDisplayName(lang: string): string {
   const names: Record<string, string> = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
   return names[lang] || 'English';
 }
+
+const CUSTOM_KEY = '__custom__';
 
 export default function RejectDialog({
   document,
@@ -55,10 +58,13 @@ export default function RejectDialog({
   onClose,
   onSubmit,
 }: RejectDialogProps) {
-  const [templates, setTemplates] = useState<ReasonTemplate[]>([]);
+  const [templates, setTemplates] = useState<PbvRejectionTemplate[]>([]);
+  const [genericTemplates, setGenericTemplates] = useState<PbvRejectionTemplate[]>([]);
+  const [docSpecificTemplates, setDocSpecificTemplates] = useState<PbvRejectionTemplate[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
-  const [reasonCode, setReasonCode] = useState('stale');
+  const [selectedKey, setSelectedKey] = useState<string>('');
   const [customText, setCustomText] = useState('');
+  const [useCustom, setUseCustom] = useState(false);
   const [internalNotes, setInternalNotes] = useState(''); // Stanton only
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -67,26 +73,27 @@ export default function RejectDialog({
     ? application.preferred_language
     : 'en') as 'en' | 'es' | 'pt';
 
-  const tenantFirstName = application.head_of_household_name.split(' ')[0];
-  const docShort = document.label.split(' ')[0].toLowerCase();
-
-  // Load rejection templates
+  // Load PBV rejection templates filtered by doc_type
   useEffect(() => {
-    const apiUrl = context === 'stanton' 
-      ? '/api/admin/rejection-reasons'
-      : '/api/hach/rejection-reasons';
-      
+    const docType = document.doc_type || 'all';
+    const apiUrl = `/api/admin/pbv-rejection-templates?doc_type=${encodeURIComponent(docType)}`;
+
     fetch(apiUrl)
       .then((r) => r.json())
       .then((d) => {
-        if (d.success) {
+        if (d.success && d.data) {
           setTemplates(d.data);
-          if (d.data.length > 0) setReasonCode(d.data[0].code);
+          setGenericTemplates(d.grouped?.generic || []);
+          setDocSpecificTemplates(d.grouped?.doc_specific || []);
+          // Default to first template if available
+          if (d.data.length > 0) {
+            setSelectedKey(d.data[0].key);
+          }
         }
       })
       .catch(() => {})
       .finally(() => setTemplatesLoading(false));
-  }, [context]);
+  }, [document.doc_type]);
 
   // Esc closes
   useEffect(() => {
@@ -97,38 +104,37 @@ export default function RejectDialog({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const selectedTemplate = templates.find((t) => t.code === reasonCode);
-  const rawTemplate = selectedTemplate ? getLangTemplate(selectedTemplate, lang) : '';
-  const previewMessage = rawTemplate
-    ? interpolateTemplate(rawTemplate, {
-        tenant: tenantFirstName,
-        doc: document.label,
-        doc_short: docShort,
-        custom: reasonCode === 'other' ? (customText || undefined) : undefined,
-      })
+  const selectedTemplate = useCustom ? null : templates.find((t) => t.key === selectedKey);
+
+  // Build preview message
+  const previewMessage = useCustom
+    ? customText.trim() || getGenericFallback(lang)
+    : selectedTemplate
+    ? getLocalizedReason(selectedTemplate, lang)
     : '';
 
-  const canSubmit =
-    !submitting &&
-    reasonCode &&
-    (reasonCode !== 'other' || customText.trim().length > 0);
+  const canSubmit = useCustom
+    ? customText.trim().length > 0
+    : selectedKey !== '';
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     setSubmitting(true);
     setSubmitError('');
     try {
+      // If using custom, pass null key and custom text
+      // If using template, pass key and optional custom text as override
       await onSubmit(
         document.id,
-        reasonCode,
-        reasonCode === 'other' ? customText.trim() : undefined,
+        useCustom ? null : selectedKey,
+        useCustom ? customText.trim() : undefined,
         context === 'stanton' ? internalNotes.trim() || undefined : undefined
       );
     } catch (e: any) {
       setSubmitError(e.message ?? 'Rejection failed');
       setSubmitting(false);
     }
-  }, [canSubmit, document.id, reasonCode, customText, internalNotes, context, onSubmit]);
+  }, [canSubmit, document.id, selectedKey, customText, internalNotes, context, onSubmit, useCustom]);
 
   if (context === 'hach') {
     const COLORS = {
@@ -225,16 +231,22 @@ export default function RejectDialog({
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {templates.map((t) => (
+                {/* Doc-specific templates */}
+                {docSpecificTemplates.length > 0 && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginBottom: 4 }}>
+                    Document-specific reasons
+                  </div>
+                )}
+                {docSpecificTemplates.map((t) => (
                   <label
-                    key={t.code}
+                    key={t.key}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: 10,
                       padding: '8px 12px',
-                      border: `1px solid ${reasonCode === t.code ? COLORS.accent : COLORS.border}`,
-                      backgroundColor: reasonCode === t.code ? COLORS.accentLight : 'transparent',
+                      border: `1px solid ${!useCustom && selectedKey === t.key ? COLORS.accent : COLORS.border}`,
+                      backgroundColor: !useCustom && selectedKey === t.key ? COLORS.accentLight : 'transparent',
                       cursor: 'pointer',
                       fontSize: 13,
                     }}
@@ -242,22 +254,77 @@ export default function RejectDialog({
                     <input
                       type="radio"
                       name="reject-reason"
-                      checked={reasonCode === t.code}
-                      onChange={() => { setReasonCode(t.code); setCustomText(''); setSubmitError(''); }}
+                      checked={!useCustom && selectedKey === t.key}
+                      onChange={() => { setSelectedKey(t.key); setUseCustom(false); setSubmitError(''); }}
                       style={{ accentColor: COLORS.accent, flexShrink: 0 }}
                     />
-                    {t.label}
+                    {getLocalizedReason(t, 'en')}
                   </label>
                 ))}
+
+                {/* Generic templates */}
+                {genericTemplates.length > 0 && docSpecificTemplates.length > 0 && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 8, marginBottom: 4 }}>
+                    Generic reasons
+                  </div>
+                )}
+                {genericTemplates.map((t) => (
+                  <label
+                    key={t.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 12px',
+                      border: `1px solid ${!useCustom && selectedKey === t.key ? COLORS.accent : COLORS.border}`,
+                      backgroundColor: !useCustom && selectedKey === t.key ? COLORS.accentLight : 'transparent',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="reject-reason"
+                      checked={!useCustom && selectedKey === t.key}
+                      onChange={() => { setSelectedKey(t.key); setUseCustom(false); setSubmitError(''); }}
+                      style={{ accentColor: COLORS.accent, flexShrink: 0 }}
+                    />
+                    {getLocalizedReason(t, 'en')}
+                  </label>
+                ))}
+
+                {/* Custom option */}
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 12px',
+                    border: `1px solid ${useCustom ? COLORS.accent : COLORS.border}`,
+                    backgroundColor: useCustom ? COLORS.accentLight : 'transparent',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    marginTop: docSpecificTemplates.length > 0 || genericTemplates.length > 0 ? 8 : 0,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="reject-reason"
+                    checked={useCustom}
+                    onChange={() => { setUseCustom(true); setSubmitError(''); }}
+                    style={{ accentColor: COLORS.accent, flexShrink: 0 }}
+                  />
+                  Custom reason
+                </label>
               </div>
             )}
 
-            {/* Custom text (only for "other") */}
-            {reasonCode === 'other' && (
+            {/* Custom text area */}
+            {useCustom && (
               <textarea
                 value={customText}
                 onChange={(e) => setCustomText(e.target.value)}
-                placeholder="Specify reason for tenant..."
+                placeholder="Enter custom rejection reason for tenant..."
                 rows={3}
                 style={{
                   width: '100%',
@@ -305,20 +372,6 @@ export default function RejectDialog({
                 )}
               </div>
 
-              <div
-                style={{
-                  marginTop: 8,
-                  padding: '8px 12px',
-                  backgroundColor: COLORS.warnBg,
-                  border: `1px solid #fcd34d`,
-                  fontSize: 11,
-                  color: COLORS.warn,
-                  lineHeight: 1.45,
-                }}
-              >
-                <strong>Note:</strong> Tenant notification is deferred until Twilio integration is live.
-                The rejection will be logged but no SMS will be sent yet.
-              </div>
             </div>
 
             {/* Submit error */}
@@ -414,34 +467,84 @@ export default function RejectDialog({
             <div className="text-sm text-gray-500 py-2">Loading reasons...</div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {templates.map((t) => (
+              {/* Doc-specific templates */}
+              {docSpecificTemplates.length > 0 && (
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 mt-2">
+                  Document-specific reasons
+                </div>
+              )}
+              {docSpecificTemplates.map((t) => (
                 <label
-                  key={t.code}
+                  key={t.key}
                   className={`flex items-center gap-3 p-3 border rounded cursor-pointer text-sm ${
-                    reasonCode === t.code 
-                      ? 'bg-blue-50 border-blue-500' 
+                    !useCustom && selectedKey === t.key
+                      ? 'bg-blue-50 border-blue-500'
                       : 'bg-white border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <input
                     type="radio"
                     name="reject-reason"
-                    checked={reasonCode === t.code}
-                    onChange={() => { setReasonCode(t.code); setCustomText(''); setSubmitError(''); }}
+                    checked={!useCustom && selectedKey === t.key}
+                    onChange={() => { setSelectedKey(t.key); setUseCustom(false); setSubmitError(''); }}
                     className="text-blue-600"
                   />
-                  {t.label}
+                  {getLocalizedReason(t, 'en')}
                 </label>
               ))}
+
+              {/* Generic templates */}
+              {genericTemplates.length > 0 && docSpecificTemplates.length > 0 && (
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 mt-3">
+                  Generic reasons
+                </div>
+              )}
+              {genericTemplates.map((t) => (
+                <label
+                  key={t.key}
+                  className={`flex items-center gap-3 p-3 border rounded cursor-pointer text-sm ${
+                    !useCustom && selectedKey === t.key
+                      ? 'bg-blue-50 border-blue-500'
+                      : 'bg-white border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="reject-reason"
+                    checked={!useCustom && selectedKey === t.key}
+                    onChange={() => { setSelectedKey(t.key); setUseCustom(false); setSubmitError(''); }}
+                    className="text-blue-600"
+                  />
+                  {getLocalizedReason(t, 'en')}
+                </label>
+              ))}
+
+              {/* Custom option */}
+              <label
+                className={`flex items-center gap-3 p-3 border rounded cursor-pointer text-sm mt-2 ${
+                  useCustom
+                    ? 'bg-blue-50 border-blue-500'
+                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="reject-reason"
+                  checked={useCustom}
+                  onChange={() => { setUseCustom(true); setSubmitError(''); }}
+                  className="text-blue-600"
+                />
+                Custom reason
+              </label>
             </div>
           )}
 
-          {/* Custom text (only for "other") */}
-          {reasonCode === 'other' && (
+          {/* Custom text area */}
+          {useCustom && (
             <textarea
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
-              placeholder="Specify reason for tenant..."
+              placeholder="Enter custom rejection reason for tenant..."
               rows={3}
               className="w-full mt-3 p-3 text-sm border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -470,11 +573,6 @@ export default function RejectDialog({
               {previewMessage || (
                 <span className="text-gray-400 italic">Select a reason to preview the message</span>
               )}
-            </div>
-
-            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-xs text-yellow-800 leading-relaxed">
-              <strong>Note:</strong> Tenant notification is deferred until Twilio integration is live.
-              The rejection will be logged but no SMS will be sent yet.
             </div>
           </div>
 

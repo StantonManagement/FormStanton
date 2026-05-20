@@ -1,0 +1,92 @@
+{
+  "form_id": "citizenship-declaration-en",
+  "source_pdf": "docs/templates/citizenship-declaration-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 790 },
+  "row_patterns": [
+    {
+      "id": "members",
+      "page": 1,
+      "data_key": "members",
+      "max_rows": 9,
+      "row_start_y": 347,
+      "row_pitch": 18.2,
+      "columns": [
+        {
+          "member_key": "full_name",
+          "type": "text",
+          "x": 70,
+          "y_offset": 5,
+          "font_size": 8,
+          "label": "Family Member Name"
+        },
+        {
+          "member_key": "dob",
+          "type": "text",
+          "x": 241,
+          "y_offset": 5,
+          "font_size": 8,
+          "label": "Date of Birth"
+        },
+        {
+          "member_key": "citizenship_status",
+          "type": "checkbox",
+          "x": 312,
+          "y_offset": 5,
+          "font_size": 8,
+          "check_value": "citizen",
+          "label": "Status 1 (citizen)"
+        },
+        {
+          "member_key": "citizenship_status",
+          "type": "checkbox",
+          "x": 330,
+          "y_offset": 5,
+          "font_size": 8,
+          "check_value": "eligible_non_citizen",
+          "label": "Status 2 (eligible non-citizen)"
+        },
+        {
+          "member_key": "citizenship_status",
+          "type": "checkbox",
+          "x": 348,
+          "y_offset": 5,
+          "font_size": 8,
+          "check_value": "not_declaring",
+          "label": "Status 3 (choose not to declare)"
+        },
+        {
+          "member_key": "signature",
+          "type": "image",
+          "x": 364,
+          "y_offset": 2,
+          "width": 150,
+          "height": 13,
+          "label": "Signature"
+        }
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "name": "hoh_certification_signature",
+      "type": "image",
+      "page": 1,
+      "x": 80,
+      "y": 132,
+      "width": 150,
+      "height": 12,
+      "label": "Head of Household Signature"
+    },
+    {
+      "name": "hoh_certification_date",
+      "type": "text",
+      "page": 1,
+      "x": 468,
+      "y": 143,
+      "width": 80,
+      "font_size": 9,
+      "label": "Date (HOH cert)"
+    }
+  ]
+}

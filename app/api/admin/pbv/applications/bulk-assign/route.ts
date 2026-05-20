@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStantonStaff, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
 /**
  * POST /api/admin/pbv/applications/bulk-assign
@@ -71,6 +72,25 @@ export async function POST(request: NextRequest) {
     if (updateErr) {
       return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 });
     }
+
+    // Application event log for each assignment
+    await Promise.all(
+      application_ids.map((appId) =>
+        writePbvApplicationEvent({
+          applicationId: appId,
+          eventType: ApplicationEventType.APP_ASSIGNED,
+          actorUserId: user.userId,
+          actorDisplayName: user.displayName ?? user.username ?? 'Unknown',
+          payload: {
+            previous_assignee_id: prevMap[appId] ?? null,
+            new_assignee_id: assigned_to,
+            previous_assignee_name: null, // Could fetch but would add N queries
+            new_assignee_name: staff.display_name,
+            bulk_operation: true,
+          },
+        })
+      )
+    );
 
     // Audit log each change (batch — one entry per application)
     const ip = getClientIp(request);

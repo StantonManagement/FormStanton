@@ -24,12 +24,37 @@ export async function POST(
     const reviewer = sessionUser.displayName;
 
     const body = await request.json().catch(() => null);
-    const rejectionReason = body?.reason_code || body?.rejection_reason || '';
+    const rejectionReasonKey = body?.rejection_reason_key || body?.reason_code || null;
+    const rejectionReasonFreeText = body?.rejection_reason || '';
     const notes = body?.internal_notes ?? null;
 
-    if (!rejectionReason?.trim()) {
-      return NextResponse.json({ success: false, message: 'rejection_reason is required' }, { status: 400 });
+    // Validate: must have either a key or free-text (or both)
+    if (!rejectionReasonKey && !rejectionReasonFreeText?.trim()) {
+      return NextResponse.json(
+        { success: false, message: 'Either rejection_reason_key or rejection_reason is required' },
+        { status: 400 }
+      );
     }
+
+    // If key provided, validate it exists in templates table
+    if (rejectionReasonKey) {
+      const { data: template, error: templateError } = await supabaseAdmin
+        .from('pbv_rejection_reason_templates')
+        .select('key')
+        .eq('key', rejectionReasonKey)
+        .single();
+
+      if (templateError || !template) {
+        return NextResponse.json(
+          { success: false, message: `Invalid rejection_reason_key: ${rejectionReasonKey}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Build display reason for notifications/events (prefer free-text, fallback to key)
+    const rejectionReason = rejectionReasonFreeText?.trim() || rejectionReasonKey || '';
+    const rejectionReasonDisplay = rejectionReason;
 
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
@@ -69,7 +94,8 @@ export async function POST(
         status: 'rejected',
         reviewer,
         reviewed_at: reviewedAt,
-        rejection_reason: rejectionReason,
+        rejection_reason: rejectionReasonFreeText?.trim() || null,
+        rejection_reason_key: rejectionReasonKey || null,
         notes,
         owner_review_status: hasApplicationLead ? 'pending' : null,
         owner_reviewed_at: null,
@@ -88,7 +114,7 @@ export async function POST(
           status_at_review: 'rejected',
           reviewer,
           reviewed_at: reviewedAt,
-          rejection_reason: rejectionReason,
+          rejection_reason: rejectionReasonDisplay,
         })
         .eq('application_document_id', documentId)
         .eq('revision', doc.revision);
@@ -100,7 +126,12 @@ export async function POST(
       actorUserId: sessionUser.userId,
       actorDisplayName: reviewer,
       documentId,
-      payload: { doc_type: doc.doc_type, label: doc.label, rejection_reason: rejectionReason },
+      payload: {
+        doc_type: doc.doc_type,
+        label: doc.label,
+        rejection_reason: rejectionReasonDisplay,
+        rejection_reason_key: rejectionReasonKey,
+      },
     });
 
     await logAudit(

@@ -22,12 +22,20 @@ export type AnchorType = 'pbv_full_application';
 // --- Event type enum -----------------------------------------------------------
 
 export const ApplicationEventType = {
+  // Application lifecycle - PRD-15
+  APPLICATION_SUBMITTED: 'application.submitted',
+  STAFF_ESCALATION_REQUIRED: 'staff.escalation_required',
+
+  // Multi-signer observability - PRD-18
+  TENANT_SIGNER_COMPLETED: 'tenant.signer_completed',
+
   // Document lifecycle - Phase 1
   DOCUMENT_UPLOADED_BY_STAFF: 'document.uploaded_by_staff',
   DOCUMENT_RECATEGORIZED:     'document.recategorized',
   DOCUMENT_APPROVED:          'document.approved',
   DOCUMENT_REJECTED:          'document.rejected',
   DOCUMENT_WAIVED:            'document.waived',
+  DOCUMENT_DEFERRED:          'document.deferred',
 
   // Handoff lifecycle - Phase 2
   HANDOFF_SENT:               'handoff.sent',
@@ -36,6 +44,7 @@ export const ApplicationEventType = {
   // Review workflow - Assignment and tier-2 confirmation
   DOC_ASSIGNED:               'doc_assigned',
   APP_LEAD_ASSIGNED:          'app_lead_assigned',
+  APP_ASSIGNED:               'app_assigned',
   DOC_OWNER_CONFIRMED:        'doc_owner_confirmed',
   DOC_OWNER_FLAGGED:          'doc_owner_flagged',
 
@@ -43,6 +52,31 @@ export const ApplicationEventType = {
   PACKET_INTAKE_STARTED:      'packet_intake_started',
   PACKET_INTAKE_COMMITTED:    'packet_intake_committed',
   PACKET_INTAKE_ABANDONED:    'packet_intake_abandoned',
+
+  // Tenant document upload - Phase PRD-03
+  DOCUMENT_UPLOADED_BY_TENANT: 'document.uploaded_by_tenant',
+
+  // Document card stack analytics - PRD-42 F7
+  DOCUMENT_CARD_VIEWED:           'document_card.viewed',
+  DOCUMENT_CARD_COMPLETED:        'document_card.completed',
+  DOCUMENT_CARD_DEFERRED:         'document_card.deferred',
+  DOCUMENT_CARD_SKIPPED:          'document_card.skipped',
+  DOCUMENT_CARD_DEACTIVATED:      'document_card.deactivated',
+  DOCUMENT_SCANNER_OPENED:         'document_card.scanner_opened',
+  DOCUMENT_SCANNER_RETAKE:        'document_card.scanner_retake',
+  DOCUMENT_UPLOAD_SUCCESS:          'document_card.upload_success',
+  DOCUMENT_UPLOAD_FAILED:         'document_card.upload_failed',
+  DOCUMENT_STACK_STARTED:         'document_card.stack_started',
+  DOCUMENT_SIDESHEET_OPENED:      'document_card.sidesheet_opened',
+
+  // Application lifecycle - PRD-04
+  APPLICATION_CREATED:        'pbv_full_application.created',
+
+  // Notification events - PRD-04
+  NOTIFICATION_SCHEDULED:     'notification.scheduled',
+  NOTIFICATION_SENT:          'notification.sent',
+  NOTIFICATION_FAILED:        'notification.failed',
+  NOTIFICATION_OPTED_OUT:     'notification.opted_out',
 
   // Post-approval execution - Phase 4
   SIGNING_PACKET_CREATED:     'signing_packet_created',
@@ -52,6 +86,13 @@ export const ApplicationEventType = {
   SIGNATURE_WAIVED:           'signature_waived',
   HAP_EXECUTED:               'hap_executed',
   PROPERTY_CONFIGURED:        'property_configured',
+
+  // Appointment scheduling
+  APPOINTMENT_SCHEDULED:      'appointment.scheduled',
+  APPOINTMENT_COMPLETED:      'appointment.completed',
+  APPOINTMENT_NO_SHOW:        'appointment.no_show',
+  APPOINTMENT_RESCHEDULED:    'appointment.rescheduled',
+  APPOINTMENT_CANCELLED:      'appointment.cancelled',
 } as const;
 
 export type ApplicationEventType =
@@ -60,6 +101,20 @@ export type ApplicationEventType =
 // --- Payload shapes per event type --------------------------------------------
 
 export interface EventPayloadMap {
+  'application.submitted': {
+    submitted_at: string;
+  };
+  'staff.escalation_required': {
+    reason: string;
+    reminders_sent: number;
+    missing_docs_count?: number;
+  };
+  'tenant.signer_completed': {
+    signer_id: string;
+    slot: number;
+    name: string;
+    completed_at: string;
+  };
   'document.uploaded_by_staff': {
     doc_type: string;
     label: string;
@@ -79,10 +134,16 @@ export interface EventPayloadMap {
     doc_type: string;
     label: string;
     rejection_reason: string;
+    rejection_reason_key?: string | null;
   };
   'document.waived': {
     doc_type: string;
     label: string;
+  };
+  'document.deferred': {
+    document_id: string;
+    doc_type: string;
+    scheduled_reminder_at?: string;
   };
   'handoff.sent': {
     hach_review_status: string;
@@ -109,6 +170,13 @@ export interface EventPayloadMap {
     to_user_id: string | null;
     application_id: string;
     head_of_household_name: string;
+  };
+  'app_assigned': {
+    previous_assignee_id: string | null;
+    new_assignee_id: string | null;
+    previous_assignee_name: string | null;
+    new_assignee_name: string | null;
+    bulk_operation: boolean;
   };
   'doc_owner_confirmed': {
     doc_type: string;
@@ -179,6 +247,130 @@ export interface EventPayloadMap {
     source_label?: string | null;
     reason?: string | null;
   };
+
+  'document.uploaded_by_tenant': {
+    doc_type: string;
+    label: string;
+    file_name: string;
+    applied_from_source?: string;
+  };
+
+  // Document card stack analytics payloads - PRD-42 F7
+  'document_card.viewed': {
+    doc_type: string;
+    card_index: number;
+    total_cards: number;
+    status: string;
+  };
+  'document_card.completed': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    revision: number;
+    time_on_card_ms?: number;
+  };
+  'document_card.deferred': {
+    doc_type: string;
+    card_index: number;
+    time_on_card_ms?: number;
+  };
+  'document_card.skipped': {
+    reason?: string;
+    timestamp: number;
+  };
+  'document_card.deactivated': {
+    doc_type: string;
+  };
+  'document_card.scanner_opened': {
+    doc_type: string;
+    mode?: 'initial' | 'append' | 'retake' | 'reupload_after_rejection';
+  };
+  'document_card.scanner_retake': {
+    doc_type: string;
+    page_count: number;
+  };
+  'document_card.upload_success': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    page_count?: number;
+  };
+  'document_card.upload_failed': {
+    doc_type: string;
+    upload_method: 'scanner' | 'file_upload';
+    error: string;
+  };
+  'document_card.stack_started': {
+    total_docs: number;
+    deferred_docs: number;
+  };
+  'document_card.sidesheet_opened': {
+    from_stage: string;
+  };
+
+  'pbv_full_application.created': {
+    source: 'portal_intake' | 'admin_created';
+    has_phone: boolean;
+    has_language: boolean;
+  };
+
+  'notification.scheduled': {
+    notification_type: string;
+    due_at: string;
+    cancel_predicate: string | null;
+  };
+
+  'notification.sent': {
+    notification_type: string;
+    notification_id: string;
+    twilio_message_sid: string;
+    bulk_send_id?: string;
+  };
+
+  'notification.failed': {
+    notification_type: string;
+    notification_id: string;
+    reason: string;
+    bulk_send_id?: string;
+  };
+
+  'notification.opted_out': {
+    notification_type?: string;
+    notification_id?: string;
+    action?: 'opted_out' | 'rescinded';
+  };
+
+  // Appointment scheduling payloads
+  'appointment.scheduled': {
+    appointment_id: string;
+    staff_id: string;
+    staff_name: string;
+    starts_at: string;
+    purpose: string;
+    self_scheduled: boolean;
+  };
+  'appointment.completed': {
+    appointment_id: string;
+    staff_id: string;
+    completed_at: string;
+    notes?: string;
+    purpose: string;
+  };
+  'appointment.no_show': {
+    appointment_id: string;
+    staff_id: string;
+    scheduled_time: string;
+    purpose: string;
+  };
+  'appointment.rescheduled': {
+    old_appointment_id: string;
+    new_appointment_id: string;
+    new_starts_at: string;
+    reason?: string;
+  };
+  'appointment.cancelled': {
+    appointment_id: string;
+    cancelled_at: string;
+    reason?: string;
+  };
 }
 
 // --- Generic write primitive ---------------------------------------------------
@@ -223,6 +415,27 @@ export async function writeApplicationEvent<T extends ApplicationEventType>(
   return { id: (data as { id: string }).id };
 }
 
+// --- Event subscriber (fire-and-forget notification hook) ---------------------
+
+type EventSubscriber = (eventType: ApplicationEventType, applicationId: string, eventId: string) => void;
+
+const _subscribers: EventSubscriber[] = [];
+
+export function subscribeToApplicationEvents(fn: EventSubscriber): void {
+  _subscribers.push(fn);
+}
+
+function _notifySubscribers(eventType: ApplicationEventType, applicationId: string, eventId: string): void {
+  for (const fn of _subscribers) {
+    try {
+      fn(eventType, applicationId, eventId);
+    } catch (subscriberError) {
+      console.error(`[application-events] Subscriber failed for ${eventType}:`, subscriberError);
+      // Continue with other subscribers - don't let one failure block others
+    }
+  }
+}
+
 // --- PBV wrapper ---------------------------------------------------------------
 
 export interface WritePbvApplicationEventParams<T extends ApplicationEventType> {
@@ -238,9 +451,11 @@ export async function writePbvApplicationEvent<T extends ApplicationEventType>(
   params: WritePbvApplicationEventParams<T>
 ): Promise<{ id: string }> {
   const { applicationId, ...rest } = params;
-  return writeApplicationEvent({
+  const result = await writeApplicationEvent({
     anchorType: 'pbv_full_application',
     anchorId: applicationId,
     ...rest,
   });
+  _notifySubscribers(params.eventType, applicationId, result.id);
+  return result;
 }

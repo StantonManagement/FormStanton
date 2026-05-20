@@ -3,7 +3,6 @@ import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
 import { recomputeSubmission } from '@/lib/recomputeSubmission';
-import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,20 +20,6 @@ export async function POST(
     const reviewer = sessionUser?.displayName ?? 'Unknown';
     const { submissionId, documentId } = await params;
 
-    // Fetch application to check packet_locked before mutating
-    const { data: fullAppPre } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('id, packet_locked')
-      .eq('form_submission_id', submissionId)
-      .single();
-
-    if ((fullAppPre as any)?.packet_locked) {
-      return NextResponse.json(
-        { success: false, message: 'Packet is locked. Reopen the packet before making changes.' },
-        { status: 423 }
-      );
-    }
-
     const { data: doc, error: docError } = await supabaseAdmin
       .from('form_submission_documents')
       .select('id, form_submission_id, revision, status, doc_type, label')
@@ -48,16 +33,6 @@ export async function POST(
 
     const reviewedAt = new Date().toISOString();
 
-    // Check if Application Lead is assigned to this application
-    const { data: app } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('lead_user_id')
-      .eq('form_submission_id', submissionId)
-      .single();
-
-    const hasApplicationLead = !!app?.lead_user_id;
-
-    // Update document: set owner_review_status to 'pending' if there's an Application Lead
     const { error: updateError } = await supabaseAdmin
       .from('form_submission_documents')
       .update({
@@ -66,10 +41,6 @@ export async function POST(
         reviewed_at: reviewedAt,
         rejection_reason: null,
         notes: null,
-        owner_review_status: hasApplicationLead ? 'pending' : null,
-        owner_reviewed_at: null,
-        owner_reviewed_by: null,
-        owner_flag_reason: null,
       })
       .eq('id', documentId);
 
@@ -84,19 +55,6 @@ export async function POST(
     }
 
     await recomputeSubmission(submissionId);
-
-    // Write application event
-    const fullApp = fullAppPre;
-    if (fullApp) {
-      await writePbvApplicationEvent({
-        applicationId: fullApp.id,
-        eventType: ApplicationEventType.DOCUMENT_APPROVED,
-        actorUserId: sessionUser?.userId ?? null,
-        actorDisplayName: reviewer,
-        documentId,
-        payload: { doc_type: doc.doc_type, label: doc.label },
-      });
-    }
 
     await logAudit(sessionUser, 'document.approve', 'form_submission_document', documentId, { submissionId }, getClientIp(request));
 

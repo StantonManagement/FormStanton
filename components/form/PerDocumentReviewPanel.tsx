@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 type DocStatus = 'missing' | 'submitted' | 'approved' | 'rejected' | 'waived';
 
@@ -403,7 +404,7 @@ export default function PerDocumentReviewPanel({ submissionId, tenantAccessToken
           <div className="flex gap-2 flex-shrink-0">
             {displayTokenUrl && (
               <button
-                onClick={() => navigator.clipboard.writeText(displayTokenUrl)}
+                onClick={() => copyToClipboard(displayTokenUrl)}
                 className="px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors rounded-none"
               >
                 Copy

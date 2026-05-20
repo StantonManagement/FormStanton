@@ -1,4 +1,4 @@
--- PBV Full Application: form_document_templates seed
+﻿-- PBV Full Application: form_document_templates seed
 -- form_id = 'pbv-full-application'
 -- Apply after: 20260423180000_foundation_review_per_document.sql
 --              20260423210000_pbv_full_application_tables.sql
@@ -18,7 +18,7 @@
 -- Age is computed from date_of_birth at intake and written as member.age.
 
 INSERT INTO public.form_document_templates
-  (form_id, doc_type, label, label_es, label_pt, required, conditional_on, display_order, per_person, applies_to, member_filter)
+  (form_id, doc_type, label, label_es, label_pt, required, conditional_on, display_order, per_person, applies_to, member_filter, category)
 VALUES
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +31,8 @@ VALUES
   'Talones de pago (últimas 4 semanas o 2 quincenas por persona empleada)',
   'Contracheques (últimas 4 semanas ou 2 quinzenas por pessoa empregada)',
   TRUE, NULL, 10, TRUE, 'each_member_matching_rule',
-  '{"field": "employed", "value": true}'
+  '{"field": "employed", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'pension_letter',
@@ -39,7 +40,8 @@ VALUES
   'Carta de pensión o retiro ferroviario',
   'Carta de pensão ou aposentadoria ferroviária',
   TRUE, NULL, 20, TRUE, 'each_member_matching_rule',
-  '{"field": "has_pension", "value": true}'
+  '{"field": "has_pension", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'ssi_award_letter',
@@ -47,7 +49,8 @@ VALUES
   'Carta de adjudicación de SSI',
   'Carta de concessão de SSI',
   TRUE, NULL, 30, TRUE, 'each_member_matching_rule',
-  '{"field": "has_ssi", "value": true}'
+  '{"field": "has_ssi", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'ss_award_letter',
@@ -55,7 +58,8 @@ VALUES
   'Carta de adjudicación del Seguro Social',
   'Carta de concessão da Previdência Social',
   TRUE, NULL, 40, TRUE, 'each_member_matching_rule',
-  '{"field": "has_ss", "value": true}'
+  '{"field": "has_ss", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'child_support_docs',
@@ -63,7 +67,8 @@ VALUES
   'Orden de manutención infantil o historial de pagos (últimos 12 meses)',
   'Ordem de pensão alimentícia ou histórico de pagamentos (últimos 12 meses)',
   TRUE, NULL, 50, TRUE, 'each_member_matching_rule',
-  '{"field": "has_child_support", "value": true}'
+  '{"field": "has_child_support", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'tanf_letter',
@@ -71,7 +76,8 @@ VALUES
   'Carta de adjudicación de TANF, cupones de alimentos o asistencia pública',
   'Carta de concessão de TANF, cupons alimentares ou assistência pública',
   TRUE, NULL, 60, TRUE, 'each_member_matching_rule',
-  '{"field": "has_tanf", "value": true}'
+  '{"field": "has_tanf", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'unemployment_letter',
@@ -79,7 +85,8 @@ VALUES
   'Carta de seguro de desempleo o compensación laboral',
   'Carta de seguro desemprego ou compensação de trabalhadores',
   TRUE, NULL, 70, TRUE, 'each_member_matching_rule',
-  '{"field": "has_unemployment", "value": true}'
+  '{"field": "has_unemployment", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'self_employment_docs',
@@ -87,7 +94,8 @@ VALUES
   'Contrato de trabajo independiente y estado de ganancias',
   'Contrato de trabalho autônomo e declaração de ganhos',
   TRUE, NULL, 80, TRUE, 'each_member_matching_rule',
-  '{"field": "has_self_employment", "value": true}'
+  '{"field": "has_self_employment", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'training_letter',
@@ -95,7 +103,8 @@ VALUES
   'Carta de programa de capacitación o documentación de beca (otros ingresos)',
   'Carta de programa de treinamento ou documentação de bolsa (outros rendimentos)',
   FALSE, NULL, 90, TRUE, 'each_member_matching_rule',
-  '{"field": "has_other_income", "value": true}'
+  '{"field": "has_other_income", "value": true}',
+  'income'
 ),
 (
   'pbv-full-application', 'digital_payment_statements',
@@ -103,7 +112,8 @@ VALUES
   'Estados de cuenta de Cash App, Zelle, Venmo o PayPal — 2 meses (otros ingresos)',
   'Extratos de Cash App, Zelle, Venmo ou PayPal — 2 meses (outros rendimentos)',
   FALSE, NULL, 100, TRUE, 'each_member_matching_rule',
-  '{"field": "has_other_income", "value": true}'
+  '{"field": "has_other_income", "value": true}',
+  'income'
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -116,7 +126,8 @@ VALUES
   'Estado de cuenta bancaria de ahorros (mes más reciente)',
   'Extrato bancário de poupança (mês mais recente)',
   TRUE, NULL, 110, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'assets'
 ),
 (
   'pbv-full-application', 'bank_statement_checking',
@@ -124,7 +135,8 @@ VALUES
   'Estado de cuenta bancaria corriente (mes más reciente)',
   'Extrato bancário de conta corrente (mês mais recente)',
   TRUE, NULL, 120, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'assets'
 ),
 
 -- Asset docs are submission-level; required=FALSE because they are conditional
@@ -135,7 +147,8 @@ VALUES
   'Carta de liquidación de seguro (si corresponde)',
   'Carta de liquidação de seguro (se aplicável)',
   FALSE, '{"has_insurance_settlement": true}', 130, FALSE, 'submission',
-  NULL
+  NULL,
+  'assets'
 ),
 (
   'pbv-full-application', 'cd_trust_bond',
@@ -143,7 +156,8 @@ VALUES
   'Estados de cuenta de CD, fideicomiso o bonos (si corresponde)',
   'Extratos de CD, trust ou títulos (se aplicável)',
   FALSE, '{"has_cd_trust_bond": true}', 140, FALSE, 'submission',
-  NULL
+  NULL,
+  'assets'
 ),
 (
   'pbv-full-application', 'life_insurance_policy',
@@ -151,7 +165,8 @@ VALUES
   'Póliza de seguro de vida con valor en efectivo (si corresponde)',
   'Apólice de seguro de vida com valor em dinheiro (se aplicável)',
   FALSE, '{"has_life_insurance": true}', 150, FALSE, 'submission',
-  NULL
+  NULL,
+  'assets'
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -164,7 +179,8 @@ VALUES
   'Facturas médicas (últimos 12 meses) — deducción médica',
   'Contas médicas (últimos 12 meses) — dedução médica',
   FALSE, '{"claiming_medical_deduction": true}', 200, FALSE, 'submission',
-  NULL
+  NULL,
+  'medical_childcare'
 ),
 (
   'pbv-full-application', 'pharmacy_statements',
@@ -172,7 +188,8 @@ VALUES
   'Estados de cuenta de farmacia (últimos 12 meses) — deducción médica',
   'Extratos de farmácia (últimos 12 meses) — dedução médica',
   FALSE, '{"claiming_medical_deduction": true}', 210, FALSE, 'submission',
-  NULL
+  NULL,
+  'medical_childcare'
 ),
 (
   'pbv-full-application', 'care4kids_certificate',
@@ -180,7 +197,8 @@ VALUES
   'Certificado de Care 4 Kids o documentación de cuidado infantil',
   'Certificado Care 4 Kids ou documentação de creche',
   FALSE, '{"has_childcare_expense": true}', 220, FALSE, 'submission',
-  NULL
+  NULL,
+  'medical_childcare'
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -193,7 +211,8 @@ VALUES
   'Documentos de inmigración (I-551, I-94, I-688 o I-688B)',
   'Documentos de imigração (I-551, I-94, I-688 ou I-688B)',
   TRUE, NULL, 300, TRUE, 'each_member_matching_rule',
-  '{"field": "citizenship_status", "value": "eligible_non_citizen"}'
+  '{"field": "citizenship_status", "value": "eligible_non_citizen"}',
+  'immigration'
 ),
 (
   'pbv-full-application', 'proof_of_age_noncitizen',
@@ -201,7 +220,8 @@ VALUES
   'Prueba de edad para miembros no ciudadanos de 62+ años',
   'Comprovante de idade para membros não cidadãos com 62+ anos',
   FALSE, NULL, 310, TRUE, 'each_member_matching_rule',
-  '[{"field": "citizenship_status", "value": "eligible_non_citizen"}, {"field": "age", "op": "gte", "value": 62}]'
+  '[{"field": "citizenship_status", "value": "eligible_non_citizen"}, {"field": "age", "op": "gte", "value": 62}]',
+  'immigration'
 ),
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -215,7 +235,8 @@ VALUES
   'Solicitud principal y declaración jurada',
   'Requerimento principal e declaração',
   TRUE, NULL, 400, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'criminal_background_release',
@@ -223,7 +244,8 @@ VALUES
   'Autorización de divulgación de antecedentes penales',
   'Autorização de divulgação de antecedentes criminais',
   TRUE, NULL, 410, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'child_support_affidavit',
@@ -231,7 +253,17 @@ VALUES
   'Declaración jurada de manutención infantil (pagada, recibida o ninguna)',
   'Declaração de pensão alimentícia (paga, recebida ou nenhuma)',
   TRUE, NULL, 420, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
+),
+(
+  'pbv-full-application', 'no_child_support_affidavit',
+  'No Child Support Affidavit (no child support paid or received)',
+  'Declaración jurada de ausencia de manutención infantil',
+  'Declaração de ausência de pensão alimentícia',
+  TRUE, NULL, 425, TRUE, 'each_adult',
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'hud_9886a',
@@ -239,7 +271,8 @@ VALUES
   'HUD-9886-A Autorización para divulgar información',
   'HUD-9886-A Autorização para divulgação de informações',
   TRUE, NULL, 430, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'hach_release',
@@ -247,7 +280,8 @@ VALUES
   'Autorización de HACH para divulgar información',
   'Autorização da HACH para divulgação de informações',
   TRUE, NULL, 440, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'obligations_of_family',
@@ -255,7 +289,8 @@ VALUES
   'Obligaciones de la familia',
   'Obrigações da família',
   TRUE, NULL, 450, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'briefing_docs_certification',
@@ -263,7 +298,8 @@ VALUES
   'Certificación familiar de haber recibido documentos de orientación',
   'Certificação familiar de documentos de orientação recebidos',
   TRUE, NULL, 460, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'debts_owed_phas',
@@ -271,7 +307,8 @@ VALUES
   'Deudas con autoridades de vivienda (HUD-52675)',
   'Dívidas com autoridades de habitação (HUD-52675)',
   TRUE, NULL, 470, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'citizenship_declaration',
@@ -279,7 +316,8 @@ VALUES
   'Declaración de ciudadanía',
   'Declaração de cidadania',
   TRUE, NULL, 480, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'eiv_guide_receipt',
@@ -287,7 +325,8 @@ VALUES
   'Recibo de la guía EIV',
   'Recibo do guia EIV',
   TRUE, NULL, 490, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'hud_92006',
@@ -295,7 +334,8 @@ VALUES
   'Formulario de contacto suplementario HUD-92006',
   'Formulário de contato suplementar HUD-92006',
   TRUE, NULL, 500, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'vawa_certification',
@@ -303,7 +343,8 @@ VALUES
   'Certificación VAWA (HUD-5382)',
   'Certificação VAWA (HUD-5382)',
   FALSE, '{"dv_status": true}', 510, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 ),
 (
   'pbv-full-application', 'reasonable_accommodation_request',
@@ -311,7 +352,8 @@ VALUES
   'Solicitud de ajuste razonable',
   'Solicitação de acomodação razoável',
   FALSE, '{"reasonable_accommodation_requested": true}', 520, TRUE, 'each_adult',
-  NULL
+  NULL,
+  'signed_forms'
 )
 
 ON CONFLICT (form_id, doc_type) DO UPDATE SET
@@ -323,7 +365,8 @@ ON CONFLICT (form_id, doc_type) DO UPDATE SET
   display_order    = EXCLUDED.display_order,
   per_person       = EXCLUDED.per_person,
   applies_to       = EXCLUDED.applies_to,
-  member_filter    = EXCLUDED.member_filter;
+  member_filter    = EXCLUDED.member_filter,
+  category         = EXCLUDED.category;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- ROLLBACK INSTRUCTIONS

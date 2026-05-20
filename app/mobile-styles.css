@@ -1,5 +1,36 @@
 /* Mobile-first form enhancements */
 
+/* Smooth scrolling globally */
+html {
+  scroll-behavior: smooth;
+  /* Prevent iOS text size inflation on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Contain overscroll on the body — prevents pull-to-refresh kicking tenants
+   out of mid-form context, while still allowing normal page scrolling */
+body {
+  overscroll-behavior-y: contain;
+  /* Remove the blue/grey flash on tap — replace with our own active states */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active press feedback on interactive elements (replaces default tap flash) */
+button:active,
+a:active,
+[role="button"]:active {
+  opacity: 0.75;
+  transition: opacity 80ms ease-out;
+}
+
+/* Momentum scrolling for any overflowing containers on iOS */
+.overflow-y-auto,
+.overflow-auto,
+.overflow-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Ensure all inputs have proper touch targets (minimum 44px height) */
 input[type="text"],
 input[type="tel"],

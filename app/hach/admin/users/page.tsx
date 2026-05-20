@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 const COLORS = {
   accent: '#0f4c5c',
@@ -243,7 +244,7 @@ function InviteUrlDialog({ url, email, onClose }: { url: string; email: string; 
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
-    navigator.clipboard.writeText(url).then(() => {
+    copyToClipboard(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });

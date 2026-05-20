@@ -1,0 +1,115 @@
+{
+  "household": {
+    "address": "123 Main Street",
+    "city": "Hartford",
+    "state": "CT",
+    "zip": "06103",
+    "phone": "860-555-0100"
+  },
+  "hoh": {
+    "full_name": "Maria Garcia-Rodriguez",
+    "first_name": "Maria",
+    "last_name": "Garcia-Rodriguez",
+    "dob": "1978-03-12",
+    "citizenship_status": "citizen",
+    "signature": "docs/templates/sample-signature.png"
+  },
+  "members": [
+    {
+      "id": "hoh",
+      "full_name": "Maria Garcia-Rodriguez",
+      "first_name": "Maria",
+      "last_name": "Garcia-Rodriguez",
+      "dob": "1978-03-12",
+      "age": 48,
+      "is_adult": true,
+      "is_hoh": true,
+      "relationship": "head_of_household",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "id": "spouse",
+      "full_name": "Carlos Garcia-Rodriguez",
+      "first_name": "Carlos",
+      "last_name": "Garcia-Rodriguez",
+      "dob": "1975-07-22",
+      "age": 50,
+      "is_adult": true,
+      "is_hoh": false,
+      "relationship": "spouse",
+      "citizenship_status": "eligible_non_citizen",
+      "immigration_doc": "I-551",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "id": "adult_son",
+      "full_name": "Diego Garcia-Rodriguez",
+      "first_name": "Diego",
+      "last_name": "Garcia-Rodriguez",
+      "dob": "2004-11-05",
+      "age": 21,
+      "is_adult": true,
+      "is_hoh": false,
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "id": "minor_1",
+      "full_name": "Sofia Garcia-Rodriguez",
+      "first_name": "Sofia",
+      "last_name": "Garcia-Rodriguez",
+      "dob": "2012-06-18",
+      "age": 13,
+      "is_adult": false,
+      "is_hoh": false,
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "guardian_id": "hoh"
+    },
+    {
+      "id": "minor_2",
+      "full_name": "Lucas Garcia-Rodriguez",
+      "first_name": "Lucas",
+      "last_name": "Garcia-Rodriguez",
+      "dob": "2015-02-09",
+      "age": 11,
+      "is_adult": false,
+      "is_hoh": false,
+      "relationship": "child",
+      "citizenship_status": "citizen",
+      "guardian_id": "hoh"
+    }
+  ],
+  "adults": ["hoh", "spouse", "adult_son"],
+  "minors": ["minor_1", "minor_2"],
+  "signature_date": "2026-05-15",
+  "hoh_printed_name": "Maria Garcia-Rodriguez",
+  "signature": "docs/templates/sample-signature.png",
+  "income": {
+    "child_support": {
+      "receives": false,
+      "children": "Sofia Garcia-Rodriguez, Lucas Garcia-Rodriguez",
+      "amount_weekly": null,
+      "amount_monthly": null
+    }
+  },
+  "ssn": {
+    "hoh": "XXX-XX-0001",
+    "spouse": "XXX-XX-0002",
+    "adult_son": "XXX-XX-0003"
+  },
+  "address": {
+    "street": "123 Main Street",
+    "apt": "",
+    "city": "Hartford",
+    "state": "CT",
+    "zip": "06103",
+    "previous_street": "456 Elm Street",
+    "previous_apt": "",
+    "previous_city": "Hartford",
+    "previous_state": "CT",
+    "previous_zip": "06106"
+  }
+}

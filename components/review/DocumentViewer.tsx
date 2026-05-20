@@ -30,9 +30,11 @@ interface DocumentViewerProps {
   };
   context: 'stanton' | 'hach';
   onClose: () => void;
+  anchorType?: string;
+  anchorId?: string;
 }
 
-export default function DocumentViewer({ document: doc, context, onClose }: DocumentViewerProps) {
+export default function DocumentViewer({ document: doc, context, onClose, anchorType, anchorId }: DocumentViewerProps) {
   const [data, setData] = useState<ViewerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,8 +43,8 @@ export default function DocumentViewer({ document: doc, context, onClose }: Docu
   const [activeFileName, setActiveFileName] = useState<string | null>(null);
 
   // Determine API endpoint based on context
-  const apiUrl = context === 'stanton' 
-    ? `/api/admin/submissions/${doc.id}/documents/${doc.id}/signed-url`
+  const apiUrl = context === 'stanton'
+    ? `/api/admin/applications/${anchorType ?? 'pbv_full_application'}/${anchorId ?? doc.id}/documents/${doc.id}/signed-url`
     : `/api/hach/documents/${doc.id}/signed-url`;
 
   // Fetch signed URL data on mount

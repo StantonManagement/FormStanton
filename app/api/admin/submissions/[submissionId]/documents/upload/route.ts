@@ -3,7 +3,6 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getSessionUser, requireStantonStaff } from '@/lib/auth';
 import { buildStantonFilename, getExtension, extractLastName } from '@/lib/stantonFilename';
 import { recomputeSubmission } from '@/lib/recomputeSubmission';
-import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,20 +87,6 @@ export async function POST(
       );
     }
 
-    // Look up the full application — also check packet_locked
-    const { data: fullApp } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('id, building_address, unit_number, packet_locked')
-      .eq('form_submission_id', submissionId)
-      .single();
-
-    if ((fullApp as any)?.packet_locked) {
-      return NextResponse.json(
-        { success: false, message: 'Packet is locked. Reopen the packet before making changes.' },
-        { status: 423 }
-      );
-    }
-
     const newRevision = doc.revision + 1;
     const ext = getExtension(file.name);
     const lastName = extractLastName(submission.tenant_name ?? '');
@@ -168,23 +153,6 @@ export async function POST(
 
     // Recompute parent submission status
     await recomputeSubmission(submissionId);
-
-    // Write application event (after state mutation succeeds)
-    if (fullApp) {
-      await writePbvApplicationEvent({
-        applicationId: fullApp.id,
-        eventType: ApplicationEventType.DOCUMENT_UPLOADED_BY_STAFF,
-        actorUserId: actor.userId,
-        actorDisplayName: actor.displayName,
-        documentId,
-        payload: {
-          doc_type: doc.doc_type,
-          label: doc.label,
-          file_name: fileName,
-          staff_upload_note: staffUploadNote?.trim() || null,
-        },
-      });
-    }
 
     return NextResponse.json(
       { success: true, data: { revision: newRevision, file_name: fileName } },

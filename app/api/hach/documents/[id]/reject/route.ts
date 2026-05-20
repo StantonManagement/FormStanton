@@ -13,7 +13,7 @@ import { safeHachJson } from '@/lib/hach/payload-filter';
  *
  * - Auth: requireHachUser() + scope check (document must belong to a HACH-accessible application)
  * - Inserts document_review_actions row (action='rejected')
- * - Updates form_submission_documents.status to 'rejected'
+ * - Updates application_documents.status to 'rejected'
  * - Sends SMS notification via Twilio (lib/notifications.ts)
  * - Returns recomputed packet progress summary (same shape as approve endpoint)
  */
@@ -54,9 +54,10 @@ export async function POST(
   try {
     // 1. Fetch document and scope-check
     const { data: doc, error: docErr } = await supabaseAdmin
-      .from('form_submission_documents')
-      .select('id, label, status, form_submission_id')
+      .from('application_documents')
+      .select('id, label, status, anchor_id')
       .eq('id', documentId)
+      .eq('anchor_type', 'pbv_full_application')
       .single();
 
     if (docErr || !doc) {
@@ -65,8 +66,8 @@ export async function POST(
 
     const { data: app, error: appErr } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, hach_review_status, form_submission_id, preferred_language, head_of_household_name')
-      .eq('form_submission_id', doc.form_submission_id)
+      .select('id, hach_review_status, preferred_language, head_of_household_name')
+      .eq('id', doc.anchor_id)
       .not('hach_review_status', 'is', null)
       .single();
 
@@ -116,8 +117,8 @@ export async function POST(
 
     // 4. Update document status to 'rejected'
     await supabaseAdmin
-      .from('form_submission_documents')
-      .update({ status: 'rejected' })
+      .from('application_documents')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .eq('id', documentId);
 
     // 5. Update last_activity_at if column exists (non-fatal)
@@ -152,9 +153,10 @@ export async function POST(
 
     // 7. Recompute packet progress summary
     const { data: allDocs } = await supabaseAdmin
-      .from('form_submission_documents')
+      .from('application_documents')
       .select('id, status')
-      .eq('form_submission_id', doc.form_submission_id);
+      .eq('anchor_type', 'pbv_full_application')
+      .eq('anchor_id', applicationId);
 
     const { data: allActions } = await supabaseAdmin
       .from('document_review_actions')
@@ -184,7 +186,7 @@ export async function POST(
     await logAudit(
       user,
       'hach.document.reject',
-      'form_submission_documents',
+      'application_documents',
       documentId,
       {
         application_id: applicationId,
@@ -211,7 +213,10 @@ export async function POST(
           status: notificationResult.status,
           notification_id: notificationResult.notificationId || null,
           twilio_sid: notificationResult.status === 'sent' ? (notificationResult as any).twilioSid : null,
-          reason: notificationResult.status === 'blocked' ? (notificationResult as any).reason : null,
+          email_sent: notificationResult.status === 'email_fallback' ? (notificationResult as any).emailSent : null,
+          reason: notificationResult.status === 'blocked' || notificationResult.status === 'email_fallback'
+            ? (notificationResult as any).reason
+            : null,
           error: notificationResult.status === 'failed' ? (notificationResult as any).error : null,
         },
         progress,

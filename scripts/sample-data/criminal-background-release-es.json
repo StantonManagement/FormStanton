@@ -1,0 +1,21 @@
+{
+  "first_name": "Maria",
+  "middle_initial": "",
+  "last_name": "Garcia-Rodriguez",
+  "dob": "03/12/1978",
+  "ssn": "XXX-XX-0001",
+  "current_address_street": "123 Main Street",
+  "current_address_apt": "",
+  "current_address_city": "Hartford",
+  "current_address_state": "CT",
+  "current_address_zip": "06103",
+  "previous_address_street": "456 Elm Street",
+  "previous_address_apt": "",
+  "previous_address_city": "Hartford",
+  "previous_address_state": "CT",
+  "previous_address_zip": "06106",
+  "signature": "docs/templates/sample-signature.png",
+  "signature_date": "2026-05-15",
+  "witness_signature": "docs/templates/sample-signature.png",
+  "witness_signature_date": "2026-05-15"
+}

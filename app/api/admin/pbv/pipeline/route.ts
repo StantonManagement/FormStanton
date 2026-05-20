@@ -101,6 +101,31 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ── 2b. HACH correspondence summary (most recent inbound per app) ──────
+    const { data: hachCorrespondence } = await supabaseAdmin
+      .from('hach_correspondence_log')
+      .select('application_id, direction, occurred_at, status')
+      .in('application_id', appIds.length ? appIds : ['__none__'])
+      .order('occurred_at', { ascending: false });
+
+    // Map: app_id → { last_inbound_at, last_inbound_days_ago, latest_status, awaiting_response }
+    const hachSummaryByApp: Record<string, { last_inbound_at: string | null; last_inbound_days_ago: number | null; latest_status: string | null; awaiting_response: boolean }> = {};
+    for (const row of hachCorrespondence ?? []) {
+      if (!hachSummaryByApp[row.application_id]) {
+        hachSummaryByApp[row.application_id] = {
+          last_inbound_at: null,
+          last_inbound_days_ago: null,
+          latest_status: row.status,
+          awaiting_response: row.status !== 'resolved',
+        };
+      }
+      if (row.direction === 'inbound' && !hachSummaryByApp[row.application_id].last_inbound_at) {
+        hachSummaryByApp[row.application_id].last_inbound_at = row.occurred_at;
+        const daysAgo = Math.floor((Date.now() - new Date(row.occurred_at).getTime()) / 86400000);
+        hachSummaryByApp[row.application_id].last_inbound_days_ago = daysAgo;
+      }
+    }
+
     // ── 3. Assigned-to user names (batch) ──────────────────────────────────
     const assigneeIds = [...new Set(apps.map((a) => a.assigned_to).filter(Boolean))] as string[];
     const { data: assigneeUsers } = await supabaseAdmin
@@ -219,6 +244,18 @@ export async function GET(request: NextRequest) {
       const days_stale = Math.floor((now - new Date(lastActivityAt).getTime()) / 86400000);
 
       const missing_contact_info = !app.phone || !app.preferred_language || !app.language_confirmed_at;
+      const hachSummary = hachSummaryByApp[app.id] ?? { last_inbound_at: null, last_inbound_days_ago: null, latest_status: null, awaiting_response: false };
+
+      // Enhanced next_action for HACH block
+      let enhanced_next_action = next_action;
+      if (blocked_on === 'hach' && hachSummary.last_inbound_days_ago != null) {
+        enhanced_next_action = `Last heard from HACH: ${hachSummary.last_inbound_days_ago} days ago`;
+        if (hachSummary.awaiting_response) {
+          enhanced_next_action += hachSummary.latest_status === 'awaiting_our_response' 
+            ? ' (awaiting our response)' 
+            : ' (awaiting HACH)';
+        }
+      }
 
       return {
         id: app.id,
@@ -232,7 +269,7 @@ export async function GET(request: NextRequest) {
         days_in_stage,
         days_stale,
         blocked_on,
-        next_action,
+        next_action: enhanced_next_action,
         assigned_to: app.assigned_to ?? null,
         assigned_to_name: app.assigned_to ? (assigneeNameById[app.assigned_to] ?? 'Unknown') : null,
         income_status,
@@ -241,6 +278,8 @@ export async function GET(request: NextRequest) {
         has_rejections: hasRejections,
         hach_review_status: app.hach_review_status,
         missing_contact_info,
+        hach_last_inbound_days_ago: hachSummary.last_inbound_days_ago,
+        hach_awaiting_response: hachSummary.awaiting_response,
       };
     });
 

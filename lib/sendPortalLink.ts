@@ -1,12 +1,7 @@
-import twilio from 'twilio';
 import { Resend } from 'resend';
 import { PreferredLanguage } from '@/types/compliance';
+import { sendTenantNotification } from '@/lib/notifications/send';
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-const twilioFrom = process.env.TWILIO_PHONE_NUMBER!;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface SendResult {
@@ -14,29 +9,48 @@ interface SendResult {
   error?: string;
 }
 
-const smsMessages: Record<PreferredLanguage, (url: string) => string> = {
+/**
+ * sendPortalSMS — routes through sendTenantNotification when applicationId is provided.
+ * Falls back to direct Twilio for non-PBV project link sends (no applicationId).
+ */
+export async function sendPortalSMS(
+  phone: string,
+  portalUrl: string,
+  language: PreferredLanguage,
+  applicationId?: string
+): Promise<SendResult> {
+  if (applicationId) {
+    const result = await sendTenantNotification({
+      applicationId,
+      notificationType: 'magic_link_initial',
+      interpolations: { portal_url: portalUrl },
+    });
+    if (result.status === 'sent') return { success: true };
+    return { success: false, error: 'reason' in result ? result.reason : 'send failed' };
+  }
+
+  // Non-PBV project link send — direct Twilio (no lifecycle events, no opt-out gate)
+  const fromNumber = process.env.PBV_TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE_NUMBER;
+  if (!fromNumber) return { success: false, error: 'No Twilio from number configured' };
+
+  const smsBody = SMS_MESSAGES[language]?.(portalUrl) ?? SMS_MESSAGES.en(portalUrl);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const twilio = require('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({ from: fromNumber, to: phone, body: smsBody });
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, error: msg };
+  }
+}
+
+const SMS_MESSAGES: Record<string, (url: string) => string> = {
   en: (url) => `Stanton Management: You have tasks to complete. Open your portal: ${url}`,
   es: (url) => `Stanton Management: Tiene tareas pendientes. Abra su portal: ${url}`,
   pt: (url) => `Stanton Management: Voce tem tarefas a concluir. Abra seu portal: ${url}`,
 };
-
-export async function sendPortalSMS(
-  phone: string,
-  portalUrl: string,
-  language: PreferredLanguage
-): Promise<SendResult> {
-  try {
-    await twilioClient.messages.create({
-      body: smsMessages[language](portalUrl),
-      from: twilioFrom,
-      to: phone,
-    });
-    return { success: true };
-  } catch (err: any) {
-    console.error('Twilio SMS error:', err.message);
-    return { success: false, error: err.message || 'SMS send failed' };
-  }
-}
 
 const emailSubjects: Record<PreferredLanguage, string> = {
   en: 'Action Required: Complete Your Tasks',

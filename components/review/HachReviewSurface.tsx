@@ -58,10 +58,24 @@ interface Packet {
   last_viewed_at?: string | null;
 }
 
+interface NotificationResult {
+  status: 'sent' | 'email_fallback' | 'blocked' | 'failed';
+  notification_id?: string;
+  twilio_sid?: string;
+  emailSent?: boolean;
+  reason?: string;
+  error?: string;
+}
+
+interface DocumentActionResult {
+  success: boolean;
+  notification?: NotificationResult;
+}
+
 interface HachReviewSurfaceProps {
   packet: Packet;
   workspaceId?: string;
-  onDocumentAction: (action: string, docId: string, data?: any) => Promise<void>;
+  onDocumentAction: (action: string, docId: string, data?: any) => Promise<DocumentActionResult>;
 }
 
 export default function HachReviewSurface({ 
@@ -123,22 +137,54 @@ export default function HachReviewSurface({
     setRejectingDoc(doc);
   }, []);
 
-  const handleRejectSubmit = useCallback(async (docId: string, reasonCode: string, reasonText: string | undefined, internalNotes?: string) => {
+  const handleRejectSubmit = useCallback(async (docId: string, reasonKey: string | null, reasonText: string | undefined, internalNotes?: string) => {
     const doc = documents.find(d => d.id === docId);
     if (!doc) return;
-    
+
     // Optimistic update
     const snapshot = documents;
     setDocuments(prev => prev.map(d =>
-      d.id === docId 
-        ? { ...d, latest_action: { action: 'rejected', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: reasonText ?? reasonCode } }
+      d.id === docId
+        ? { ...d, latest_action: { action: 'rejected', reviewer_name: 'You', created_at: new Date().toISOString(), rejection_reason: reasonText ?? reasonKey ?? 'Rejected' } }
         : d
     ));
 
     try {
-      await onDocumentAction('reject', docId, { reasonCode, reasonText });
+      const result = await onDocumentAction('reject', docId, { reasonKey: reasonKey, reasonText: reasonText });
       setRejectingDoc(null);
-      showToast(`✗ Rejected · ${doc.label} (notification deferred)`, 'error');
+
+      // Determine toast message based on notification result
+      const notification = result?.notification;
+      let toastMessage = `✗ Rejected · ${doc.label}`;
+      let toastType: 'success' | 'error' = 'error';
+
+      if (notification) {
+        if (notification.status === 'sent') {
+          toastMessage = `✗ Rejected · Tenant notified via SMS`;
+        } else if (notification.status === 'email_fallback') {
+          if (notification.emailSent) {
+            toastMessage = `✗ Rejected · SMS failed, email sent`;
+          } else {
+            toastMessage = `✗ Rejected · SMS failed, email fallback failed`;
+          }
+        } else if (notification.status === 'blocked') {
+          if (notification.reason === 'missing_phone') {
+            toastMessage = `✗ Rejected · No phone on file (email sent)`;
+          } else if (notification.reason === 'missing_language') {
+            toastMessage = `✗ Rejected · Language not confirmed`;
+          } else if (notification.reason === 'invalid_phone') {
+            toastMessage = `✗ Rejected · Invalid phone number`;
+          } else if (notification.reason === 'opted_out') {
+            toastMessage = `✗ Rejected · Tenant opted out of SMS`;
+          } else {
+            toastMessage = `✗ Rejected · ${doc.label} (notification blocked)`;
+          }
+        } else if (notification.status === 'failed') {
+          toastMessage = `✗ Rejected · SMS and email both failed`;
+        }
+      }
+
+      showToast(toastMessage, toastType);
     } catch (error: any) {
       setDocuments(snapshot); // Revert on error
       throw error; // Let RejectDialog handle the error display

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireStantonStaff, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 
 /**
  * PATCH /api/admin/pbv/applications/[id]/assign
@@ -48,6 +49,7 @@ export async function PATCH(
     const previousAssignee = current.assigned_to;
 
     // Validate new assignee is a real active stanton_staff user (if not null)
+    let newAssigneeName: string | null = null;
     if (newAssignee) {
       const { data: staff, error: staffErr } = await supabaseAdmin
         .from('admin_users')
@@ -60,6 +62,18 @@ export async function PATCH(
       if (staffErr || !staff) {
         return NextResponse.json({ success: false, message: 'Assignee not found or is not active Stanton staff' }, { status: 400 });
       }
+      newAssigneeName = staff.display_name;
+    }
+
+    // Fetch previous assignee name if exists
+    let previousAssigneeName: string | null = null;
+    if (previousAssignee) {
+      const { data: prevStaff } = await supabaseAdmin
+        .from('admin_users')
+        .select('display_name')
+        .eq('id', previousAssignee)
+        .single();
+      previousAssigneeName = prevStaff?.display_name ?? null;
     }
 
     // Apply update
@@ -74,6 +88,21 @@ export async function PATCH(
     if (updateErr) {
       return NextResponse.json({ success: false, message: updateErr.message }, { status: 500 });
     }
+
+    // Application event log
+    await writePbvApplicationEvent({
+      applicationId,
+      eventType: ApplicationEventType.APP_ASSIGNED,
+      actorUserId: user.userId,
+      actorDisplayName: user.displayName ?? user.username ?? 'Unknown',
+      payload: {
+        previous_assignee_id: previousAssignee,
+        new_assignee_id: newAssignee,
+        previous_assignee_name: previousAssigneeName,
+        new_assignee_name: newAssigneeName,
+        bulk_operation: false,
+      },
+    });
 
     // Audit log
     await logAudit(

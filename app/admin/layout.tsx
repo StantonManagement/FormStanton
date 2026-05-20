@@ -18,7 +18,11 @@ export default function AdminLayout({
   const pathname = usePathname();
 
   useEffect(() => {
+    // Only re-check auth if not yet confirmed authenticated
+    // (avoids a network round-trip on every client-side nav)
+    if (isAuthenticated === true) return;
     checkAuth();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {

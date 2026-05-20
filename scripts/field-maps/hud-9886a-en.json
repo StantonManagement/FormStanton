@@ -1,0 +1,158 @@
+{
+  "form_id": "hud-9886a-en",
+  "source_pdf": "docs/templates/hud-9886a-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 792 },
+  "fields": [
+    {
+      "name": "hoh_signature",
+      "type": "image",
+      "page": 2,
+      "x": 42,
+      "y": 581,
+      "width": 180,
+      "height": 12,
+      "label": "Head of Household"
+    },
+    {
+      "name": "hoh_signature_date",
+      "type": "text",
+      "page": 2,
+      "x": 257,
+      "y": 584,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "hoh_ssn",
+      "type": "text",
+      "page": 2,
+      "x": 42,
+      "y": 557,
+      "width": 180,
+      "font_size": 9,
+      "label": "Social Security Number (if any) of Head of Household"
+    },
+    {
+      "name": "spouse_signature",
+      "type": "image",
+      "page": 2,
+      "x": 42,
+      "y": 525,
+      "width": 180,
+      "height": 12,
+      "label": "Spouse"
+    },
+    {
+      "name": "spouse_signature_date",
+      "type": "text",
+      "page": 2,
+      "x": 257,
+      "y": 528,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_member_1_signature",
+      "type": "image",
+      "page": 2,
+      "x": 336,
+      "y": 557,
+      "width": 180,
+      "height": 12,
+      "label": "Other Family Member over age 18"
+    },
+    {
+      "name": "other_member_1_date",
+      "type": "text",
+      "page": 2,
+      "x": 549,
+      "y": 560,
+      "width": 55,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_member_2_signature",
+      "type": "image",
+      "page": 2,
+      "x": 42,
+      "y": 493,
+      "width": 180,
+      "height": 12,
+      "label": "Other Family Member over age 18"
+    },
+    {
+      "name": "other_member_2_date",
+      "type": "text",
+      "page": 2,
+      "x": 257,
+      "y": 496,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_member_3_signature",
+      "type": "image",
+      "page": 2,
+      "x": 336,
+      "y": 525,
+      "width": 180,
+      "height": 12,
+      "label": "Other Family Member over age 18"
+    },
+    {
+      "name": "other_member_3_date",
+      "type": "text",
+      "page": 2,
+      "x": 549,
+      "y": 528,
+      "width": 55,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_member_4_signature",
+      "type": "image",
+      "page": 2,
+      "x": 42,
+      "y": 461,
+      "width": 180,
+      "height": 12,
+      "label": "Other Family Member over age 18"
+    },
+    {
+      "name": "other_member_4_date",
+      "type": "text",
+      "page": 2,
+      "x": 257,
+      "y": 464,
+      "width": 60,
+      "font_size": 9,
+      "label": "Date"
+    },
+    {
+      "name": "other_member_5_signature",
+      "type": "image",
+      "page": 2,
+      "x": 336,
+      "y": 493,
+      "width": 180,
+      "height": 12,
+      "label": "Other Family Member over age 18"
+    },
+    {
+      "name": "other_member_5_date",
+      "type": "text",
+      "page": 2,
+      "x": 549,
+      "y": 496,
+      "width": 55,
+      "font_size": 9,
+      "label": "Date"
+    }
+  ]
+}

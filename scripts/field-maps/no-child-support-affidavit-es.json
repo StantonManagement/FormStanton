@@ -1,0 +1,68 @@
+{
+  "form_id": "no-child-support-affidavit-es",
+  "source_pdf": "docs/templates/no-child-support-affidavit-es.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 790 },
+  "fields": [
+    {
+      "name": "affiant_name",
+      "type": "text",
+      "page": 1,
+      "x": 90,
+      "y": 364,
+      "width": 200,
+      "font_size": 9,
+      "label": "Yo, ___"
+    },
+    {
+      "name": "affiant_address",
+      "type": "text",
+      "page": 1,
+      "x": 397,
+      "y": 357,
+      "width": 150,
+      "font_size": 8,
+      "label": "Dirección"
+    },
+    {
+      "name": "affiant_zip",
+      "type": "text",
+      "page": 1,
+      "x": 151,
+      "y": 332,
+      "width": 80,
+      "font_size": 8,
+      "label": "Código Postal"
+    },
+    {
+      "name": "children_names",
+      "type": "text",
+      "page": 1,
+      "x": 200,
+      "y": 312,
+      "width": 350,
+      "font_size": 8,
+      "label": "hijo(s): ___"
+    },
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 1,
+      "x": 72,
+      "y": 230,
+      "width": 150,
+      "height": 12,
+      "label": "Firma"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 350,
+      "y": 234,
+      "width": 100,
+      "font_size": 9,
+      "label": "Fecha"
+    }
+  ]
+}

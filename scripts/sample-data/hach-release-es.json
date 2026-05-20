@@ -1,0 +1,11 @@
+{
+  "applicant_name": "Maria Garcia-Rodriguez",
+  "applicant_address": "123 Main Street, Hartford, CT 06103",
+  "hoh_signature": "docs/templates/sample-signature.png",
+  "hoh_signature_date": "2026-05-15",
+  "spouse_signature": "docs/templates/sample-signature.png",
+  "spouse_signature_date": "2026-05-15",
+  "other_adult_1_signature": "docs/templates/sample-signature.png",
+  "other_adult_1_signature_date": "2026-05-15",
+  "other_adult_2_signature_date": ""
+}

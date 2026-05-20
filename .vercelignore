@@ -1,0 +1,25 @@
+# Test files
+*.test.ts
+*.test.tsx
+__tests__/
+__mocks__/
+coverage/
+
+# Development files
+.vscode/
+.idea/
+*.log
+.env.local
+.env.*.local
+
+# Documentation (not needed for deployment)
+docs/
+*.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

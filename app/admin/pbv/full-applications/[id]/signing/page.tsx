@@ -9,21 +9,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  FileText, 
-  Send, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
+import { useParams } from 'next/navigation';
+import {
+  ArrowLeft,
+  FileText,
+  Send,
+  CheckCircle,
+  AlertCircle,
+  Clock,
   Ban,
   Plus,
   AlertTriangle,
-  Play
+  Play,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 import FormButton from '@/components/form/FormButton';
+import SigningChecklist from '@/components/signing/SigningChecklist';
+import HapDirectionPicker from '@/components/signing/HapDirectionPicker';
+import UploadSignedDialog from '@/components/signing/UploadSignedDialog';
+import WaiveSignatureDialog from '@/components/signing/WaiveSignatureDialog';
+import ExecuteHapDialog from '@/components/signing/ExecuteHapDialog';
+import ConfigGapBanner from '@/components/signing/ConfigGapBanner';
 
 interface Application {
   id: string;
@@ -75,7 +82,6 @@ interface ConfigGaps {
 
 export default function SigningPage() {
   const params = useParams();
-  const router = useRouter();
   const applicationId = params.id as string;
 
   const [application, setApplication] = useState<Application | null>(null);
@@ -85,29 +91,34 @@ export default function SigningPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Clean error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   useEffect(() => {
     fetchData();
   }, [applicationId]);
 
   const fetchData = async () => {
     try {
-      // Fetch application and packet in parallel
-      const [appResponse, packetResponse] = await Promise.all([
-        fetch(`/api/admin/pbv/full-applications/${applicationId}`),
-        fetch(`/api/signing/packets?application_id=${applicationId}`)
-      ]);
+      // Fetch signing data (includes packet, signatures, application, config gaps)
+      const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing`);
 
-      if (!appResponse.ok) {
-        throw new Error('Failed to fetch application');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch signing data');
       }
-      const appData = await appResponse.json();
-      setApplication(appData);
 
-      if (packetResponse.ok) {
-        const packetData = await packetResponse.json();
-        if (packetData.packet) {
-          setPacket(packetData.packet);
-        }
+      const data = await response.json();
+
+      if (data.success) {
+        setApplication(data.data.application);
+        setPacket(data.data.packet);
+        setConfigGaps(data.data.config_gaps);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -116,78 +127,72 @@ export default function SigningPage() {
     }
   };
 
-  const createPacket = async () => {
-    setActionLoading('create-packet');
+  // Packet is auto-created on first GET when HACH approved
+
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showWaiveDialog, setShowWaiveDialog] = useState(false);
+  const [showExecuteDialog, setShowExecuteDialog] = useState(false);
+  const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(null);
+  const [hasExecutePermission, setHasExecutePermission] = useState(false);
+
+  // Check execute permission on mount
+  useEffect(() => {
+    const checkPermission = async () => {
+      try {
+        const response = await fetch('/api/admin/me/permissions');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            const canExecute =
+              data.data.isSuperAdmin ||
+              data.data.permissions?.some(
+                (p: { resource: string; action: string }) =>
+                  p.resource === 'pbv-full-applications' && p.action === 'execute_hap'
+              );
+            setHasExecutePermission(Boolean(canExecute));
+          }
+        }
+      } catch {
+        // Permission check failed — deny by default
+        setHasExecutePermission(false);
+      }
+    };
+    checkPermission();
+  }, []);
+
+  const handleMarkSent = async (signatureId: string, hapDirection?: 'stanton_first' | 'hach_first') => {
+    setActionLoading(`${signatureId}-sent`);
     try {
-      const response = await fetch('/api/signing/packets', {
+      const body: any = {};
+      if (hapDirection) {
+        body.hap_initiation_direction = hapDirection;
+        if (hapDirection === 'hach_first') {
+          // Use received-from-hach endpoint for HACH-first path
+          const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing/${signatureId}/received-from-hach`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to mark received from HACH');
+          }
+          await fetchData();
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing/${signatureId}/sent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          application_id: applicationId,
-          template_key: 'default_pbv'
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create packet');
+        throw new Error(errorData.message || 'Failed to mark sent');
       }
 
-      const data = await response.json();
-      setPacket(data.packet);
-      setConfigGaps(data.config_gaps);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleSignatureAction = async (signatureId: string, action: string, body?: any) => {
-    setActionLoading(`${signatureId}-${action}`);
-    try {
-      const response = await fetch(`/api/signing/signatures/${signatureId}?action=${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to perform action');
-      }
-
-      // Refresh packet data
-      const packetResponse = await fetch(`/api/signing/packets?application_id=${applicationId}`);
-      if (packetResponse.ok) {
-        const packetData = await packetResponse.json();
-        setPacket(packetData.packet);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const executeHap = async () => {
-    setActionLoading('execute-hap');
-    try {
-      const response = await fetch('/api/signing/execute-hap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          application_id: applicationId,
-          direction: 'stanton_first' // Default direction
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to execute HAP');
-      }
-
-      // Refresh data
       await fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -195,6 +200,54 @@ export default function SigningPage() {
       setActionLoading(null);
     }
   };
+
+  const handleUpload = async (signatureId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing/${signatureId}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Upload failed');
+    }
+
+    await fetchData();
+  };
+
+  const handleWaive = async (signatureId: string, reason: string) => {
+    const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing/${signatureId}/waive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to waive');
+    }
+
+    await fetchData();
+  };
+
+  const handleExecuteHap = async (executionDate: string) => {
+    const response = await fetch(`/api/admin/pbv/full-applications/${applicationId}/signing/execute-hap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ execution_date: executionDate })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Execution failed');
+    }
+
+    await fetchData();
+  };
+
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -232,18 +285,32 @@ export default function SigningPage() {
 
   const canExecuteHap = () => {
     if (!packet || packet.executed_at) return false;
-    
-    const requiredSignatures = packet.packet_signatures?.filter(sig => sig.is_required) || [];
+
+    const signatures = (packet as any).signatures || [];
+    const requiredSignatures = signatures.filter((sig: any) => sig.is_required);
     const completeSignatures = requiredSignatures.filter(
-      sig => ['signed', 'waived'].includes(sig.status)
+      (sig: any) => ['signed', 'waived', 'executed'].includes(sig.status)
     );
-    
-    const hapSignature = packet.packet_signatures?.find(sig => 
-      sig.document_slug === 'hap_contract' && sig.signing_party === 'stanton_and_hach'
+
+    const hapSignature = signatures.find((sig: any) =>
+      sig.signing_party === 'stanton_and_hach'
     );
-    
-    return completeSignatures.length === requiredSignatures.length && 
+
+    return completeSignatures.length === requiredSignatures.length &&
            hapSignature?.status === 'signed';
+  };
+
+  const getHapSignature = () => {
+    const signatures = (packet as any).signatures || [];
+    return signatures.find((sig: any) => sig.signing_party === 'stanton_and_hach') || null;
+  };
+
+  const getHapDirection = (): 'stanton_first' | 'hach_first' | null => {
+    const hapSig = getHapSignature();
+    if (!hapSig?.notes) return null;
+    if (hapSig.notes.includes('hach_first')) return 'hach_first';
+    if (hapSig.notes.includes('stanton_first')) return 'stanton_first';
+    return null;
   };
 
   if (loading) {
@@ -318,56 +385,23 @@ export default function SigningPage() {
         </div>
       )}
 
-      {/* Config Gap Banners */}
-      {configGaps && (configGaps.property_not_configured || configGaps.template_defaulted || configGaps.year_built_unknown) && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <div className="flex">
-            <AlertTriangle className="h-5 w-5 text-yellow-400" />
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">Configuration gaps detected</h3>
-              <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside">
-                {configGaps.property_not_configured && (
-                  <li>Property not configured in system — using defaults</li>
-                )}
-                {configGaps.template_defaulted && (
-                  <li>Using default template — no custom template configured</li>
-                )}
-                {configGaps.year_built_unknown && (
-                  <li>Property year built unknown — conditional signatures may default to required</li>
-                )}
-              </ul>
-              <div className="mt-3">
-                <Link href="/admin/properties">
-                  <FormButton variant="secondary" size="sm">
-                    Configure Properties
-                  </FormButton>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Config Gap Banner */}
+      {configGaps && (
+        <ConfigGapBanner
+          buildingAddress={application.building_address}
+          configGaps={configGaps}
+          propertyId={null}
+        />
       )}
 
-      {/* No Packet State */}
-      {!packet && (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No signing packet created</h3>
-          <p className="text-gray-600 mb-6">
-            Create a signing packet to begin the document collection process
+      {/* Waiting for HACH Approval */}
+      {!packet && application.hach_review_status !== 'approved_by_hach' && (
+        <div className="text-center py-12 bg-gray-50 border border-gray-200 rounded-md">
+          <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Waiting for HACH Approval</h3>
+          <p className="text-gray-600">
+            Signing packet will be created automatically once HACH approves this application.
           </p>
-          <FormButton
-            onClick={createPacket}
-            disabled={actionLoading === 'create-packet' || application.hach_review_status !== 'approved_by_hach'}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            {actionLoading === 'create-packet' ? 'Creating...' : 'Create Signing Packet'}
-          </FormButton>
-          {application.hach_review_status !== 'approved_by_hach' && (
-            <p className="mt-2 text-sm text-gray-500">
-              Application must be approved by HACH before creating signing packet
-            </p>
-          )}
         </div>
       )}
 
@@ -391,145 +425,87 @@ export default function SigningPage() {
               
               {!packet.executed_at && canExecuteHap() && (
                 <FormButton
-                  onClick={executeHap}
+                  onClick={() => setShowExecuteDialog(true)}
                   disabled={actionLoading === 'execute-hap'}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  {actionLoading === 'execute-hap' ? 'Executing...' : 'Execute HAP'}
+                  Execute HAP
                 </FormButton>
               )}
             </div>
           </div>
 
+          {/* HAP Direction Picker */}
+          {getHapSignature() && !getHapDirection() && !packet.executed_at && (
+            <div className="mb-6">
+              <HapDirectionPicker
+                onSelectDirection={(direction) => {
+                  const hapSig = getHapSignature();
+                  if (hapSig) {
+                    handleMarkSent(hapSig.id, direction);
+                  }
+                }}
+                disabled={!!actionLoading}
+              />
+            </div>
+          )}
+
           {/* Signatures List */}
-          <div className="bg-white shadow-sm border border-gray-200 rounded-md">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Signatures</h3>
-            </div>
-            <div className="divide-y divide-gray-200">
-              {packet.packet_signatures?.map((signature) => (
-                <div key={signature.id} className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center">
-                        {getStatusIcon(signature.status)}
-                        <h4 className="ml-3 text-lg font-medium text-gray-900">
-                          {signature.document_label}
-                        </h4>
-                        <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(signature.status)}`}>
-                          {signature.status}
-                        </span>
-                        {signature.is_required && (
-                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Required
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="mt-1 text-sm text-gray-600">
-                        Party: {signature.signing_party.replace(/_/g, ' ')}
-                      </p>
-                      
-                      {signature.plain_language_description && (
-                        <p className="mt-2 text-sm text-gray-700 bg-gray-50 p-3 rounded">
-                          <strong>Plain language:</strong> {signature.plain_language_description}
-                        </p>
-                      )}
-                      
-                      {signature.conditional_note && (
-                        <p className="mt-2 text-sm text-yellow-700 bg-yellow-50 p-3 rounded">
-                          <strong>Note:</strong> {signature.conditional_note}
-                        </p>
-                      )}
-                      
-                      {signature.notes && (
-                        <p className="mt-2 text-sm text-gray-600">
-                          <strong>Notes:</strong> {signature.notes}
-                        </p>
-                      )}
-                      
-                      {signature.waived_reason && (
-                        <p className="mt-2 text-sm text-yellow-700">
-                          <strong>Waived reason:</strong> {signature.waived_reason}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="ml-6 flex flex-col space-y-2">
-                      {signature.status === 'pending' && (
-                        <>
-                          <FormButton
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleSignatureAction(signature.id, 'send')}
-                            disabled={actionLoading === `${signature.id}-send`}
-                          >
-                            <Send className="h-4 w-4 mr-2" />
-                            {actionLoading === `${signature.id}-send` ? 'Sending...' : 'Mark Sent'}
-                          </FormButton>
-                          
-                          {/* Placeholder "Sign in-app" button - disabled per PRD */}
-                          <FormButton
-                            variant="secondary"
-                            size="sm"
-                            disabled
-                            title="Coming soon - Phase V implementation"
-                          >
-                            Sign in-app
-                          </FormButton>
-                        </>
-                      )}
-                      
-                      {signature.status === 'sent' && (
-                        <>
-                          <FormButton
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleSignatureAction(signature.id, 'receive')}
-                            disabled={actionLoading === `${signature.id}-receive`}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            {actionLoading === `${signature.id}-receive` ? 'Receiving...' : 'Mark Received'}
-                          </FormButton>
-                          
-                          {/* Placeholder "Sign in-app" button - disabled per PRD */}
-                          <FormButton
-                            variant="secondary"
-                            size="sm"
-                            disabled
-                            title="Coming soon - Phase V implementation"
-                          >
-                            Sign in-app
-                          </FormButton>
-                        </>
-                      )}
-                      
-                      {signature.status === 'pending' && signature.is_required && (
-                        <FormButton
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            const reason = prompt('Enter waiver reason:');
-                            if (reason) {
-                              handleSignatureAction(signature.id, 'waive', { waived_reason: reason });
-                            }
-                          }}
-                          disabled={actionLoading === `${signature.id}-waive`}
-                          className="text-yellow-600 hover:text-yellow-800"
-                        >
-                          <Ban className="h-4 w-4 mr-2" />
-                          {actionLoading === `${signature.id}-waive` ? 'Waiving...' : 'Waive'}
-                        </FormButton>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="bg-white shadow-sm border border-gray-200 rounded-md p-6">
+            <SigningChecklist
+              signatures={(packet as any).signatures || []}
+              context="staff"
+              onUploadClick={(sigId) => {
+                setSelectedSignatureId(sigId);
+                setShowUploadDialog(true);
+              }}
+              disabled={packet.executed_at !== null}
+            />
           </div>
         </div>
       )}
+
+      {/* Dialogs */}
+      {selectedSignatureId && (
+        <>
+          <UploadSignedDialog
+            isOpen={showUploadDialog}
+            onClose={() => {
+              setShowUploadDialog(false);
+              setSelectedSignatureId(null);
+            }}
+            onUpload={async (file) => {
+              await handleUpload(selectedSignatureId, file);
+            }}
+            signatureLabel={
+              (packet as any).signatures?.find((s: any) => s.id === selectedSignatureId)?.document_label || ''
+            }
+          />
+
+          <WaiveSignatureDialog
+            isOpen={showWaiveDialog}
+            onClose={() => {
+              setShowWaiveDialog(false);
+              setSelectedSignatureId(null);
+            }}
+            onWaive={async (reason) => {
+              await handleWaive(selectedSignatureId, reason);
+            }}
+            signatureLabel={
+              (packet as any).signatures?.find((s: any) => s.id === selectedSignatureId)?.document_label || ''
+            }
+          />
+        </>
+      )}
+
+      <ExecuteHapDialog
+        isOpen={showExecuteDialog}
+        onClose={() => setShowExecuteDialog(false)}
+        onExecute={handleExecuteHap}
+        hapSignature={getHapSignature()}
+        hasPermission={hasExecutePermission}
+      />
     </div>
   );
 }

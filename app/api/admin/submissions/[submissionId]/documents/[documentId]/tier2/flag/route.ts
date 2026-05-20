@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
 import { logAudit, getClientIp } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -45,25 +44,6 @@ export async function POST(
       return NextResponse.json({ success: false, message: 'Document not found' }, { status: 404 });
     }
 
-    // Check if Application Lead is assigned to this application
-    const { data: app } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('id, lead_user_id')
-      .eq('form_submission_id', submissionId)
-      .single();
-
-    if (!app) {
-      return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
-    }
-
-    // Only the assigned Lead can flag
-    if (app.lead_user_id !== sessionUser.userId) {
-      return NextResponse.json(
-        { success: false, message: 'Only the Application Lead can flag this document' },
-        { status: 403 }
-      );
-    }
-
     // Update the owner_review_status and flag reason
     // DO NOT clear the tier-1 assignee per PRD constraint
     const now = new Date().toISOString();
@@ -79,21 +59,6 @@ export async function POST(
       .eq('id', documentId);
 
     if (updateError) throw updateError;
-
-    // Write the doc_owner_flagged event
-    await writePbvApplicationEvent({
-      applicationId: app.id,
-      eventType: ApplicationEventType.DOC_OWNER_FLAGGED,
-      actorUserId: sessionUser.userId,
-      actorDisplayName: sessionUser.displayName,
-      documentId,
-      payload: {
-        doc_type: doc.doc_type,
-        label: doc.label,
-        reason: reason.trim(),
-        prior_tier1_actor: doc.reviewer ?? 'Unknown',
-      },
-    });
 
     await logAudit(
       sessionUser,

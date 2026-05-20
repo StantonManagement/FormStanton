@@ -8,7 +8,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  console.warn('PBV full-applications [id] GET invoked for', request.url);
   if (!(await isAuthenticated())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
@@ -22,11 +21,12 @@ export async function GET(
         `id, created_at, head_of_household_name, building_address, unit_number,
          bedroom_count, household_size, intake_submitted_at,
          stanton_review_status, stanton_reviewer, stanton_review_date, stanton_review_notes,
-         hha_application_file,
+         hha_application_file, hach_review_status,
          tenant_access_token, form_submission_id, preapp_id,
          claiming_medical_deduction, has_childcare_expense, dv_status,
          homeless_at_admission, reasonable_accommodation_requested,
-         packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision`
+         packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision,
+         sms_opted_out_at, stage, assigned_to, admin_users:assigned_to(display_name)`
       )
       .eq('id', id)
       .single();
@@ -48,15 +48,20 @@ export async function GET(
 
     const { data: documents } = await supabaseAdmin
       .from('application_documents')
-      .select('id, doc_type, label, person_slot, status, required, display_order, requires_signature, revision, file_name, storage_path, uploaded_by_role, uploaded_by_display_name, staff_upload_note, original_doc_type, assigned_to_user_id, assigned_at, owner_review_status, owner_flag_reason')
+      .select('id, doc_type, label, person_slot, status, required, display_order, requires_signature, revision, file_name, storage_path, uploaded_by_role, uploaded_by_display_name, staff_upload_note, original_doc_type, assigned_to_user_id, assigned_at, owner_review_status, owner_flag_reason, category')
       .eq('anchor_type', 'pbv_full_application')
       .eq('anchor_id', id)
       .order('display_order', { ascending: true });
 
+    // Extract assigned_to_name from the join
+    const assignedToName = (app.admin_users as unknown as { display_name: string } | null)?.display_name ?? null;
+    const { admin_users, ...appWithoutJoin } = app as unknown as Record<string, unknown>;
+
     return NextResponse.json({
       success: true,
       data: {
-        ...app,
+        ...appWithoutJoin,
+        assigned_to_name: assignedToName,
         members: members ?? [],
         documents: documents ?? [],
         magic_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${app.tenant_access_token}`,
@@ -72,7 +77,6 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  console.warn('PBV full-applications [id] PATCH invoked for', request.url);
   if (!(await isAuthenticated())) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
@@ -134,6 +138,14 @@ export async function PATCH(
     }
 
     if (Array.isArray(member_income_updates) && member_income_updates.length > 0) {
+      // F7: Load intake_snapshot for drift detection
+      const { data: snapshotRow } = await supabaseAdmin
+        .from('pbv_full_applications')
+        .select('intake_snapshot')
+        .eq('id', id)
+        .single();
+      const snapshot = (snapshotRow?.intake_snapshot as Record<string, any>) ?? null;
+
       for (const update of member_income_updates) {
         if (!update.id) continue;
         await supabaseAdmin
@@ -141,6 +153,27 @@ export async function PATCH(
           .update({ documented_income: update.documented_income ?? null })
           .eq('id', update.id)
           .eq('full_application_id', id);
+
+        // F7: Log snapshot vs normalized drift
+        if (snapshot) {
+          const { data: member } = await supabaseAdmin
+            .from('pbv_household_members')
+            .select('slot, name, annual_income')
+            .eq('id', update.id)
+            .single();
+          if (member) {
+            const snapshotIncome = snapshot.income?.by_member?.find(
+              (m: any) => m.member_slot === member.slot
+            );
+            const snapshotAnnual = snapshotIncome?.annual_income ?? null;
+            if (snapshotAnnual !== null && update.documented_income !== null && snapshotAnnual !== update.documented_income) {
+              console.log(
+                `[pbv-drift] app=${id} member=${member.name} slot=${member.slot}: ` +
+                `snapshot_annual_income=${snapshotAnnual} documented_income=${update.documented_income}`
+              );
+            }
+          }
+        }
       }
     }
 

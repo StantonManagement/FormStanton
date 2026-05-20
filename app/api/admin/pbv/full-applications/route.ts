@@ -37,7 +37,7 @@ async function enrichWithAssignees(rows: any[]) {
   for (const doc of (docAssignees ?? [])) {
     const anchorId = doc.anchor_id;
     const userId = doc.assigned_to_user_id;
-    const userName = (doc.admin_users as any)?.display_name ?? 'Unknown';
+    const userName = (doc.admin_users as unknown as { display_name: string } | null)?.display_name ?? 'Unknown';
     
     if (!assigneesByApp.has(anchorId)) {
       assigneesByApp.set(anchorId, new Map());

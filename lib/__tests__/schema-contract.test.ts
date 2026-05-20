@@ -16,7 +16,7 @@
  * tests together.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { setupTestDb, teardownTestDb, rawQuery } from './_db';
 
 beforeAll(async () => {
@@ -283,5 +283,240 @@ describe('resolveAnchor column-match: pbv_full_applications', () => {
        WHERE table_name = 'pbv_full_applications' AND column_name = 'packet_locked'`
     );
     expect(rows).toHaveLength(1);
+  });
+});
+
+// ── pbv_document_label_translations table contract ────────────────────────────
+// PRD-03 Phase 1: Tenant-facing document label translations
+
+describe('pbv_document_label_translations table contract', () => {
+  type ColInfo = { column_name: string; data_type: string; is_nullable: string };
+
+  async function getColumns(): Promise<ColInfo[]> {
+    return rawQuery<ColInfo>(
+      `SELECT column_name, data_type, is_nullable
+       FROM information_schema.columns
+       WHERE table_name = 'pbv_document_label_translations'
+       ORDER BY ordinal_position`
+    );
+  }
+
+  beforeEach(async () => {
+    // Clean slate for each test
+    await rawQuery(`DELETE FROM pbv_document_label_translations`);
+  });
+
+  it('table pbv_document_label_translations exists', async () => {
+    const rows = await rawQuery<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_name = 'pbv_document_label_translations'`
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it('has column: doc_type TEXT NOT NULL (part of PK)', async () => {
+    const cols = await getColumns();
+    const col = cols.find((c) => c.column_name === 'doc_type');
+    expect(col).toBeDefined();
+    expect(col?.data_type).toBe('text');
+    expect(col?.is_nullable).toBe('NO');
+  });
+
+  it('has column: language TEXT NOT NULL (part of PK)', async () => {
+    const cols = await getColumns();
+    const col = cols.find((c) => c.column_name === 'language');
+    expect(col).toBeDefined();
+    expect(col?.data_type).toBe('text');
+    expect(col?.is_nullable).toBe('NO');
+  });
+
+  it('has column: label TEXT NOT NULL', async () => {
+    const cols = await getColumns();
+    const col = cols.find((c) => c.column_name === 'label');
+    expect(col).toBeDefined();
+    expect(col?.data_type).toBe('text');
+    expect(col?.is_nullable).toBe('NO');
+  });
+
+  it('enforces PK constraint on (doc_type, language)', async () => {
+    const insertResult = await rawQuery<{ doc_type: string; language: string }>(
+      `INSERT INTO pbv_document_label_translations (doc_type, language, label)
+       VALUES ('test_doc', 'en', 'Test')
+       RETURNING doc_type, language`
+    );
+    expect(insertResult).toHaveLength(1);
+    expect(insertResult[0].doc_type).toBe('test_doc');
+    expect(insertResult[0].language).toBe('en');
+
+    // Duplicate should fail
+    await expect(
+      rawQuery(
+        `INSERT INTO pbv_document_label_translations (doc_type, language, label)
+         VALUES ('test_doc', 'en', 'Duplicate')`
+      )
+    ).rejects.toThrow();
+  });
+
+  it('enforces language CHECK constraint (en/es/pt only)', async () => {
+    // Valid languages
+    for (const lang of ['en', 'es', 'pt']) {
+      await expect(
+        rawQuery(
+          `INSERT INTO pbv_document_label_translations (doc_type, language, label)
+           VALUES ('lang_test', '${lang}', 'Label ${lang}')`
+        )
+      ).resolves.toBeDefined();
+    }
+
+    // Invalid language should fail
+    await expect(
+      rawQuery(
+        `INSERT INTO pbv_document_label_translations (doc_type, language, label)
+         VALUES ('lang_test', 'fr', 'French Label')`
+      )
+    ).rejects.toThrow();
+  });
+});
+
+// ── DOCUMENT_UPLOADED_BY_TENANT event type contract ────────────────────────────
+
+describe('DOCUMENT_UPLOADED_BY_TENANT event type', () => {
+  const appId = '44444444-4444-4444-4444-444444444444';
+
+  it('can write document.uploaded_by_tenant event', async () => {
+    const rows = await rawQuery<{ id: string; event_type: string }>(
+      `INSERT INTO application_events
+         (anchor_type, anchor_id, event_type, actor_display_name, payload)
+       VALUES ('pbv_full_application', $1, 'document.uploaded_by_tenant', 'Tenant',
+               '{"doc_type":"bank_statement","label":"Bank Statement","file_name":"bank.pdf"}')
+       RETURNING id, event_type`,
+      [appId]
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].event_type).toBe('document.uploaded_by_tenant');
+  });
+});
+
+// ── PRD-04 Notification event types ───────────────────────────────────────────
+
+describe('PRD-04 notification event types', () => {
+  const appId = '55550000-5555-5555-5555-555555555555';
+
+  const notifEventTypes = [
+    'pbv_full_application.created',
+    'notification.scheduled',
+    'notification.sent',
+    'notification.failed',
+    'notification.opted_out',
+  ];
+
+  for (const eventType of notifEventTypes) {
+    it(`can write ${eventType} event`, async () => {
+      const rows = await rawQuery<{ event_type: string }>(
+        `INSERT INTO application_events
+           (anchor_type, anchor_id, event_type, actor_display_name, payload)
+         VALUES ('pbv_full_application', $1, $2, 'system', '{}')
+         RETURNING event_type`,
+        [appId, eventType]
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0].event_type).toBe(eventType);
+    });
+  }
+});
+
+// ── PRD-04 pbv_full_applications consent columns ───────────────────────────────
+
+describe('PRD-04 consent columns on pbv_full_applications', () => {
+  it('has sms_consent_captured_at column', async () => {
+    const cols = await rawQuery<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name = 'pbv_full_applications'
+         AND column_name = 'sms_consent_captured_at'`
+    );
+    expect(cols).toHaveLength(1);
+  });
+
+  it('has sms_consent_text_version column', async () => {
+    const cols = await rawQuery<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name = 'pbv_full_applications'
+         AND column_name = 'sms_consent_text_version'`
+    );
+    expect(cols).toHaveLength(1);
+  });
+
+  it('has sms_opted_out_at column', async () => {
+    const cols = await rawQuery<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_name = 'pbv_full_applications'
+         AND column_name = 'sms_opted_out_at'`
+    );
+    expect(cols).toHaveLength(1);
+  });
+});
+
+// ── PRD-04 tenant_notification_templates table ─────────────────────────────────
+
+describe('tenant_notification_templates table', () => {
+  it('enforces (notification_type, language, version) PK', async () => {
+    await rawQuery(
+      `INSERT INTO tenant_notification_templates
+         (notification_type, language, body, version, active)
+       VALUES ('magic_link_initial', 'en', 'Test body', 1, true)`
+    );
+    await expect(
+      rawQuery(
+        `INSERT INTO tenant_notification_templates
+           (notification_type, language, body, version, active)
+         VALUES ('magic_link_initial', 'en', 'Duplicate', 1, true)`
+      )
+    ).rejects.toThrow();
+  });
+
+  it('enforces language CHECK (en/es/pt)', async () => {
+    await expect(
+      rawQuery(
+        `INSERT INTO tenant_notification_templates
+           (notification_type, language, body)
+         VALUES ('magic_link_initial', 'fr', 'French body')`
+      )
+    ).rejects.toThrow();
+  });
+});
+
+// ── PRD-04 notification_schedules table ───────────────────────────────────────
+
+describe('notification_schedules table', () => {
+  const subId = 'ff000000-0000-0000-0000-000000000001';
+  const appId  = 'ff000000-0000-0000-0000-000000000002';
+
+  it('inserts a pending schedule row and enforces status CHECK', async () => {
+    await rawQuery(
+      `INSERT INTO form_submissions (id, form_type) VALUES ($1, 'pbv-full-application')`,
+      [subId]
+    );
+    await rawQuery(
+      `INSERT INTO pbv_full_applications (id, form_submission_id) VALUES ($1, $2)`,
+      [appId, subId]
+    );
+
+    const rows = await rawQuery<{ status: string }>(
+      `INSERT INTO notification_schedules
+         (application_id, notification_type, due_at, status)
+       VALUES ($1, 'docs_upload_reminder', now() + interval '3 days', 'pending')
+       RETURNING status`,
+      [appId]
+    );
+    expect(rows[0].status).toBe('pending');
+
+    await expect(
+      rawQuery(
+        `INSERT INTO notification_schedules
+           (application_id, notification_type, due_at, status)
+         VALUES ($1, 'docs_upload_reminder', now(), 'unknown_status')`,
+        [appId]
+      )
+    ).rejects.toThrow();
   });
 });

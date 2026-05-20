@@ -13,7 +13,7 @@ export default function WorkPage() {
   const [userPerms, setUserPerms] = useState<UserPermissions>({ canViewTeamRollup: false });
   const [loadingPerms, setLoadingPerms] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [dateRange, setDateRange] = useState<'week' | 'month' | 'custom'>('week');
+  const [dateRange, setDateRange] = useState<'week' | 'month'>('week');
 
   // Fetch user permissions
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function WorkPage() {
           {activeTab === 'team-rollup' && (
             <select
               value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as 'week' | 'month' | 'custom')}
+              onChange={(e) => setDateRange(e.target.value as 'week' | 'month')}
               className="px-3 py-1.5 border border-[var(--border)] rounded-none text-sm bg-white"
             >
               <option value="week">This week</option>

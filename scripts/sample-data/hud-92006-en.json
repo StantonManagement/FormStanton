@@ -1,0 +1,18 @@
+{
+  "applicant_name": "Maria Garcia-Rodriguez",
+  "mailing_address": "123 Main Street, Hartford, CT 06103",
+  "telephone": "860-555-0100",
+  "additional_contact_name": "Carmen Rodriguez",
+  "additional_contact_address": "789 Oak Ave, Hartford, CT 06105",
+  "additional_contact_phone": "860-555-0200",
+  "additional_contact_email": "carmen.rodriguez@email.com",
+  "additional_contact_relationship": "Sister",
+  "contact_reason_emergency": false,
+  "contact_reason_unable_to_contact": false,
+  "contact_reason_termination": false,
+  "contact_reason_eviction": false,
+  "contact_reason_late_payment": false,
+  "opt_out": false,
+  "signature": "docs/templates/sample-signature.png",
+  "signature_date": "2026-05-15"
+}

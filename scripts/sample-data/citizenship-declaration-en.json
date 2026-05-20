@@ -1,0 +1,36 @@
+{
+  "members": [
+    {
+      "full_name": "Maria Garcia-Rodriguez",
+      "dob": "03/12/1978",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "full_name": "Carlos Garcia-Rodriguez",
+      "dob": "07/22/1975",
+      "citizenship_status": "eligible_non_citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "full_name": "Diego Garcia-Rodriguez",
+      "dob": "11/05/2004",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "full_name": "Sofia Garcia-Rodriguez",
+      "dob": "06/18/2012",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    },
+    {
+      "full_name": "Lucas Garcia-Rodriguez",
+      "dob": "02/09/2015",
+      "citizenship_status": "citizen",
+      "signature": "docs/templates/sample-signature.png"
+    }
+  ],
+  "hoh_certification_signature": "docs/templates/sample-signature.png",
+  "hoh_certification_date": "2026-05-15"
+}

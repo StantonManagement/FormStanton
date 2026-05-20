@@ -1,0 +1,13 @@
+{
+  "hoh_signature": "docs/templates/sample-signature.png",
+  "hoh_signature_date": "2026-05-15",
+  "hoh_ssn": "XXX-XX-0001",
+  "spouse_signature": "docs/templates/sample-signature.png",
+  "spouse_signature_date": "2026-05-15",
+  "other_member_1_signature": "docs/templates/sample-signature.png",
+  "other_member_1_date": "2026-05-15",
+  "other_member_2_date": "",
+  "other_member_3_date": "",
+  "other_member_4_date": "",
+  "other_member_5_date": ""
+}

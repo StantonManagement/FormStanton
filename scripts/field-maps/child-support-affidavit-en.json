@@ -1,0 +1,88 @@
+{
+  "form_id": "child-support-affidavit-en",
+  "source_pdf": "docs/templates/child-support-affidavit-en.pdf",
+  "page_size": "letter",
+  "page_dimensions": { "width": 612, "height": 790 },
+  "fields": [
+    {
+      "name": "affiant_name",
+      "type": "text",
+      "page": 1,
+      "x": 90,
+      "y": 624,
+      "width": 200,
+      "font_size": 9,
+      "label": "I, ___"
+    },
+    {
+      "name": "affiant_address",
+      "type": "text",
+      "page": 1,
+      "x": 397,
+      "y": 618,
+      "width": 150,
+      "font_size": 8,
+      "label": "Address"
+    },
+    {
+      "name": "affiant_zip",
+      "type": "text",
+      "page": 1,
+      "x": 159,
+      "y": 596,
+      "width": 80,
+      "font_size": 8,
+      "label": "Zip Code"
+    },
+    {
+      "name": "children_names",
+      "type": "text",
+      "page": 1,
+      "x": 200,
+      "y": 580,
+      "width": 350,
+      "font_size": 8,
+      "label": "for my child(ren): ___"
+    },
+    {
+      "name": "amount_weekly",
+      "type": "text",
+      "page": 1,
+      "x": 195,
+      "y": 561,
+      "width": 60,
+      "font_size": 9,
+      "label": "$ ___ weekly"
+    },
+    {
+      "name": "amount_monthly",
+      "type": "text",
+      "page": 1,
+      "x": 385,
+      "y": 561,
+      "width": 60,
+      "font_size": 9,
+      "label": "or $ ___ monthly"
+    },
+    {
+      "name": "signature",
+      "type": "image",
+      "page": 1,
+      "x": 72,
+      "y": 505,
+      "width": 150,
+      "height": 12,
+      "label": "Signature"
+    },
+    {
+      "name": "signature_date",
+      "type": "text",
+      "page": 1,
+      "x": 350,
+      "y": 508,
+      "width": 100,
+      "font_size": 9,
+      "label": "Date"
+    }
+  ]
+}
