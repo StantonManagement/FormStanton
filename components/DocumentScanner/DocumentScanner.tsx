@@ -202,7 +202,6 @@ export default function DocumentScanner({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isSingleMode = !multiPage;
-  const canAddMorePages = pages.length < maxPages;
 
   // Live preview support detection (PRD-45)
   const liveSupported = useMemo(() => {
@@ -334,18 +333,11 @@ export default function DocumentScanner({
     }
   };
 
-  const commitCurrentPage = async () => {
+  const commitCurrentPage = () => {
     if (!currentPage) return;
-
     setPages((prev) => [...prev, currentPage]);
     setCurrentPage(null);
     setQualityOverride(false);
-
-    if (isSingleMode) {
-      await finalizeSubmit([...pages, currentPage]);
-      return;
-    }
-
     setStage('review_pages');
   };
 
@@ -706,54 +698,68 @@ export default function DocumentScanner({
 
       {stage === 'review_pages' && (
         <div className="space-y-4">
-          <h3 className="font-serif text-lg text-[var(--primary)]">{t.pagesCaptured}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {pages.map((page, index) => (
-              <div key={page.id} className="relative border border-[var(--border)] rounded-none p-1">
-                <img src={page.previewUrl} alt={t.pageCount(index + 1)} className="w-full h-32 object-cover" />
-                <p className="text-xs text-[var(--muted)] mt-1">{t.pageCount(index + 1)}</p>
-                <button
-                  type="button"
-                  onClick={() => deletePage(page.id)}
-                  className="absolute top-1 right-1 bg-white border border-[var(--border)] w-7 h-7 text-xs rounded-none"
-                  aria-label={t.deletePage}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
+          <h2 className="font-serif text-xl text-[var(--ink)]">
+            {t.reviewTitle(pages.length)}
+          </h2>
+          <p className="text-sm text-[var(--ink-secondary)]">
+            {t.reviewHint}
+          </p>
 
-          <div className="flex flex-col gap-2">
-            {canAddMorePages && (
-              <button
-                type="button"
-                onClick={() => {
-                  // Reset current page and go to entry (which shows Scan document when liveSupported)
-                  resetCurrentPage();
-                  setStage('entry');
-                }}
-                className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-              >
-                {t.addPage}
-              </button>
-            )}
+          <ul className="space-y-3">
+            {pages.map((page, idx) => (
+              <li key={page.id} className="flex gap-3 items-start border border-[var(--border)] p-3">
+                <img
+                  src={page.previewUrl}
+                  alt={t.pageNumber(idx + 1)}
+                  className="w-24 h-32 object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none"
+                />
+                <div className="flex-1 flex flex-col gap-2">
+                  <span className="text-sm font-medium">{t.pageNumber(idx + 1)}</span>
+                  {page.qualityFlags.length > 0 && (
+                    <span className="text-xs text-amber-700">{t.qualityWarning}</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => deletePage(page.id)}
+                    className="text-sm text-[var(--danger)] underline text-left w-fit min-h-12 h-auto py-2"
+                  >
+                    {t.deletePage}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {!isSingleMode && pages.length < (maxPages ?? 30) && (
             <button
               type="button"
-              onClick={() => finalizeSubmit(pages)}
-              disabled={pages.length === 0}
-              className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white px-4 rounded-none text-sm font-medium hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50"
+              onClick={() => setStage('entry')}
+              className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] rounded-none"
             >
-              {t.submit}
+              {t.addPage}
             </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full min-h-12 h-auto py-3 border border-[var(--border)] text-[var(--ink)] px-4 rounded-none text-sm font-medium hover:bg-[var(--bg-section)] transition-colors duration-200"
-            >
-              {t.cancel}
-            </button>
-          </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => finalizeSubmit(pages)}
+            disabled={pages.length === 0}
+            className="w-full min-h-12 h-auto py-3 bg-[var(--primary)] text-white rounded-none disabled:opacity-50"
+          >
+            {pages.length === 1 ? t.uploadOnePage : t.uploadNPages(pages.length)}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              pages.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+              setPages([]);
+              setStage('entry');
+            }}
+            className="w-full min-h-12 h-auto py-3 text-[var(--ink-secondary)] underline rounded-none"
+          >
+            {t.cancelAndStartOver}
+          </button>
         </div>
       )}
 

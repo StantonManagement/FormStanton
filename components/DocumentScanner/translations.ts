@@ -49,6 +49,16 @@ export interface ScannerStrings {
   noDocumentWarningTitle: string;
   noDocumentWarningBody: string;
   confirmUseAnyway: string;
+  // PRD-47 — Review stage + stuck feedback
+  reviewTitle: (n: number) => string;
+  reviewHint: string;
+  pageNumber: (n: number) => string;
+  uploadOnePage: string;
+  uploadNPages: (n: number) => string;
+  cancelAndStartOver: string;
+  qualityWarning: string;
+  stuckHint: string;
+  stuckHintSecondary: string;
 }
 
 export const translations: Record<ScannerLanguage, ScannerStrings> = {
@@ -99,6 +109,15 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentWarningTitle: "We couldn't detect a document",
     noDocumentWarningBody: "This photo doesn't appear to contain a document. Retake for best results.",
     confirmUseAnyway: 'I understand — use this photo anyway',
+    reviewTitle: (n) => `Review your ${n} page${n === 1 ? '' : 's'}`,
+    reviewHint: "Tap Upload when you're done. Add more pages if the document continues.",
+    pageNumber: (n) => `Page ${n}`,
+    uploadOnePage: 'Upload 1 page',
+    uploadNPages: (n) => `Upload ${n} pages`,
+    cancelAndStartOver: 'Cancel and start over',
+    qualityWarning: 'Photo may be hard to read. Consider retaking.',
+    stuckHint: 'Having trouble finding the document edges.',
+    stuckHintSecondary: 'Try a darker surface or better light. Or tap Capture below to take the photo anyway.',
   },
   es: {
     takePhoto: 'Tomar Foto',
@@ -147,6 +166,15 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentWarningTitle: 'No pudimos detectar un documento',
     noDocumentWarningBody: 'Esta foto no parece contener un documento. Vuelva a tomarla para mejores resultados.',
     confirmUseAnyway: 'Entiendo — usar esta foto de todos modos',
+    reviewTitle: (n) => `Revisa tu${n === 1 ? '' : 's'} ${n} página${n === 1 ? '' : 's'}`,
+    reviewHint: 'Toca Subir cuando termines. Agrega más páginas si el documento continúa.',
+    pageNumber: (n) => `Página ${n}`,
+    uploadOnePage: 'Subir 1 página',
+    uploadNPages: (n) => `Subir ${n} páginas`,
+    cancelAndStartOver: 'Cancelar y empezar de nuevo',
+    qualityWarning: 'La foto puede ser difícil de leer. Considera volver a tomarla.',
+    stuckHint: 'No encuentro los bordes del documento.',
+    stuckHintSecondary: 'Intenta una superficie más oscura o mejor luz. O toca Capturar para tomar la foto de todos modos.',
   },
   pt: {
     takePhoto: 'Tirar Foto',
@@ -195,5 +223,14 @@ export const translations: Record<ScannerLanguage, ScannerStrings> = {
     noDocumentWarningTitle: 'Não conseguimos detectar um documento',
     noDocumentWarningBody: 'Esta foto não parece conter um documento. Refaça para melhores resultados.',
     confirmUseAnyway: 'Eu entendo — usar esta foto mesmo assim',
+    reviewTitle: (n) => `Revise sua${n === 1 ? '' : 's'} ${n} página${n === 1 ? '' : 's'}`,
+    reviewHint: 'Toque em Enviar quando terminar. Adicione mais páginas se o documento continuar.',
+    pageNumber: (n) => `Página ${n}`,
+    uploadOnePage: 'Enviar 1 página',
+    uploadNPages: (n) => `Enviar ${n} páginas`,
+    cancelAndStartOver: 'Cancelar e começar de novo',
+    qualityWarning: 'A foto pode estar difícil de ler. Considere refazer.',
+    stuckHint: 'Não consigo encontrar as bordas do documento.',
+    stuckHintSecondary: 'Tente uma superfície mais escura ou melhor iluminação. Ou toque em Capturar para tirar a foto mesmo assim.',
   },
 };

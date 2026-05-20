@@ -54,7 +54,9 @@ function saveEntries(entries: Entry[]) {
 
 function DebugErrorOverlayInner() {
   const search = useSearchParams();
-  const enabled = search?.get('debug') === '1';
+  const enabled =
+    search?.get('debug') === '1' &&
+    process.env.NODE_ENV !== 'production';
 
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [dismissed, setDismissed] = useState(false);
