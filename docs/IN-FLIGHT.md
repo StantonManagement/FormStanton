@@ -18,12 +18,20 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 
 ### PRD-51 — Combined Approve & Send Invitation (one-click admin flow)
 - **Branch:** `feat/pbv-preapp-combined-approve-send-51` — 2 commits ahead of `main`
-- **Feature complete on the branch as of 2026-05-20.** Both pieces landed:
-  - `35bbc06` — F1–F4: combined Approve & Send Invitation chain button (replaces 3-click flow)
-  - `a6f78ae` — F0: phone data path (migration + types + PATCH endpoint + create-full-app propagation + editable phone in preapp UI with `hasPhone` gate)
-- **Migration `20260519000000_pbv_preapp_phone.sql`** applied to Supabase live.
-- **Static gates:** `tsc --noEmit` clean, `npm run build` clean.
-- **Blocked on:** Vercel preview off this branch to walk the flow end-to-end (same blocker as PRD-52 — deploy both previews in one session). After verification: merge to `main`.
+- **Built but has a blocking bug — superseded by PRD-53.** F1–F4 chain button (`35bbc06`) + F0 phone data path (`a6f78ae`) landed on the branch, but:
+  - **Critical bug (found 2026-05-20):** the entire phone + invite section is wrapped in `{qualified && (...)}` at `preapps/page.tsx:1071`, so it's INVISIBLE for over-income preapps — exactly what Alex was testing. Root cause: a bad closed-decision in PRD-51 ("hide button if not likely_qualifies"). This is why "I still can't enter a phone number" kept happening.
+  - **Not merged to `main`** — `git cat-file` confirms the phone migration is absent from main. The merge Alex believed happened did not land (see git config issue below).
+- **Resolution:** fold into PRD-53. Do not merge PRD-51 standalone.
+
+### PRD-53 — Preapp contact capture + income edit & qualification override
+- **Branch:** `feat/pbv-preapp-contact-and-override-53` (builds on the PRD-51 branch)
+- **Fixes the PRD-51 gate bug** (ungate the invite section) + adds: inline income edit with re-qualification, "Override & Send" for over-income applicants (typed reason, audited), and phone (required) + email (optional) on the PUBLIC preapp form.
+- **Status:** PRD + prompt written 2026-05-20. Awaiting Windsurf.
+- **PRD:** `docs/fullApp-Plan/53-pbv-preapp-contact-capture-and-override_prd_2026-05-19.md`
+
+### ⚠ Infrastructure blockers (address in PRD-53)
+- **`.git/config` is corrupted** — `fatal: bad config line 23`. Can make merges/pushes silently fail. Likely why the PRD-51 phone migration never reached `main`. **Fix first, before any merge.**
+- **Migrations must be applied to prod Supabase** (`lieeeqqvshobnqofcdac`) — phone (PRD-51) + email + override columns (PRD-53). Merging `.sql` files doesn't add columns to the running DB. (Note: a prior tracker entry claimed the phone migration was "applied to Supabase live" — verify against the actual prod schema; the code is NOT on main regardless.)
 
 ---
 

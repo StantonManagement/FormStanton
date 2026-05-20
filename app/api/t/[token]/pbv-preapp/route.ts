@@ -108,6 +108,8 @@ export async function POST(
     const {
       hoh_name,
       hoh_dob,
+      hoh_phone,
+      hoh_email,
       household_members,
       citizenship_answer,
       signature_data,
@@ -128,6 +130,16 @@ export async function POST(
     }
     if (!signature_data) {
       return NextResponse.json({ success: false, message: 'Signature is required' }, { status: 400 });
+    }
+    if (!hoh_phone?.trim()) {
+      return NextResponse.json({ success: false, message: 'Phone number is required' }, { status: 400 });
+    }
+    // Validate email format if provided
+    if (hoh_email?.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(hoh_email.trim())) {
+        return NextResponse.json({ success: false, message: 'Invalid email format' }, { status: 400 });
+      }
     }
 
     for (let i = 0; i < household_members.length; i++) {
@@ -199,6 +211,8 @@ export async function POST(
         project_unit_id: unit.id,
         hoh_name: hoh_name.trim(),
         hoh_dob,
+        phone: hoh_phone.trim(),
+        email: hoh_email?.trim() || null,
         building_address: unit.building,
         unit_number: unit.unit_number,
         household_members,

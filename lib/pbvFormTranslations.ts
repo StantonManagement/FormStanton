@@ -16,6 +16,8 @@ export interface PbvFormStrings {
   hoh_dob_label: string;
   building_label: string;
   unit_label: string;
+  hoh_phone_label: string;
+  hoh_email_label: string;
 
   // Section 2 fields
   member_name_label: string;
@@ -74,6 +76,8 @@ export interface PbvFormStrings {
   err_hoh_name: string;
   err_hoh_dob: string;
   err_hoh_age: string;
+  err_hoh_phone: string;
+  err_hoh_email: string;
   err_member_name: (n: number) => string;
   err_member_dob: (n: number) => string;
   err_member_relationship: (n: number) => string;
@@ -108,6 +112,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Date of Birth',
     building_label: 'Building',
     unit_label: 'Unit',
+    hoh_phone_label: 'Phone Number',
+    hoh_email_label: 'Email Address (optional)',
 
     member_name_label: 'Full Name',
     member_dob_label: 'Date of Birth',
@@ -159,6 +165,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     err_hoh_name: 'Head of household name is required.',
     err_hoh_dob: 'Date of birth is required.',
     err_hoh_age: 'Head of household must be at least 18 years old.',
+    err_hoh_phone: 'Phone number is required.',
+    err_hoh_email: 'Please enter a valid email address.',
     err_member_name: (n) => `Member ${n}: name is required.`,
     err_member_dob: (n) => `Member ${n}: date of birth is required.`,
     err_member_relationship: (n) => `Member ${n}: relationship is required.`,
@@ -189,6 +197,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Fecha de Nacimiento',
     building_label: 'Edificio',
     unit_label: 'Unidad',
+    hoh_phone_label: 'Número de Teléfono',
+    hoh_email_label: 'Correo Electrónico (opcional)',
 
     member_name_label: 'Nombre Completo',
     member_dob_label: 'Fecha de Nacimiento',
@@ -240,6 +250,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     err_hoh_name: 'El nombre del jefe de hogar es obligatorio.',
     err_hoh_dob: 'La fecha de nacimiento es obligatoria.',
     err_hoh_age: 'El jefe de hogar debe tener al menos 18 años.',
+    err_hoh_phone: 'El número de teléfono es obligatorio.',
+    err_hoh_email: 'Ingrese una dirección de correo válida.',
     err_member_name: (n) => `Miembro ${n}: el nombre es obligatorio.`,
     err_member_dob: (n) => `Miembro ${n}: la fecha de nacimiento es obligatoria.`,
     err_member_relationship: (n) => `Miembro ${n}: el parentesco es obligatorio.`,
@@ -270,6 +282,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Data de Nascimento',
     building_label: 'Edifício',
     unit_label: 'Unidade',
+    hoh_phone_label: 'Número de Telefone',
+    hoh_email_label: 'Email (opcional)',
 
     member_name_label: 'Nome Completo',
     member_dob_label: 'Data de Nascimento',
@@ -321,6 +335,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     err_hoh_name: 'O nome do chefe de família é obrigatório.',
     err_hoh_dob: 'A data de nascimento é obrigatória.',
     err_hoh_age: 'O chefe de família deve ter pelo menos 18 anos.',
+    err_hoh_phone: 'O número de telefone é obrigatório.',
+    err_hoh_email: 'Digite um endereço de email válido.',
     err_member_name: (n) => `Membro ${n}: o nome é obrigatório.`,
     err_member_dob: (n) => `Membro ${n}: a data de nascimento é obrigatória.`,
     err_member_relationship: (n) => `Membro ${n}: o parentesco é obrigatório.`,

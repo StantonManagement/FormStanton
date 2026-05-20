@@ -49,18 +49,66 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
     }
 
-    const { phone } = body as { phone?: string | null };
+    const {
+      phone,
+      email,
+      total_household_income,
+      override,
+    } = body as {
+      phone?: string | null;
+      email?: string | null;
+      total_household_income?: number;
+      override?: { reason: string };
+    };
 
-    if (phone !== undefined && phone !== null) {
-      const e164 = parsePhoneToE164(phone);
-      if (!e164) {
-        return NextResponse.json({ success: false, message: 'Invalid phone number format' }, { status: 400 });
+    const updateData: Record<string, any> = {};
+
+    // Handle phone
+    if (phone !== undefined) {
+      if (phone !== null) {
+        const e164 = parsePhoneToE164(phone);
+        if (!e164) {
+          return NextResponse.json({ success: false, message: 'Invalid phone number format' }, { status: 400 });
+        }
       }
+      updateData.phone = phone ?? null;
+    }
+
+    // Handle email
+    if (email !== undefined) {
+      if (email !== null) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return NextResponse.json({ success: false, message: 'Invalid email format' }, { status: 400 });
+        }
+      }
+      updateData.email = email ?? null;
+    }
+
+    // Handle income
+    if (total_household_income !== undefined) {
+      if (typeof total_household_income !== 'number' || total_household_income < 0) {
+        return NextResponse.json({ success: false, message: 'Invalid income amount' }, { status: 400 });
+      }
+      updateData.total_household_income = total_household_income;
+    }
+
+    // Handle override
+    if (override?.reason) {
+      updateData.qualification_override_reason = override.reason;
+      updateData.qualification_override_at = new Date().toISOString();
+      // Get current user from session for override_by
+      const { data: { user } } = await supabaseAdmin.auth.getUser();
+      updateData.qualification_override_by = user?.email ?? 'admin';
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: false, message: 'No valid fields to update' }, { status: 400 });
     }
 
     const { error } = await supabaseAdmin
       .from('pbv_preapplications')
-      .update({ phone: phone ?? null })
+      .update(updateData)
       .eq('id', id);
 
     if (error) throw error;

@@ -513,6 +513,10 @@ export interface PbvPreapplication {
   unit_not_in_canonical_list: boolean
   submission_source: 'magic_link' | 'open_enrollment'
   phone: string | null
+  email: string | null
+  qualification_override_reason: string | null
+  qualification_override_at: string | null
+  qualification_override_by: string | null
 }
 
 // ── PBV Full Application ──────────────────────────────────────────────────────

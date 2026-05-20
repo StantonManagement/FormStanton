@@ -699,11 +699,31 @@ function DetailContent({
   const [inlinePhoneSaving, setInlinePhoneSaving] = useState(false);
   const [inlinePhoneError, setInlinePhoneError] = useState('');
 
+  // Email editing state
+  const [localEmail, setLocalEmail] = useState<string | null>(detail.email);
+  const [emailEditMode, setEmailEditMode] = useState(false);
+  const [emailEditValue, setEmailEditValue] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailEditError, setEmailEditError] = useState('');
+
+  // Income editing state
+  const [incomeEditMode, setIncomeEditMode] = useState(false);
+  const [incomeEditValue, setIncomeEditValue] = useState('');
+  const [incomeSaving, setIncomeSaving] = useState(false);
+  const [incomeEditError, setIncomeEditError] = useState('');
+  const [localIncome, setLocalIncome] = useState<number>(detail.total_household_income);
+
+  // Override state
+  const [overrideMode, setOverrideMode] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [overrideSaving, setOverrideSaving] = useState(false);
+
   const qualified = detail.qualification_result === 'likely_qualifies';
+  const overridden = !!detail.qualification_override_reason;
   const approved = detail.stanton_review_status === 'approved';
   const hasPhone = !!localPhone;
 
-  const handleApproveAndSendInvitation = async (fromStep?: ChainStep) => {
+  const handleApproveAndSendInvitation = async (fromStep?: ChainStep, overrideReason?: string) => {
     setChainError(null);
 
     const startFromApprove = !fromStep || fromStep === 'approving';
@@ -715,6 +735,24 @@ function DetailContent({
     // Step 1: Approve (skip if already approved or retrying from a later step)
     if (startFromApprove && detail.stanton_review_status !== 'approved') {
       setChainStep('approving');
+      
+      // If overriding, save override reason first
+      if (overrideReason) {
+        setOverrideSaving(true);
+        const overrideRes = await fetch(`/api/admin/pbv/preapps/${detail.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ override: { reason: overrideReason } }),
+        });
+        const overrideJ = await overrideRes.json() as { success: boolean; message?: string };
+        setOverrideSaving(false);
+        if (!overrideJ.success) {
+          setChainError({ step: 'approving', message: overrideJ.message || 'Failed to save override' });
+          setChainStep('error');
+          return;
+        }
+      }
+      
       const res = await fetch(`/api/admin/pbv/preapps/${detail.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -742,6 +780,7 @@ function DetailContent({
           language: detail.language,
           preapp_id: detail.id,
           phone: localPhone ?? undefined,
+          email: localEmail ?? undefined,
         }),
       });
       const j = await res.json() as { success: boolean; message?: string; data?: { id: string; magic_link: string } };
@@ -818,6 +857,48 @@ function DetailContent({
     setInlinePhoneSaving(false);
     setInlinePhoneMode(false);
     setChainStep('confirming');
+  };
+
+  const handleSaveEmail = async () => {
+    setEmailSaving(true);
+    setEmailEditError('');
+    const res = await fetch(`/api/admin/pbv/preapps/${detail.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailEditValue.trim() || null }),
+    });
+    const j = await res.json() as { success: boolean; message?: string };
+    if (!j.success) {
+      setEmailEditError(j.message || 'Failed to save email');
+    } else {
+      setLocalEmail(emailEditValue.trim() || null);
+      setEmailEditMode(false);
+    }
+    setEmailSaving(false);
+  };
+
+  const handleSaveIncome = async () => {
+    setIncomeSaving(true);
+    setIncomeEditError('');
+    const newIncome = Number(incomeEditValue);
+    if (isNaN(newIncome) || newIncome < 0) {
+      setIncomeEditError('Please enter a valid income amount');
+      setIncomeSaving(false);
+      return;
+    }
+    const res = await fetch(`/api/admin/pbv/preapps/${detail.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ total_household_income: newIncome }),
+    });
+    const j = await res.json() as { success: boolean; message?: string };
+    if (!j.success) {
+      setIncomeEditError(j.message || 'Failed to save income');
+    } else {
+      setLocalIncome(newIncome);
+      setIncomeEditMode(false);
+    }
+    setIncomeSaving(false);
   };
 
   const handleGeneratePdf = async () => {
@@ -926,6 +1007,56 @@ function DetailContent({
               </div>
             )}
           </div>
+
+          {/* Editable email field */}
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[var(--muted)] shrink-0">Email</span>
+            {!emailEditMode ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--ink)] text-right">
+                  {localEmail
+                    ? localEmail
+                    : <span className="text-[var(--muted)] italic">Not set</span>
+                  }
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setEmailEditValue(localEmail ?? ''); setEmailEditMode(true); setEmailEditError(''); }}
+                  className="text-xs text-[var(--primary)] hover:underline shrink-0"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 items-end w-full">
+                <input
+                  type="email"
+                  value={emailEditValue}
+                  onChange={e => setEmailEditValue(e.target.value)}
+                  placeholder="email@example.com"
+                  className="w-full px-2 py-1 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                />
+                {emailEditError && <p className="text-xs text-red-600">{emailEditError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEmailEditMode(false)}
+                    className="text-xs text-[var(--muted)] hover:text-[var(--ink)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEmail}
+                    disabled={emailSaving}
+                    className="text-xs text-[var(--primary)] hover:underline disabled:opacity-50"
+                  >
+                    {emailSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -935,7 +1066,48 @@ function DetailContent({
         <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3 space-y-2 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-[var(--muted)]">Total Household Income</span>
-            <span className="font-medium text-[var(--ink)]">{formatCurrency(detail.total_household_income)}</span>
+            {!incomeEditMode ? (
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[var(--ink)]">{formatCurrency(localIncome)}</span>
+                <button
+                  type="button"
+                  onClick={() => { setIncomeEditValue(String(localIncome)); setIncomeEditMode(true); setIncomeEditError(''); }}
+                  className="text-xs text-[var(--primary)] hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 items-end">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--muted)]">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={incomeEditValue}
+                    onChange={e => setIncomeEditValue(e.target.value)}
+                    className="w-32 px-2 py-1 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIncomeEditMode(false)}
+                    className="text-xs text-[var(--muted)] hover:text-[var(--ink)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveIncome}
+                    disabled={incomeSaving}
+                    className="text-xs text-[var(--primary)] hover:underline disabled:opacity-50"
+                  >
+                    {incomeSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+                {incomeEditError && <p className="text-xs text-red-600">{incomeEditError}</p>}
+              </div>
+            )}
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[var(--muted)]">Income Limit ({detail.household_size}-person HH)</span>
@@ -943,7 +1115,7 @@ function DetailContent({
           </div>
           <div className="flex justify-between items-center pt-1 border-t border-[var(--divider)]">
             <span className="text-[var(--muted)]">Income Check</span>
-            <StatusPill ok={incomeOk} okLabel="Under Limit" failLabel="Over Limit" />
+            <StatusPill ok={detail.income_limit === null || localIncome <= detail.income_limit} okLabel="Under Limit" failLabel="Over Limit" />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[var(--muted)]">Citizenship</span>
@@ -1067,10 +1239,9 @@ function DetailContent({
         </div>
       </section>
 
-      {/* Combined Invite section — visible for qualified preapps */}
-      {qualified && (
-        <section className="border-t border-[var(--divider)] pt-5">
-          <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
+      {/* Combined Invite section — visible for all preapps */}
+      <section className="border-t border-[var(--divider)] pt-5">
+        <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
 
           <div className="space-y-4">
             {/* Inline phone capture (no phone yet, user clicked the combined button) */}
@@ -1106,9 +1277,12 @@ function DetailContent({
             )}
 
             {/* Combined action button / confirm / progress / done / error */}
-            {chainStep === 'idle' && !smsSent && !inlinePhoneMode && (() => {
+            {chainStep === 'idle' && !smsSent && !inlinePhoneMode && !overrideMode && (() => {
+              const incomeOk = detail.income_limit === null || localIncome <= detail.income_limit;
+              const isQualified = incomeOk && detail.qualification_result !== 'citizenship_issue' && detail.qualification_result !== 'over_income_and_citizenship' && detail.qualification_result !== 'needs_citizenship_review';
               let label: string;
-              if (!approved) label = 'Approve & Send Invitation';
+              if (!isQualified) label = 'Override & Send Invitation';
+              else if (!approved) label = 'Approve & Send Invitation';
               else if (!fullAppResult) label = 'Create & Send Invitation';
               else label = 'Send Invitation';
               return (
@@ -1119,16 +1293,60 @@ function DetailContent({
                       setInlinePhoneValue('');
                       setInlinePhoneError('');
                       setInlinePhoneMode(true);
+                    } else if (!isQualified) {
+                      setOverrideMode(true);
                     } else {
                       setChainStep('confirming');
                     }
                   }}
-                  className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
+                  className={`w-full py-2.5 text-white text-sm font-medium rounded-none transition-colors duration-200 ${!isQualified ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[var(--primary)] hover:bg-[var(--primary-light)]'}`}
                 >
                   {label}
                 </button>
               );
             })()}
+
+            {/* Override panel */}
+            {overrideMode && (
+              <div className="border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">This applicant is over the income limit or has citizenship issues.</p>
+                    <p className="text-xs text-amber-700 mt-1">You are advancing them on override. A reason is required for the audit trail.</p>
+                  </div>
+                </div>
+                <textarea
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="Reason for override (required)"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-amber-300 rounded-none text-sm focus:outline-none focus:border-amber-500 bg-white"
+                />
+                {overrideReason.trim() === '' && (
+                  <p className="text-xs text-amber-700">Please provide a reason to proceed.</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setOverrideMode(false); setOverrideReason(''); }}
+                    className="flex-1 py-2 text-sm border border-amber-300 text-amber-800 hover:bg-amber-100 rounded-none transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setOverrideMode(false); setChainStep('confirming'); }}
+                    disabled={!overrideReason.trim() || overrideSaving}
+                    className="flex-1 py-2 text-sm bg-amber-600 text-white hover:bg-amber-700 rounded-none transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {overrideSaving ? 'Saving...' : 'Continue'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {chainStep === 'confirming' && (() => {
               const e164 = parsePhoneToE164(localPhone);
@@ -1137,19 +1355,35 @@ function DetailContent({
                   ? e164.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')
                   : `${localPhone} (unformatted)`)
                 : 'No phone on file';
+              const displayEmail = localEmail || 'No email on file';
               const langMap: Record<string, string> = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
               const displayLang = langMap[detail.language] ?? detail.language;
               const willApprove = detail.stanton_review_status !== 'approved';
+              const incomeOk = detail.income_limit === null || localIncome <= detail.income_limit;
+              const isQualified = incomeOk && detail.qualification_result !== 'citizenship_issue' && detail.qualification_result !== 'over_income_and_citizenship' && detail.qualification_result !== 'needs_citizenship_review';
+              const isOverride = !isQualified && overrideReason.trim();
               const actionDesc = [
                 willApprove ? 'approve the preapp' : null,
                 !fullAppResult ? 'create the full application' : null,
                 'text them the link',
               ].filter(Boolean).join(', ');
               return (
-                <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
+                <div className={`border p-4 space-y-3 ${isOverride ? 'border-amber-300 bg-amber-50' : 'border-[var(--border)] bg-[var(--bg-section)]'}`}>
+                  {isOverride && (
+                    <div className="flex items-start gap-2 pb-2 border-b border-amber-200">
+                      <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-amber-900">Override in effect</p>
+                        <p className="text-xs text-amber-700 mt-1">Reason: {overrideReason}</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-1 text-sm">
                     <p className="font-medium text-[var(--ink)]">{detail.hoh_name}</p>
                     <p className="text-[var(--muted)]">{displayPhone}</p>
+                    <p className="text-[var(--muted)]">{displayEmail}</p>
                     <p className="text-[var(--muted)]">{displayLang}</p>
                   </div>
                   <p className="text-sm text-[var(--ink)]">This will: {actionDesc}.</p>
@@ -1157,16 +1391,17 @@ function DetailContent({
                     <button
                       type="button"
                       onClick={() => setChainStep('idle')}
-                      className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200"
+                      className={`flex-1 py-2 text-sm border rounded-none transition-colors duration-200 ${isOverride ? 'border-amber-300 text-amber-800 hover:bg-amber-100' : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white'}`}
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleApproveAndSendInvitation()}
-                      className="flex-1 py-2 text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] rounded-none transition-colors duration-200"
+                      onClick={() => handleApproveAndSendInvitation(undefined, isOverride ? overrideReason : undefined)}
+                      disabled={overrideSaving}
+                      className={`flex-1 py-2 text-sm text-white rounded-none transition-colors duration-200 disabled:opacity-50 ${isOverride ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[var(--primary)] hover:bg-[var(--primary-light)]'}`}
                     >
-                      Confirm
+                      {overrideSaving ? 'Processing...' : 'Confirm'}
                     </button>
                   </div>
                 </div>
@@ -1232,7 +1467,6 @@ function DetailContent({
             )}
           </div>
         </section>
-      )}
 
       {/* Delete */}
       <section className="border-t border-[var(--divider)] pt-5">

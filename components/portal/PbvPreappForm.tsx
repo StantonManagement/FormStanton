@@ -38,6 +38,8 @@ type CitizenshipAnswer = 'yes' | 'no' | 'unsure' | null;
 interface FormData {
   hohName: string;
   hohDob: string;
+  hohPhone: string;
+  hohEmail: string;
   members: HouseholdMember[];
   citizenshipAnswer: CitizenshipAnswer;
   certChecked: boolean;
@@ -58,6 +60,8 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
   const [form, setForm] = useState<FormData>({
     hohName: '',
     hohDob: '',
+    hohPhone: '',
+    hohEmail: '',
     members: [emptyMember('self')],
     citizenshipAnswer: null,
     certChecked: false,
@@ -162,6 +166,13 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
       if (dob > minAge) errs['hoh_dob'] = t.err_hoh_age;
     }
 
+    if (!form.hohPhone.trim()) {
+      errs['hoh_phone'] = t.err_hoh_phone;
+    }
+    if (form.hohEmail.trim() && !isValidEmail(form.hohEmail)) {
+      errs['hoh_email'] = t.err_hoh_email;
+    }
+
     form.members.forEach((m, i) => {
       if (!m.name.trim()) errs[`member_${i}_name`] = t.err_member_name(i + 1);
       if (!m.dob) errs[`member_${i}_dob`] = t.err_member_dob(i + 1);
@@ -192,6 +203,8 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
         body: JSON.stringify({
           hoh_name: form.hohName.trim(),
           hoh_dob: form.hohDob,
+          hoh_phone: form.hohPhone.trim(),
+          hoh_email: form.hohEmail.trim() || null,
           household_members: form.members,
           citizenship_answer: form.citizenshipAnswer,
           signature_data: form.signatureData,
@@ -224,6 +237,10 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
   const clearSignature = () => {
     sigCanvasRef.current?.clear();
     setForm((prev) => ({ ...prev, signatureData: '' }));
+  };
+
+  const isValidEmail = (email: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
   if (pageState.status === 'loading') {
@@ -306,6 +323,36 @@ export default function PbvPreappForm({ task, token, language, onComplete }: Tas
                 {unitNumber}
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--ink)] mb-1">
+              {t.hoh_phone_label} <span className="text-[var(--error)]">*</span>
+            </label>
+            <input
+              type="tel"
+              value={form.hohPhone}
+              onChange={(e) => setForm((p) => ({ ...p, hohPhone: e.target.value }))}
+              placeholder="(860) 555-0199"
+              className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white"
+              autoComplete="tel"
+            />
+            {errors['hoh_phone'] && <p className="text-xs text-[var(--error)] mt-1">{errors['hoh_phone']}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-[var(--ink)] mb-1">
+              {t.hoh_email_label}
+            </label>
+            <input
+              type="email"
+              value={form.hohEmail}
+              onChange={(e) => setForm((p) => ({ ...p, hohEmail: e.target.value }))}
+              placeholder="email@example.com"
+              className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white"
+              autoComplete="email"
+            />
+            {errors['hoh_email'] && <p className="text-xs text-[var(--error)] mt-1">{errors['hoh_email']}</p>}
           </div>
         </div>
       </section>
