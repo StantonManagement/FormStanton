@@ -54,9 +54,10 @@ function saveEntries(entries: Entry[]) {
 
 function DebugErrorOverlayInner() {
   const search = useSearchParams();
-  const enabled =
-    search?.get('debug') === '1' &&
-    process.env.NODE_ENV !== 'production';
+  // Gated solely by ?debug=1 — the URL flag itself is the opt-in. The previous
+  // production check made this useless in the only environment we needed it
+  // for (production phone debugging where DevTools aren't available).
+  const enabled = search?.get('debug') === '1';
 
   const [entries, setEntries] = useState<Entry[]>(() => loadEntries());
   const [dismissed, setDismissed] = useState(false);
