@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { buildings } from '@/lib/buildings';
 import { copyToClipboard } from '@/lib/copyToClipboard';
+import { parsePhoneToE164 } from '@/lib/phoneParser';
 import { PbvPreapplication, QualificationResult, PbvReviewStatus, HouseholdMember } from '@/types/compliance';
 
 type ListRow = Pick<
@@ -592,17 +593,46 @@ function DetailContent({
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState('');
 
-  // Create Full Application state
-  const [creatingFullApp, setCreatingFullApp] = useState(false);
-  const [createError, setCreateError] = useState('');
+  // Full application + chain state
   const [fullAppResult, setFullAppResult] = useState<{ id: string; magic_link: string } | null>(null);
-  const [sendingSms, setSendingSms] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
+  const [emailFallback, setEmailFallback] = useState(false);
 
-  const handleCreateFullApp = async () => {
-    setCreatingFullApp(true);
-    setCreateError('');
-    try {
+  type ChainStep = 'idle' | 'confirming' | 'approving' | 'creating' | 'sending' | 'done' | 'error';
+  const [chainStep, setChainStep] = useState<ChainStep>('idle');
+  const [chainError, setChainError] = useState<{ step: ChainStep; message: string } | null>(null);
+
+  const qualified = detail.qualification_result === 'likely_qualifies';
+  const approved = detail.stanton_review_status === 'approved';
+
+  const handleApproveAndSendInvitation = async (fromStep?: ChainStep) => {
+    setChainError(null);
+
+    const startFromApprove = !fromStep || fromStep === 'approving';
+    const startFromCreate = fromStep === 'creating';
+    const startFromSend = fromStep === 'sending';
+
+    let currentFullAppId = fullAppResult?.id ?? null;
+
+    // Step 1: Approve (skip if already approved or retrying from a later step)
+    if (startFromApprove && detail.stanton_review_status !== 'approved') {
+      setChainStep('approving');
+      const res = await fetch(`/api/admin/pbv/preapps/${detail.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approved' }),
+      });
+      const j = await res.json() as { success: boolean; message?: string };
+      if (!j.success) {
+        setChainError({ step: 'approving', message: j.message || 'Failed to approve preapp' });
+        setChainStep('error');
+        return;
+      }
+    }
+
+    // Step 2: Create full application (skip if already exists or retrying from send)
+    if (!startFromSend && !currentFullAppId) {
+      setChainStep('creating');
       const res = await fetch('/api/admin/pbv/full-applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -615,39 +645,41 @@ function DetailContent({
           preapp_id: detail.id,
         }),
       });
-      const json = await res.json();
-      if (!json.success && res.status !== 409) {
-        throw new Error(json.message || 'Failed to create full application');
+      const j = await res.json() as { success: boolean; message?: string; data?: { id: string; magic_link: string } };
+      if (!j.success && res.status !== 409) {
+        setChainError({ step: 'creating', message: j.message || 'Failed to create full application' });
+        setChainStep('error');
+        return;
       }
-      // 409 means already exists - that's OK, just show the link
-      setFullAppResult({
-        id: json.data?.id || json.data?.id,
-        magic_link: json.data?.magic_link || json.data?.magic_link,
-      });
-    } catch (e: any) {
-      setCreateError(e.message || 'Failed to create full application');
-    } finally {
-      setCreatingFullApp(false);
+      if (j.data?.id) {
+        currentFullAppId = j.data.id;
+        setFullAppResult({ id: j.data.id, magic_link: j.data.magic_link ?? '' });
+      }
     }
-  };
 
-  const handleSendSms = async () => {
-    if (!fullAppResult) return;
-    setSendingSms(true);
-    try {
-      const res = await fetch(`/api/admin/pbv/full-applications/${fullAppResult.id}/send-sms`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_type: 'magic_link_initial' }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message || 'Failed to send SMS');
-      setSmsSent(true);
-    } catch (e: any) {
-      alert(e.message || 'Failed to send SMS');
-    } finally {
-      setSendingSms(false);
+    if (!currentFullAppId) {
+      setChainError({ step: 'creating', message: 'Full application ID not available' });
+      setChainStep('error');
+      return;
     }
+
+    // Step 3: Send SMS
+    setChainStep('sending');
+    const res = await fetch(`/api/admin/pbv/full-applications/${currentFullAppId}/send-sms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notification_type: 'magic_link_initial' }),
+    });
+    const j = await res.json() as { success: boolean; message?: string; data?: { email_sent?: boolean; note?: string } };
+    if (!j.success) {
+      setChainError({ step: 'sending', message: j.message || 'Failed to send invitation' });
+      setChainStep('error');
+      return;
+    }
+    const isEmailFallback = !!(j.data?.note && j.data.note.includes('email fallback'));
+    setEmailFallback(isEmailFallback);
+    setSmsSent(true);
+    setChainStep('done');
   };
 
   const handleGeneratePdf = async () => {
@@ -848,79 +880,131 @@ function DetailContent({
         </div>
       </section>
 
-      {/* Create Full Application - only show when approved */}
-      {detail.stanton_review_status === 'approved' && (
+      {/* Combined Invite section — visible for qualified preapps */}
+      {qualified && (
         <section className="border-t border-[var(--divider)] pt-5">
           <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
-          
-          {!fullAppResult ? (
-            <div className="space-y-3">
-              <p className="text-sm text-[var(--muted)]">
-                Create a full application invitation for this tenant. This will use the same building, unit, and applicant information from the pre-application.
-              </p>
-              {createError && (
-                <div className="border border-red-200 bg-red-50 p-2 text-sm text-red-700">{createError}</div>
-              )}
+
+          <div className="space-y-4">
+            {/* ── Combined action button / confirm / progress / done / error ── */}
+            {chainStep === 'idle' && !smsSent && (() => {
+              let label: string;
+              if (!approved) label = 'Approve & Send Invitation';
+              else if (!fullAppResult) label = 'Create & Send Invitation';
+              else label = 'Send Invitation';
+              return (
+                <button
+                  type="button"
+                  onClick={() => setChainStep('confirming')}
+                  className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
+                >
+                  {label}
+                </button>
+              );
+            })()}
+
+            {chainStep === 'confirming' && (() => {
+              const rawPhone = (detail as PbvPreapplication & { phone?: string | null }).phone ?? null;
+              const e164 = parsePhoneToE164(rawPhone);
+              const displayPhone = rawPhone
+                ? (e164
+                  ? e164.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')
+                  : `${rawPhone} (unformatted)`)
+                : 'No phone on file';
+              const langMap: Record<string, string> = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
+              const displayLang = langMap[detail.language] ?? detail.language;
+              const willApprove = detail.stanton_review_status !== 'approved';
+              const actionDesc = [
+                willApprove ? 'approve the preapp' : null,
+                'create the full application',
+                'text them the link',
+              ].filter(Boolean).join(', ');
+              return (
+                <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
+                  <div className="space-y-1 text-sm">
+                    <p className="font-medium text-[var(--ink)]">{detail.hoh_name}</p>
+                    <p className="text-[var(--muted)]">{displayPhone}</p>
+                    <p className="text-[var(--muted)]">{displayLang}</p>
+                  </div>
+                  <p className="text-sm text-[var(--ink)]">This will: {actionDesc}.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setChainStep('idle')}
+                      className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApproveAndSendInvitation()}
+                      className="flex-1 py-2 text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] rounded-none transition-colors duration-200"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {(chainStep === 'approving' || chainStep === 'creating' || chainStep === 'sending') && (
               <button
                 type="button"
-                onClick={handleCreateFullApp}
-                disabled={creatingFullApp}
-                className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+                className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none opacity-50 cursor-not-allowed"
               >
-                {creatingFullApp ? 'Creating...' : 'Create Full Application Invitation'}
+                {chainStep === 'approving' && 'Approving...'}
+                {chainStep === 'creating' && 'Creating application...'}
+                {chainStep === 'sending' && 'Sending invitation...'}
               </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 p-3">
-                <p className="text-sm text-green-800 font-medium mb-1">Full application created.</p>
-                <p className="text-xs text-green-700">Magic link ready to send to tenant.</p>
-              </div>
+            )}
 
-              {/* Phone preview */}
-              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3 text-sm">
-                <p className="text-[var(--muted)] text-xs mb-1">Recipient</p>
-                <p className="text-[var(--ink)]">{detail.hoh_name}</p>
-                <p className="text-[var(--muted)] text-xs mt-1">Language: {detail.language.toUpperCase()}</p>
+            {chainStep === 'done' && (
+              <div className={`p-3 border text-sm font-medium ${emailFallback ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+                {emailFallback ? 'Sent via email (SMS failed)' : 'Invitation sent ✓'}
               </div>
+            )}
 
-              {/* Magic link display */}
-              <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3">
-                <p className="text-xs text-[var(--muted)] mb-1">Magic Link</p>
-                <p className="text-xs font-mono text-[var(--ink)] break-all">{fullAppResult.magic_link}</p>
+            {chainStep === 'error' && chainError && (
+              <div className="border border-red-200 bg-red-50 p-3 space-y-2">
+                <p className="text-sm font-medium text-red-700">
+                  Failed at: {chainError.step}
+                </p>
+                <p className="text-sm text-red-600">{chainError.message}</p>
                 <button
                   type="button"
-                  onClick={() => { copyToClipboard(fullAppResult.magic_link); }}
-                  className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                  onClick={() => handleApproveAndSendInvitation(chainError.step as ChainStep)}
+                  className="w-full py-2 text-sm bg-red-600 text-white hover:bg-red-700 rounded-none transition-colors duration-200"
                 >
-                  Copy Link
+                  Retry {chainError.step}
                 </button>
               </div>
+            )}
 
-              {/* Send SMS button */}
-              {!smsSent ? (
-                <button
-                  type="button"
-                  onClick={handleSendSms}
-                  disabled={sendingSms}
-                  className="w-full py-2.5 bg-green-700 text-white text-sm font-medium rounded-none hover:bg-green-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {sendingSms ? 'Sending...' : 'Send SMS Invitation'}
-                </button>
-              ) : (
-                <div className="text-center py-2 text-sm text-green-700 font-medium">
-                  SMS sent successfully
+            {/* Magic link display — always visible once full app exists */}
+            {fullAppResult && (
+              <>
+                <div className="bg-[var(--bg-section)] border border-[var(--divider)] p-3">
+                  <p className="text-xs text-[var(--muted)] mb-1">Magic Link</p>
+                  <p className="text-xs font-mono text-[var(--ink)] break-all">{fullAppResult.magic_link}</p>
+                  <button
+                    type="button"
+                    onClick={() => { copyToClipboard(fullAppResult.magic_link); }}
+                    className="mt-2 text-xs text-[var(--primary)] hover:underline"
+                  >
+                    Copy Link
+                  </button>
                 </div>
-              )}
 
-              <Link
-                href={`/admin/pbv/full-applications/${fullAppResult.id}`}
-                className="block w-full py-2.5 border border-[var(--border)] text-center text-[var(--ink)] text-sm font-medium rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200"
-              >
-                View Full Application →
-              </Link>
-            </div>
-          )}
+                <Link
+                  href={`/admin/pbv/full-applications/${fullAppResult.id}`}
+                  className="block w-full py-2.5 border border-[var(--border)] text-center text-[var(--ink)] text-sm font-medium rounded-none hover:bg-[var(--bg-section)] transition-colors duration-200"
+                >
+                  View Full Application →
+                </Link>
+              </>
+            )}
+          </div>
         </section>
       )}
 
