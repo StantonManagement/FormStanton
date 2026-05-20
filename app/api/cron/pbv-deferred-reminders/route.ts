@@ -109,6 +109,14 @@ async function exceededWeeklyLimit(applicationId: string): Promise<boolean> {
 }
 
 export async function GET(request: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const authHeader = request.headers.get('authorization');
+    if (authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
   const now = new Date();
   const nowIso = now.toISOString();
   
@@ -123,14 +131,15 @@ export async function GET(request: NextRequest) {
         head_of_household_name,
         preferred_language,
         phone,
+        tenant_access_token,
         next_reminder_scheduled_at,
         reminders_sent_count,
         intake_submitted_at,
-        application_status,
+        stanton_review_status,
         tenant_timezone
       `)
-      .eq('intake_submitted', true)
-      .neq('application_status', 'submitted')
+      .not('intake_submitted_at', 'is', null)
+      .neq('stanton_review_status', 'submitted')
       .lte('next_reminder_scheduled_at', nowIso)
       .not('next_reminder_scheduled_at', 'is', null);
 
@@ -159,7 +168,7 @@ export async function GET(request: NextRequest) {
 
       try {
         // 2. Guardrail: Check if application was submitted (double-check)
-        if (app.application_status === 'submitted') {
+        if (app.stanton_review_status === 'submitted') {
           console.log(`[pbv-deferred-reminders] Skipping ${app.id} - already submitted`);
           skipped++;
           continue;
@@ -235,7 +244,7 @@ export async function GET(request: NextRequest) {
         }
 
         // 7. Send reminder
-        const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/t/${app.id}`;
+        const magicLink = `${process.env.NEXT_PUBLIC_APP_URL}/t/${app.tenant_access_token}`;
         const tenantName = app.head_of_household_name || 'there';
         const language = (app.preferred_language || 'en') as 'en' | 'es' | 'pt';
 
