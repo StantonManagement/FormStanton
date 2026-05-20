@@ -112,7 +112,7 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   }
 }
 
-async function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+async function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
@@ -123,7 +123,7 @@ async function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
         resolve(blob);
       },
       'image/jpeg',
-      0.92
+      quality
     );
   });
 }
@@ -280,7 +280,9 @@ export default function DocumentScanner({
       ctx.drawImage(image, 0, 0);
     }
 
-    const processedBlob = await canvasToJpegBlob(finalCanvas);
+    // Use lower quality for multi-page scans to keep PDF sizes manageable on cellular
+    const jpegQuality = multiPage && pages.length > 0 ? 0.85 : 0.92;
+    const processedBlob = await canvasToJpegBlob(finalCanvas, jpegQuality);
     const processedImage = await loadImageFromBlob(processedBlob);
     const quality = evaluateImageQuality(processedImage, processedImage.naturalWidth, processedImage.naturalHeight);
 
@@ -354,9 +356,33 @@ export default function DocumentScanner({
 
   const buildPdf = async (inputPages: CapturedPage[]): Promise<Blob> => {
     const pdfDoc = await PDFDocument.create();
+    const MAX_DIMENSION = 2400; // Cap long edge at 2400px (~200dpi for letter size), keeps file size manageable
 
     for (const page of inputPages) {
-      const bytes = await page.blob.arrayBuffer();
+      // Load image to check dimensions, downscale if necessary
+      const img = await loadImageFromBlob(page.blob);
+      const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+
+      let bytes: ArrayBuffer;
+      if (longEdge > MAX_DIMENSION) {
+        // Downscale to MAX_DIMENSION on long edge, re-encode at lower quality
+        const scale = MAX_DIMENSION / longEdge;
+        const newWidth = Math.round(img.naturalWidth * scale);
+        const newHeight = Math.round(img.naturalHeight * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Unable to create canvas context');
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        const downscaledBlob = await canvasToJpegBlob(canvas, 0.85);
+        bytes = await downscaledBlob.arrayBuffer();
+      } else {
+        bytes = await page.blob.arrayBuffer();
+      }
+
       const embedded = await pdfDoc.embedJpg(bytes);
       const scaled = embedded.scale(1);
       const pdfPage = pdfDoc.addPage([scaled.width, scaled.height]);

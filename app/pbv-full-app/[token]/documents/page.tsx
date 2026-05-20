@@ -21,6 +21,7 @@ import {
 } from '@/lib/pbv/cards/classifyReEntry';
 import type { PreferredLanguage } from '@/types/compliance';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
+import { tenantFetch } from '@/lib/tenantFetch';
 
 type PageView =
   | { kind: 'loading' }
@@ -86,11 +87,23 @@ export default function DocumentsPage({ params }: Props) {
     async (docId: string, file: File, _metadata?: ScannerMetadata) => {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch(`/api/t/${token}/pbv-full-app/documents/${docId}/upload`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+
+      let response: Response;
+      try {
+        response = await tenantFetch(
+          `/api/t/${token}/pbv-full-app/documents/${docId}/upload`,
+          { method: 'POST', body: formData }
+        );
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new Error('Upload timed out. Check your connection and try again.');
+        }
+        if (err instanceof TypeError) {
+          throw new Error('Connection issue uploading. Please try again.');
+        }
+        throw err;
+      }
+
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
         throw new Error(result.message || 'Upload failed');

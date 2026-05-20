@@ -6,6 +6,7 @@ import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120; // seconds; Vercel Pro allows up to 300, 120 gives generous headroom over client TENANT_FETCH_TIMEOUT_UPLOAD (55s)
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
@@ -78,6 +79,9 @@ export async function POST(
         if (file.size > MAX_FILE_SIZE) {
           return { body: { success: false, message: 'File too large. Maximum allowed size is 25 MB.' }, status: 413 };
         }
+
+        const startedAt = Date.now();
+        console.log(`[pbv-upload] start doc=${doc_row_id} size=${file.size} mime=${file.type} revision=${doc.revision}`);
 
         let mimeType = file.type;
         const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
@@ -197,6 +201,7 @@ export async function POST(
             throw new Error(`Storage upload failed: ${uploadError.message}`);
           }
         } catch (storageErr: any) {
+          console.error(`[pbv-upload] failed doc=${doc_row_id} ms=${Date.now() - startedAt} reason=${storageErr.message}`);
           await writePbvApplicationEvent({
             applicationId: app.id,
             eventType: ApplicationEventType.PACKET_INTAKE_ABANDONED,
@@ -224,6 +229,8 @@ export async function POST(
           documentId: doc_row_id,
           payload: { doc_type: doc.doc_type, label: doc.label, file_name: fileName },
         });
+
+        console.log(`[pbv-upload] done doc=${doc_row_id} size=${fileBuffer.length} ms=${Date.now() - startedAt} revision=${newRevision}`);
 
         return {
           body: { success: true, data: { revision: newRevision, file_name: fileName, status: 'submitted' } },
