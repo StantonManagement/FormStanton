@@ -170,7 +170,8 @@ export default function DocumentCardStackLanding({
             {t.ctaStart}
           </button>
 
-          <button
+          {/* Hidden: See full list button (F6 sidesheet not yet implemented) */}
+          {/* <button
             type="button"
             onClick={onSeeFullList}
             className="
@@ -186,7 +187,7 @@ export default function DocumentCardStackLanding({
             style={{ touchAction: 'manipulation' }}
           >
             {t.ctaSeeList}
-          </button>
+          </button> */}
         </div>
       </div>
     </div>
