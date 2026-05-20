@@ -16,7 +16,8 @@
     "generate-admin-password-hash": "ts-node scripts/generate-admin-password-hash.ts",
     "prebuild": "npm run validate-env",
     "predev": "npm run validate-env",
-    "check:buildings": "npx tsx scripts/check-buildings-ts.ts"
+    "check:buildings": "npx tsx scripts/check-buildings-ts.ts",
+    "postinstall": "node scripts/sync-scanic.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -32,7 +33,6 @@
     "framer-motion": "^12.31.0",
     "heic2any": "^0.0.4",
     "iron-session": "^8.0.4",
-    "jscanify": "^1.4.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.577.0",
     "next": "^16.1.6",
@@ -43,6 +43,7 @@
     "react-dom": "^19.2.4",
     "react-signature-canvas": "^1.0.6",
     "resend": "^3.2.0",
+    "scanic": "^1.0.8",
     "sharp": "^0.34.5",
     "string-similarity": "^4.0.4",
     "twilio": "^5.13.0",
