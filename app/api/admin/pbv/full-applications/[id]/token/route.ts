@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAuthenticated } from '@/lib/auth';
-import { generateToken } from '@/lib/generateToken';
+import { generateShortToken } from '@/lib/generateToken';
+import { buildingUnitSlug } from '@/lib/buildingSlug';
+import { getPortalBaseUrl } from '@/lib/urls';
 
 export async function PATCH(
   request: NextRequest,
@@ -16,7 +18,7 @@ export async function PATCH(
 
     const { data: existing } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, intake_submitted_at')
+      .select('id, intake_submitted_at, building_address, unit_number')
       .eq('id', id)
       .single();
 
@@ -55,7 +57,11 @@ export async function PATCH(
       }
     }
 
-    const newToken = generateToken();
+    const slug = buildingUnitSlug(
+      (existing.building_address ?? '').trim(),
+      (existing.unit_number ?? '').trim()
+    );
+    const newToken = `${slug}-${generateShortToken()}`;
     const { error } = await supabaseAdmin
       .from('pbv_full_applications')
       .update({ tenant_access_token: newToken })
@@ -63,7 +69,7 @@ export async function PATCH(
 
     if (error) throw error;
 
-    const magicLink = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${newToken}`;
+    const magicLink = `${getPortalBaseUrl()}/pbv-full-app/${newToken}`;
     return NextResponse.json({ success: true, data: { tenant_access_token: newToken, magic_link: magicLink } });
   } catch (error: any) {
     console.error('PATCH /api/admin/pbv/full-applications/[id]/token error:', error);

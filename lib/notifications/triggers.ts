@@ -13,6 +13,7 @@ import { NotificationType } from './types';
 import { sendTenantNotification } from './send';
 import { scheduleReminders } from './scheduler';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getPortalBaseUrl } from '@/lib/urls';
 
 // Automatic SMS notifications DISABLED - all notifications are now staff-controlled
 // Staff must explicitly click "Send SMS" buttons in the UI
@@ -65,8 +66,6 @@ async function buildInterpolations(
   applicationId: string,
   notificationType: NotificationType
 ): Promise<Record<string, string>> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-
   if (
     notificationType === NotificationType.MAGIC_LINK_INITIAL ||
     notificationType === NotificationType.MAGIC_LINK_RESENT ||
@@ -80,7 +79,9 @@ async function buildInterpolations(
       .eq('id', applicationId)
       .maybeSingle();
     const token = app?.tenant_access_token ?? '';
-    return { portal_url: `${appUrl}/t/${token}` };
+    // getPortalBaseUrl() throws if NEXT_PUBLIC_APP_URL is missing/malformed.
+    // Surfacing that here is preferable to silently sending a non-tappable SMS.
+    return { portal_url: `${getPortalBaseUrl()}/t/${token}` };
   }
 
   return {};

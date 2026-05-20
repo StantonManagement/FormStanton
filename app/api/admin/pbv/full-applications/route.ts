@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { isAuthenticated, getSessionUser } from '@/lib/auth';
-import { generateToken } from '@/lib/generateToken';
+import { generateToken, generateShortToken } from '@/lib/generateToken';
+import { buildingUnitSlug } from '@/lib/buildingSlug';
 
 function getBaseUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   const proto = request.headers.get('x-forwarded-proto') ?? 'http';
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? 'localhost:3000';
   return `${proto}://${host}`;
-}
-
-function buildingUnitSlug(building: string, unit: string): string {
-  const clean = (s: string) =>
-    s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return `${clean(building)}-unit-${clean(unit)}`;
 }
 
 // Helper to enrich rows with assignee information
@@ -281,7 +276,7 @@ export async function POST(request: NextRequest) {
 
     // Create pbv_full_applications row
     const slug = buildingUnitSlug(building_address.trim(), unit_number.trim());
-    const appToken = `${slug}-${generateToken()}`;
+    const appToken = `${slug}-${generateShortToken()}`;
     const { data: app, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
       .insert({

@@ -10,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getSessionUser } from '@/lib/auth';
 import { sendTenantNotification } from '@/lib/notifications/send';
 import { initNotificationTriggers } from '@/lib/notifications/init';
+import { getPortalBaseUrl } from '@/lib/urls';
 
 initNotificationTriggers();
 
@@ -36,8 +37,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: 'Application not found' }, { status: 404 });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  const portalUrl = `${appUrl}/t/${app.tenant_access_token}`;
+  let portalUrl: string;
+  try {
+    portalUrl = `${getPortalBaseUrl()}/t/${app.tenant_access_token}`;
+  } catch (cfgErr: any) {
+    return NextResponse.json(
+      { success: false, message: cfgErr.message ?? 'Portal URL is not configured' },
+      { status: 500 }
+    );
+  }
 
   const result = await sendTenantNotification({
     applicationId: application_id,

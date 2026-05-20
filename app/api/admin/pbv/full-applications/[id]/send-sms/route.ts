@@ -11,6 +11,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendTenantNotification } from '@/lib/notifications/send';
 import { NotificationType } from '@/lib/notifications/types';
 import { logAudit, getClientIp } from '@/lib/audit';
+import { getPortalBaseUrl } from '@/lib/urls';
 
 export async function POST(
   request: NextRequest,
@@ -79,9 +80,19 @@ export async function POST(
       );
     }
 
-    // 5. Send notification via unified send primitive
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-    const portalUrl = `${appUrl}/t/${app.tenant_access_token}`;
+    // 5. Send notification via unified send primitive.
+    //    getPortalBaseUrl() throws if NEXT_PUBLIC_APP_URL is missing or has no
+    //    scheme — without it the SMS body would contain a bare path that
+    //    phones won't auto-link.
+    let portalUrl: string;
+    try {
+      portalUrl = `${getPortalBaseUrl()}/t/${app.tenant_access_token}`;
+    } catch (cfgErr: any) {
+      return NextResponse.json(
+        { success: false, message: cfgErr.message ?? 'Portal URL is not configured' },
+        { status: 500 }
+      );
+    }
 
     const result = await sendTenantNotification({
       applicationId,
