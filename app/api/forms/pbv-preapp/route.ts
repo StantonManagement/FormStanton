@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { buildingUnits, buildings, buildingToZipcode } from '@/lib/buildings';
 import { checkRateLimit } from '@/lib/rateLimiter';
+import { parsePhoneToE164 } from '@/lib/phoneParser';
 import type { HouseholdMember } from '@/types/compliance';
 
 const RATE_LIMIT_MAX = 10;
@@ -31,6 +32,8 @@ export async function POST(request: NextRequest) {
       unit_number,
       hoh_name,
       hoh_dob,
+      hoh_phone,
+      hoh_email,
       household_members,
       citizenship_answer,
       signature_data,
@@ -49,6 +52,19 @@ export async function POST(request: NextRequest) {
     }
     if (!hoh_dob) {
       return NextResponse.json({ success: false, message: 'Date of birth is required' }, { status: 400 });
+    }
+    if (!hoh_phone?.trim()) {
+      return NextResponse.json({ success: false, message: 'Phone number is required' }, { status: 400 });
+    }
+    const phoneE164 = parsePhoneToE164(hoh_phone);
+    if (!phoneE164) {
+      return NextResponse.json({ success: false, message: 'Invalid phone number format' }, { status: 400 });
+    }
+    if (hoh_email && typeof hoh_email === 'string' && hoh_email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(hoh_email.trim())) {
+        return NextResponse.json({ success: false, message: 'Invalid email format' }, { status: 400 });
+      }
     }
     if (!household_members || !Array.isArray(household_members) || household_members.length === 0) {
       return NextResponse.json({ success: false, message: 'At least one household member is required' }, { status: 400 });
@@ -131,6 +147,8 @@ export async function POST(request: NextRequest) {
       .insert({
         hoh_name: hoh_name.trim(),
         hoh_dob,
+        phone: phoneE164,
+        email: hoh_email?.trim() || null,
         building_address: building_address.trim(),
         unit_number: unit_number.trim(),
         household_members,

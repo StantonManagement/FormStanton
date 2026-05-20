@@ -43,6 +43,8 @@ interface PbvOpenFormData {
   unit: string;
   hohName: string;
   hohDob: string;
+  hohPhone: string;
+  hohEmail: string;
   members: HouseholdMember[];
   citizenshipAnswer: CitizenshipAnswer;
   consentChecked: boolean;
@@ -58,11 +60,16 @@ const INITIAL: PbvOpenFormData = {
   unit: '',
   hohName: '',
   hohDob: '',
+  hohPhone: '',
+  hohEmail: '',
   members: [blankMember('self')],
   citizenshipAnswer: null,
   consentChecked: false,
   certChecked: false,
 };
+
+const isValidEmail = (email: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 // ── Inner component (needs useSearchParams) ──────────────────────────────────
 
@@ -145,6 +152,10 @@ function PbvPreappContent() {
         minAge.setFullYear(minAge.getFullYear() - 18);
         if (new Date(form.hohDob) > minAge) { setFieldError('hohDob', t.err_hoh_age); ok = false; }
       }
+      if (!form.hohPhone.trim()) { setFieldError('hohPhone', t.err_hoh_phone); ok = false; }
+      if (form.hohEmail.trim() && !isValidEmail(form.hohEmail)) {
+        setFieldError('hohEmail', t.err_hoh_email); ok = false;
+      }
       form.members.slice(1).forEach((m, i) => {
         const n2 = i + 2;
         if (!m.name.trim()) { setFieldError(`m${i + 1}name`, t.err_member_name(n2)); ok = false; }
@@ -177,6 +188,8 @@ function PbvPreappContent() {
           unit_number: form.unit.trim(),
           hoh_name: form.hohName.trim(),
           hoh_dob: form.hohDob,
+          hoh_phone: form.hohPhone.trim(),
+          hoh_email: form.hohEmail.trim() || null,
           household_members: form.members,
           citizenship_answer: form.citizenshipAnswer,
           signature_data: signature,
@@ -299,6 +312,28 @@ function PbvPreappContent() {
                       value={form.hohDob}
                       max={today}
                       onChange={e => updateHoH({ hohDob: e.target.value })}
+                      className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-1"
+                    />
+                  </FormField>
+
+                  <FormField label={t.hoh_phone_label} required error={errors['hohPhone']}>
+                    <input
+                      type="tel"
+                      value={form.hohPhone}
+                      onChange={e => setField('hohPhone', e.target.value)}
+                      placeholder="(555) 123-4567"
+                      autoComplete="tel"
+                      className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-1"
+                    />
+                  </FormField>
+
+                  <FormField label={t.hoh_email_label} error={errors['hohEmail']}>
+                    <input
+                      type="email"
+                      value={form.hohEmail}
+                      onChange={e => setField('hohEmail', e.target.value)}
+                      placeholder="email@example.com"
+                      autoComplete="email"
                       className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-1"
                     />
                   </FormField>
