@@ -215,6 +215,7 @@ export async function POST(request: NextRequest) {
       bedroom_count,
       head_of_household_name,
       language = 'en',
+      phone,
     } = body as {
       preapp_id?: string;
       building_address: string;
@@ -222,6 +223,7 @@ export async function POST(request: NextRequest) {
       bedroom_count?: number;
       head_of_household_name: string;
       language?: string;
+      phone?: string | null;
     };
 
     if (!building_address?.trim() || !unit_number?.trim() || !head_of_household_name?.trim()) {
@@ -289,6 +291,7 @@ export async function POST(request: NextRequest) {
         head_of_household_name: head_of_household_name.trim(),
         household_size: 1,
         tenant_access_token: appToken,
+        phone: phone ?? null,
         created_by: 'admin',
       })
       .select('id, tenant_access_token')

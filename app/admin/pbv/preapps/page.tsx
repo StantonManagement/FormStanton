@@ -602,8 +602,21 @@ function DetailContent({
   const [chainStep, setChainStep] = useState<ChainStep>('idle');
   const [chainError, setChainError] = useState<{ step: ChainStep; message: string } | null>(null);
 
+  // Phone editing state
+  const [localPhone, setLocalPhone] = useState<string | null>(detail.phone);
+  const [phoneEditMode, setPhoneEditMode] = useState(false);
+  const [phoneEditValue, setPhoneEditValue] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneEditError, setPhoneEditError] = useState('');
+  // Inline phone capture before confirming chain (when hasPhone is false)
+  const [inlinePhoneMode, setInlinePhoneMode] = useState(false);
+  const [inlinePhoneValue, setInlinePhoneValue] = useState('');
+  const [inlinePhoneSaving, setInlinePhoneSaving] = useState(false);
+  const [inlinePhoneError, setInlinePhoneError] = useState('');
+
   const qualified = detail.qualification_result === 'likely_qualifies';
   const approved = detail.stanton_review_status === 'approved';
+  const hasPhone = !!localPhone;
 
   const handleApproveAndSendInvitation = async (fromStep?: ChainStep) => {
     setChainError(null);
@@ -643,6 +656,7 @@ function DetailContent({
           bedroom_count: detail.bedroom_count ?? undefined,
           language: detail.language,
           preapp_id: detail.id,
+          phone: localPhone ?? undefined,
         }),
       });
       const j = await res.json() as { success: boolean; message?: string; data?: { id: string; magic_link: string } };
@@ -680,6 +694,45 @@ function DetailContent({
     setEmailFallback(isEmailFallback);
     setSmsSent(true);
     setChainStep('done');
+  };
+
+  const savePhonePatch = async (rawPhone: string): Promise<{ ok: boolean; message?: string; e164?: string }> => {
+    const res = await fetch(`/api/admin/pbv/preapps/${detail.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: rawPhone }),
+    });
+    const j = await res.json() as { success: boolean; message?: string };
+    if (!j.success) return { ok: false, message: j.message };
+    return { ok: true, e164: rawPhone };
+  };
+
+  const handleSavePhone = async () => {
+    setPhoneSaving(true);
+    setPhoneEditError('');
+    const result = await savePhonePatch(phoneEditValue.trim());
+    if (!result.ok) {
+      setPhoneEditError(result.message || 'Failed to save phone');
+    } else {
+      setLocalPhone(phoneEditValue.trim());
+      setPhoneEditMode(false);
+    }
+    setPhoneSaving(false);
+  };
+
+  const handleSaveInlinePhone = async () => {
+    setInlinePhoneSaving(true);
+    setInlinePhoneError('');
+    const result = await savePhonePatch(inlinePhoneValue.trim());
+    if (!result.ok) {
+      setInlinePhoneError(result.message || 'Failed to save phone');
+      setInlinePhoneSaving(false);
+      return;
+    }
+    setLocalPhone(inlinePhoneValue.trim());
+    setInlinePhoneSaving(false);
+    setInlinePhoneMode(false);
+    setChainStep('confirming');
   };
 
   const handleGeneratePdf = async () => {
@@ -739,6 +792,55 @@ function DetailContent({
           <Row label="Unit" value={detail.unit_number} />
           <Row label="Submitted" value={formatDate(detail.created_at)} />
           <Row label="Language" value={detail.language.toUpperCase()} />
+          {/* Editable phone field */}
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[var(--muted)] shrink-0">Phone</span>
+            {!phoneEditMode ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--ink)] text-right">
+                  {localPhone
+                    ? (parsePhoneToE164(localPhone)?.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3') ?? localPhone)
+                    : <span className="text-[var(--muted)] italic">Not set</span>
+                  }
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setPhoneEditValue(localPhone ?? ''); setPhoneEditMode(true); setPhoneEditError(''); }}
+                  className="text-xs text-[var(--primary)] hover:underline shrink-0"
+                >
+                  Edit
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1 items-end w-full">
+                <input
+                  type="tel"
+                  value={phoneEditValue}
+                  onChange={e => setPhoneEditValue(e.target.value)}
+                  placeholder="(860) 555-0199"
+                  className="w-full px-2 py-1 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                />
+                {phoneEditError && <p className="text-xs text-red-600">{phoneEditError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneEditMode(false)}
+                    className="text-xs text-[var(--muted)] hover:text-[var(--ink)]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePhone}
+                    disabled={phoneSaving || !phoneEditValue.trim()}
+                    className="text-xs text-[var(--primary)] hover:underline disabled:opacity-50"
+                  >
+                    {phoneSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -886,8 +988,40 @@ function DetailContent({
           <h3 className="text-xs font-medium text-[var(--muted)] uppercase tracking-wider mb-3">Full Application</h3>
 
           <div className="space-y-4">
+            {/* ── Inline phone capture (no phone yet, user clicked the combined button) ── */}
+            {inlinePhoneMode && (
+              <div className="border border-[var(--border)] bg-[var(--bg-section)] p-4 space-y-3">
+                <p className="text-sm font-medium text-[var(--ink)]">Phone number required to send invitation</p>
+                <input
+                  type="tel"
+                  value={inlinePhoneValue}
+                  onChange={e => setInlinePhoneValue(e.target.value)}
+                  placeholder="(860) 555-0199"
+                  className="w-full px-2 py-1.5 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)]"
+                />
+                {inlinePhoneError && <p className="text-xs text-red-600">{inlinePhoneError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setInlinePhoneMode(false); setInlinePhoneValue(''); setInlinePhoneError(''); }}
+                    className="flex-1 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveInlinePhone}
+                    disabled={inlinePhoneSaving || !inlinePhoneValue.trim()}
+                    className="flex-1 py-2 text-sm bg-[var(--primary)] text-white hover:bg-[var(--primary-light)] rounded-none transition-colors duration-200 disabled:opacity-50"
+                  >
+                    {inlinePhoneSaving ? 'Saving...' : 'Save & Continue'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Combined action button / confirm / progress / done / error ── */}
-            {chainStep === 'idle' && !smsSent && (() => {
+            {chainStep === 'idle' && !smsSent && !inlinePhoneMode && (() => {
               let label: string;
               if (!approved) label = 'Approve & Send Invitation';
               else if (!fullAppResult) label = 'Create & Send Invitation';
@@ -895,7 +1029,15 @@ function DetailContent({
               return (
                 <button
                   type="button"
-                  onClick={() => setChainStep('confirming')}
+                  onClick={() => {
+                    if (!hasPhone) {
+                      setInlinePhoneValue('');
+                      setInlinePhoneError('');
+                      setInlinePhoneMode(true);
+                    } else {
+                      setChainStep('confirming');
+                    }
+                  }}
                   className="w-full py-2.5 bg-[var(--primary)] text-white text-sm font-medium rounded-none hover:bg-[var(--primary-light)] transition-colors duration-200"
                 >
                   {label}
@@ -904,19 +1046,18 @@ function DetailContent({
             })()}
 
             {chainStep === 'confirming' && (() => {
-              const rawPhone = (detail as PbvPreapplication & { phone?: string | null }).phone ?? null;
-              const e164 = parsePhoneToE164(rawPhone);
-              const displayPhone = rawPhone
+              const e164 = parsePhoneToE164(localPhone);
+              const displayPhone = localPhone
                 ? (e164
                   ? e164.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3')
-                  : `${rawPhone} (unformatted)`)
+                  : `${localPhone} (unformatted)`)
                 : 'No phone on file';
               const langMap: Record<string, string> = { en: 'English', es: 'Spanish', pt: 'Portuguese' };
               const displayLang = langMap[detail.language] ?? detail.language;
               const willApprove = detail.stanton_review_status !== 'approved';
               const actionDesc = [
                 willApprove ? 'approve the preapp' : null,
-                'create the full application',
+                !fullAppResult ? 'create the full application' : null,
                 'text them the link',
               ].filter(Boolean).join(', ');
               return (

@@ -512,6 +512,7 @@ export interface PbvPreapplication {
   language: string
   unit_not_in_canonical_list: boolean
   submission_source: 'magic_link' | 'open_enrollment'
+  phone: string | null
 }
 
 // ── PBV Full Application ──────────────────────────────────────────────────────
