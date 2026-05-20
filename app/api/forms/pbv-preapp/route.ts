@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { buildingUnits, buildings, buildingToZipcode } from '@/lib/buildings';
+import { buildingUnits, buildings } from '@/lib/buildings';
+import { buildingToZipcode } from '@/lib/buildingZipcodes';
 import { checkRateLimit } from '@/lib/rateLimiter';
 import { parsePhoneToE164 } from '@/lib/phoneParser';
 import type { HouseholdMember } from '@/types/compliance';

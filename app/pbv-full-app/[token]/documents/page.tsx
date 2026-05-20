@@ -119,7 +119,7 @@ export default function DocumentsPage({ params }: Props) {
   }, [token]);
 
   const handleProceedToSign = useCallback(() => {
-    window.location.href = `/pbv-full-app/${token}/sign`;
+    window.location.href = `/pbv-full-app/${token}/sign/summary`;
   }, [token]);
 
   const handleGoToReview = useCallback(() => {

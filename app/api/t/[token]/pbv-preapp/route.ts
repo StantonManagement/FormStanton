@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { HouseholdMember } from '@/types/compliance';
-import { buildingToZipcode } from '@/lib/buildings';
+import { buildingToZipcode } from '@/lib/buildingZipcodes';
 
 export async function GET(
   _request: NextRequest,

@@ -7,7 +7,7 @@
  * Prevents raw JSON in iframe by ensuring PDF exists before mounting.
  */
 
-import { use, useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDashboardState } from '@/lib/pbv/hooks/useDashboardState';
 import SummaryDocReviewSign from '@/components/pbv/sign/SummaryDocReviewSign';
@@ -39,11 +39,18 @@ export default function SummarySignPage({ params }: Props) {
     | { status: 'idle' }
     | { status: 'generating' }
     | { status: 'error'; message: string }
+    | { status: 'empty' } // Terminal state: generation attempted but zero forms
   >({ status: 'idle' });
 
-  // Auto-trigger generate-forms if forms not ready
+  // One-shot guard: prevent multiple generation attempts per mount
+  const generationAttemptedRef = useRef(false);
+
+  // Auto-trigger generate-forms if forms not ready (one-shot)
   const maybeGenerateForms = useCallback(async () => {
     if (state.status !== 'ready') return;
+
+    // One-shot guard: already attempted this mount
+    if (generationAttemptedRef.current) return;
 
     const { data } = state;
 
@@ -57,6 +64,7 @@ export default function SummarySignPage({ params }: Props) {
     }
 
     // Forms don't exist but intake is complete — auto-trigger generation
+    generationAttemptedRef.current = true;
     setGenState({ status: 'generating' });
 
     try {
@@ -86,9 +94,12 @@ export default function SummarySignPage({ params }: Props) {
     }
   }, [state, token, router, reload]);
 
+  // Drive effect off loading->ready transition to reduce churn
   useEffect(() => {
-    maybeGenerateForms();
-  }, [maybeGenerateForms]);
+    if (state.status === 'ready') {
+      maybeGenerateForms();
+    }
+  }, [state.status, maybeGenerateForms]);
 
   // Loading states
   if (state.status === 'loading' || genState.status === 'generating') {
@@ -121,14 +132,29 @@ export default function SummarySignPage({ params }: Props) {
   if (genState.status === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--paper)] px-4">
-        <div className="text-center">
-          <p className="text-sm text-[var(--error)] mb-4">{genState.message}</p>
-          <button
-            onClick={() => maybeGenerateForms()}
-            className="text-sm underline text-[var(--accent)]"
-          >
-            Try again
-          </button>
+        <div className="text-center max-w-md">
+          <p className="text-sm text-[var(--error)] mb-4">
+            We couldn't prepare your forms — please try again, or contact the office.
+          </p>
+          <p className="text-xs text-[var(--muted)] mb-4">{genState.message}</p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => {
+                generationAttemptedRef.current = false;
+                setGenState({ status: 'idle' });
+                maybeGenerateForms();
+              }}
+              className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Try again
+            </button>
+            <a
+              href={`/pbv-full-app/${token}`}
+              className="px-4 py-2 border border-[var(--border)] text-sm text-[var(--body)] hover:bg-[var(--paper-hover)] transition-colors"
+            >
+              Back to dashboard
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -136,20 +162,32 @@ export default function SummarySignPage({ params }: Props) {
 
   const { data } = state;
 
-  // Defensive: if still no forms after generation attempt, show error
+  // Terminal state: generation attempted but still no forms
   if (data.forms.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--paper)] px-4">
-        <div className="text-center">
-          <p className="text-sm text-[var(--error)] mb-4">
-            Your application summary is not ready yet. Please return to the dashboard.
+        <div className="text-center max-w-md">
+          <p className="text-sm text-[var(--body)] mb-4">
+            We couldn't prepare your forms — please try again, or contact the office.
           </p>
-          <a
-            href={`/pbv-full-app/${token}`}
-            className="text-sm underline text-[var(--accent)]"
-          >
-            Back to dashboard
-          </a>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => {
+                generationAttemptedRef.current = false;
+                setGenState({ status: 'idle' });
+                maybeGenerateForms();
+              }}
+              className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Try again
+            </button>
+            <a
+              href={`/pbv-full-app/${token}`}
+              className="px-4 py-2 border border-[var(--border)] text-sm text-[var(--body)] hover:bg-[var(--paper-hover)] transition-colors"
+            >
+              Back to dashboard
+            </a>
+          </div>
         </div>
       </div>
     );
