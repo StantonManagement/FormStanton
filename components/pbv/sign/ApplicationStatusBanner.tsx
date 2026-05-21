@@ -10,6 +10,7 @@
 import type { PreferredLanguage } from '@/types/compliance';
 
 export type ApplicationReviewStatus =
+  | 'in_progress'    // PRD-58: honest pre-submit acknowledgment
   | 'submitted'
   | 'under_review'
   | 'action_required'
@@ -32,6 +33,14 @@ interface Props {
   language: PreferredLanguage;
   officeContact: OfficeContact;
   onActionRequiredClick?: () => void;
+  // PRD-58: Props for in_progress status
+  summarySigned?: boolean;
+  formsSigned?: number;
+  formsTotal?: number;
+  uploadComplete?: number;
+  uploadTotal?: number;
+  canSubmit?: boolean;
+  nextStep?: 'summary' | 'forms' | 'documents' | 'complete';
 }
 
 interface StatusCopy {
@@ -41,6 +50,21 @@ interface StatusCopy {
 }
 
 const copy: Record<ApplicationReviewStatus, Record<PreferredLanguage, StatusCopy>> = {
+  in_progress: {
+    en: {
+      title: "We're processing your application",
+      message: "We've got your answers. Complete the remaining steps to submit.",
+    },
+    es: {
+      title: 'Estamos procesando su solicitud',
+      message: 'Tenemos sus respuestas. Complete los pasos restantes para enviar.',
+    },
+    pt: {
+      // PT: tentative — review
+      title: 'Estamos processando sua solicitação',
+      message: 'Temos suas respostas. Complete os passos restantes para enviar.',
+    },
+  },
   submitted: {
     en: {
       title: 'Application Submitted',
@@ -144,6 +168,7 @@ const contactCopy: Record<PreferredLanguage, { contactLabel: string; phoneLabel:
 
 // Color schemes per status (using CSS variables)
 const statusStyles: Record<ApplicationReviewStatus, { bg: string; border: string; icon: string }> = {
+  in_progress:   { bg: 'bg-blue-50',    border: 'border-blue-200',    icon: 'text-blue-600' },
   submitted:     { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600' },
   under_review:  { bg: 'bg-blue-50',    border: 'border-blue-200',    icon: 'text-blue-600' },
   action_required: { bg: 'bg-amber-50',  border: 'border-amber-200',   icon: 'text-amber-600' },
@@ -154,6 +179,7 @@ const statusStyles: Record<ApplicationReviewStatus, { bg: string; border: string
 
 // Status icons (SVG paths)
 const statusIcons: Record<ApplicationReviewStatus, string> = {
+  in_progress: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', // clock (same as under_review)
   submitted: 'M5 13l4 4L19 7', // check
   under_review: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', // clock
   action_required: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z', // warning triangle
@@ -170,6 +196,13 @@ export default function ApplicationStatusBanner({
   language,
   officeContact,
   onActionRequiredClick,
+  summarySigned,
+  formsSigned,
+  formsTotal,
+  uploadComplete,
+  uploadTotal,
+  canSubmit,
+  nextStep,
 }: Props) {
   // Don't render if no status
   if (!status) return null;
@@ -177,6 +210,18 @@ export default function ApplicationStatusBanner({
   const c = copy[status][language] ?? copy[status].en;
   const styles = statusStyles[status];
   const contact = contactCopy[language];
+
+  // PRD-58: Build next-step message for in_progress status
+  const getNextStepMessage = (): string => {
+    if (!nextStep || canSubmit) return '';
+    const steps: Record<string, string> = {
+      summary: language === 'es' ? 'Revisa y firma tu resumen' : language === 'pt' ? 'Revise e assine seu resumo' : 'Review and sign your summary',
+      forms: language === 'es' ? 'Firma los formularios requeridos' : language === 'pt' ? 'Assine os formulários obrigatórios' : 'Sign required forms',
+      documents: language === 'es' ? 'Sube los documentos requeridos' : language === 'pt' ? 'Envie os documentos obrigatórios' : 'Upload required documents',
+    };
+    const prefix = language === 'es' ? 'Siguiente paso: ' : language === 'pt' ? 'Próximo passo: ' : 'Next step: ';
+    return prefix + (steps[nextStep] ?? '');
+  };
 
   return (
     <div
@@ -209,6 +254,13 @@ export default function ApplicationStatusBanner({
           <p className="text-sm text-[var(--muted)] mt-1">
             {c.message}
           </p>
+
+          {/* PRD-58: Next step hint for in_progress status */}
+          {status === 'in_progress' && (
+            <p className="text-sm text-[var(--primary)] mt-2 font-medium">
+              {getNextStepMessage()}
+            </p>
+          )}
 
           {/* SLA copy for submitted status */}
           {c.sla && (

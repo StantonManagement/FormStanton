@@ -1,7 +1,7 @@
 # PRD-57 Build Report: Intake Integrity & Tenant-Safety
 
 **Date:** 2026-05-20  
-**Commit:** (to be determined after commit)  
+**Commit:** a094c61  
 **Branch:** feat/pbv-full-finalization  
 
 ---

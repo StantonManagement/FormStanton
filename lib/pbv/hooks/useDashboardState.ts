@@ -46,6 +46,8 @@ export interface DashboardData {
   intake_status: string | null;
   // PRD-36: For office contact lookup
   building_address: string | null;
+  // PRD-58: True submission state (Phase 1)
+  submitted_at: string | null;
 }
 
 export type DashboardState =
@@ -140,6 +142,8 @@ export function useDashboardState(token: string) {
           rejected_documents_count: (d.rejected_documents_count as number) ?? 0,
           intake_status: (d.intake_status as string | null) ?? null,
           building_address: (d.building_address as string | null) ?? null,
+          // PRD-58: True submission state (Phase 1)
+          submitted_at: (d.submitted_at as string | null) ?? null,
         },
       });
     } catch (err: any) {

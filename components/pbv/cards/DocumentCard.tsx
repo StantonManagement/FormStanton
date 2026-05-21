@@ -37,6 +37,8 @@ export interface DocumentCardData {
   is_deferred?: boolean;
   /** Display order for sorting */
   display_order?: number | null;
+  /** PRD-58: DB category for document grouping */
+  category?: string | null;
 }
 
 interface DocumentCardProps {

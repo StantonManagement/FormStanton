@@ -188,12 +188,17 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
         <h1 className="font-serif text-2xl text-[var(--primary)] mb-1">{c.title}</h1>
         <p className="text-sm text-[var(--muted)] mb-6">{c.subtitle}</p>
 
-        {/* PRD-36 / F5: Banner renders whenever intake is complete.
-            If application_review_status is null (just submitted, office hasn't acted yet),
-            default to 'submitted' so the tenant gets the acknowledgment they need. */}
+        {/* PRD-58 Phase 1: Banner keyed on true submission state.
+            - Show submitted/review banner only if truly submitted (submitted_at set)
+              OR if office has set a review status.
+            - Otherwise show honest in-progress acknowledgment. */}
         {data.intake_status === 'complete' && (
           <ApplicationStatusBanner
-            status={(data.application_review_status ?? 'submitted') as ApplicationReviewStatus}
+            status={
+              (data.submitted_at || data.application_review_status)
+                ? (data.application_review_status as ApplicationReviewStatus ?? 'submitted')
+                : 'in_progress'
+            }
             statusAt={data.application_review_status_at}
             statusNote={data.application_review_status_note}
             rejectedCount={data.rejected_documents_count}
@@ -204,6 +209,13 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
                 ? () => router.push(`/pbv-full-app/${token}/documents?filter=rejected`)
                 : undefined
             }
+            summarySigned={data.summary_signed}
+            formsSigned={data.forms_signed}
+            formsTotal={data.forms_total}
+            uploadComplete={data.upload_complete}
+            uploadTotal={data.upload_total}
+            canSubmit={data.can_submit}
+            nextStep={data.can_submit ? 'complete' : data.summary_signed ? (data.forms_signed < data.forms_total ? 'forms' : 'documents') : 'summary'}
           />
         )}
 

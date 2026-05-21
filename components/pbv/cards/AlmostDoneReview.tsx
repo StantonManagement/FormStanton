@@ -11,14 +11,17 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { DocumentCardData } from './DocumentCard';
 import type { SupportedLanguage } from '@/lib/pbv/cards/docContent';
+import { getDocTitle, getDocDescription } from '@/lib/pbv/cards/docContent';
 
+// PRD-58 Phase 3: DB-driven categories matching DB enum
+// income, assets, medical_childcare, immigration, signed_forms + custom fallback
 type DocCategory =
   | 'income'
-  | 'banking'
+  | 'assets'
   | 'medical_childcare'
-  | 'citizenship_immigration'
-  | 'identity'
-  | 'other';
+  | 'immigration'
+  | 'signed_forms'
+  | 'custom';
 
 interface CategorizedDoc extends DocumentCardData {
   category: DocCategory;
@@ -46,30 +49,31 @@ interface CategoryInfo {
   label: Record<SupportedLanguage, string>;
 }
 
+// PRD-58 Phase 3: DB-driven categories with friendly labels
 const categories: CategoryInfo[] = [
   {
     key: 'income',
     label: { en: 'Income Verification', es: 'Verificación de Ingresos', pt: 'Verificação de Renda' },
   },
   {
-    key: 'banking',
-    label: { en: 'Banking & Assets', es: 'Banca y Activos', pt: 'Bancos e Ativos' },
+    key: 'assets',
+    label: { en: 'Bank & Assets', es: 'Banca y Activos', pt: 'Banco e Bens' },
   },
   {
     key: 'medical_childcare',
     label: { en: 'Medical & Childcare', es: 'Médico y Cuidado Infantil', pt: 'Médico e Cuidado Infantil' },
   },
   {
-    key: 'citizenship_immigration',
-    label: { en: 'Citizenship & Immigration', es: 'Ciudadanía e Inmigración', pt: 'Cidadania e Imigração' },
+    key: 'immigration',
+    label: { en: 'Immigration Status', es: 'Estado de Inmigración', pt: 'Status de Imigração' },
   },
   {
-    key: 'identity',
-    label: { en: 'Identity', es: 'Identidad', pt: 'Identidade' },
+    key: 'signed_forms',
+    label: { en: 'Forms to sign', es: 'Formularios para firmar', pt: 'Formulários para assinar' },
   },
   {
-    key: 'other',
-    label: { en: 'Other Documents', es: 'Otros Documentos', pt: 'Outros Documentos' },
+    key: 'custom',
+    label: { en: 'Additional Documents', es: 'Documentos Adicionales', pt: 'Documentos Adicionais' },
   },
 ];
 
@@ -110,83 +114,120 @@ const translations = {
 };
 
 /**
- * Categorize a document by its doc_type.
- * Maps doc types to logical categories for the review screen.
+ * PRD-58 Phase 3: Categorize a document using DB category column.
+ * Maps DB category enum to display categories; no substring guessing.
  */
-function categorizeDoc(docType: string): DocCategory {
+function categorizeDoc(docType: string, dbCategory: string | null | undefined): DocCategory {
+  // Use DB category directly if available and valid
+  if (dbCategory) {
+    const cat = dbCategory.toLowerCase();
+    // Map DB category to display category
+    if (cat === 'income') return 'income';
+    if (cat === 'assets') return 'assets';
+    if (cat === 'medical_childcare') return 'medical_childcare';
+    if (cat === 'immigration') return 'immigration';
+    if (cat === 'signed_forms') return 'signed_forms';
+  }
+
+  // Fallback: infer from doc_type for legacy/custom docs
+  // Log these for admin attention
+  console.warn(`[AlmostDoneReview] Doc with null/custom category: ${docType}`);
+
+  // Best-effort fallback using known doc_type patterns
   const type = docType.toLowerCase();
 
-  // Income documents
+  // Income patterns
   if (
     type.includes('paystub') ||
-    type.includes('w2') ||
-    type.includes('w-2') ||
-    type.includes('1099') ||
-    type.includes('income') ||
-    type.includes('employment') ||
+    type.includes('pension') ||
+    type.includes('ssi_award') ||
     type.includes('ss_award') ||
-    type.includes('ssi_award')
+    type.includes('child_support') ||
+    type.includes('tanf') ||
+    type.includes('unemployment') ||
+    type.includes('self_employment') ||
+    type.includes('digital_payment') ||
+    type.includes('training')
   ) {
     return 'income';
   }
 
-  // Banking documents
+  // Asset patterns
   if (
-    type.includes('bank') ||
-    type.includes('statement') ||
-    type.includes('asset') ||
-    type.includes('investment')
+    type.includes('bank_statement') ||
+    type.includes('insurance_settlement') ||
+    type.includes('cd_trust_bond') ||
+    type.includes('life_insurance')
   ) {
-    return 'banking';
+    return 'assets';
   }
 
-  // Medical/childcare
+  // Medical/childcare patterns
   if (
     type.includes('medical') ||
-    type.includes('childcare') ||
-    type.includes('disability') ||
-    type.includes('insurance_settlement')
+    type.includes('pharmacy') ||
+    type.includes('care4kids')
   ) {
     return 'medical_childcare';
   }
 
-  // Citizenship/immigration
+  // Immigration patterns
   if (
-    type.includes('citizenship') ||
     type.includes('immigration') ||
-    type.includes('declaration') ||
-    type.includes('passport') ||
-    type.includes('visa')
+    type.includes('proof_of_age_noncitizen')
   ) {
-    return 'citizenship_immigration';
+    return 'immigration';
   }
 
-  // Identity
+  // Signed forms patterns (always required)
   if (
-    type.includes('id') ||
-    type.includes('license') ||
-    type.includes('birth') ||
-    type.includes('social_security') ||
-    type.includes('photo')
+    type.includes('main_application') ||
+    type.includes('citizenship_declaration') ||
+    type.includes('criminal_background') ||
+    type.includes('hud_9886') ||
+    type.includes('hud_92006') ||
+    type.includes('debts_owed') ||
+    type.includes('eiv_guide') ||
+    type.includes('briefing') ||
+    type.includes('obligations') ||
+    type.includes('hach_release') ||
+    type.includes('child_support_affidavit') ||
+    type.includes('no_child_support') ||
+    type.includes('vawa') ||
+    type.includes('reasonable_accommodation')
   ) {
-    return 'identity';
+    return 'signed_forms';
   }
 
-  return 'other';
+  return 'custom';
 }
 
 /**
- * Get plain language title for a document.
- * Falls back to the doc label if no specialized title exists.
+ * PRD-58 Phase 2: Get plain language title for a document.
+ * Uses getDocTitle from docContent.ts for consistent plain-language titles.
+ * Falls back to the doc label only if no specialized title exists.
  */
-function getDocDisplayTitle(doc: DocumentCardData, _language: SupportedLanguage): string {
-  // Use the document's label or generate from doc_type
+function getDocDisplayTitle(doc: DocumentCardData, language: SupportedLanguage): string {
+  // Try plain-language title from docContent first
+  const plainTitle = getDocTitle(doc.doc_type, language);
+  if (plainTitle && plainTitle !== doc.doc_type) {
+    return plainTitle;
+  }
+
+  // Fall back to the document's label (raw DB label)
   if (doc.label) return doc.label;
 
-  // Generate from doc_type
+  // Last resort: generate from doc_type
   return doc.doc_type
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * PRD-58 Phase 2: Get one-line description for a document.
+ */
+function getDocDisplayDescription(doc: DocumentCardData, language: SupportedLanguage): string {
+  return getDocDescription(doc.doc_type, language);
 }
 
 export default function AlmostDoneReview({
@@ -212,23 +253,23 @@ export default function AlmostDoneReview({
     [documents]
   );
 
-  // Categorize uploaded docs
+  // PRD-58 Phase 3: Categorize uploaded docs using DB category
   const categorizedDocs = useMemo<CategorizedDoc[]>(() => {
     return uploadedDocs.map((doc) => ({
       ...doc,
-      category: categorizeDoc(doc.doc_type),
+      category: categorizeDoc(doc.doc_type, doc.category),
     }));
   }, [uploadedDocs]);
 
-  // Group by category
+  // PRD-58 Phase 3: Group by DB-aligned category
   const groupedByCategory = useMemo(() => {
     const grouped: Record<DocCategory, CategorizedDoc[]> = {
       income: [],
-      banking: [],
+      assets: [],
       medical_childcare: [],
-      citizenship_immigration: [],
-      identity: [],
-      other: [],
+      immigration: [],
+      signed_forms: [],
+      custom: [],
     };
 
     for (const doc of categorizedDocs) {
@@ -323,8 +364,12 @@ export default function AlmostDoneReview({
                           <p className="text-sm font-medium text-[var(--ink)]">
                             {getDocDisplayTitle(doc, language)}
                           </p>
+                          {/* PRD-58 Phase 2: One-line description */}
+                          <p className="text-xs text-[var(--muted)] mt-0.5">
+                            {getDocDisplayDescription(doc, language)}
+                          </p>
                           {doc.person_name && (
-                            <p className="text-xs text-[var(--muted)]">
+                            <p className="text-xs text-[var(--muted)] mt-0.5">
                               {doc.person_name}
                             </p>
                           )}
