@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Branch:** `feat/pbv-launch-hardening` (continues 62–68)
-**Commit:** _to be appended after commit_
+**Commit:** `407f556` (pushed to `origin/feat/pbv-launch-hardening`)
 **Status:** ✅ Static gates green; migration written + committed, **NOT applied** (per batch protocol). Listed under "Prod migrations to apply" in `OPEN-DECISIONS.md` with reconcile-before-fresh-env-apply checklist.
 
 ---

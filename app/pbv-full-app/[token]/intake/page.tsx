@@ -14,6 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useIntakeBootstrap } from '@/lib/pbv/hooks/useIntakeBootstrap';
 import { buildingUnits } from '@/lib/buildings';
 import { tenantFetch } from '@/lib/tenantFetch';
+import { attemptUnitSaveAndDecide } from '@/lib/pbv/tenant-flow-handlers';
 import type { PreferredLanguage } from '@/types/compliance';
 
 const unitCopy: Record<PreferredLanguage, {
@@ -22,6 +23,7 @@ const unitCopy: Record<PreferredLanguage, {
   unit_label: string;
   building_wrong: string;
   saving: string;
+  save_failed: string;
 }> = {
   en: {
     your_unit: 'Your Unit',
@@ -29,6 +31,7 @@ const unitCopy: Record<PreferredLanguage, {
     unit_label: 'Unit',
     building_wrong: 'Building doesn\u2019t look right? Call our office at (860) 527-3813.',
     saving: 'Saving…',
+    save_failed: 'We couldn’t save your unit — please try again.',
   },
   es: {
     your_unit: 'Su unidad',
@@ -36,6 +39,7 @@ const unitCopy: Record<PreferredLanguage, {
     unit_label: 'Unidad',
     building_wrong: '¿El edificio no es correcto? Llame a nuestra oficina al (860) 527-3813.',
     saving: 'Guardando…',
+    save_failed: 'No pudimos guardar su unidad — inténtelo de nuevo.',
   },
   pt: {
     your_unit: 'Sua unidade',
@@ -43,6 +47,7 @@ const unitCopy: Record<PreferredLanguage, {
     unit_label: 'Unidade',
     building_wrong: 'Edifício não parece correto? Ligue para nosso escritório: (860) 527-3813.',
     saving: 'Salvando…',
+    save_failed: 'Não conseguimos salvar sua unidade — tente novamente.',
   },
 };
 
@@ -125,6 +130,7 @@ export default function IntakeLandingPage() {
   const initialUnit = state.status === 'ready' ? state.data.unit_number : '';
   const [selectedUnit, setSelectedUnit] = useState('');
   const [unitSaving, setUnitSaving] = useState(false);
+  const [unitError, setUnitError] = useState<string | null>(null);
 
   const knownUnits = buildingAddress ? (buildingUnits[buildingAddress] ?? null) : null;
 
@@ -133,23 +139,35 @@ export default function IntakeLandingPage() {
   }, [initialUnit]);
 
   const handleStart = async () => {
-    // Persist unit change if different from the original
-    if (selectedUnit && selectedUnit !== initialUnit) {
-      setUnitSaving(true);
-      try {
-        const res = await tenantFetch(`/api/t/${token}/pbv-full-app/unit`, {
-          method: 'PATCH',
-          body: { unit_number: selectedUnit },
-        });
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          console.error('[intake-landing] unit update failed:', json);
+    setUnitError(null);
+    setUnitSaving(true);
+
+    const outcome = await attemptUnitSaveAndDecide({
+      selectedUnit,
+      initialUnit,
+      patch: async () => {
+        try {
+          const res = await tenantFetch(`/api/t/${token}/pbv-full-app/unit`, {
+            method: 'PATCH',
+            body: { unit_number: selectedUnit },
+          });
+          if (!res.ok) {
+            const json = await res.json().catch(() => ({}));
+            console.error('[intake-landing] unit update failed:', json);
+          }
+          return { ok: res.ok };
+        } catch (err) {
+          console.error('[intake-landing] unit update error:', err);
+          throw err;
         }
-      } catch (err) {
-        console.error('[intake-landing] unit update error:', err);
-      } finally {
-        setUnitSaving(false);
-      }
+      },
+    });
+
+    setUnitSaving(false);
+
+    if (!outcome.navigate) {
+      setUnitError(uc.save_failed);
+      return;
     }
 
     const targetSection = resumeSection ?? 'household';
@@ -242,7 +260,12 @@ export default function IntakeLandingPage() {
       </main>
 
       <footer className="sticky bottom-0 bg-white border-t border-[var(--border)] px-4 py-3">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto space-y-2">
+          {unitError && (
+            <p role="alert" className="text-sm text-[var(--error)]">
+              {unitError}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleStart}

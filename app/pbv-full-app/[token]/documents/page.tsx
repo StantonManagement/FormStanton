@@ -33,6 +33,7 @@ import {
 import type { PreferredLanguage } from '@/types/compliance';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
 import { tenantFetch } from '@/lib/tenantFetch';
+import { chooseDocumentsRetryAction } from '@/lib/pbv/tenant-flow-handlers';
 
 type PageView =
   | { kind: 'loading' }
@@ -233,12 +234,25 @@ export default function DocumentsPage({ params }: Props) {
     const errorMessage = state.status === 'error' ? state.message : null;
     const pageViewMessage = pageView.kind === 'error' ? pageView.message : null;
     const message = errorMessage ?? error ?? pageViewMessage ?? 'Something went wrong';
+    // PRD-70 Gap B: bootstrap / pageView errors keep PRD-67's intentional
+    // window.location.reload() (a hard retry is the only recovery). A
+    // data-fetch-only error can be recovered by re-running fetchDocuments
+    // without dropping SPA state.
+    const retryAction = chooseDocumentsRetryAction({
+      hasBootstrapError: state.status === 'error',
+      hasDataFetchError: !!error,
+      hasPageViewError: pageView.kind === 'error',
+    });
+    const onRetry =
+      retryAction === 'refetch'
+        ? () => fetchDocuments((preferredLanguage ?? 'en') as PreferredLanguage)
+        : () => window.location.reload();
     return (
       <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center px-4">
         <div className="text-center space-y-4">
           <p className="text-sm text-[var(--error)]">{message}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={onRetry}
             className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >
             Try again

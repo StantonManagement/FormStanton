@@ -389,6 +389,22 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Reversible?** yes — add `display_name_pt` to the select + `lang === 'pt'` branch in `lib/pbv/signer-forms-mapping.ts` (and the HOH route, for parity).
 - **Needs Alex:** schedule the PT display-name follow-up; this fix doesn't make the gap worse, just doesn't close it.
 
+### [PRD-70] O1 — Gap A halt vs proceed — DECISION (default applied)
+- **Context:** On unit-save PATCH failure, halt navigation + show inline error (default), or warn-and-proceed?
+- **Default taken:** **Halt + inline error.** A wrong/unsaved unit silently carried into intake would corrupt the rest of the application (HoH building/unit underpins every member, document, and signature event). The new `attemptUnitSaveAndDecide` helper in `lib/pbv/tenant-flow-handlers.ts` returns `{ navigate: false }` on `!res.ok` or throw; the page handler reads that, sets `unitError` (rendered via a tenant-readable EN/ES/PT string above the Start button), and does NOT call `router.push`. The tenant stays on the landing, sees the error, and the Start button is re-enabled so they can retry.
+- **Reversible?** yes — swap the early return for a `console.warn` and let navigation proceed. Helper would need to surface both navigate=true and error=set; trivial diff.
+- **Needs Alex:** none expected. This is the safer default and matches the "no silent corruption" posture in PRD-67 and PRD-62.
+
+### [PRD-70] O2 — Gap B implemented surgically — DECISION
+- **Context:** PRD-67 deliberately KEPT `window.location.reload()` in the documents error fallback as "an intentional retry, not navigation." PRD-70 Gap B is conditional on a clean refetch existing.
+- **Default taken:** **Implemented.** A clean `fetchDocuments(language)` already exists at `documents/page.tsx:68`; it clears local `error` state at the top and re-runs the documents fetch. Wired via `chooseDocumentsRetryAction` so:
+  - `state.status === 'error'` (bootstrap) → `window.location.reload()` (PRD-67's intentional retry — preserved)
+  - `pageView.kind === 'error'` → `window.location.reload()` (same rationale — preserved)
+  - **data-fetch-only** (`error` set, the other two clear) → `fetchDocuments(language)` (the new behavior; SPA state preserved)
+  - bootstrap or pageView errors WIN over a data-fetch error if both are set (bootstrap can't be recovered by a docs refetch).
+- **Reversible?** yes — replace `onRetry={onRetry}` with `onRetry={() => window.location.reload()}` and the change is reverted; PRD-67 behavior is restored verbatim. Helper covered by 6 vitest tests.
+- **Needs Alex:** none expected. PRD-67's intentional reload for bootstrap errors is preserved exactly; this only changes the data-fetch-only branch.
+
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.
 - **Default taken:** Do not fix in this PRD (out of lane). PRD-62 only adds passing tests (`completeForm`, `finalizeValidation` extensions, `sign-form-unification`).
