@@ -8,7 +8,14 @@
  *   - PRD-26 review-and-sign UI (which forms to sign)
  *
  * Rule keys match pbv_form_templates.conditional_rule values.
- * All rules return boolean. Unknown rules → true (fail open, generate the form).
+ * All rules return boolean.
+ *
+ * PRD-63 (fail-closed): unknown conditional_rule values resolve to `false`
+ * (do NOT generate the form), and log an error. This is the inverse of the
+ * pre-PRD-63 behavior (which defaulted to true, silently over-generating any
+ * form gated on a typo'd or newly-added rule). Callers that need to
+ * distinguish "unknown rule" from "known rule, evaluated false" should consult
+ * `isKnownConditionalRule(rule)` before invoking `shouldGenerateForm`.
  */
 
 import type { IntakeData, HouseholdMember } from './form-generation/field-mapping';
@@ -78,6 +85,36 @@ export function shouldRenderSectionVIIIExpenses(
   return sectionIiiZeroIncomeAnyAdult(intakeData, members);
 }
 
+// ─── Known-rules registry (PRD-63) ───────────────────────────────────────────
+//
+// Canonical list of every rule string `shouldGenerateForm` recognises. Kept
+// next to the switch so adding a new case here and not in the switch (or vice
+// versa) is one-line obvious. Used by callers to differentiate "rule unknown"
+// from "rule known, evaluated false".
+
+export const KNOWN_CONDITIONAL_RULES = [
+  'q8_dv_yes',
+  'q10_reasonable_accommodation_yes',
+  'section_iii_zero_income_any_adult',
+  'household_has_child_support',
+  'household_no_child_support',
+  'household_has_self_employment',
+  'intake_has_pets',
+  'intake_has_vehicle',
+] as const;
+
+export type KnownConditionalRule = (typeof KNOWN_CONDITIONAL_RULES)[number];
+
+/**
+ * Returns true if `rule` is one of the known conditional-rule keys (or null,
+ * which `shouldGenerateForm` treats as "always generate"). False means the rule
+ * string is unrecognized — `shouldGenerateForm` will fail closed.
+ */
+export function isKnownConditionalRule(rule: string | null): boolean {
+  if (rule === null) return true;
+  return (KNOWN_CONDITIONAL_RULES as readonly string[]).includes(rule);
+}
+
 // ─── Main dispatcher ─────────────────────────────────────────────────────────
 
 /**
@@ -113,8 +150,10 @@ export function shouldGenerateForm(
     case 'intake_has_vehicle':
       return intakeHasVehicle(intakeData);
     default:
-      console.warn(`[conditional-rules] Unknown conditional_rule: "${conditionalRule}" — defaulting to true`);
-      return true;
+      // PRD-63 (audit #7): fail closed on unknown rule. A typo or newly-added
+      // template rule should NOT cause the gated form to silently generate.
+      console.error(`[conditional-rules] Unknown conditional_rule: "${conditionalRule}" — failing closed (return false)`);
+      return false;
   }
 }
 

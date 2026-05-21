@@ -19,7 +19,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { getEnabledFormTemplates } from '@/lib/pbv/form-templates';
-import { shouldGenerateForm } from '@/lib/pbv/conditional-rules';
+import { shouldGenerateForm, isKnownConditionalRule } from '@/lib/pbv/conditional-rules';
 import { resolveFieldData } from '@/lib/pbv/form-generation/field-mapping';
 import { stampForm } from '@/lib/pbv/form-generation/stamper';
 import { getSourcePdf, sha256Hex } from '@/lib/pbv/form-generation/source-pdfs';
@@ -86,10 +86,26 @@ export async function POST(
     const skipped: Array<{
       form_id: string;
       language?: string;
-      reason: 'source_pdf_missing' | 'field_map_missing' | 'conditional_skipped';
+      reason:
+        | 'source_pdf_missing'
+        | 'field_map_missing'
+        | 'conditional_skipped'
+        | 'unknown_conditional_rule'  // PRD-63: rule string not handled by shouldGenerateForm
+        | 'resolver_missing';          // PRD-63: form_id has no field-data resolver
     }> = [];
 
     for (const template of templates) {
+      // PRD-63 (audit #7): distinguish "rule unknown" (fail-closed skip) from
+      // "rule known, evaluated false" (intentional conditional skip).
+      const ruleKnown = isKnownConditionalRule(template.conditional_rule);
+      if (!ruleKnown) {
+        console.error(
+          `[generate-forms] Unknown conditional_rule "${template.conditional_rule}" on template "${template.form_id}" — failing closed (skipping)`
+        );
+        skipped.push({ form_id: template.form_id, reason: 'unknown_conditional_rule' });
+        continue;
+      }
+
       // Evaluate conditional rule
       const shouldGenerate = shouldGenerateForm(
         template.conditional_rule,
@@ -121,8 +137,21 @@ export async function POST(
           continue;
         }
 
-        // Resolve field data (for per-person scopes, includes all members via row_patterns)
-        const fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot);
+        // Resolve field data (for per-person scopes, includes all members via row_patterns).
+        // PRD-63 (audit #14): resolveFieldData throws `resolver_missing:<formId>`
+        // when the form_id has no registered resolver. Catch it and skip the
+        // form rather than stamping a generic name+date PDF.
+        let fieldData;
+        try {
+          fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot);
+        } catch (e: any) {
+          if (typeof e?.message === 'string' && e.message.startsWith('resolver_missing:')) {
+            console.error(`[generate-forms] No field-data resolver for ${formId}/${language} — skipping (PRD-63 fail-closed)`);
+            skipped.push({ form_id: formId, language, reason: 'resolver_missing' });
+            continue;
+          }
+          throw e;
+        }
 
         // Load field map JSON
         const fieldMap = await loadFieldMap(formId, language);

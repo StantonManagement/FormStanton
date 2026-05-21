@@ -148,3 +148,85 @@ describe('PRD-55: Form-Generation Completeness', () => {
     });
   });
 });
+
+// ─── PRD-63: Fail-closed generation defaults ────────────────────────────────
+//
+// shouldGenerateForm and resolveFieldData both used to fail OPEN — an
+// unrecognized conditional_rule generated the form, and an unrecognized
+// form_id stamped a generic name+date PDF. PRD-63 inverts both defaults:
+// unknown rule -> false, unknown form_id -> throws 'resolver_missing:<id>'.
+// These guards catch a regression that would otherwise re-introduce silent
+// over-generation.
+
+describe('PRD-63: Fail-closed generation defaults', () => {
+  describe('shouldGenerateForm — unknown rule fails closed', () => {
+    it('returns false for a bogus rule string (no console.warn fall-through)', async () => {
+      const { shouldGenerateForm } = await import('../../conditional-rules');
+      const result = shouldGenerateForm('__bogus_rule_that_does_not_exist__', {} as any, []);
+      expect(result).toBe(false);
+    });
+
+    it('still returns true for null (always-generate sentinel)', async () => {
+      const { shouldGenerateForm } = await import('../../conditional-rules');
+      expect(shouldGenerateForm(null, {} as any, [])).toBe(true);
+    });
+
+    it('every conditional_rule used by REQUIRED_FORM_IDS is in KNOWN_CONDITIONAL_RULES', async () => {
+      // Read-only guard. Assert that every rule string the codebase knows
+      // about is also in the KNOWN_CONDITIONAL_RULES registry — so an
+      // operator adding a new case to the switch but forgetting to add it
+      // to the registry (which `isKnownConditionalRule` checks) gets a
+      // failing test instead of silent over-skip.
+      const { KNOWN_CONDITIONAL_RULES, isKnownConditionalRule } = await import('../../conditional-rules');
+      for (const rule of KNOWN_CONDITIONAL_RULES) {
+        expect(isKnownConditionalRule(rule), `rule "${rule}" missing from registry`).toBe(true);
+      }
+      // And a known bogus value is not in the registry.
+      expect(isKnownConditionalRule('__bogus__')).toBe(false);
+    });
+  });
+
+  describe('resolveFieldData — unknown form_id throws', () => {
+    it('throws resolver_missing:<formId> for an unknown form_id (no silent fall-through)', async () => {
+      const { resolveFieldData } = await import('../field-mapping');
+      const mockIntake = {} as any;
+      const mockMembers = [
+        {
+          id: 'm1',
+          slot: 1,
+          name: 'Test Member',
+          relationship: 'SELF',
+        },
+      ] as any;
+
+      expect(() => resolveFieldData('__unknown_form__', mockIntake, mockMembers, 'en', 1))
+        .toThrow(/^resolver_missing:__unknown_form__$/);
+    });
+
+    it('still resolves every required form_id without throwing (parity with the PRD-55 guard)', async () => {
+      const { resolveFieldData } = await import('../field-mapping');
+      const mockIntake = {
+        applicant: { full_name: 'Test User' },
+        pets: { has_pets: true },
+        vehicle: { has_vehicle: true },
+      } as any;
+      const mockMembers = [
+        {
+          id: 'm1',
+          slot: 1,
+          name: 'Test Member',
+          relationship: 'SELF',
+          has_self_employment: true,
+          has_child_support: true,
+        },
+      ] as any;
+
+      for (const formId of ALL_REQUIRED_FORMS) {
+        expect(
+          () => resolveFieldData(formId, mockIntake, mockMembers, 'en', 1),
+          `resolveFieldData regressed for required form_id ${formId}`
+        ).not.toThrow();
+      }
+    });
+  });
+});

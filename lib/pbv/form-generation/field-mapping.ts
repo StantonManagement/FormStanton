@@ -382,6 +382,13 @@ export function resolveFieldData(
     case 'eiv_guide_receipt':
       return resolveEivGuideReceipt(members, signerSlot);
     default:
-      return resolveSingleSignature(members, signerSlot, new Date().toLocaleDateString());
+      // PRD-63 (audit #14): fail closed on an unknown form_id. The old
+      // fall-through to resolveSingleSignature silently stamped a generic
+      // name+date resolver onto any unrecognised template, producing a
+      // half-mapped PDF nobody had validated. Throwing a `resolver_missing:`
+      // error lets the route in generate-forms catch it, push a
+      // `resolver_missing` skip-reason, and continue with the rest of the
+      // packet — without ever stamping the unknown form.
+      throw new Error(`resolver_missing:${formId}`);
   }
 }
