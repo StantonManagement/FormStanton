@@ -14,7 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
-import { withIdempotency } from '@/lib/idempotency';
 import { SECTION_SLUGS, type SectionSlug } from '@/lib/pbv/intake-schema';
 
 const ALLOWED_SECTIONS = new Set<string>(SECTION_SLUGS);
@@ -32,7 +31,7 @@ export async function POST(
     );
   }
 
-  return withIdempotency(request, '', `intake-${section}`, async () => withTenantContext(request, token, `intake-${section}`, async (app) => {
+  return withTenantContext(request, token, `intake-${section}`, async (app) => {
     const body = await request.json().catch(() => null);
     if (!body || typeof body.data !== 'object' || body.data === null) {
       return { body: { success: false, message: 'Body must contain a data object' }, status: 400 };
@@ -86,5 +85,5 @@ export async function POST(
       },
       status: 200,
     };
-  }));
+  });
 }

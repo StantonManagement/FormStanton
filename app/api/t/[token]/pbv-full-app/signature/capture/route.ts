@@ -19,7 +19,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
-import { withIdempotency } from '@/lib/idempotency';
 
 
 export async function POST(
@@ -28,7 +27,7 @@ export async function POST(
 ) {
   const { token } = await context.params;
 
-  return withIdempotency(request, '', 'signature-capture', async () => withTenantContext(request, token, 'signature-capture', async (app) => {
+  return withTenantContext(request, token, 'signature-capture', async (app) => {
     const body = await request.json().catch(() => null);
 
     if (!body?.signature_image_data_url || !body?.signer_member_id) {
@@ -98,5 +97,5 @@ export async function POST(
       },
       status: 200,
     };
-  }));
+  });
 }

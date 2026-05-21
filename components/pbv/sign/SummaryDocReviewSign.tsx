@@ -95,8 +95,9 @@ export default function SummaryDocReviewSign({ token, language, hohName, hohMemb
         },
       });
       const captureJson = await captureRes.json().catch(() => ({}));
-      if (!captureRes.ok) throw new Error((captureJson as any).message || 'Failed to capture signature.');
-      const { signature_image_path } = (captureJson as any).data;
+      const path = (captureJson as any)?.data?.signature_image_path;
+      if (!captureRes.ok || !path) throw new Error((captureJson as any)?.message || 'Could not save your signature. Please try again.');
+      const signature_image_path = path;
 
       // 2. Sign summary
       const signRes = await tenantFetch(`/api/t/${token}/pbv-full-app/sign-summary`, {

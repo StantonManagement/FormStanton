@@ -59,9 +59,9 @@ export function useSigningCeremony(token: string, hohMemberId: string, language:
         },
       });
       const captureJson = await captureRes.json().catch(() => ({}));
-      if (!captureRes.ok) throw new Error((captureJson as any).message || 'Failed to capture signature.');
-
-      const imagePath: string = (captureJson as any).data.signature_image_path;
+      const imagePath = (captureJson as any)?.data?.signature_image_path;
+      if (!captureRes.ok || !imagePath) throw new Error((captureJson as any)?.message || 'Could not save your signature. Please try again.');
+      
       setSignatureImagePath(imagePath);
 
       // 2. Sign the form
