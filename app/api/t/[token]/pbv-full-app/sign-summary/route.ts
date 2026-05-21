@@ -19,7 +19,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { isUuid } from '@/lib/pbv/signing/validateSignFormBody';
+import { getSession } from '@/lib/auth';
 import { createHash } from 'crypto';
+
+const SUMMARY_LANGUAGES = ['en', 'es', 'pt'] as const;
 
 export async function POST(
   request: NextRequest,
@@ -49,16 +53,78 @@ export async function POST(
       language = 'en',
     } = body;
 
-    // Read X-Assisted-By header — forwarded by tenantFetch in staff-assisted sessions.
+    // PRD-80 #A5: validate UUIDs / enums before any DB work. Pre-PRD-80 the
+    // route only checked truthiness, so malformed ceremony_id and out-of-enum
+    // language values reached Supabase as opaque errors. Reuses the UUID
+    // primitive from PRD-77's validateSignFormBody so both ceremonies share
+    // one regex source.
+    if (!isUuid(ceremony_id)) {
+      return {
+        body: { success: false, message: 'ceremony_id must be a valid UUID' },
+        status: 400,
+      };
+    }
+    if (!SUMMARY_LANGUAGES.includes(language)) {
+      return {
+        body: { success: false, message: 'language must be one of en, es, pt' },
+        status: 400,
+      };
+    }
+    // template_version: free-form date-like string in the codebase today
+    // (e.g. '2026-05-15-v1'); validate non-empty string only. See build
+    // report O2 — tighten to a regex if the format is locked down later.
+    if (typeof template_version !== 'string' || !template_version.trim()) {
+      return {
+        body: { success: false, message: 'template_version must be a non-empty string' },
+        status: 400,
+      };
+    }
+
+    // PRD-80 #A1 (CRITICAL): mirror PRD-64's sign-form X-Assisted-By
+    // verification. Pre-PRD-80 the sign-summary route only checked that the
+    // header value existed in admin_users — any client that knew a valid
+    // admin_users.id could attribute a summary signature to a staff member
+    // who never assisted. Now the header must match the active assisted
+    // staff session (getSession() reads the signed admin_session cookie)
+    // AND assistedMode.applicationId must match the resolved app.id, exactly
+    // as in app/api/t/[token]/pbv-full-app/sign-form/route.ts.
     const assistedByHeader = request.headers.get('X-Assisted-By');
     let assistedByStaffUserId: string | null = null;
     if (assistedByHeader) {
-      const { data: staffRow } = await supabaseAdmin
-        .from('admin_users')
-        .select('id')
-        .eq('id', assistedByHeader)
-        .maybeSingle();
-      if (staffRow) assistedByStaffUserId = staffRow.id;
+      let assistedMode: { staffUserId: string; applicationId: string } | undefined;
+      try {
+        const session = await getSession();
+        assistedMode = session.assistedMode;
+      } catch {
+        assistedMode = undefined;
+      }
+
+      const verified =
+        !!assistedMode &&
+        assistedMode.staffUserId === assistedByHeader &&
+        assistedMode.applicationId === app.id;
+
+      if (!verified) {
+        console.warn(
+          JSON.stringify({
+            event: 'assisted_by_unverified',
+            route: 'sign-summary',
+            header_value: assistedByHeader,
+            app_id: app.id,
+            has_session: !!assistedMode,
+          })
+        );
+        return {
+          body: {
+            success: false,
+            code: 'assisted_session_unverified',
+            message: 'Assisted-by header could not be verified against an active staff session',
+          },
+          status: 401,
+        };
+      }
+
+      assistedByStaffUserId = assistedMode!.staffUserId;
     }
 
     // Idempotent check: summary already signed?

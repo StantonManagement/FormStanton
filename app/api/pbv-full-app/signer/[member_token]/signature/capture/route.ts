@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isUuid } from '@/lib/pbv/signing/validateSignFormBody';
 
 export async function POST(
   request: NextRequest,
@@ -52,6 +53,17 @@ export async function POST(
     }
 
     const { signature_image_data_url, ceremony_id } = body;
+
+    // PRD-80 #A6 (member-token analogue): signer_member_id is derived from the
+    // magic-link token (member.id) so no body-supplied UUID for that field;
+    // ceremony_id IS body-supplied and gets the same guard as the tenant route
+    // to prevent garbage propagating into the storage path.
+    if (ceremony_id !== undefined && !isUuid(ceremony_id)) {
+      return NextResponse.json(
+        { success: false, message: 'ceremony_id must be a valid UUID' },
+        { status: 400 }
+      );
+    }
 
     // Convert data URL to buffer
     const matches = (signature_image_data_url as string).match(

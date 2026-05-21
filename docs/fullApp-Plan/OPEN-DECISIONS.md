@@ -670,3 +670,15 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Apply order:** any time after PRD-74 ships. Until applied, `claimCronRun` logs `cron_claim_error` and fails-open (route runs). After apply, the lock works as intended.
 - **Status:** ⏳ NOT APPLIED — committed only.
 - **Rollback:** `DROP FUNCTION IF EXISTS public.claim_cron_run(TEXT, INTEGER); DROP TABLE IF EXISTS public.cron_run_locks;` (the table has no app data — leases are short-lived state).
+
+### [PRD-80] sign-summary `template_version` validation shape — DECISION
+- **Context:** A5 calls for validating `template_version` "matches expected format." The current codebase uses free-form date-like strings (default `'2026-05-15-v1'`) with no published regex.
+- **Default taken:** validate as a non-empty string only. Rejecting empty/non-string values catches the actual error mode (truncated client request, type drift) without inventing a regex that doesn't match the wild.
+- **Reversible?** yes — tighten to `/^\d{4}-\d{2}-\d{2}-v\d+$/` (or similar) in `sign-summary/route.ts` once the format is locked down.
+- **Needs Alex:** is the `YYYY-MM-DD-v\d+` shape a hard contract or convention? If hard, swap the non-empty check for a regex.
+
+### [PRD-80] Member-token `signature/capture` body shape — DECISION
+- **Context:** A6 says to apply UUID validation on the member-token `signature/capture` route **iff it shares the gap.** Checked the file: `signer_member_id` is **derived from the magic-link token** (`member.id`), not body-supplied — so there's no UUID body field to validate for that one.
+- **Default taken:** added the same `isUuid` import and a guard on the optional body field `ceremony_id` (which IS body-supplied) so garbage doesn't propagate into the storage path. Did **not** add a `signer_member_id` guard because the route never reads that body field.
+- **Reversible?** yes — the additive guard is a one-liner to remove if it ever becomes wrong.
+- **Needs Alex:** confirm the route's body contract (no `signer_member_id`), so this gap stays "checked, not skipped" in the audit log.
