@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Branch:** `feat/pbv-launch-hardening` (continues 62–67)
-**Commit:** _to be appended after commit_
+**Commit:** `ad33f52` (pushed to `origin/feat/pbv-launch-hardening`)
 **Status:** ✅ Static gates green; deferred runtime gates listed below for the manual Chrome walk.
 
 ---

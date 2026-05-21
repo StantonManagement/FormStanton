@@ -73,6 +73,35 @@ Entry format:
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
+### `supabase/migrations/20260521050000_prd69_pbv_storage_buckets_backfill.sql`
+**What it does:** Backfills the creation rows for three storage buckets that were created live by hand on prod alongside their app code and never had a migration:
+- `pbv-signatures` (signature PNG images)
+- `form-submissions` (default tenant document bucket)
+- `pbv-applications` (e-signed PDFs + HACH-shared docs)
+
+Modeled on `20260518000000_pbv_forms_storage_bucket.sql` (the established precedent for the same situation). One `INSERT INTO storage.buckets … ON CONFLICT (id) DO NOTHING;` covering all three. No `storage.objects` policies (service-role-only access; mirrors the `pbv-forms` precedent).
+
+**Why it's needed:** A fresh environment provisioned from `supabase/migrations/` alone had `pbv-forms` but not the other three → every tenant upload, signature capture, and signed-PDF read 404'd. This is the same class of gap as the queued `tenant_lookup` table (no `CREATE TABLE` migration).
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-69 commit. **No-op on existing prod (the buckets already exist; `ON CONFLICT DO NOTHING` leaves the live config untouched). Required for any fresh environment.**
+
+**⚠ Reconcile-before-apply checklist (for fresh-env apply, NOT for prod apply):**
+The live-DB verification audit that would have given authoritative `file_size_limit` / `allowed_mime_types` / `storage.objects` policy values for each bucket was not available at build time. The migration ships with `public=false`, `file_size_limit=NULL`, `allowed_mime_types=NULL` (permissive, safe for prod via `DO NOTHING`). Before standing up a brand-new environment for **production use**, run on prod:
+```sql
+select id, public, file_size_limit, allowed_mime_types
+  from storage.buckets
+ where id in ('pbv-signatures','form-submissions','pbv-applications');
+
+select policyname, cmd, qual, with_check
+  from pg_policies
+ where schemaname='storage' and tablename='objects';
+```
+and update the migration's `VALUES` (+ add any `CREATE POLICY` blocks the audit reveals) so fresh-env config matches prod. The header comment in the migration carries this same warning inline.
+
+**On the existing prod project:** safe to apply as-is — `ON CONFLICT (id) DO NOTHING` makes it a complete no-op, but applying it is also unnecessary (prod already has these buckets). Apply only when fresh-env provisioning is on the table.
+
+**Rollback:** Buckets cannot be deleted while objects exist. For fresh-env-only rollback: `DELETE FROM storage.buckets WHERE id IN ('pbv-signatures','form-submissions','pbv-applications');`. Never delete these on prod.
+
 ### `supabase/migrations/20260521040000_prd66_form_generation_version.sql`
 **What it does:** Adds `pbv_form_documents.generation_version INTEGER NOT NULL DEFAULT 1`, the monotonic regeneration counter. The unsigned-PDF storage path is now suffixed `-v${generation_version}.pdf` (see `generate-forms/route.ts`) so a regenerate during signing produces a NEW object instead of clobbering bytes a prior signer hashed. Enforcement of "signed-against version no longer matches current" rides PRD-62's `unsigned_pdf_hash` + `finalizeValidation` Check 5.
 
