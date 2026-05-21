@@ -82,7 +82,7 @@ export const SOURCE_PDFS: Record<string, { en: Buffer | null; es: Buffer | null 
     en: tryLoadPdf('self-employment-worksheet-en.pdf'),
     es: tryLoadPdf('self-employment-worksheet-es.pdf'),
   },
-  briefing_docs_certification: {
+  briefing_cert: {
     en: tryLoadPdf('briefing-cert-en.pdf'),
     es: tryLoadPdf('briefing-cert-es.pdf'),
   },

@@ -9,12 +9,32 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 
 ## In flight (active build)
 
+### ★ PBV Full-App Finalization (vNext) — the lane
+- **Master plan:** `docs/fullApp-Plan/pbv-full-finalization-roadmap_2026-05-20.md`. Picks one lane — tenant self-serve full-app from SMS link → submitted signed packet — and sequences everything left into child PRDs **55–61**.
+- **Definition of done (locked 2026-05-20):** real applicant completes + submits a correct signed packet, on their own phone, in **EN/ES/PT**, no call to Stanton, no tenant-safety defects, with the advanced scanner + a low-contrast "can't lock on" hint. **Finish line = tenant submit only** (staff/HACH side OUT of lane). Conditional pet/vehicle/self-employment forms IN; VAWA/RA/healthcare-release stay source-pending.
+- **Child PRDs:** 55 forms-completeness, 56 signing+submit e2e, 57 intake integrity/safety, 58 documents clarity+gating+banner, 59 trilingual e2e, 60 scanner verify+contrast hint, 61 closeout gate. **All 7 PRDs + prompts written** in `docs/fullApp-Plan/` (+ `prompts/`).
+- **Batch run:** designed for ONE Cascade (Opus 4.7 adaptive) running prompts 55→61 back-to-back. Rules in `docs/fullApp-Plan/BATCH-RUN-PROTOCOL.md`: one cumulative branch `feat/pbv-full-finalization`, one commit per PRD, **default-and-log to `OPEN-DECISIONS.md` (never stop to ask)**, write-but-don't-apply prod migrations, static gates inline + deploy/device gates deferred to a post-run verification pass.
+- **Status (2026-05-20):** batch ready to run. After Cascade finishes → mandatory runtime verification pass (Chrome walk on the deploy, like PRD-54) + Alex resolves `OPEN-DECISIONS.md`.
+- **Findings baked into the PRDs (grounded in current code, correcting the stale 05-17 journey):** signing writes `pbv_signature_events` but finalize validates `application_documents` and download reads `pbv_signature_audit_log` — three unsynced stores (PRD-56 F1, P1). Magic-link additional-signer `sign-form` is a stub (PRD-56 F2). Dashboard "Application Submitted" banner keyed on `intake_status==='complete'`, not real submission (PRD-58). `categorizeDoc()` substring matcher mis-files docs (`eiv_guide_receipt`→"guide"→IDENTITY) (PRD-58). Protected-status intake defaults are **already neutral** — PRD-57 reframes to confirm+lock+regression-test. Pets/vehicle inputs **not captured** in intake-schema, so PRD-55 pet/vehicle conditional forms can't trigger (PRD-57 adds them). 68 untranslated `TODO:` ES/PT strings in `docTypeHelp.ts` (PRD-59).
+
+### PRD-54 — PBV signing flow: summary-loop + `/sign` 404 + zero-forms (✅ ALL THREE BUGS SHIPPED + VERIFIED LIVE 2026-05-20)
+- **Discovered 2026-05-20** in a live end-to-end test of the tenant full-app. Three bugs in the document → signing transition. Doc upload itself works.
+- **Bug A (404):** `app/pbv-full-app/[token]/documents/page.tsx:122` CTA pointed at `/sign` (no such route). → **Shipped + verified live.**
+- **Bug B (infinite loop):** `sign/summary/page.tsx` re-fired `generate-forms` forever (100+ POSTs, intermittent 503s) because `reload()` churned `state`. Fix = `useRef` one-shot guard + terminal state. → **Shipped + verified live** (exactly one POST, no loop, on two apps). Deploy `dpl_CW82PZcWGofHmaMcGn4dVuxFGFix`.
+- **Bug C (zero forms) — SHIPPED + VERIFIED LIVE 2026-05-20:** root cause was source PDFs read from `docs/templates/` via `fs`, but `.vercelignore` strips `docs/` from the deploy; the earlier tracing fix only covered `scripts/field-maps/**`. Fix `1dc4477` copied 20 source PDFs to `assets/pbv-source-pdfs/`, repointed `lib/pbv/form-generation/source-pdfs.ts`, and added `./assets/pbv-source-pdfs/**` to `outputFileTracingIncludes` in `next.config.js`.
+  - **Live verification (Chrome DevTools, prod, token `222-224-maple-ave-unit-2n-…`):** `POST generate-forms` → 200, `total_generated: 9`, `main_application/en` now **generated** (was previously skipped). `/sign/summary` renders the summary PDF, the read-and-understood checkbox + "Sign summary" button are present → flow is signable. Exactly **one** generate-forms POST (Bug B holding, no loop). The runtime behavior itself confirms the deploy carried `1dc4477` (old build would still skip `main_application`).
+  - **Skipped (6, all expected source-pending/conditional):** `criminal_background_release`, `eiv_guide_receipt`, `reasonable_accommodation`, `insurance_settlement`, `cd_trust_bond` — plus `briefing_cert/en` (see Launch bugs note below — separate pre-existing form_id key mismatch, NOT a Bug C regression).
+- **How to verify on deploy:** open `/sign/summary` for a test token, read the `generate-forms` response. PASS = `total_generated > 0` and `skipped` contains **only** conditional/source-pending forms (`criminal_background_release`, `eiv_guide_receipt`, `reasonable_accommodation`, `insurance_settlement`, `cd_trust_bond`, pet/vehicle/self-employment) — **not** `main_application/en`. Then `/sign/summary` should render and be signable; "Review and sign required forms" unlocks.
+- **Test tokens (prod):** `222-224-maple-ave-unit-2n-fa62844782fa4266b5cc1697bfbf734c` (11/11 docs uploaded), `110-martin-unit-1-f39817020e324160b5dae3b5f4c48633` (1/13 docs).
+- **Docs:** PRD `docs/fullApp-Plan/54-pbv-summary-sign-loop-and-route-fix_prd_2026-05-20.md` + `prompts/54-...prompt_2026-05-20.md`; build report `docs/build-reports/54-...build-report_2026-05-20.md`.
+
 ### PRD-52 — Ship Scanic, remove jscanify + OpenCV.js
 - **Branch:** `feat/pbv-scanner-scanic-ship-52` @ `394a50b`
 - **Path used:** Path B (self-hosted UMD via `/public/scanic/` + postinstall sync). Path A (webpack experiments) was tried and abandoned.
 - **Static gates passing:** `tsc --noEmit` clean, `npm run build` clean in 50s, jscanify removed, OpenCV.js removed.
 - **Deferred gates:** 4 (low-contrast detection), 5 (cellular cold-load timing), 7 (iOS Safari + Android Chrome matrix), 8 (PRD-47/51 composability), 9 (no jscanify residue grep), 10 (5-min memory leak), 11 (rollback rehearsal).
 - **Next:** Alex deploys to Vercel preview; Claude walks deferred gates with browser tools + test token; merge if clean.
+- **Correction (2026-05-20):** Scanic appears **already merged to `main`** — `package.json` has `"scanic": "^1.0.8"` + a `postinstall: node scripts/sync-scanic.mjs`, and the advanced detector components are on main. So PRD-52 effectively shipped; the deferred device-matrix gates (low-contrast, iOS/Android matrix, cold-load, 5-min memory) are now owned by **PRD-60** (scanner verify + contrast hint). Treat Scanic as IN for v1.
 
 ### PRD-51 — Combined Approve & Send Invitation (one-click admin flow)
 - **Branch:** `feat/pbv-preapp-combined-approve-send-51` — 2 commits ahead of `main`
@@ -30,7 +50,7 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 - **PRD:** `docs/fullApp-Plan/53-pbv-preapp-contact-capture-and-override_prd_2026-05-19.md`
 
 ### ⚠ Infrastructure blockers (address in PRD-53)
-- **`.git/config` is corrupted** — `fatal: bad config line 23`. Can make merges/pushes silently fail. Likely why the PRD-51 phone migration never reached `main`. **Fix first, before any merge.**
+- **`.git/config` line 23** — earlier sessions saw `fatal: bad config line 23` and assumed corruption. **Correction (2026-05-20):** Claude Code found git working fine in both PowerShell and bash; line 23 is a harmless tab-only/trailing line and the `fatal` did not reproduce. **Not actually a blocker.** (So the PRD-51 "migration never reached main" issue is *not* explained by git config — verify branch/merge state directly instead.)
 - **Migrations must be applied to prod Supabase** (`lieeeqqvshobnqofcdac`) — phone (PRD-51) + email + override columns (PRD-53). Merging `.sql` files doesn't add columns to the running DB. (Note: a prior tracker entry claimed the phone migration was "applied to Supabase live" — verify against the actual prod schema; the code is NOT on main regardless.)
 
 ---
@@ -47,9 +67,15 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 - **Retrofit sweep prompt:** `docs/admin-Plan/prompts/admin-01-datatable-shared-component-retrofit-sweep-prompt_2026-05-20.md` — queued, kicks off once Phase 1 PR merges to `main`. Migrates all 11 admin tables (pre-apps, pipeline, full-apps, form-submissions, audit-log, reimbursements, users, properties, projects, appfolio-queue, tow-list × 3 instances) in a single branch with phase-aligned commits, removes demo page, runs Lighthouse comparison. Pipeline URL break explicitly handled in PR + build report.
 - **Next:** Wait for Phase 1 PR to merge, then hand the retrofit sweep prompt to Windsurf on a fresh branch off `main`.
 
+### Next 16 Turbopack vs webpack config (post-launch, deliberate)
+- Local `next dev` won't start on Next 16: Turbopack is now the default and conflicts with the `webpack()` block in `next.config.js` (OpenCV `fs`/`path`/`crypto` fallbacks).
+- **For now: ignore.** Use `next dev --webpack` if dev is needed. Do NOT add `turbopack: {}` and do NOT fold this into any hotfix commit.
+- **Real risk to settle deliberately:** if `next build` ever inherits the Turbopack default, the webpack OpenCV config gets silently ignored → could break the production bundle. Confirm the build script pins webpack, then plan the migration as its own task.
+
 ### Launch bugs (consolidated PRD to be written)
 - `components/pbv/cards/DocumentCardStack.tsx:237` — `alert('Sidesheet coming in Phase 3 (F6)')` on "See full list" button. Leaks dev jargon to applicants.
 - `components/pbv/cards/DocumentCard.tsx:279` — deactivate confirm references "See full list" in en/es/pt — false promise depending on bug above.
+- **`briefing_cert` form never generates — form_id key mismatch (found 2026-05-20 during PRD-54 live verify).** [Inference] `generate-forms` requests form_id `briefing_cert`, but `lib/pbv/form-generation/source-pdfs.ts` registers the PDF under key `briefing_docs_certification`, so `getSourcePdf('briefing_cert','en')` returns null → form skips at the source-PDF check (line 116) before reaching its (present) field map. The asset files exist and are correctly named (`assets/pbv-source-pdfs/briefing-cert-en.pdf`, `scripts/field-maps/briefing-cert-en.json`); only the registry KEY is wrong. **[Unverified] whether `briefing_cert` is meant to be a stamped PDF at all** — there's an HTML-rendering pilot at `app/pilot/briefing-cert/source-text.md`, so the skip *might* be intentional. Confirm intended path against the `pbv_form_templates` row + form-html-rendering-pilot PRD before changing the key. If it should generate: align the `source-pdfs.ts` key to the template form_id (`briefing_cert`).
 - **Plan:** accumulate more findings during applicant walkthroughs, ship one consolidated PR.
 - **Trigger to write the PRD:** when Alex finishes walking the deployed flow or starts seeing real applicant feedback, whichever comes first.
 
@@ -74,6 +100,7 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 
 | When | What | Tag / Branch |
 |---|---|---|
+| 2026-05-20 | PRD-54 **all three bugs** — `/sign` 404 (A), summary-page `generate-forms` infinite loop (B), zero-forms source-PDF tracing (C). Bug C `1dc4477` pushed + verified live: `total_generated: 9`, `main_application` generates, summary signable, one POST. **Launch blocker cleared.** | `fix/pbv-summary-sign-loop-54` + `1dc4477` on `main` |
 | 2026-05-19 | Docs cleanup pass — PRDs 38/39/41/43/44/46/47 + briefs + audit/merge prompts moved to `shipped/`. PRD-48 archived (superseded by 52). Log in `tasks/docs-cleanup_2026-05-15.md`. | — |
 | 2026-05-19 | Launch merge — main at `7200a25` carrying PRD-45/46/47 scanner work + PBV upload hardening | `launch-prep-full-2026-05-19` |
 | 2026-05-19 | dev-HACH print fixes (`c09d237`) — letterhead, tables, signatures, page breaks | `launch-prep-hach-2026-05-19` |

@@ -325,7 +325,7 @@ export function resolveFieldData(
     case 'self_employment_worksheet':
     case 'debts_owed_phas':
       return resolveSimpleAffidavit(members, signerSlot);
-    case 'briefing_docs_certification':
+    case 'briefing_cert':
       return resolveBriefingCert(members);
     default:
       return resolveSingleSignature(members, signerSlot, new Date().toLocaleDateString());

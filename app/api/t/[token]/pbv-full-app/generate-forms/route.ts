@@ -83,7 +83,11 @@ export async function POST(
       language: string;
     }> = [];
 
-    const skipped: string[] = [];
+    const skipped: Array<{
+      form_id: string;
+      language?: string;
+      reason: 'source_pdf_missing' | 'field_map_missing' | 'conditional_skipped';
+    }> = [];
 
     for (const template of templates) {
       // Evaluate conditional rule
@@ -94,7 +98,7 @@ export async function POST(
       );
 
       if (!shouldGenerate) {
-        skipped.push(template.form_id);
+        skipped.push({ form_id: template.form_id, reason: 'conditional_skipped' });
         continue;
       }
 
@@ -113,7 +117,7 @@ export async function POST(
 
         if (!sourcePdf) {
           console.warn(`[generate-forms] Source PDF missing for ${formId}/${language} — skipping`);
-          skipped.push(`${formId}/${language}`);
+          skipped.push({ form_id: formId, language, reason: 'source_pdf_missing' });
           continue;
         }
 
@@ -124,7 +128,7 @@ export async function POST(
         const fieldMap = await loadFieldMap(formId, language);
         if (!fieldMap) {
           console.warn(`[generate-forms] Field map missing for ${formId}/${language} — skipping`);
-          skipped.push(`${formId}/${language}`);
+          skipped.push({ form_id: formId, language, reason: 'field_map_missing' });
           continue;
         }
 
