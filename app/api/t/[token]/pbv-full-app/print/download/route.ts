@@ -1,13 +1,12 @@
 /**
  * app/api/t/[token]/pbv-full-app/print/download/route.ts
- * GET handler: Returns application copy as PDF.
- * Renders the print view HTML and converts to PDF using Playwright.
+ * GET handler: Returns signed application packet as PDF.
+ * F7: Uses pdf-lib to merge signed form PDFs (serverless-safe, no Playwright).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { chromium } from 'playwright';
 import { supabaseAdmin } from '@/lib/supabase';
-import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { PDFDocument } from 'pdf-lib';
 
 interface PDFGenerationResult {
   pdf: Buffer;
@@ -18,55 +17,81 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);
 }
 
-async function generatePDFFromURL(url: string): Promise<PDFGenerationResult> {
+/**
+ * F7: Generate signed packet by merging signed form PDFs using pdf-lib.
+ * Serverless-safe: no browser launch required.
+ */
+async function generateSignedPacket(appId: string): Promise<PDFGenerationResult> {
   const startTime = Date.now();
-  
-  const browser = await chromium.launch({
-    headless: true,
+
+  // Load signed form documents
+  const { data: formDocs } = await supabaseAdmin
+    .from('pbv_form_documents')
+    .select('id, form_id, signed_pdf_path, status')
+    .eq('full_application_id', appId)
+    .eq('status', 'signed');
+
+  // Load signed summary
+  const { data: summaryDoc } = await supabaseAdmin
+    .from('pbv_summary_documents')
+    .select('id, pdf_storage_path')
+    .eq('full_application_id', appId)
+    .maybeSingle();
+
+  // Create a new PDF for the packet
+  const packetPdf = await PDFDocument.create();
+
+  // Add cover page with packet info
+  const coverPage = packetPdf.addPage();
+  const { width, height } = coverPage.getSize();
+  coverPage.drawText('PBV Application Packet', {
+    x: 50,
+    y: height - 100,
+    size: 24,
+  });
+  coverPage.drawText(`Application ID: ${appId}`, {
+    x: 50,
+    y: height - 150,
+    size: 12,
   });
 
-  try {
-    const page = await browser.newPage();
-    
-    // Navigate to the print view
-    await page.goto(url, {
-      waitUntil: 'networkidle',
-      timeout: 30000,
-    });
+  // Merge signed form PDFs
+  for (const formDoc of (formDocs ?? [])) {
+    if (!formDoc.signed_pdf_path) continue;
 
-    // Wait for content to render
-    await page.waitForSelector('.print-container', { timeout: 10000 });
+    const { data: pdfData, error } = await supabaseAdmin.storage
+      .from('pbv-forms')
+      .download(formDoc.signed_pdf_path);
 
-    // Generate PDF
-    const pdf = await page.pdf({
-      format: 'Letter',
-      printBackground: true,
-      margin: {
-        top: '0.75in',
-        bottom: '0.75in',
-        left: '0.75in',
-        right: '0.75in',
-      },
-      displayHeaderFooter: true,
-      headerTemplate: '<div></div>', // Empty header
-      footerTemplate: `
-        <div style="font-size: 9pt; font-family: Inter, sans-serif; width: 100%; text-align: center; color: #718096; padding: 0 0.5in;">
-          Page <span class="pageNumber"></span> of <span class="totalPages"></span>
-        </div>
-      `,
-    });
-
-    const generationTimeMs = Date.now() - startTime;
-
-    // Log if generation took too long
-    if (generationTimeMs > 10000) {
-      console.warn(`[PDF Generation] Slow generation: ${generationTimeMs}ms for ${url}`);
+    if (error || !pdfData) {
+      console.warn(`[PDF Packet] Could not download ${formDoc.signed_pdf_path}:`, error);
+      continue;
     }
 
-    return { pdf, generationTimeMs };
-  } finally {
-    await browser.close();
+    const pdfBytes = Buffer.from(await pdfData.arrayBuffer());
+    const formPdf = await PDFDocument.load(pdfBytes);
+    const copiedPages = await packetPdf.copyPages(formPdf, formPdf.getPageIndices());
+    copiedPages.forEach((page) => packetPdf.addPage(page));
   }
+
+  // Merge summary PDF if available
+  if (summaryDoc?.pdf_storage_path) {
+    const { data: summaryData, error } = await supabaseAdmin.storage
+      .from('pbv-forms')
+      .download(summaryDoc.pdf_storage_path);
+
+    if (!error && summaryData) {
+      const summaryBytes = Buffer.from(await summaryData.arrayBuffer());
+      const summaryPdf = await PDFDocument.load(summaryBytes);
+      const copiedPages = await packetPdf.copyPages(summaryPdf, summaryPdf.getPageIndices());
+      copiedPages.forEach((page) => packetPdf.addPage(page));
+    }
+  }
+
+  const pdfBytes = await packetPdf.save();
+  const generationTimeMs = Date.now() - startTime;
+
+  return { pdf: Buffer.from(pdfBytes), generationTimeMs };
 }
 
 export async function GET(
@@ -75,13 +100,7 @@ export async function GET(
 ) {
   const { token } = await context.params;
 
-  // Get the base URL for the print view
-  const url = new URL(request.url);
-  const baseUrl = `${url.protocol}//${url.host}`;
-  const printViewUrl = `${baseUrl}/pbv-full-app/${token}/print`;
-
-  // Use withTenantContext to validate token and get application info
-  // We need to check manually since we need to validate before PDF generation
+  // Validate token and get application info
   const { data: app, error: appError } = await supabaseAdmin
     .from('pbv_full_applications')
     .select('id, head_of_household_name, intake_status, building_address')
@@ -104,8 +123,8 @@ export async function GET(
   }
 
   try {
-    // Generate PDF from print view
-    const { pdf, generationTimeMs } = await generatePDFFromURL(printViewUrl);
+    // F7: Generate signed packet using pdf-lib (serverless-safe)
+    const { pdf, generationTimeMs } = await generateSignedPacket(app.id);
 
     // Build filename: <HOH lastname sanitized>-PBV-application-<YYYY-MM-DD>.pdf
     const hohName = app.head_of_household_name ?? 'Applicant';

@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { createHash } from 'crypto';
 
 export async function POST(
   request: NextRequest,
@@ -112,9 +113,22 @@ export async function POST(
     }
 
     const signedAt = new Date().toISOString();
+    const ipAddress = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? null;
+    const userAgent = request.headers.get('user-agent') ?? null;
+
+    // F4: Compute document hash of the summary content
+    // Use a hash of the summary metadata since we don't have the actual PDF bytes here
+    const summaryContent = JSON.stringify({
+      app_id: app.id,
+      hoh_id: hoh.id,
+      language,
+      template_version,
+      signed_at: signedAt,
+    });
+    const documentHash = createHash('sha256').update(summaryContent).digest('hex');
 
     // Create summary document first (needed for signature_event FK)
-    const summaryId = existing?.id;
+    let summaryId = existing?.id;
 
     if (!summaryId) {
       const { data: newSummary, error: insertError } = await supabaseAdmin
@@ -131,55 +145,59 @@ export async function POST(
 
       if (insertError) throw insertError;
       if (!newSummary) throw new Error('Failed to create summary document record');
-
-      // We need a pbv_form_documents row to attach the signature event to.
-      // For the summary, we use a placeholder form_document entry.
-      // However, pbv_signature_events.form_document_id references pbv_form_documents.
-      // The summary is tracked independently in pbv_summary_documents.
-      // We skip creating a pbv_signature_event here — summary signing is captured
-      // directly in pbv_summary_documents.signed_at for simplicity.
-      // The signature_event_id FK is optional (can be NULL).
-
-      const { error: signError } = await supabaseAdmin
-        .from('pbv_summary_documents')
-        .update({ signed_at: signedAt })
-        .eq('id', newSummary.id);
-
-      if (signError) throw signError;
-
-      // Update signing_status on application
-      const { error: appUpdateError } = await supabaseAdmin
-        .from('pbv_full_applications')
-        .update({ signing_status: 'summary_signed', updated_at: signedAt })
-        .eq('id', app.id);
-
-      if (appUpdateError) throw appUpdateError;
-
-      return {
-        body: {
-          success: true,
-          data: {
-            summary_document_id: newSummary.id,
-            signed_at: signedAt,
-            already_signed: false,
-          },
-        },
-        status: 200,
-      };
+      summaryId = newSummary.id;
     }
 
-    // Existing row (shouldn't reach here if signed_at was set, but handle gracefully)
+    // F4: Create signature event for summary (form_document_id is NULL for summary)
+    const { data: sigEvent, error: sigEventError } = await supabaseAdmin
+      .from('pbv_signature_events')
+      .insert({
+        form_document_id: null, // Summary has no form document
+        signer_member_id: hoh.id,
+        signature_image_path: signature_image_path,
+        typed_name,
+        signed_at: signedAt,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        device_owner: 'self',
+        document_hash: documentHash,
+        ceremony_id,
+        consent_text_version,
+        assisted_by_staff_user_id: assistedByStaffUserId,
+      })
+      .select('id')
+      .maybeSingle();
+
+    if (sigEventError) throw sigEventError;
+
+    // Update summary document with signed_at and signature_event_id
     const { error: signError } = await supabaseAdmin
       .from('pbv_summary_documents')
-      .update({ signed_at: signedAt })
+      .update({
+        signed_at: signedAt,
+        signature_event_id: sigEvent?.id ?? null,
+      })
       .eq('id', summaryId);
 
     if (signError) throw signError;
 
+    // Update signing_status on application
+    const { error: appUpdateError } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .update({ signing_status: 'summary_signed', updated_at: signedAt })
+      .eq('id', app.id);
+
+    if (appUpdateError) throw appUpdateError;
+
     return {
       body: {
         success: true,
-        data: { summary_document_id: summaryId, signed_at: signedAt, already_signed: false },
+        data: {
+          summary_document_id: summaryId,
+          signed_at: signedAt,
+          already_signed: false,
+          signature_event_id: sigEvent?.id,
+        },
       },
       status: 200,
     };

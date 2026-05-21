@@ -36,25 +36,54 @@ export async function GET(
 
     if (membersError) throw membersError;
 
-    // Check which have completed signing via pbv_signature_events
+    // F3: Per-form has_signed check
+    // Load form documents to see which members are required signers
     const memberIds = (members ?? []).map((m) => m.id);
-    const { data: events } = await supabaseAdmin
-      .from('pbv_signature_events')
-      .select('signer_member_id')
-      .in('signer_member_id', memberIds.length > 0 ? memberIds : ['__none__']);
+    const { data: formDocs } = await supabaseAdmin
+      .from('pbv_form_documents')
+      .select('id, required_signer_member_ids, collected_signer_member_ids')
+      .eq('full_application_id', app.id)
+      .not('status', 'eq', 'skipped');
 
-    const signedMemberIds = new Set((events ?? []).map((e) => e.signer_member_id));
+    // Build a map: member_id -> { requiredForms, signedForms }
+    const memberFormStatus = new Map<string, { required: number; signed: number }>();
+    for (const memberId of memberIds) {
+      memberFormStatus.set(memberId, { required: 0, signed: 0 });
+    }
 
-    const signers = (members ?? []).map((m) => ({
-      member_id: m.id,
-      slot: m.slot,
-      name: m.name,
-      age: m.age,
-      has_signed: signedMemberIds.has(m.id),
-      magic_link_generated: !!m.magic_link_token,
-      magic_link_expires_at: m.magic_link_expires_at ?? null,
-      signing_device: m.signing_device ?? 'unknown',
-    }));
+    for (const formDoc of (formDocs ?? [])) {
+      const requiredIds: string[] = formDoc.required_signer_member_ids ?? [];
+      const collectedIds: string[] = formDoc.collected_signer_member_ids ?? [];
+
+      for (const memberId of memberIds) {
+        if (requiredIds.includes(memberId)) {
+          const status = memberFormStatus.get(memberId)!;
+          status.required++;
+          if (collectedIds.includes(memberId)) {
+            status.signed++;
+          }
+        }
+      }
+    }
+
+    // F3: has_signed = true only if all required forms are signed (or no forms required)
+    const signers = (members ?? []).map((m) => {
+      const status = memberFormStatus.get(m.id)!;
+      const has_signed = status.required === 0 || status.signed >= status.required;
+
+      return {
+        member_id: m.id,
+        slot: m.slot,
+        name: m.name,
+        age: m.age,
+        has_signed,
+        forms_required: status.required,
+        forms_signed: status.signed,
+        magic_link_generated: !!m.magic_link_token,
+        magic_link_expires_at: m.magic_link_expires_at ?? null,
+        signing_device: m.signing_device ?? 'unknown',
+      };
+    });
 
     const pending_count = signers.filter((s) => !s.has_signed).length;
 

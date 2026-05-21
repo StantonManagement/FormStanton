@@ -1,7 +1,7 @@
 # PRD-55 Build Report: Form-Generation Completeness & Template Alignment
 
 **Date:** 2026-05-20  
-**Commit:** (to be determined after commit)  
+**Commit:** ed4af5a  
 **Branch:** feat/pbv-full-finalization  
 
 ---

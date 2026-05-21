@@ -28,8 +28,9 @@ export interface FinalizeValidationResult {
  *
  * Checks:
  * 1. Intake is submitted (household members exist)
- * 2. All required signatures are complete
- * 3. All required documents are submitted/approved/waived (none missing/rejected)
+ * 2. Summary document is signed (F1: canonical model)
+ * 3. All form documents are signed (F1: pbv_form_documents collected ⊇ required)
+ * 4. All required documents are submitted/approved/waived (none missing/rejected)
  *
  * @param applicationId - The UUID of the pbv_full_applications row
  * @returns FinalizeValidationResult with ready flag and missing items
@@ -57,53 +58,60 @@ export async function validateReadyToFinalize(
     return result;
   }
 
-  // Check 2: All required signatures are complete
-  const { data: sigMembers } = await supabaseAdmin
-    .from('pbv_household_members')
-    .select('id, slot, name, signature_required')
+  // Check 2: Summary document must be signed
+  const { data: summaryDoc } = await supabaseAdmin
+    .from('pbv_summary_documents')
+    .select('id, signed_at')
     .eq('full_application_id', applicationId)
-    .eq('signature_required', true);
+    .maybeSingle();
 
-  const { data: signatureDocs } = await supabaseAdmin
-    .from('application_documents')
-    .select('id, label, person_slot, signer_scope, status, requires_signature')
-    .eq('anchor_type', 'pbv_full_application')
-    .eq('anchor_id', applicationId)
-    .eq('requires_signature', true);
-
-  const isSignedStatus = (status: string): boolean =>
-    status === 'submitted' || status === 'approved' || status === 'waived';
-
-  const docsForMember = (slot: number) =>
-    (signatureDocs ?? []).filter((doc) => {
-      if (doc.signer_scope === 'all_adults') {
-        return doc.person_slot === slot;
-      }
-      if (doc.signer_scope === 'hoh_only') {
-        return slot === 1 && doc.person_slot === 0;
-      }
-      if (doc.signer_scope === 'individual') {
-        return doc.person_slot === slot || (slot === 1 && doc.person_slot === 0);
-      }
-      return doc.person_slot === slot;
+  if (!summaryDoc?.signed_at) {
+    result.missing.signatures.push({
+      signer_name: 'Head of Household',
+      doc_label: 'Summary document not signed',
+      doc_id: summaryDoc?.id ?? 'summary',
     });
+  }
 
-  if (sigMembers && sigMembers.length > 0) {
-    for (const member of sigMembers) {
-      const requiredDocs = docsForMember(member.slot);
-      for (const doc of requiredDocs) {
-        if (!isSignedStatus(doc.status)) {
+  // Check 3: All form documents must be signed (F1: use canonical pbv_form_documents model)
+  // Load form documents and members
+  const { data: formDocs } = await supabaseAdmin
+    .from('pbv_form_documents')
+    .select('id, form_id, status, required_signer_member_ids, collected_signer_member_ids')
+    .eq('full_application_id', applicationId)
+    .not('status', 'eq', 'skipped'); // Skip forms that are conditionally excluded
+
+  const { data: members } = await supabaseAdmin
+    .from('pbv_household_members')
+    .select('id, name, slot')
+    .eq('full_application_id', applicationId);
+
+  const memberMap = new Map((members ?? []).map((m) => [m.id, m]));
+
+  for (const formDoc of (formDocs ?? [])) {
+    const requiredIds: string[] = formDoc.required_signer_member_ids ?? [];
+    const collectedIds: string[] = formDoc.collected_signer_member_ids ?? [];
+
+    // Check if all required signers have signed
+    const allCollected = requiredIds.every((id) => collectedIds.includes(id));
+    const isSigned = formDoc.status === 'signed' || formDoc.status === 'finalized' || allCollected;
+
+    if (!isSigned) {
+      // Find missing signers
+      for (const memberId of requiredIds) {
+        if (!collectedIds.includes(memberId)) {
+          const member = memberMap.get(memberId);
           result.missing.signatures.push({
-            signer_name: member.name,
-            doc_label: doc.label ?? doc.id,
-            doc_id: doc.id,
+            signer_name: member?.name ?? 'Unknown',
+            doc_label: formDoc.form_id.replace(/_/g, ' '),
+            doc_id: formDoc.id,
           });
         }
       }
     }
   }
 
-  // Check 3: All required documents are submitted/approved/waived
+  // Check 4: All required documents are submitted/approved/waived
   const { data: allDocs } = await supabaseAdmin
     .from('application_documents')
     .select('doc_type, label, status, required')

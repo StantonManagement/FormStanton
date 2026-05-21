@@ -9,13 +9,17 @@
  *   consent_text_version
  *
  * Returns 410 if link expired. Returns 409 if already signed (idempotent).
+ * Returns 409 if parent application already submitted (F8 lock check).
  * Does NOT require HOH summary to be signed first (non-HOH adults may sign
  * independently of HOH signing status).
+ *
+ * F2: Now uses shared completion logic from lib/pbv/signing/completeForm.ts
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { headers } from 'next/headers';
+import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
 
 export async function POST(
   request: NextRequest,
@@ -53,52 +57,65 @@ export async function POST(
       consent_text_version?: string;
     };
 
-    // Verify form belongs to this application
-    const { data: formDoc } = await supabaseAdmin
-      .from('pbv_form_documents')
-      .select('id, full_application_id')
-      .eq('id', form_document_id)
-      .eq('full_application_id', member.full_application_id)
+    // F8: Check parent application lock (submitted_at must be null)
+    const { data: app } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('id, submitted_at')
+      .eq('id', member.full_application_id)
       .maybeSingle();
 
-    if (!formDoc) {
-      return NextResponse.json({ success: false, message: 'Form not found for this application.' }, { status: 404 });
+    if (app?.submitted_at) {
+      return NextResponse.json(
+        { success: false, message: 'Application already submitted', code: 'submitted_locked' },
+        { status: 409 }
+      );
     }
 
-    // Idempotency: check existing signature event
-    const { data: existing } = await supabaseAdmin
-      .from('pbv_signature_events')
-      .select('id')
-      .eq('form_document_id', form_document_id)
-      .eq('signer_member_id', member.id)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({ success: true, data: { already_signed: true } });
-    }
-
+    // F2: Use shared completion logic (same as HOH route)
     const headerStore = await headers();
     const ipAddress = headerStore.get('x-forwarded-for') ?? headerStore.get('x-real-ip') ?? null;
     const userAgent = headerStore.get('user-agent') ?? null;
 
-    const { error: insertError } = await supabaseAdmin
-      .from('pbv_signature_events')
-      .insert({
-        form_document_id,
-        signer_member_id: member.id,
-        typed_name,
-        signature_image_path,
-        ceremony_id,
-        device_owner: 'self',
-        consent_text_version: consent_text_version ?? null,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-        signed_at: new Date().toISOString(),
-      });
+    // Create a minimal request-like object for completeFormSigning
+    const mockRequest = {
+      headers: {
+        get: (name: string) => {
+          if (name === 'x-forwarded-for') return ipAddress;
+          if (name === 'x-real-ip') return ipAddress;
+          if (name === 'user-agent') return userAgent;
+          return null;
+        },
+      },
+    } as Request;
 
-    if (insertError) throw insertError;
+    const result = await completeFormSigning({
+      formDocId: form_document_id,
+      appId: member.full_application_id,
+      signerMemberId: member.id,
+      deviceOwner: 'self',
+      signatureImagePath: signature_image_path,
+      ceremonyId: ceremony_id,
+      consentTextVersion: consent_text_version ?? '2026-05-15-v1',
+      assistedByStaffUserId: null,
+      request: mockRequest,
+    });
 
-    return NextResponse.json({ success: true, data: { already_signed: false } });
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, message: result.error ?? 'Signing failed' },
+        { status: result.error?.includes('not found') ? 404 : 422 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        already_signed: result.alreadySigned,
+        all_signed: result.allSigned,
+        status: result.status,
+        signed_pdf_path: result.signedPdfPath,
+      },
+    });
   } catch (error: any) {
     console.error('[signer-sign-form] POST error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

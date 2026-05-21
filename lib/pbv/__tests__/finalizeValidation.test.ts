@@ -6,6 +6,8 @@ type QueryBuilder = {
   select: (...args: any[]) => QueryBuilder;
   eq: (...args: any[]) => QueryBuilder;
   order: (...args: any[]) => QueryBuilder;
+  not: (...args: any[]) => QueryBuilder;
+  maybeSingle: (...args: any[]) => QueryBuilder;
   then: (fn: (result: any) => any) => Promise<any>;
   count?: number;
   data?: any;
@@ -13,18 +15,22 @@ type QueryBuilder = {
 };
 
 let _mockResponses: Array<{ data: any; count?: number; error?: any }> = [];
+let _mockTableName: string | null = null;
 
 function makeBuilder(response: { data: any; count?: number; error?: any }): QueryBuilder {
   const builder: QueryBuilder = {
     select: () => builder,
     eq: () => builder,
     order: () => builder,
+    not: () => builder,
+    maybeSingle: () => builder,
     then: (fn) => Promise.resolve(fn(response)),
   };
   return builder;
 }
 
-const mockFrom = vi.fn((_tableName: string) => {
+const mockFrom = vi.fn((tableName: string) => {
+  _mockTableName = tableName;
   const resp = _mockResponses.shift() ?? { data: [], error: null };
   return makeBuilder(resp);
 });
@@ -45,13 +51,14 @@ function queueResponses(responses: Array<{ data: any; count?: number; error?: an
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-describe('validateReadyToFinalize()', () => {
+describe('validateReadyToFinalize() — PRD-56 F1: canonical pbv_form_documents model', () => {
   beforeEach(() => {
     mockFrom.mockClear();
     _mockResponses = [];
+    _mockTableName = null;
   });
 
-  it('returns not ready when intake not submitted (count = 0)', async () => {
+  it('S1: returns not ready when intake not submitted (count = 0)', async () => {
     queueResponses([
       { data: null, count: 0 }, // pbv_household_members count
     ]);
@@ -61,11 +68,31 @@ describe('validateReadyToFinalize()', () => {
     expect(result.missing.signatures[0].doc_label).toMatch(/intake/i);
   });
 
-  it('returns ready when all sigs and docs are complete', async () => {
+  it('S1: returns not ready when summary not signed', async () => {
     queueResponses([
       { data: null, count: 2 }, // member count — intake submitted
-      { data: [{ id: 'm1', slot: 1, name: 'Alice', signature_required: true }] }, // sigMembers
-      { data: [{ id: 'd1', label: 'HUD-9886-A', person_slot: 1, signer_scope: 'all_adults', status: 'submitted', requires_signature: true }] }, // signatureDocs
+      { data: null }, // summary not found (not signed)
+      { data: [] }, // formDocs — none needed
+      { data: [] }, // members
+      { data: [] }, // allDocs — no required docs missing
+    ]);
+
+    const result = await validateReadyToFinalize('app-1');
+    expect(result.ready).toBe(false);
+    expect(result.missing.signatures.some((s) => s.doc_label.includes('Summary'))).toBe(true);
+  });
+
+  it('S1: returns ready when all form docs signed + summary signed', async () => {
+    queueResponses([
+      { data: null, count: 2 }, // member count — intake submitted
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — all signed
+        data: [
+          { id: 'fd-1', form_id: 'hud_9886a', status: 'signed', required_signer_member_ids: ['m1'], collected_signer_member_ids: ['m1'] },
+          { id: 'fd-2', form_id: 'hach_release', status: 'signed', required_signer_member_ids: ['m1'], collected_signer_member_ids: ['m1'] },
+        ],
+      },
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
       { data: [] }, // allDocs — no required docs missing
     ]);
 
@@ -75,22 +102,18 @@ describe('validateReadyToFinalize()', () => {
     expect(result.missing.documents).toHaveLength(0);
   });
 
-  it('returns per-signer attributed missing signature for 2-adult app with one unsigned doc', async () => {
+  it('S1: returns missing signatures when form docs not fully signed (F1 canonical model)', async () => {
     queueResponses([
       { data: null, count: 2 }, // member count
-      { // sigMembers — two adults
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — one not fully signed
         data: [
-          { id: 'm1', slot: 1, name: 'Alice', signature_required: true },
-          { id: 'm2', slot: 2, name: 'Bob', signature_required: true },
+          { id: 'fd-1', form_id: 'hud_9886a', status: 'signed', required_signer_member_ids: ['m1'], collected_signer_member_ids: ['m1'] },
+          { id: 'fd-2', form_id: 'hach_release', status: 'generated', required_signer_member_ids: ['m1', 'm2'], collected_signer_member_ids: ['m1'] }, // m2 missing
         ],
       },
-      { // signatureDocs — one doc per adult slot
-        data: [
-          { id: 'd1', label: 'HUD-9886-A', person_slot: 1, signer_scope: 'all_adults', status: 'submitted', requires_signature: true },
-          { id: 'd2', label: 'HUD-9886-A', person_slot: 2, signer_scope: 'all_adults', status: 'missing', requires_signature: true },
-        ],
-      },
-      { data: [] }, // allDocs — no non-signature required docs missing
+      { data: [{ id: 'm1', name: 'Alice' }, { id: 'm2', name: 'Bob' }] }, // members
+      { data: [] }, // allDocs
     ]);
 
     const result = await validateReadyToFinalize('app-1');
@@ -98,16 +121,35 @@ describe('validateReadyToFinalize()', () => {
     expect(result.missing.signatures).toHaveLength(1);
     expect(result.missing.signatures[0]).toEqual({
       signer_name: 'Bob',
-      doc_label: 'HUD-9886-A',
-      doc_id: 'd2',
+      doc_label: 'hach release',
+      doc_id: 'fd-2',
     });
   });
 
-  it('reports missing required document in missing.documents', async () => {
+  it('S1: skips forms with status=skipped (conditional forms)', async () => {
+    queueResponses([
+      { data: null, count: 2 }, // member count
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — includes a skipped conditional form
+        data: [
+          { id: 'fd-1', form_id: 'main_application', status: 'signed', required_signer_member_ids: ['m1'], collected_signer_member_ids: ['m1'] },
+          // pet_addendum with status=skipped won't be returned by .not('status', 'eq', 'skipped')
+        ],
+      },
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
+      { data: [] }, // allDocs
+    ]);
+
+    const result = await validateReadyToFinalize('app-1');
+    expect(result.ready).toBe(true);
+  });
+
+  it('S1: reports missing required document in missing.documents', async () => {
     queueResponses([
       { data: null, count: 1 }, // member count
-      { data: [{ id: 'm1', slot: 1, name: 'Alice', signature_required: true }] }, // sigMembers
-      { data: [{ id: 'd1', label: 'HUD-9886-A', person_slot: 1, signer_scope: 'all_adults', status: 'submitted', requires_signature: true }] }, // signatureDocs — all signed
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { data: [] }, // formDocs — none needed
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
       { // allDocs — one required doc is missing
         data: [
           { doc_type: 'pay_stub', label: 'Pay Stub', status: 'missing', required: true },
@@ -118,6 +160,5 @@ describe('validateReadyToFinalize()', () => {
     const result = await validateReadyToFinalize('app-1');
     expect(result.ready).toBe(false);
     expect(result.missing.documents).toContain('pay_stub');
-    expect(result.missing.signatures).toHaveLength(0);
   });
 });

@@ -33,29 +33,36 @@ export async function POST(
 ) {
   const { token } = await context.params;
 
+  // F5: Parse body early to construct idempotency key
+  const body = await request.json().catch(() => null);
+
+  if (!body?.form_document_id || !body?.signer_member_id || !body?.typed_name ||
+      !body?.signature_image_path || !body?.ceremony_id) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'form_document_id, signer_member_id, typed_name, signature_image_path, and ceremony_id are required',
+      },
+      { status: 400 }
+    );
+  }
+
+  const {
+    form_document_id,
+    signer_member_id,
+    typed_name,
+    signature_image_path,
+    ceremony_id,
+    consent_text_version = '2026-05-15-v1',
+    device_owner = 'self',
+  } = body;
+
+  // F5: Custom idempotency key for sign-form (ceremony_id + form_document_id)
+  const idempotencyKey = `sign-form:${ceremony_id}:${form_document_id}`;
+
   return withTenantContext(request, token, 'sign-form', async (app) => {
-    const body = await request.json().catch(() => null);
-
-    if (!body?.form_document_id || !body?.signer_member_id || !body?.typed_name ||
-        !body?.signature_image_path || !body?.ceremony_id) {
-      return {
-        body: {
-          success: false,
-          message: 'form_document_id, signer_member_id, typed_name, signature_image_path, and ceremony_id are required',
-        },
-        status: 400,
-      };
-    }
-
-    const {
-      form_document_id,
-      signer_member_id,
-      typed_name,
-      signature_image_path,
-      ceremony_id,
-      consent_text_version = '2026-05-15-v1',
-      device_owner = 'self',
-    } = body;
+    // Clone request with body for the shared logic
+    // Note: withTenantContext already validated idempotency, so we proceed with business logic
 
     // Read X-Assisted-By header — set by tenantFetch when session carries assistedMode.
     // Validate that this staff user exists in admin_users before trusting it.
@@ -340,7 +347,7 @@ export async function POST(
       },
       status: 200,
     };
-  });
+  }, undefined, idempotencyKey);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

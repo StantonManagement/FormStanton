@@ -198,19 +198,25 @@ export default async function PrintPage({ params }: PrintPageProps) {
     uploaded_at: d.status !== 'missing' ? d.created_at : undefined,
   }));
 
-  // Fetch signatures from audit log
+  // F6: Fetch signatures from canonical model (pbv_signature_events + pbv_form_documents)
   const { data: sigsData } = await supabaseAdmin
-    .from('pbv_signature_audit_log')
-    .select('id, document_id, signer_name, signed_at, document_id!inner(label)')
-    .eq('application_id', app.id)
+    .from('pbv_signature_events')
+    .select(`
+      id,
+      signer_member_id,
+      signed_at,
+      pbv_form_documents!inner(form_id),
+      pbv_household_members!inner(name)
+    `)
+    .eq('pbv_form_documents.full_application_id', app.id)
     .order('signed_at', { ascending: true });
 
   const signatures: SignatureInfo[] = (sigsData ?? []).map((s: any) => ({
     id: s.id,
-    document_id: s.document_id,
-    signer_name: s.signer_name,
+    document_id: s.pbv_form_documents?.form_id ?? 'summary',
+    signer_name: s.pbv_household_members?.name ?? 'Unknown',
     signed_at: s.signed_at,
-    document_label: s.document_id?.label ?? 'Unknown Document',
+    document_label: s.pbv_form_documents?.form_id?.replace(/_/g, ' ') ?? 'Summary Document',
   }));
 
   const submissionDate = app.intake_snapshot_at ?? app.submitted_at;

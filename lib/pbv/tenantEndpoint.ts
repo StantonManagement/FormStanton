@@ -27,7 +27,8 @@ export async function withTenantContext(
   token: string,
   endpoint: string,
   handler: (app: TenantApp) => Promise<{ body: unknown; status: number }>,
-  select?: string
+  select?: string,
+  idempotencyKey?: string // F5: optional custom key for fine-grained idempotency
 ): Promise<NextResponse> {
   const app = await resolveTokenToApp(token, select);
 
@@ -45,5 +46,7 @@ export async function withTenantContext(
     );
   }
 
-  return withIdempotency(request, app.id, endpoint, () => handler(app));
+  // F5: Use custom idempotency key if provided (e.g., ceremony_id + form_document_id)
+  const effectiveKey = idempotencyKey ?? endpoint;
+  return withIdempotency(request, app.id, effectiveKey, () => handler(app));
 }
