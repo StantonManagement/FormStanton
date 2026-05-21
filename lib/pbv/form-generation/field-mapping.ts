@@ -291,6 +291,56 @@ function resolveBriefingCert(
   };
 }
 
+function resolveCriminalBackgroundRelease(
+  intakeData: IntakeData,
+  members: HouseholdMember[],
+  signerSlot: number
+): Record<string, unknown> {
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  const member = members.find((m) => m.slot === signerSlot) ?? members[0];
+  const parts = member ? nameParts(member.name) : { last: '', first: '', mi: '' };
+  const app = intakeData.applicant ?? {};
+
+  // address_city_state_zip is a single string ("City, ST 12345") in intake; best-effort split.
+  const csz = app.address_city_state_zip ?? '';
+  const cszMatch = csz.match(/^\s*(.+?),\s*([A-Z]{2})\s+([0-9]{5}(?:-[0-9]{4})?)\s*$/i);
+  const city = cszMatch?.[1] ?? '';
+  const state = cszMatch?.[2] ?? '';
+  const zip = cszMatch?.[3] ?? '';
+
+  return {
+    first_name: parts.first,
+    middle_initial: parts.mi,
+    last_name: parts.last,
+    dob: formatDob(member?.date_of_birth),
+    ssn: ssnDisplay(member?.ssn_last_four),
+    current_address_street: app.address_street ?? '',
+    current_address_apt: '',
+    current_address_city: city,
+    current_address_state: state,
+    current_address_zip: zip,
+    // Previous address not captured in intake — leave blank for in-person fill.
+    previous_address_street: '',
+    previous_address_apt: '',
+    previous_address_city: '',
+    previous_address_state: '',
+    previous_address_zip: '',
+    signature_date: dateStr,
+    witness_signature_date: dateStr,
+    date: dateStr,
+  };
+}
+
+function resolveEivGuideReceipt(
+  members: HouseholdMember[],
+  signerSlot: number
+): Record<string, unknown> {
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  return resolveSingleSignature(members, signerSlot, dateStr);
+}
+
 // ─── Public resolver ──────────────────────────────────────────────────────────
 
 /**
@@ -327,6 +377,10 @@ export function resolveFieldData(
       return resolveSimpleAffidavit(members, signerSlot);
     case 'briefing_cert':
       return resolveBriefingCert(members);
+    case 'criminal_background_release':
+      return resolveCriminalBackgroundRelease(intakeData, members, signerSlot);
+    case 'eiv_guide_receipt':
+      return resolveEivGuideReceipt(members, signerSlot);
     default:
       return resolveSingleSignature(members, signerSlot, new Date().toLocaleDateString());
   }

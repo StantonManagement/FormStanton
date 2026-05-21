@@ -10,8 +10,12 @@
  * next.config.js outputFileTracingIncludes (see '/api/t/[token]/pbv-full-app/generate-forms').
  *
  * Only forms with generation_enabled=TRUE are loaded here.
- * Source-pending forms (vawa, reasonable_accommodation, zero_income_statement, eiv_guide_receipt)
+ * Source-pending forms (vawa, reasonable_accommodation, zero_income_statement)
  * are excluded until their source PDFs land and generation_enabled is flipped.
+ *
+ * PRD-55b (2026-05-21): re-added criminal_background_release + eiv_guide_receipt
+ * after PRD-55 wrongly disabled them — sources existed in docs/templates/ but
+ * PRD-55 only checked assets/pbv-source-pdfs/. PDFs copied to assets/ now.
  */
 
 import { readFileSync, existsSync } from 'fs';
@@ -89,6 +93,14 @@ export const SOURCE_PDFS: Record<string, { en: Buffer | null; es: Buffer | null 
   debts_owed_phas: {
     en: tryLoadPdf('debts-owed-phas-en.pdf'),
     es: tryLoadPdf('debts-owed-phas-es.pdf'),
+  },
+  criminal_background_release: {
+    en: tryLoadPdf('criminal-background-release-en.pdf'),
+    es: tryLoadPdf('criminal-background-release-es.pdf'),
+  },
+  eiv_guide_receipt: {
+    en: tryLoadPdf('eiv-guide-receipt-en.pdf'),
+    es: tryLoadPdf('eiv-guide-receipt-es.pdf'),
   },
 };
 

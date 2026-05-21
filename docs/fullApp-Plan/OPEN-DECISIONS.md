@@ -67,9 +67,19 @@ Entry format:
    - `pet_addendum` — missing source PDFs
    - `vehicle_addendum` — missing source PDFs
    - `self_employment_worksheet` — missing source PDFs
-   - `criminal_background_release` — upload-only (assumed)
+   - `criminal_background_release` — upload-only (assumed) — **partially reversed by PRD-55b migration below**
 
 **Status:** ✅ APPLIED 2026-05-20 — Migration executed on Tenant Communication project.
+
+**Rollback:** Reverse the UPDATE statements if needed.
+
+### `supabase/migrations/20260521000000_prd55b_form_sourcing_corrections.sql`
+**What it does:**
+1. Re-enables `criminal_background_release` (`generation_enabled=TRUE`, `category='sign'`, `source_pdf_status='sourced'`) — reverses PRD-55's upload-only classification. Source PDFs now in `assets/pbv-source-pdfs/`.
+2. Re-enables `eiv_guide_receipt` (`generation_enabled=TRUE`, `source_pdf_status='sourced'`) — source + field map existed; PRD-55 wrongly left disabled.
+3. Sets `generation_enabled=FALSE` for `insurance_settlement` and `cd_trust_bond` — unsourced, were silently skipping pre-batch.
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-55b commit. Alex applies after review.
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
@@ -111,3 +121,25 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 ### #4 eiv / insurance_settlement / cd_trust_bond — checked
 - **eiv_guide_receipt:** same as #3 — source exists (`docs/templates/eiv-guide-receipt-{en,es}.pdf`) + field map exists; left disabled as "source-pending." Can be enabled the same way. Needs Alex: should it generate?
 - **insurance_settlement + cd_trust_bond:** GAP — were in the live skip list (enabled+skipping) but ABSENT from PRD-55's reconciliation → likely still enabled and silently skipping. Not in packet, no source PDFs anywhere. Confirm DB state; disable if vestigial, source if real.
+
+---
+
+## PRD-55b Decisions (logged during run)
+
+### [PRD-55b] criminal_background_release re-enabled as generate-and-sign — DECISION
+- **Context:** PRD-55 wrongly classified as `upload`/`generation_enabled=FALSE` because it only checked `assets/pbv-source-pdfs/`. Source PDFs existed at `docs/templates/criminal-background-release-{en,es}.pdf`; field map existed at `scripts/field-maps/criminal-background-release-{en,es}.json`.
+- **Default taken:** Copied PDFs to `assets/`, added `SOURCE_PDFS['criminal_background_release']` entry, added `resolveCriminalBackgroundRelease` resolver (mirrors `resolveHachRelease` shape; populates first/middle/last name, DOB, SSN, current address split into street/city/state/zip; leaves previous address + signature image fields blank for in-person fill / signing ceremony). Migration `20260521000000_prd55b_form_sourcing_corrections.sql` sets `generation_enabled=TRUE`, `category='sign'`, `source_pdf_status='sourced'`.
+- **Reversible?** yes — re-flip the migration values.
+- **Needs Alex:** confirm address-split heuristic (regex `"City, ST 12345"`) handles real data; previous-address fields blank by design (not in intake).
+
+### [PRD-55b] eiv_guide_receipt re-enabled — DECISION (O1 default)
+- **Context:** PRD-55 left disabled as "source-pending" but source + field map existed; PRD-55b prompt O1 default-enable.
+- **Default taken:** Copied PDFs to `assets/`, added `SOURCE_PDFS['eiv_guide_receipt']`, added minimal `resolveEivGuideReceipt` resolver (signature + date only — receipt is signature-only). Migration sets `generation_enabled=TRUE`, `source_pdf_status='sourced'`. ES PDF coordinates per existing field map (PRD-23 noted ES guide pages blank in packet — ES PDF still has a separate signature page).
+- **Reversible?** yes — flip the flag.
+- **Needs Alex:** confirm EIV receipt should generate alongside the HUD EIV guide (vs. only being collected on paper/upload).
+
+### [PRD-55b] insurance_settlement + cd_trust_bond disabled — DECISION (O2 default → BLOCKER if real)
+- **Context:** PRD-55b prompt notes these were in the live skip list (enabled+silently-skipping) but never appeared in PRD-55's reconciliation. Step 0 prod DB query was not run in-session (no DB credentials in this batch's tooling) — reasoned from PRD-55 build report which omits them, confirming PRD-55 did not change their state.
+- **Default taken:** Migration sets `generation_enabled=FALSE`, `source_pdf_status='pending'` for both. They no longer silently skip. Not in packet, not in `docs/templates/`, no field maps, no resolvers.
+- **Reversible?** yes — flip flag if source PDFs are provided.
+- **Needs Alex:** confirm whether these are vestigial template rows (delete) or real HACH forms that need sourcing (BLOCKER — provide source PDFs + field-map shape; will become new PRD).

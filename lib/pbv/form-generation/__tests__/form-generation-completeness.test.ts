@@ -26,6 +26,8 @@ const REQUIRED_FORM_IDS = [
   'no_child_support_affidavit',
   'debts_owed_phas',
   'briefing_cert', // Renamed from briefing_docs_certification in PRD-55
+  'criminal_background_release', // Re-enabled in PRD-55b (source existed in docs/templates/)
+  'eiv_guide_receipt', // Re-enabled in PRD-55b (source existed in docs/templates/)
 ] as const;
 
 // Forms that are DISABLED in PRD-55 due to missing source PDFs/field maps.
