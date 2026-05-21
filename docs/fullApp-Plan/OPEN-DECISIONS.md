@@ -205,6 +205,20 @@ DELETE FROM public.form_document_templates
 
 ---
 
+### `supabase/migrations/20260521070000_reconcile_source_pdf_status_constraint.sql`
+**What it does:** Reconciles the `pbv_form_templates.source_pdf_status` constraint drift discovered during PRD-55b apply. The live prod constraint had drifted to `('ready','pending','deprecated')` by hand (no migration). The PRD-55b patch wrote `'ready'` to avoid the error. This migration:
+1. Drops the drifted constraint
+2. Normalizes all `'ready'` rows to `'sourced'` (the canonical value)
+3. Re-asserts the original CHECK `('pending','sourced','verified')` matching the table-defining migration and TS type
+
+**Branch chosen:** DEFAULT — consolidated to original vocabulary `('pending','sourced','verified')` because `'ready'` was only introduced by the PRD-55b patch, and `'deprecated'` had zero rows.
+
+**Status:** ✅ APPLIED 2026-05-21 — Constraint now canonical; 13 rows normalized from `'ready'`→`'sourced'`; generation_enabled set unchanged.
+
+**Files updated:** `20260521000000_prd55b_form_sourcing_corrections.sql` (lines 26, 38: `'ready'`→`'sourced'`), TS type unchanged (already correct).
+
+---
+
 ## PRD-60 Decisions (logged during run)
 
 ### [PRD-60] Scanic detector stays IN for v1 — DECISION (D5)
