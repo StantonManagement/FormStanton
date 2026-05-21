@@ -71,22 +71,10 @@ export async function POST(
       );
     }
 
-    // F2: Use shared completion logic (same as HOH route)
+    // F2 / PRD-62: Use shared completion logic (same as HOH route)
     const headerStore = await headers();
     const ipAddress = headerStore.get('x-forwarded-for') ?? headerStore.get('x-real-ip') ?? null;
     const userAgent = headerStore.get('user-agent') ?? null;
-
-    // Create a minimal request-like object for completeFormSigning
-    const mockRequest = {
-      headers: {
-        get: (name: string) => {
-          if (name === 'x-forwarded-for') return ipAddress;
-          if (name === 'x-real-ip') return ipAddress;
-          if (name === 'user-agent') return userAgent;
-          return null;
-        },
-      },
-    } as Request;
 
     const result = await completeFormSigning({
       formDocId: form_document_id,
@@ -96,8 +84,10 @@ export async function POST(
       signatureImagePath: signature_image_path,
       ceremonyId: ceremony_id,
       consentTextVersion: consent_text_version ?? '2026-05-15-v1',
+      typedName: typed_name,
       assistedByStaffUserId: null,
-      request: mockRequest,
+      ipAddress,
+      userAgent,
     });
 
     if (!result.success) {

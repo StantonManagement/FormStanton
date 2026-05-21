@@ -162,3 +162,99 @@ describe('validateReadyToFinalize() — PRD-56 F1: canonical pbv_form_documents 
     expect(result.missing.documents).toContain('pay_stub');
   });
 });
+
+describe('validateReadyToFinalize() — PRD-62 Check 5: document_hash integrity', () => {
+  beforeEach(() => {
+    mockFrom.mockClear();
+    _mockResponses = [];
+    _mockTableName = null;
+  });
+
+  it('PRD-62: blocks finalize when an event.document_hash mismatches the form unsigned_pdf_hash', async () => {
+    queueResponses([
+      { data: null, count: 1 }, // member count
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — fully signed, cached hash present
+        data: [
+          {
+            id: 'fd-1',
+            form_id: 'hud_9886a',
+            status: 'signed',
+            required_signer_member_ids: ['m1'],
+            collected_signer_member_ids: ['m1'],
+            unsigned_pdf_hash: 'aaaa',
+          },
+        ],
+      },
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
+      { data: [] }, // allDocs
+      { // Check 5 — events for fd-1: hash mismatch
+        data: [{ document_hash: 'bbbb', signer_member_id: 'm1' }],
+      },
+    ]);
+
+    const result = await validateReadyToFinalize('app-1');
+    expect(result.ready).toBe(false);
+    expect(result.missing.signatures).toHaveLength(1);
+    expect(result.missing.signatures[0]).toMatchObject({
+      signer_name: 'Alice',
+      doc_id: 'fd-1',
+    });
+    expect(result.missing.signatures[0].doc_label).toMatch(/hash mismatch/);
+    expect(result.missing.signatures[0].doc_label).toMatch(/re-sign/i);
+  });
+
+  it('PRD-62: stays ready when every event.document_hash matches the cached unsigned_pdf_hash', async () => {
+    queueResponses([
+      { data: null, count: 1 }, // member count
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — fully signed, cached hash present
+        data: [
+          {
+            id: 'fd-1',
+            form_id: 'hud_9886a',
+            status: 'signed',
+            required_signer_member_ids: ['m1'],
+            collected_signer_member_ids: ['m1'],
+            unsigned_pdf_hash: 'aaaa',
+          },
+        ],
+      },
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
+      { data: [] }, // allDocs
+      { // Check 5 — events for fd-1: hashes match
+        data: [{ document_hash: 'aaaa', signer_member_id: 'm1' }],
+      },
+    ]);
+
+    const result = await validateReadyToFinalize('app-1');
+    expect(result.ready).toBe(true);
+    expect(result.missing.signatures).toHaveLength(0);
+  });
+
+  it('PRD-62: skips Check 5 for legacy rows with null unsigned_pdf_hash (no extra event query, no block)', async () => {
+    queueResponses([
+      { data: null, count: 1 }, // member count
+      { data: { id: 'sum-1', signed_at: '2026-05-20T10:00:00Z' } }, // summary signed
+      { // formDocs — fully signed, NO cached hash (legacy row)
+        data: [
+          {
+            id: 'fd-1',
+            form_id: 'hud_9886a',
+            status: 'signed',
+            required_signer_member_ids: ['m1'],
+            collected_signer_member_ids: ['m1'],
+            unsigned_pdf_hash: null,
+          },
+        ],
+      },
+      { data: [{ id: 'm1', name: 'Alice' }] }, // members
+      { data: [] }, // allDocs
+      // NB: no pbv_signature_events query queued — legacy null-hash forms skip Check 5
+    ]);
+
+    const result = await validateReadyToFinalize('app-1');
+    expect(result.ready).toBe(true);
+    expect(result.missing.signatures).toHaveLength(0);
+  });
+});

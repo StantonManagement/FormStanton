@@ -1,4 +1,4 @@
-# Open Decisions — PBV Full-App Finalization batch (PRDs 55–61)
+# Open Decisions — PBV Full-App Finalization batch (PRDs 55–61) + Launch-Hardening batch (PRDs 62–67)
 
 Decisions deferred during the autonomous batch run, for Alex to resolve **after** the run. See `BATCH-RUN-PROTOCOL.md` for the format. Cascade appends here instead of stopping to ask.
 
@@ -72,6 +72,17 @@ Entry format:
 **Status:** ✅ APPLIED 2026-05-20 — Migration executed on Tenant Communication project.
 
 **Rollback:** Reverse the UPDATE statements if needed.
+
+### `supabase/migrations/20260521010000_prd62_unsigned_pdf_hash.sql`
+**What it does:**
+1. Adds `pbv_form_documents.unsigned_pdf_hash TEXT` (nullable). Distinct from `source_pdf_hash` (template hash) — this hashes the stamped unsigned bytes the signer downloads.
+2. Adds a `COMMENT ON COLUMN` explaining its purpose.
+
+**Used by:** `app/api/t/[token]/pbv-full-app/generate-forms/route.ts` writes the hash at upload time; `lib/pbv/finalizeValidation.ts` Check 5 compares each `pbv_signature_events.document_hash` to it (null = skip, legacy rows are not retroactively blocked).
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-62 commit. Alex applies after review.
+
+**Rollback:** `ALTER TABLE public.pbv_form_documents DROP COLUMN IF EXISTS unsigned_pdf_hash;` (the column is purely additive; dropping it disables Check 5 silently rather than corrupting state).
 
 ### `supabase/migrations/20260521000000_prd55b_form_sourcing_corrections.sql`
 **What it does:**
@@ -161,3 +172,31 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Default taken:** Migration sets `generation_enabled=FALSE`, `source_pdf_status='pending'` for both. They no longer silently skip. Not in packet, not in `docs/templates/`, no field maps, no resolvers.
 - **Reversible?** yes — flip flag if source PDFs are provided.
 - **Needs Alex:** confirm whether these are vestigial template rows (delete) or real HACH forms that need sourcing (BLOCKER — provide source PDFs + field-map shape; will become new PRD).
+
+---
+
+## Launch-hardening batch (PRDs 62–67) — logged during run
+
+### [PRD-62] Branch base — DECISION
+- **Context:** PRD-62 prompt says branch off `feat/pbv-full-finalization` if it has not yet merged to `main`, else off `main`.
+- **Default taken:** Branched `feat/pbv-launch-hardening` off `feat/pbv-full-finalization` (verified via `git log main..feat/pbv-full-finalization` — finalization batch is ahead of main, not merged). The PRD-62 commit will stack on top of `bea32eb Add PRD-61 code and workflow audit`.
+- **Reversible?** yes — can rebase onto main after the finalization PR merges, if Alex prefers that ordering.
+- **Needs Alex:** confirm ordering — keep launch-hardening stacked on finalization, or rebase after finalization merges.
+
+### [PRD-62] Legacy null-`unsigned_pdf_hash` rows skip Check 5 — DECISION (O1 default)
+- **Context:** Rows generated before this migration have `unsigned_pdf_hash = NULL`. Per PRD O1: should finalize block them, back-download to verify, or skip?
+- **Default taken:** Check 5 **skips** null-hash forms (no block). Per the cached-hash variant decision (D1) we do not download PDFs at finalize, and we explicitly do not retroactively block packets generated before this PRD landed.
+- **Reversible?** yes — a backfill job (compute `sha256` of each stored unsigned PDF, populate the column) can be added later.
+- **Needs Alex:** confirm "no retroactive block" is acceptable for launch. If not, add a one-off backfill before applying the prod migration set.
+
+### [PRD-62] HOH summary-doc-signed gate stays in the HOH route — DECISION (D3)
+- **Context:** PRD D3 keeps the gate in the route, not in `completeFormSigning`, because the member-token path intentionally omits it.
+- **Default taken:** Implemented as specified — the summary gate is in `app/api/t/[token]/pbv-full-app/sign-form/route.ts`; `completeFormSigning` knows nothing about it.
+- **Reversible?** yes — could be moved into the shared fn behind an option flag if a future flow needs it.
+- **Needs Alex:** none expected.
+
+### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
+- **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.
+- **Default taken:** Do not fix in this PRD (out of lane). PRD-62 only adds passing tests (`completeForm`, `finalizeValidation` extensions, `sign-form-unification`).
+- **Reversible?** n/a — informational.
+- **Needs Alex:** consider a cleanup PRD for the baseline failures; the `field-mapping.test` `briefing_docs_certification` rename was missed by PRD-55.

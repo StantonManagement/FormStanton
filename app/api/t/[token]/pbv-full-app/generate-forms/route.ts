@@ -159,8 +159,10 @@ export async function POST(
           ? members.filter((m) => (m.age ?? 0) >= 18).map((m) => m.id).filter(Boolean) as string[]
           : getRequiredSignerIds(template.per_person_scope, members, iter.slot);
 
-        // Compute source hash
+        // Compute source hash (template) + unsigned hash (stamped bytes the
+        // signer will hash at sign time — PRD-62 Check 5).
         const sourceHash = sha256Hex(sourcePdf);
+        const unsignedHash = sha256Hex(stampedPdf);
 
         // Upsert pbv_form_documents row
         const { data: docRow, error: upsertError } = await supabaseAdmin
@@ -175,6 +177,7 @@ export async function POST(
               signed_pdf_path: null,
               field_data_snapshot: fieldData,
               source_pdf_hash: sourceHash,
+              unsigned_pdf_hash: unsignedHash,
               field_map_version: fieldMap.field_map_version ?? '1',
               generated_at: new Date().toISOString(),
               required_signer_member_ids: requiredSignerIds,

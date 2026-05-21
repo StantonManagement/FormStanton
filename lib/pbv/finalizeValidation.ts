@@ -77,7 +77,7 @@ export async function validateReadyToFinalize(
   // Load form documents and members
   const { data: formDocs } = await supabaseAdmin
     .from('pbv_form_documents')
-    .select('id, form_id, status, required_signer_member_ids, collected_signer_member_ids')
+    .select('id, form_id, status, required_signer_member_ids, collected_signer_member_ids, unsigned_pdf_hash')
     .eq('full_application_id', applicationId)
     .not('status', 'eq', 'skipped'); // Skip forms that are conditionally excluded
 
@@ -125,6 +125,31 @@ export async function validateReadyToFinalize(
     // Only check required documents, and only those that are missing or rejected
     if (doc.required && !isCompleteStatus(doc.status)) {
       result.missing.documents.push(doc.doc_type);
+    }
+  }
+
+  // Check 5 (PRD-62): document_hash integrity. For each non-skipped form with a
+  // cached unsigned_pdf_hash, every recorded signature event's document_hash
+  // must match. Mismatch means the bytes drifted after signing — surface a
+  // re-sign message. Null unsigned_pdf_hash (legacy pre-migration rows) is
+  // skipped to avoid retroactively blocking packets generated before this PRD.
+  for (const formDoc of (formDocs ?? [])) {
+    if (!formDoc.unsigned_pdf_hash) continue;
+
+    const { data: events } = await supabaseAdmin
+      .from('pbv_signature_events')
+      .select('document_hash, signer_member_id')
+      .eq('form_document_id', formDoc.id);
+
+    for (const ev of events ?? []) {
+      if (ev.document_hash !== formDoc.unsigned_pdf_hash) {
+        const member = memberMap.get(ev.signer_member_id);
+        result.missing.signatures.push({
+          signer_name: member?.name ?? 'Unknown',
+          doc_label: `${formDoc.form_id} (signature/document hash mismatch — please re-sign)`,
+          doc_id: formDoc.id,
+        });
+      }
     }
   }
 

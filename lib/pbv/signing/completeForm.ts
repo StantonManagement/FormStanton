@@ -22,8 +22,10 @@ export interface CompleteFormOptions {
   signatureImagePath: string;
   ceremonyId: string;
   consentTextVersion: string;
+  typedName: string;
   assistedByStaffUserId?: string | null;
-  request: Request;
+  ipAddress: string | null;
+  userAgent: string | null;
 }
 
 export interface CompleteFormResult {
@@ -50,8 +52,10 @@ export async function completeFormSigning(
     signatureImagePath,
     ceremonyId,
     consentTextVersion,
+    typedName,
     assistedByStaffUserId,
-    request,
+    ipAddress,
+    userAgent,
   } = options;
 
   // ── Load form document ───────────────────────────────────────────────────
@@ -128,10 +132,6 @@ export async function completeFormSigning(
   // ── Compute document hash ───────────────────────────────────────────────────
   const documentHash = createHash('sha256').update(unsignedPdfBytes).digest('hex');
 
-  // ── Get IP/UA from request ─────────────────────────────────────────────────
-  const ipAddress = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? null;
-  const userAgent = request.headers.get('user-agent') ?? null;
-
   // ── Insert signature event ──────────────────────────────────────────────────
   const { error: eventError } = await supabaseAdmin
     .from('pbv_signature_events')
@@ -139,7 +139,7 @@ export async function completeFormSigning(
       form_document_id: formDoc.id,
       signer_member_id: signerMemberId,
       signature_image_path: signatureImagePath,
-      typed_name: member.name, // Will be updated by caller if they have typed_name
+      typed_name: typedName,
       signed_at: new Date().toISOString(),
       ip_address: ipAddress,
       user_agent: userAgent,
