@@ -489,3 +489,29 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **D1:** HOH route + signer mapper stay byte-parity. Same `pt → en → form_id` chain, same lookup. Verified: both implementations land in the same shape, only the call site differs.
 - **D2:** Fallback `pt → en → form_id`, NOT `pt → es`. Display names are text; mirrors `summary-doc/content.ts` PT branch. PDF asset routing (`pt → es`) is intentional and untouched (per `lib/pbv/__tests__/language-routing.test.ts:25-28`).
 - **Reversible?** yes for D2 (one-line change in two places + mapper). D1 should remain — divergence between HOH and signer here was the original bug PRD-68 fixed.
+
+---
+
+## PRD-73 Decisions (logged during run)
+
+### [PRD-73] O1 — 4 top-level tasks (not weighted) — DECISION
+- **Context:** Granularity choice for U7. Options: (a) count the four cards (default — matches the cards, simple, accurate); (b) weight by sub-counts (forms_signed/forms_total + upload_complete/upload_total).
+- **Default taken:** 4 top-level tasks. `computeHubProgress(statuses: CardStatus[])` consumes only the per-card statuses already derived in `TenantDashboard.tsx`. Locked cards drop out of both numerator and denominator (so total may temporarily be 3 while card2 is locked-on-summary; back to 4 after summary signed) — this is intentional and matches the PRD note.
+- **Reversible?** yes — helper accepts an arbitrary `CardStatus[]`; switching to a weighted derivation is a helper rewrite + caller change. No callers outside `TenantDashboard.tsx`.
+- **Needs Alex:** confirm the bar UX feels right during the manual Chrome walk (Gate R1).
+
+### [PRD-73] O2 — beforeunload only (no in-app router.push intercept) — DECISION
+- **Context:** U11 scope. Options: (a) `beforeunload` guard only (default — smallest surface, mirrors intake page); (b) also intercept in-app `router.push` back/exit with a trilingual `confirm()` mirroring `DocumentCard.tsx:281`.
+- **Default taken:** `beforeunload` only. Active when any required doc has status `'missing'` or `'rejected'`. Skipped once `submittedAt` is set. The in-app intercept is the optional "nice to have" — the PRD explicitly flagged it as optional, and adding it would require a custom router.push wrapper or a `usePathname`-watching effect, both larger surface than the intake-page pattern.
+- **Reversible?** yes — adding the in-app intercept later is additive and doesn't change the `beforeunload` behavior.
+- **Needs Alex:** decide post-walk whether the in-app intercept is worth the extra complexity. If yes: small follow-up PR.
+
+### [PRD-73] O3 — Documents page only (not dashboard) — DECISION
+- **Context:** Where to attach U11. Options: documents page (default + dashboard); documents page only (default); also the read-only review surface (no — `submittedAt` is set there).
+- **Default taken:** documents page only. Once the tenant reaches the dashboard, all docs are either uploaded (status: `submitted` / `approved` / `waived`) or they've consciously left a required slot via the "I'll get this later" defer flow. The dashboard itself doesn't lose in-progress data on navigate-away. Read-only review is unaffected by definition.
+- **Reversible?** yes — adding the dashboard guard is a copy-paste of the documents-page `useEffect`.
+- **Needs Alex:** none expected.
+
+### [PRD-73] D1/D2 — Confirmations (per PRD)
+- **D1:** Derive U7 from existing card statuses — no new data, no new fetch.
+- **D2:** Mirror `beforeunload` (`page.tsx:556`) + (in scope) `confirm()` (`DocumentCard.tsx:281`); no modal library.
