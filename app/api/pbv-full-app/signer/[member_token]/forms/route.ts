@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { mapSignerForms } from '@/lib/pbv/signer-forms-mapping';
 
 export async function GET(
   _request: NextRequest,
@@ -35,37 +36,41 @@ export async function GET(
 
     const { data: docs, error } = await supabaseAdmin
       .from('pbv_form_documents')
-      .select('id, form_id, display_name, language, status, generated_at, finalized_at, required_signer_count, collected_signer_count, conditional_trigger')
+      .select('id, form_id, language, status, generated_at, finalized_at, required_signer_member_ids, collected_signer_member_ids, conditional_trigger')
       .eq('full_application_id', member.full_application_id)
       .in('status', ['generated', 'signed', 'finalized']);
 
     if (error) throw error;
 
-    // Determine which forms this member still needs to sign
+    const { data: app } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('preferred_language')
+      .eq('id', member.full_application_id)
+      .maybeSingle();
+
+    const formIds = [...new Set((docs ?? []).map((d) => d.form_id))];
+    const { data: templates } = await supabaseAdmin
+      .from('pbv_form_templates')
+      .select('form_id, display_name_en, display_name_es')
+      .in('form_id', formIds.length > 0 ? formIds : ['__none__']);
+
     const signedFormIds = await (async () => {
       if (!docs || docs.length === 0) return new Set<string>();
-      const formIds = docs.map((d) => d.id);
+      const docIds = docs.map((d) => d.id);
       const { data: events } = await supabaseAdmin
         .from('pbv_signature_events')
         .select('form_document_id')
         .eq('signer_member_id', member.id)
-        .in('form_document_id', formIds);
+        .in('form_document_id', docIds);
       return new Set((events ?? []).map((e) => e.form_document_id));
     })();
 
-    const forms = (docs ?? []).map((doc) => ({
-      id: doc.id,
-      form_id: doc.form_id,
-      display_name: doc.display_name,
-      language: doc.language,
-      status: doc.status,
-      generated_at: doc.generated_at,
-      finalized_at: doc.finalized_at,
-      required_signer_count: doc.required_signer_count,
-      collected_signer_count: doc.collected_signer_count,
-      signatures_complete: signedFormIds.has(doc.id),
-      conditional_trigger: doc.conditional_trigger ?? null,
-    }));
+    const forms = mapSignerForms({
+      docs: docs ?? [],
+      templates: templates ?? [],
+      preferredLanguage: app?.preferred_language ?? null,
+      signedFormIds,
+    });
 
     return NextResponse.json({ success: true, data: { forms } });
   } catch (error: any) {

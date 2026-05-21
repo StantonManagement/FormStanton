@@ -342,6 +342,24 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **U11 (leave-with-missing confirmation):** not built. The card stack already has explicit "I'll get this later" + the dashboard re-entry path handles partial completion gracefully.
 - **Needs Alex:** prioritize U7 + U11 in a polish PRD; schedule PT native review.
 
+### [PRD-68] O1 — member-scoping of signer forms — DECISION
+- **Context:** PRD-68 O1 asked whether to return all application forms (HOH-route parity) or filter to forms where `required_signer_member_ids` includes `member.id` (matching the route's docstring `:6-7`).
+- **Default taken:** Return **all** application forms (no scope change). Mirrors the working HOH route; the per-member `signatures_complete` lookup against `pbv_signature_events` already tells the page which forms the member has signed. Docstring-style filter would be a separate refinement for both routes.
+- **Reversible?** yes — add a single `.contains('required_signer_member_ids', [member.id])` filter on the docs query in `app/api/pbv-full-app/signer/[member_token]/forms/route.ts` (and consider applying it to the HOH route for parity).
+- **Needs Alex:** confirm "return all forms + signatures_complete flag" is acceptable for the signer page UX (it's the current HOH behavior; the change here is bringing the broken route to parity, not introducing a new scoping policy).
+
+### [PRD-68] O2 — language source for display name — DECISION
+- **Context:** PRD-68 O2 asked whether to resolve display language from `pbv_full_applications.preferred_language` (HOH parity) or `pbv_form_documents.language` (per-doc).
+- **Default taken:** `preferred_language → doc.language → 'en'`. Strict HOH parity (`app.preferred_language ?? 'en'`) plus a `doc.language` fallback so a doc generated in a non-preferred language still picks a sensible name if the app row is missing `preferred_language`. The signer page also reads `preferred_language` from the bootstrap, so this is consistent.
+- **Reversible?** yes — drop the `doc.language` fallback in `lib/pbv/signer-forms-mapping.ts` to be byte-identical to HOH.
+- **Needs Alex:** none expected.
+
+### [PRD-68] O3 — PT display name not yet supported — DECISION
+- **Context:** PRD-68 O3 noted the HOH route only selects `display_name_en` / `display_name_es` even though `display_name_pt` exists (`20260515040000`). Adding `_pt` here would diverge from HOH.
+- **Default taken:** Mirror HOH exactly — en/es only. PT speakers see the EN display name for now. PT display-name support is a shared follow-up for BOTH routes (and the rest of the template-name read sites).
+- **Reversible?** yes — add `display_name_pt` to the select + `lang === 'pt'` branch in `lib/pbv/signer-forms-mapping.ts` (and the HOH route, for parity).
+- **Needs Alex:** schedule the PT display-name follow-up; this fix doesn't make the gap worse, just doesn't close it.
+
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.
 - **Default taken:** Do not fix in this PRD (out of lane). PRD-62 only adds passing tests (`completeForm`, `finalizeValidation` extensions, `sign-form-unification`).
