@@ -5,9 +5,13 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@dnd-kit/core', '@dnd-kit/sortable'],
   },
 
-  // Include field maps and source PDFs in serverless bundle for generate-forms
+  // Include field maps and source PDFs in serverless bundle for generate-forms.
+  // docs/ is .vercelignore'd, so source PDFs live in assets/pbv-source-pdfs/.
   outputFileTracingIncludes: {
-    '/api/t/[token]/pbv-full-app/generate-forms': ['./scripts/field-maps/**'],
+    '/api/t/[token]/pbv-full-app/generate-forms': [
+      './scripts/field-maps/**',
+      './assets/pbv-source-pdfs/**',
+    ],
   },
 
   // Handle OpenCV.js and other native modules in webpack

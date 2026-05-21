@@ -1,9 +1,13 @@
 /**
  * lib/pbv/form-generation/source-pdfs.ts
  *
- * Loads source PDFs from docs/templates/ at module import time.
+ * Loads source PDFs from assets/pbv-source-pdfs/ at module import time.
  * PDFs are embedded as Buffer constants — loaded once, never re-read per request.
  * Path resolution is relative to the project root (process.cwd() in Next.js server context).
+ *
+ * Why assets/ and not docs/templates/: .vercelignore strips docs/, so PDFs there
+ * are absent from the serverless bundle at runtime. assets/ is bundled via
+ * next.config.js outputFileTracingIncludes (see '/api/t/[token]/pbv-full-app/generate-forms').
  *
  * Only forms with generation_enabled=TRUE are loaded here.
  * Source-pending forms (vawa, reasonable_accommodation, zero_income_statement, eiv_guide_receipt)
@@ -13,17 +17,19 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-function loadPdf(relativePath: string): Buffer {
-  const fullPath = join(process.cwd(), relativePath);
+const SOURCE_PDF_DIR = 'assets/pbv-source-pdfs';
+
+function loadPdf(fileName: string): Buffer {
+  const fullPath = join(process.cwd(), SOURCE_PDF_DIR, fileName);
   if (!existsSync(fullPath)) {
-    throw new Error(`Source PDF not found: ${fullPath}. Ensure docs/templates/ is present at runtime.`);
+    throw new Error(`Source PDF not found: ${fullPath}. Ensure ${SOURCE_PDF_DIR}/ is present at runtime.`);
   }
   return readFileSync(fullPath);
 }
 
-function tryLoadPdf(relativePath: string): Buffer | null {
+function tryLoadPdf(fileName: string): Buffer | null {
   try {
-    return loadPdf(relativePath);
+    return loadPdf(fileName);
   } catch {
     return null;
   }
@@ -33,56 +39,56 @@ function tryLoadPdf(relativePath: string): Buffer | null {
 
 export const SOURCE_PDFS: Record<string, { en: Buffer | null; es: Buffer | null }> = {
   main_application: {
-    en: tryLoadPdf('docs/templates/main-application-en.pdf'),
-    es: tryLoadPdf('docs/templates/main-application-es.pdf'),
+    en: tryLoadPdf('main-application-en.pdf'),
+    es: tryLoadPdf('main-application-es.pdf'),
   },
   citizenship_declaration: {
-    en: tryLoadPdf('docs/templates/citizenship-declaration-en.pdf'),
-    es: tryLoadPdf('docs/templates/citizenship-declaration-es.pdf'),
+    en: tryLoadPdf('citizenship-declaration-en.pdf'),
+    es: tryLoadPdf('citizenship-declaration-es.pdf'),
   },
   obligations_of_family: {
-    en: tryLoadPdf('docs/templates/obligations-of-family-en.pdf'),
-    es: tryLoadPdf('docs/templates/obligations-of-family-es.pdf'),
+    en: tryLoadPdf('obligations-of-family-en.pdf'),
+    es: tryLoadPdf('obligations-of-family-es.pdf'),
   },
   hud_9886a: {
-    en: tryLoadPdf('docs/templates/hud-9886a-en.pdf'),
-    es: tryLoadPdf('docs/templates/hud-9886a-es.pdf'),
+    en: tryLoadPdf('hud-9886a-en.pdf'),
+    es: tryLoadPdf('hud-9886a-es.pdf'),
   },
   hach_release: {
-    en: tryLoadPdf('docs/templates/hach-release-en.pdf'),
-    es: tryLoadPdf('docs/templates/hach-release-es.pdf'),
+    en: tryLoadPdf('hach-release-en.pdf'),
+    es: tryLoadPdf('hach-release-es.pdf'),
   },
   hud_92006: {
-    en: tryLoadPdf('docs/templates/hud-92006-en.pdf'),
-    es: tryLoadPdf('docs/templates/hud-92006-es.pdf'),
+    en: tryLoadPdf('hud-92006-en.pdf'),
+    es: tryLoadPdf('hud-92006-es.pdf'),
   },
   child_support_affidavit: {
-    en: tryLoadPdf('docs/templates/child-support-affidavit-en.pdf'),
-    es: tryLoadPdf('docs/templates/child-support-affidavit-es.pdf'),
+    en: tryLoadPdf('child-support-affidavit-en.pdf'),
+    es: tryLoadPdf('child-support-affidavit-es.pdf'),
   },
   no_child_support_affidavit: {
-    en: tryLoadPdf('docs/templates/no-child-support-affidavit-en.pdf'),
-    es: tryLoadPdf('docs/templates/no-child-support-affidavit-es.pdf'),
+    en: tryLoadPdf('no-child-support-affidavit-en.pdf'),
+    es: tryLoadPdf('no-child-support-affidavit-es.pdf'),
   },
   pet_addendum: {
-    en: tryLoadPdf('docs/templates/pet-addendum-en.pdf'),
-    es: tryLoadPdf('docs/templates/pet-addendum-es.pdf'),
+    en: tryLoadPdf('pet-addendum-en.pdf'),
+    es: tryLoadPdf('pet-addendum-es.pdf'),
   },
   vehicle_addendum: {
-    en: tryLoadPdf('docs/templates/vehicle-addendum-en.pdf'),
-    es: tryLoadPdf('docs/templates/vehicle-addendum-es.pdf'),
+    en: tryLoadPdf('vehicle-addendum-en.pdf'),
+    es: tryLoadPdf('vehicle-addendum-es.pdf'),
   },
   self_employment_worksheet: {
-    en: tryLoadPdf('docs/templates/self-employment-worksheet-en.pdf'),
-    es: tryLoadPdf('docs/templates/self-employment-worksheet-es.pdf'),
+    en: tryLoadPdf('self-employment-worksheet-en.pdf'),
+    es: tryLoadPdf('self-employment-worksheet-es.pdf'),
   },
   briefing_docs_certification: {
-    en: tryLoadPdf('docs/templates/briefing-cert-en.pdf'),
-    es: tryLoadPdf('docs/templates/briefing-cert-es.pdf'),
+    en: tryLoadPdf('briefing-cert-en.pdf'),
+    es: tryLoadPdf('briefing-cert-es.pdf'),
   },
   debts_owed_phas: {
-    en: tryLoadPdf('docs/templates/debts-owed-phas-en.pdf'),
-    es: tryLoadPdf('docs/templates/debts-owed-phas-es.pdf'),
+    en: tryLoadPdf('debts-owed-phas-en.pdf'),
+    es: tryLoadPdf('debts-owed-phas-es.pdf'),
   },
 };
 
