@@ -12,6 +12,7 @@ import DocumentProgressBar from './DocumentProgressBar';
 import ApplicationStatusBanner, { type ApplicationReviewStatus } from './ApplicationStatusBanner';
 import { tenantFetch } from '@/lib/tenantFetch';
 import { getOfficeContact } from '@/lib/pbv/officeContacts';
+import { computeHubProgress } from '@/lib/pbv/computeHubProgress';
 import type { DashboardData } from '@/lib/pbv/hooks/useDashboardState';
 import type { PreferredLanguage } from '@/types/compliance';
 
@@ -24,6 +25,7 @@ interface Props {
 interface CopyMap {
   title: string;
   subtitle: string;
+  hub_progress: (completed: number, total: number) => string;
   card1_title: string;
   card1_sub_pending: string;
   card1_sub_done: string;
@@ -53,6 +55,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
   en: {
     title: 'Application Dashboard',
     subtitle: 'Complete all required tasks to submit your application.',
+    hub_progress: (completed, total) => `Step ${completed} of ${total} complete`,
     card1_title: 'Review and sign your summary',
     card1_sub_pending: 'Read and sign the plain-language summary of your application.',
     card1_sub_done: 'Summary signed.',
@@ -81,6 +84,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
   es: {
     title: 'Panel de Solicitud',
     subtitle: 'Complete todas las tareas requeridas para enviar su solicitud.',
+    hub_progress: (completed, total) => `Paso ${completed} de ${total} completado`,
     card1_title: 'Revisar y firmar su resumen',
     card1_sub_pending: 'Lea y firme el resumen en lenguaje sencillo de su solicitud.',
     card1_sub_done: 'Resumen firmado.',
@@ -109,6 +113,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     // PT: tentative — review
     title: 'Painel de Solicita\u00e7\u00e3o',
     subtitle: 'Conclua todas as tarefas obrigat\u00f3rias para enviar sua solicita\u00e7\u00e3o.',
+    hub_progress: (completed, total) => `Etapa ${completed} de ${total} conclu\u00edda`,
     card1_title: 'Revisar e assinar seu resumo',
     card1_sub_pending: 'Leia e assine o resumo em linguagem simples da sua solicita\u00e7\u00e3o.',
     card1_sub_done: 'Resumo assinado.',
@@ -172,6 +177,11 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
       ? c.card3_sub_done
       : c.card3_sub_pending(data.upload_complete, data.upload_total);
 
+  const card4Status: CardStatus = data.additional_signers_needed ? 'pending' : 'complete';
+
+  // PRD-73 U7: hub-level progress across the four task cards.
+  const hub = computeHubProgress([card1Status, card2Status, card3Status, card4Status]);
+
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError('');
@@ -194,7 +204,29 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
     <div className="min-h-screen bg-[var(--paper)]">
       <div className="max-w-lg mx-auto px-4 py-8">
         <h1 className="font-serif text-2xl text-[var(--primary)] mb-1">{c.title}</h1>
-        <p className="text-sm text-[var(--muted)] mb-6">{c.subtitle}</p>
+        <p className="text-sm text-[var(--muted)] mb-4">{c.subtitle}</p>
+
+        {/* PRD-73 U7: hub-level progress indicator. Always rendered (a green
+            4/4 bar on a submitted application is a useful confirmation). */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-[var(--ink)]">{c.hub_progress(hub.completed, hub.total)}</span>
+            <span className="text-sm font-medium text-[var(--ink)]">{hub.percentage}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-200 rounded-none overflow-hidden">
+            <div
+              className={`h-full transition-all duration-300 ease-out ${
+                hub.percentage === 100 ? 'bg-green-600' : hub.percentage > 0 ? 'bg-amber-500' : 'bg-gray-400'
+              }`}
+              style={{ width: `${hub.percentage}%` }}
+              role="progressbar"
+              aria-valuenow={hub.completed}
+              aria-valuemin={0}
+              aria-valuemax={hub.total}
+              aria-label={c.hub_progress(hub.completed, hub.total)}
+            />
+          </div>
+        </div>
 
         {/* PRD-58 Phase 1: Banner keyed on true submission state.
             - Show submitted/review banner only if truly submitted (submitted_at set)
@@ -273,7 +305,7 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
           <DashboardCard
             title={c.card4_title}
             subtitle={data.additional_signers_needed ? c.card4_sub_pending(data.additional_signers_pending_count) : c.card4_sub_done}
-            status={data.additional_signers_needed ? 'pending' : 'complete'}
+            status={card4Status}
             actionLabel={data.additional_signers_needed ? c.start : undefined}
             onAction={() => router.push(`/pbv-full-app/${token}/sign/additional-signers`)}
           />

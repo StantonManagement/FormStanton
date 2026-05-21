@@ -101,6 +101,25 @@ export default function DocumentsPage({ params }: Props) {
     }
   }, [preferredLanguage, fetchDocuments]);
 
+  // PRD-73 U11: warn before leaving while required docs are still missing or
+  // rejected (= still need upload). Mirrors the intake page guard pattern at
+  // app/pbv-full-app/[token]/page.tsx:558-567. Modern browsers ignore the
+  // message string and show their own native dialog, so this is binary on/off
+  // — no copy to translate. Skip the guard once the application is submitted.
+  useEffect(() => {
+    if (submittedAt) return;
+    const hasMissingRequired = documents.some(
+      (d) => d.required && (d.status === 'missing' || d.status === 'rejected')
+    );
+    if (!hasMissingRequired) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [documents, submittedAt]);
+
   const handleUpload = useCallback(
     async (docId: string, file: File, _metadata?: ScannerMetadata) => {
       const formData = new FormData();
