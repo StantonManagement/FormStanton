@@ -119,7 +119,7 @@ Modeled on `20260518000000_pbv_forms_storage_bucket.sql` (the established preced
 
 **Why it's needed:** A fresh environment provisioned from `supabase/migrations/` alone had `pbv-forms` but not the other three → every tenant upload, signature capture, and signed-PDF read 404'd. This is the same class of gap as the queued `tenant_lookup` table (no `CREATE TABLE` migration).
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-69 commit. **No-op on existing prod (the buckets already exist; `ON CONFLICT DO NOTHING` leaves the live config untouched). Required for any fresh environment.**
+**Status:** ✅ APPLIED 2026-05-21 — All three buckets confirmed present.
 
 **⚠ Reconcile-before-apply checklist (for fresh-env apply, NOT for prod apply):**
 The live-DB verification audit that would have given authoritative `file_size_limit` / `allowed_mime_types` / `storage.objects` policy values for each bucket was not available at build time. The migration ships with `public=false`, `file_size_limit=NULL`, `allowed_mime_types=NULL` (permissive, safe for prod via `DO NOTHING`). Before standing up a brand-new environment for **production use**, run on prod:
@@ -145,7 +145,7 @@ and update the migration's `VALUES` (+ add any `CREATE POLICY` blocks the audit 
 
 **Apply order:** Apply BEFORE deploying the PRD-66 code change. The route writes `generation_version` on every upsert; if the column isn't there, generate-forms 500s. The DEFAULT 1 fills existing rows safely.
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-66 commit. Alex applies after review.
+**Status:** ✅ APPLIED 2026-05-21 — Column present with DEFAULT 1, NOT NULL.
 
 **Rollback:** `ALTER TABLE public.pbv_form_documents DROP COLUMN IF EXISTS generation_version;` plus reverting `generate-forms/route.ts` to the fixed `-unsigned.pdf` path.
 
@@ -156,7 +156,7 @@ and update the migration's `VALUES` (+ add any `CREATE POLICY` blocks the audit 
 
 **Used by:** the live seed path (`seedApplicationDocuments` in `app/api/t/[token]/pbv-full-app/intake/complete/route.ts`) for new apps; the backfill takes care of in-flight ones.
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-65 commit. Alex applies after review.
+**Status:** ✅ APPLIED 2026-05-21 — Template at display_order=5; 7 in-flight apps backfilled (all test data).
 
 **Heads-up for tenant comms:** tenants currently mid-application will see a NEW required Photo ID slot on their next visit. If that needs a heads-up message, send it before applying.
 
@@ -178,7 +178,7 @@ DELETE FROM public.form_document_templates
 
 **Apply order:** **Apply BEFORE deploying the PRD-64 code change.** The route is hard-coded to call this RPC; if the function isn't there, every finalize attempt returns 500. (Acceptable for a coordinated cutover; document in the deploy runbook.)
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-64 commit. Alex applies after review.
+**Status:** ✅ APPLIED 2026-05-21 — Function exists; service_role has EXECUTE.
 
 **Rollback:** `DROP FUNCTION IF EXISTS public.finalize_pbv_application(uuid, timestamptz, text);` plus a revert of `finalize/route.ts` to the previous JS-side submit + writePbvApplicationEvent ordering.
 
@@ -189,7 +189,7 @@ DELETE FROM public.form_document_templates
 
 **Used by:** `app/api/t/[token]/pbv-full-app/generate-forms/route.ts` writes the hash at upload time; `lib/pbv/finalizeValidation.ts` Check 5 compares each `pbv_signature_events.document_hash` to it (null = skip, legacy rows are not retroactively blocked).
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-62 commit. Alex applies after review.
+**Status:** ✅ APPLIED 2026-05-21 — Column present, nullable.
 
 **Rollback:** `ALTER TABLE public.pbv_form_documents DROP COLUMN IF EXISTS unsigned_pdf_hash;` (the column is purely additive; dropping it disables Check 5 silently rather than corrupting state).
 
@@ -199,7 +199,7 @@ DELETE FROM public.form_document_templates
 2. Re-enables `eiv_guide_receipt` (`generation_enabled=TRUE`, `source_pdf_status='sourced'`) — source + field map existed; PRD-55 wrongly left disabled.
 3. Sets `generation_enabled=FALSE` for `insurance_settlement` and `cd_trust_bond` — unsourced, were silently skipping pre-batch.
 
-**Status:** ⏳ NOT APPLIED — written + committed in PRD-55b commit. Alex applies after review.
+**Status:** ✅ APPLIED 2026-05-21 — criminal_background_release + eiv_guide_receipt enabled; insurance_settlement + cd_trust_bond disabled.
 
 **Rollback:** Reverse the UPDATE statements if needed.
 

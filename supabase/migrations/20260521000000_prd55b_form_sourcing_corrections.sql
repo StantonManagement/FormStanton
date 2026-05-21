@@ -23,7 +23,7 @@
 UPDATE public.pbv_form_templates
 SET generation_enabled = TRUE,
     category = 'sign',
-    source_pdf_status = 'sourced',
+    source_pdf_status = 'ready',
     notes = 'Generate-and-sign form. Sourced from packet pp 39–40 (re-enabled in PRD-55b after PRD-55 wrongly classified as upload-only).'
 WHERE form_id = 'criminal_background_release';
 
@@ -35,7 +35,7 @@ WHERE form_id = 'criminal_background_release';
 
 UPDATE public.pbv_form_templates
 SET generation_enabled = TRUE,
-    source_pdf_status = 'sourced',
+    source_pdf_status = 'ready',
     notes = 'Signed receipt for EIV/Notice and Consent guide. Sourced + field-mapped in PRD-23; re-enabled in PRD-55b.'
 WHERE form_id = 'eiv_guide_receipt';
 

@@ -105,6 +105,7 @@ This file is the cross-session view. The chat-level back-and-forth is too fast t
 
 | When | What | Tag / Branch |
 |---|---|---|
+| 2026-05-21 | **PBV 2026-05-21 migration batch applied to prod** (lieeeqqvshobnqofcdac): PRD-55b (form sourcing corrections), PRD-62 (unsigned_pdf_hash), PRD-64 (finalize function), PRD-65 (govt ID required), PRD-66 (generation_version), PRD-69 (storage buckets). PRD-72 PT backfill held for native review. Runner: `scripts/apply-2026-05-21-batch.mjs`. | `feat/pbv-tenant-polish` |
 | 2026-05-20 | PRD-54 **all three bugs** — `/sign` 404 (A), summary-page `generate-forms` infinite loop (B), zero-forms source-PDF tracing (C). Bug C `1dc4477` pushed + verified live: `total_generated: 9`, `main_application` generates, summary signable, one POST. **Launch blocker cleared.** | `fix/pbv-summary-sign-loop-54` + `1dc4477` on `main` |
 | 2026-05-19 | Docs cleanup pass — PRDs 38/39/41/43/44/46/47 + briefs + audit/merge prompts moved to `shipped/`. PRD-48 archived (superseded by 52). Log in `tasks/docs-cleanup_2026-05-15.md`. | — |
 | 2026-05-19 | Launch merge — main at `7200a25` carrying PRD-45/46/47 scanner work + PBV upload hardening | `launch-prep-full-2026-05-19` |
