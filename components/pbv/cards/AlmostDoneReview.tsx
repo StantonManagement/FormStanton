@@ -13,9 +13,11 @@ import type { DocumentCardData } from './DocumentCard';
 import type { SupportedLanguage } from '@/lib/pbv/cards/docContent';
 import { getDocTitle, getDocDescription } from '@/lib/pbv/cards/docContent';
 
-// PRD-58 Phase 3: DB-driven categories matching DB enum
-// income, assets, medical_childcare, immigration, signed_forms + custom fallback
+// PRD-58 Phase 3 + PRD-65: DB-driven categories matching DB column.
+// identity (PRD-65), income, assets, medical_childcare, immigration,
+// signed_forms + custom fallback. 'identity' sorts first.
 type DocCategory =
+  | 'identity'
   | 'income'
   | 'assets'
   | 'medical_childcare'
@@ -49,8 +51,13 @@ interface CategoryInfo {
   label: Record<SupportedLanguage, string>;
 }
 
-// PRD-58 Phase 3: DB-driven categories with friendly labels
+// PRD-58 Phase 3 / PRD-65: DB-driven categories with friendly labels.
+// 'identity' is first (head-of-household photo ID, PRD-65).
 const categories: CategoryInfo[] = [
+  {
+    key: 'identity',
+    label: { en: 'Photo ID', es: 'Identificación con foto', pt: 'Identidade com foto' },
+  },
   {
     key: 'income',
     label: { en: 'Income Verification', es: 'Verificación de Ingresos', pt: 'Verificação de Renda' },
@@ -122,12 +129,16 @@ function categorizeDoc(docType: string, dbCategory: string | null | undefined): 
   if (dbCategory) {
     const cat = dbCategory.toLowerCase();
     // Map DB category to display category
+    if (cat === 'identity') return 'identity'; // PRD-65
     if (cat === 'income') return 'income';
     if (cat === 'assets') return 'assets';
     if (cat === 'medical_childcare') return 'medical_childcare';
     if (cat === 'immigration') return 'immigration';
     if (cat === 'signed_forms') return 'signed_forms';
   }
+
+  // PRD-65 fallback: government_id from legacy/custom rows still groups under identity
+  if (docType === 'government_id') return 'identity';
 
   // Fallback: infer from doc_type for legacy/custom docs
   // Log these for admin attention
@@ -264,6 +275,7 @@ export default function AlmostDoneReview({
   // PRD-58 Phase 3: Group by DB-aligned category
   const groupedByCategory = useMemo(() => {
     const grouped: Record<DocCategory, CategorizedDoc[]> = {
+      identity: [], // PRD-65
       income: [],
       assets: [],
       medical_childcare: [],

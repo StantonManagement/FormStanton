@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { getDocContent, getDocTitle, getDocDescription, isMultiFileDoc, type SupportedLanguage } from '@/lib/pbv/cards/docContent';
+import { getDocContent, getDocTitle, getDocDescription, isMultiFileDoc, getMaxFiles, type SupportedLanguage } from '@/lib/pbv/cards/docContent';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
 
 const DocumentScanner = dynamic(
@@ -309,6 +309,7 @@ export default function DocumentCard({
         <DocumentScanner
           instructions={title}
           multiPage={supportsMultiFile}
+          maxPages={getMaxFiles(document.doc_type)}
           language={language}
           onComplete={handleScannerComplete}
           onCancel={() => {

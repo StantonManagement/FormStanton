@@ -73,6 +73,28 @@ Entry format:
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
+### `supabase/migrations/20260521030000_prd65_government_id_required.sql`
+**What it does:**
+1. Inserts a `government_id` template row into `form_document_templates` (`form_id='pbv-full-application'`, `required=TRUE`, `display_order=5` so it sorts first, `category='identity'`, `applies_to='submission'`).
+2. Backfills `application_documents` for in-progress (`submitted_at IS NULL`) apps that already have seeded docs and no existing `government_id` slot. Idempotent via `WHERE NOT EXISTS`.
+
+**Used by:** the live seed path (`seedApplicationDocuments` in `app/api/t/[token]/pbv-full-app/intake/complete/route.ts`) for new apps; the backfill takes care of in-flight ones.
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-65 commit. Alex applies after review.
+
+**Heads-up for tenant comms:** tenants currently mid-application will see a NEW required Photo ID slot on their next visit. If that needs a heads-up message, send it before applying.
+
+**Rollback:**
+```sql
+DELETE FROM public.application_documents
+ WHERE anchor_type='pbv_full_application'
+   AND doc_type='government_id'
+   AND created_by='system';
+DELETE FROM public.form_document_templates
+ WHERE form_id='pbv-full-application'
+   AND doc_type='government_id';
+```
+
 ### `supabase/migrations/20260521020000_finalize_pbv_application_fn.sql`
 **What it does:** Creates `public.finalize_pbv_application(p_app_id uuid, p_submitted_at timestamptz, p_actor_display_name text)`, a `SECURITY DEFINER` plpgsql function that updates `pbv_full_applications.submitted_at` and inserts the `application.submitted` row into `application_events` inside a single transaction. `RAISE` on any error rolls both back. `GRANT EXECUTE ... TO service_role` so `supabaseAdmin.rpc(...)` can call it.
 
@@ -223,6 +245,30 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Default taken:** Acceptable for now — `application.submitted` has no subscriber today (`lib/notifications/init.ts` does not wire one for it). Logged as a divergence so a future submit-notification feature isn't silently dropped.
 - **Reversible?** yes — if/when a subscriber is added, either (a) emit the notification from the route after a successful RPC, (b) switch to a postgres LISTEN/NOTIFY trigger, or (c) revert to the event-first code path.
 - **Needs Alex:** before wiring any `application.submitted` subscriber, decide which of (a)/(b)/(c) to use.
+
+### [PRD-65] Photo ID — submission-level slot (one for HoH) — DECISION (O1)
+- **Context:** PRD O1 asked whether `government_id` should be `applies_to='submission'` (one ID for the HoH) or `'each_adult'` (one per adult).
+- **Default taken:** `'submission'` — one ID for the head of household, `per_person=FALSE`, `person_slot=0`. Matches how the office treats the document today (identity is verified for the HoH at intake; co-residents' IDs are not requested by the live HACH workflow).
+- **Reversible?** yes — flip `per_person` to TRUE and `applies_to` to `'each_adult'` in the seed + re-run, then re-seed in-flight apps via the existing `seedApplicationDocuments` path.
+- **Needs Alex:** confirm HoH-only is acceptable; if HACH wants one ID per adult, flip the flag.
+
+### [PRD-65] Photo ID — one multi-page doc (front+back) — DECISION (O2)
+- **Context:** PRD O2 asked whether to capture front + back as one 2-page doc or two separate slots (`government_id_front` / `government_id_back`).
+- **Default taken:** One multi-page doc. `docContent.ts.government_id.multiFile=true, maxFiles=2`; the scanner's existing `multiPage` mode handles both pages in one capture session, and `DocumentCard.tsx` now passes `maxPages={getMaxFiles(...)}` so the cap is honored. Simpler for the tenant; matches the `immigration_docs` precedent (already 2-page multi-file).
+- **Reversible?** yes — split into two slots later by adding a second template row + scanner mode tweak.
+- **Needs Alex:** none expected.
+
+### [PRD-65] Backfill scope — un-submitted apps only — DECISION (O3)
+- **Context:** PRD O3 asked whether to backfill all in-progress apps or only un-submitted ones.
+- **Default taken:** `WHERE submitted_at IS NULL`. Already-finalized packets are NOT retroactively marked incomplete. In-flight tenants WILL see a new required Photo ID slot on their next visit; logged so Alex can communicate that.
+- **Reversible?** yes — re-running the backfill against finalized apps would require a separate one-off insert (and would intentionally unblock the rule for those apps).
+- **Needs Alex:** confirm tenants currently mid-application getting a new required slot is acceptable; if not, defer the backfill until a tenant-comms message is ready.
+
+### [PRD-65] New `identity` category — DECISION (D3)
+- **Context:** `form_document_templates.category` is a `TEXT` column with no enum constraint (`supabase/migrations/20260514205000_pbv_document_categories.sql`); the UI category union in `AlmostDoneReview.tsx` was strict. We're adding a new top-level category, not extending the `custom` grab-bag.
+- **Default taken:** Added `'identity'` as a first-class category. DB is forwards-compatible (no enum to update). UI: extended the `DocCategory` union, added an `identity` `categories[]` entry placed FIRST (EN/ES/PT label), initialized the `identity: []` bucket. Legacy/custom `government_id` rows from pre-PRD-65 are mapped to `identity` even if their DB `category` is null.
+- **Reversible?** yes — drop the row in the UI + DB if a different categorization is preferred.
+- **Needs Alex:** none expected.
 
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.

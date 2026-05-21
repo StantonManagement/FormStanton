@@ -29,6 +29,27 @@ export interface DocContent {
  * PRD-59: EN/ES/PT translations complete for titles, descriptions, and fallback text.
  */
 export const DOC_CONTENT: Record<string, DocContent> = {
+  // ─── IDENTITY (1 doc — PRD-65, sorts first via display_order=5) ──────────
+  government_id: {
+    title: {
+      en: 'Government photo ID',
+      es: 'Identificación con foto',
+      pt: 'Identidade com foto',
+    },
+    description: {
+      en: "Driver's license, state ID, or passport for the head of household. Scan the front, then the back, so we have both.",
+      es: 'Licencia de conducir, identificación estatal o pasaporte del jefe de hogar. Escanee el frente y luego el reverso para que tengamos ambos lados.',
+      pt: 'Carteira de motorista, identidade estadual ou passaporte do chefe da família. Escaneie a frente e depois o verso para termos os dois lados.',
+    },
+    fallback: {
+      en: "We need a current government-issued photo ID. If yours is expired or lost, contact the DMV or your country's consulate to request a replacement.",
+      es: 'Necesitamos una identificación con foto emitida por el gobierno que esté vigente. Si la suya está vencida o perdida, comuníquese con el DMV o con el consulado de su país para solicitar un reemplazo.',
+      pt: 'Precisamos de uma identidade com foto emitida pelo governo que esteja válida. Se a sua estiver vencida ou perdida, entre em contato com o DMV ou com o consulado do seu país para solicitar uma substituição.',
+    },
+    multiFile: true,
+    maxFiles: 2,
+  },
+
   // ─── INCOME (10 docs) ──────────────────────────────────────────────────────
   paystubs: {
     title: {

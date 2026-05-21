@@ -21,6 +21,13 @@ export type DocHelpText = {
  * PRD-59: EN/ES/PT translations complete. ES/PT modeled on docContent.ts tone.
  */
 export const DOC_TYPE_HELP: Record<string, DocHelpText> = {
+  // ─── IDENTITY (1 doc — PRD-65) ────────────────────────────────────────────
+  government_id: {
+    en: "A current government-issued photo ID for the head of household — driver's license, state ID, or passport. Scan both the front and the back as a single 2-page document. If the ID has no information on the back (a passport, for example), scan just the page with your photo.",
+    es: "Una identificación con foto emitida por el gobierno y vigente para el jefe de hogar — licencia de conducir, identificación estatal o pasaporte. Escanee tanto el frente como el reverso como un solo documento de 2 páginas. Si la identificación no tiene información en el reverso (como un pasaporte), escanee solo la página con su foto.",
+    pt: "Uma identidade com foto emitida pelo governo e válida para o chefe da família — carteira de motorista, identidade estadual ou passaporte. Escaneie tanto a frente quanto o verso como um único documento de 2 páginas. Se a identidade não tiver informações no verso (um passaporte, por exemplo), escaneie apenas a página com sua foto.",
+  },
+
   // ─── INCOME (10 docs) ──────────────────────────────────────────────────────
   paystubs: {
     en: "Your most recent pay statements showing earnings, deductions, and YTD totals. Ask your employer for the last 4 weekly stubs or 2 bi-weekly stubs. Most employers can email these or print from your employee portal.",

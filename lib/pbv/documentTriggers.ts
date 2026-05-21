@@ -46,6 +46,12 @@ function anyNonCitizenOver62(intake: IntakeData): boolean {
 }
 
 export const DOCUMENT_TRIGGERS: DocTrigger[] = [
+  // ── Identity docs (PRD-65, always required, sort first) ──────────────────
+  {
+    doc_type: 'government_id',
+    isTriggered: () => true,
+  },
+
   // ── Income docs ────────────────────────────────────────────────────────────
   {
     doc_type: 'paystubs',
@@ -192,8 +198,9 @@ export const DOCUMENT_TRIGGERS: DocTrigger[] = [
   },
 
   // ── Custom / legacy docs — not gated ─────────────────────────────────────
-  // bank_statement, birth_certificate, government_id, pay_stub, tax_return
-  // are legacy rows from pre-F4. Leave them ungated (not in this list).
+  // bank_statement, birth_certificate, pay_stub, tax_return are legacy rows
+  // from pre-F4. Leave them ungated (not in this list).
+  // (government_id is now first-class — see Identity docs block above.)
 ];
 
 /** Build a lookup map by doc_type for O(1) access */
