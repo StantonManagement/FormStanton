@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Branch:** `feat/pbv-launch-hardening` (continues 62–69)
-**Commit:** _to be appended after commit_
+**Commit:** `4c43cfe` (pushed to `origin/feat/pbv-launch-hardening`)
 **Status:** ✅ Static gates green. Gap A built. **Gap B built (clean refetch exists)** — see decision below.
 
 ---
