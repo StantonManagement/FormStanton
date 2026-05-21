@@ -706,3 +706,15 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Default taken:** named codes from existing branches; did not invent new failure modes or split any branch into multiple codes.
 - **Reversible?** yes — narrow or widen the union as new branches appear.
 - **Needs Alex:** none — informational. Confirms no failure mode was silently introduced.
+
+### [PRD-83] A10 race signal is count-based, not error-based — DECISION
+- **Context:** the audit's suggested A10 fix said "if (updateError)" treat as race-lost. In supabase-js v2 (what this codebase uses), a guarded UPDATE that matches 0 rows returns `data: []` with `error: null`. So `updateError` isn't a reliable race signal — the affected-row count is.
+- **Default taken:** matched PRD-81's claim/race pattern: `.select('id')` on the UPDATE, then check `(updateRows?.length ?? 0) === 0`. A real DB error still throws as before.
+- **Reversible?** yes — switch to whatever signal works if the SDK ever changes its semantics.
+- **Needs Alex:** none. Informational.
+
+### [PRD-83] A11 summary path migration leaves legacy objects orphaned — DECISION
+- **Context:** the summary path changed from `summary-${lang}-unsigned.pdf` to `summary-${lang}-v${SUMMARY_TEMPLATE_VERSION}-unsigned.pdf`. Existing tenants who had a summary generated under the old path still have that object in storage; the next generate-forms run writes to the new path and updates `pbv_summary_documents.pdf_storage_path` to point at it. The old object stays in storage, unreferenced.
+- **Default taken:** no cleanup script. Downstream code (signer routes, summary signing) reads `pbv_summary_documents.pdf_storage_path`, not a reconstructed path — so the orphan is invisible to the application. It's a cosmetic storage concern only.
+- **Reversible?** yes — a cleanup migration could enumerate `pbv_summary_documents` and remove any storage object at the legacy path. Low priority.
+- **Needs Alex:** if storage cost is a concern, write a one-shot cleanup script post-deploy. Otherwise ignore.
