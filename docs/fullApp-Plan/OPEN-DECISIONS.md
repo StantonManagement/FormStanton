@@ -529,3 +529,32 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 ### [PRD-73] D1/D2 — Confirmations (per PRD)
 - **D1:** Derive U7 from existing card statuses — no new data, no new fetch.
 - **D2:** Mirror `beforeunload` (`page.tsx:556`) + (in scope) `confirm()` (`DocumentCard.tsx:281`); no modal library.
+
+---
+
+## Stress-Test Hardening batch (PRDs 74–79) — logged during run
+
+### [PRD-74] Phase 3 run-lock applied to all three cron routes — DECISION (O1)
+- **Context:** PRD-74 O1 asks whether to lock `cleanup-idempotency-keys`. A double-run is harmless (delete by `expires_at` is idempotent), so the PRD calls it optional.
+- **Default taken:** Apply the lock to all three cron routes for consistency (`pbv-deferred-reminders` 600s lease, `notifications-scheduled-sends` 300s lease, `cleanup-idempotency-keys` 120s lease). The cost is one extra RPC per cron invocation; the benefit is uniform diagnostics (`cron_skipped_locked` log fires across the board) and no special-case code-review burden.
+- **Reversible?** yes — drop the `claimCronRun(...)` block in `cleanup-idempotency-keys/route.ts` to revert.
+- **Needs Alex:** none expected.
+
+### [PRD-74] `claimCronRun` fails open when the RPC errors — DECISION
+- **Context:** The Phase 3 migration is commit-only and won't be applied until Alex applies it post-run. If the cron routes hit the lease path before the migration is applied, the RPC returns an error.
+- **Default taken:** On RPC error, log `cron_claim_error` (structured JSON) and **proceed with the run** rather than aborting. This makes the deploy-blocker fix (#1, mandatory auth) independent of the Phase 3 hardening — the cron route is still secure (Bearer required) but does not skip work just because the lock table isn't there yet. Once the migration is applied, the RPC succeeds and the lease is enforced.
+- **Reversible?** yes — change the `if (error) return true;` branch in `lib/cron/runLock.ts` to `return false;` to fail-closed instead.
+- **Needs Alex:** confirm acceptable. Until the migration is applied, two parallel regions can both run (which was already true before this PRD); after migration apply, only one will.
+
+### [PRD-74] 401 on unset CRON_SECRET — DECISION (O2 default)
+- **Context:** PRD-74 O2 asks 401 vs 503 for an unset secret. Default per PRD: 401.
+- **Default taken:** 401 with a structured `console.error({ event: 'cron_secret_unset', path })` log. Matches the audit's "fail closed" requirement and avoids leaking config state via 503.
+- **Reversible?** yes — one-line change in `lib/cron/auth.ts` to switch the status.
+- **Needs Alex:** none expected.
+
+### [PRD-74] `supabase/migrations/20260521080000_cron_run_locks.sql` — MIGRATION-TO-APPLY
+- **What it does:** Creates `public.cron_run_locks` (job_name PK, locked_until, updated_at) + `service_role`-only RLS policy + `public.claim_cron_run(job_name, lease_seconds)` SECURITY DEFINER function. The function does an atomic conditional UPSERT and RETURNS BOOLEAN (TRUE = caller holds new lease; FALSE = another holder is active).
+- **Used by:** `lib/cron/runLock.ts` (`claimCronRun`), called at the start of every cron route handler after auth passes.
+- **Apply order:** any time after PRD-74 ships. Until applied, `claimCronRun` logs `cron_claim_error` and fails-open (route runs). After apply, the lock works as intended.
+- **Status:** ⏳ NOT APPLIED — committed only.
+- **Rollback:** `DROP FUNCTION IF EXISTS public.claim_cron_run(TEXT, INTEGER); DROP TABLE IF EXISTS public.cron_run_locks;` (the table has no app data — leases are short-lived state).

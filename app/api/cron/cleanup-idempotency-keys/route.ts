@@ -7,16 +7,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { assertCronAuthorized } from '@/lib/cron/auth';
+import { claimCronRun } from '@/lib/cron/runLock';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const denied = assertCronAuthorized(request);
+  if (denied) return denied;
+
+  // PRD-74 Phase 3: cleanup is idempotent (a delete by expires_at), so a
+  // double-run is harmless. Lock for consistency with the other cron routes;
+  // a missed lease (skipped run) is also fine — the next scheduled run picks
+  // up the expired rows.
+  const acquired = await claimCronRun('cleanup-idempotency-keys', 120);
+  if (!acquired) {
+    console.log(
+      JSON.stringify({ event: 'cron_skipped_locked', job: 'cleanup-idempotency-keys' })
+    );
+    return NextResponse.json({ success: true, skipped: true });
   }
 
   const { error, count } = await supabaseAdmin
