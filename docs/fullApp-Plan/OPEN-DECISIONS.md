@@ -138,6 +138,24 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Reversible?** yes — flip the flag.
 - **Needs Alex:** confirm EIV receipt should generate alongside the HUD EIV guide (vs. only being collected on paper/upload).
 
+### [PRD-61] O1 — fourth household profile — DECISION
+- **Context:** PRD-61 specifies three profiles (single-adult, multi-adult, conditional). Open question: do we need a fourth (zero-income-only, or eligible-non-citizen immigration-doc path)?
+- **Default taken:** Ship the three named profiles. The conditional-form lane (Profile C) already exercises pet/vehicle/self-employment/child-support; zero-income would mostly re-exercise the same generation lane with `zero_income_statement` (which is `generation_enabled=FALSE`, source-pending — OUT-OF-LANE per roadmap).
+- **Reversible?** yes — add `tests/fixtures/profile-d-*.json` + a new describe-block; no code change.
+- **Needs Alex:** confirm three is enough for v1 sign-off, or name a fourth profile shape.
+
+### [PRD-61] O2 — prod-token walk submit vs read-only — DECISION
+- **Context:** The runtime trilingual walk (Gate G-61.1) runs against prod test tokens. If those tokens reach `/finalize`, a real prod application gets submitted.
+- **Default taken:** **Read-only** on prod (read `generate-forms` body, walk UI, stop short of `/finalize`). Full submit only against a fresh non-prod application created on the preview deploy via the staff approve-and-send flow.
+- **Reversible?** yes — submit on prod is a one-line change if Alex wants it.
+- **Needs Alex:** confirm read-only-on-prod is acceptable (it should be — protects HACH inbox from synthetic data).
+
+### [PRD-61] O3 — ES/PT placeholder leakage at deploy time — DECISION
+- **Context:** PRD-59 shipped best-effort EN/ES/PT prose; native review is post-launch (per Alex resolution 2026-05-21). The trilingual walk may surface placeholder-looking strings.
+- **Default taken:** Run Gate G-61.1 against whatever is deployed. Log any placeholder-leakage as a **Polish/Deferred** residual defect (not a BLOCKER). Aligns with the "ship best-effort" resolution on summary/consent prose.
+- **Reversible?** yes — promote to BLOCKER if Alex changes the shipping bar before launch.
+- **Needs Alex:** confirm the bar — Polish-deferred is fine, or do we promote to blocking?
+
 ### [PRD-55b] insurance_settlement + cd_trust_bond disabled — DECISION (O2 default → BLOCKER if real)
 - **Context:** PRD-55b prompt notes these were in the live skip list (enabled+silently-skipping) but never appeared in PRD-55's reconciliation. Step 0 prod DB query was not run in-session (no DB credentials in this batch's tooling) — reasoned from PRD-55 build report which omits them, confirming PRD-55 did not change their state.
 - **Default taken:** Migration sets `generation_enabled=FALSE`, `source_pdf_status='pending'` for both. They no longer silently skip. Not in packet, not in `docs/templates/`, no field maps, no resolvers.

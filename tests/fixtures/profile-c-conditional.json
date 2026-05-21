@@ -1,0 +1,100 @@
+{
+  "_comment": "PRD-61 Profile C — conditional triggers (pets + vehicle + self-employment + child-support). Demonstrates that the conditional rules in lib/pbv/conditional-rules.ts fire correctly. NOTE: pet_addendum / vehicle_addendum / self_employment_worksheet have generation_enabled=FALSE per PRD-55 (deferred — Alex confirmed 2026-05-21 they stay deferred until source PDFs are produced). So this profile asserts that the rule predicates SHOULD fire (input gathered + member flag set) but the addenda do NOT generate (template-disabled). When PDFs are sourced and templates re-enabled, update expected_forms.generated to include them.",
+  "profile_key": "profile-c-conditional",
+  "application": {
+    "building_address": "300 Acceptance Way",
+    "unit_number": "C3",
+    "bedroom_count": 3,
+    "preferred_language": "en",
+    "head_of_household_name": "Carlos Conditional"
+  },
+  "members": [
+    {
+      "slot": 1,
+      "name": "Carlos Conditional",
+      "dob": "1975-06-22",
+      "relationship": "head",
+      "citizenship_status": "citizen",
+      "ssn": "200-10-0003",
+      "signature_required": true,
+      "is_head_of_household": true,
+      "income_sources": ["self_employment", "child_support"],
+      "annual_income": 38000,
+      "has_child_support": true,
+      "has_self_employment": true,
+      "disability": false,
+      "student": false
+    },
+    {
+      "slot": 2,
+      "name": "Camila Conditional",
+      "dob": "1978-09-17",
+      "relationship": "spouse",
+      "citizenship_status": "citizen",
+      "ssn": "200-10-0103",
+      "signature_required": true,
+      "is_head_of_household": false,
+      "income_sources": ["employment"],
+      "annual_income": 24000,
+      "has_child_support": false,
+      "has_self_employment": false,
+      "disability": false,
+      "student": false
+    }
+  ],
+  "intake_data": {
+    "applicant": {
+      "full_name": "Carlos Conditional",
+      "email": "carlos@example.test",
+      "phone": "555-200-3003",
+      "address_street": "300 Acceptance Way",
+      "address_city_state_zip": "Brockton, MA 02301"
+    },
+    "pets": { "has_pets": true },
+    "vehicle": { "has_vehicle": true }
+  },
+  "expected_conditional_rules_fire": [
+    "intake_has_pets",
+    "intake_has_vehicle",
+    "household_has_self_employment",
+    "household_has_child_support"
+  ],
+  "expected_forms": {
+    "generated": [
+      "main_application",
+      "citizenship_declaration",
+      "obligations_of_family",
+      "hud_9886a",
+      "hach_release",
+      "hud_92006",
+      "briefing_cert",
+      "debts_owed_phas",
+      "criminal_background_release",
+      "eiv_guide_receipt",
+      "child_support_affidavit"
+    ],
+    "would_generate_if_sources_present_currently_disabled": [
+      "pet_addendum",
+      "vehicle_addendum",
+      "self_employment_worksheet"
+    ],
+    "not_generated_disabled_or_conditional": [
+      "no_child_support_affidavit",
+      "pet_addendum",
+      "vehicle_addendum",
+      "self_employment_worksheet",
+      "vawa_certification",
+      "reasonable_accommodation_request",
+      "zero_income_statement",
+      "insurance_settlement",
+      "cd_trust_bond"
+    ],
+    "total_generated_count": 11
+  },
+  "expected_signers": {
+    "hoh_required_form_count": 11,
+    "additional_adult_count": 1,
+    "additional_adult_slot": 2,
+    "additional_adult_device_owner": "hoh_device"
+  }
+}

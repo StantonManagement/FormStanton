@@ -1,0 +1,72 @@
+{
+  "_comment": "PRD-61 Profile A — single adult, employment income, EN. Acts as control for Profile C (no conditional addenda). Aligned to PRD-55b's corrected enabled-form set.",
+  "profile_key": "profile-a-single-adult",
+  "application": {
+    "building_address": "100 Acceptance Way",
+    "unit_number": "A1",
+    "bedroom_count": 1,
+    "preferred_language": "en",
+    "head_of_household_name": "Alice Acceptance"
+  },
+  "members": [
+    {
+      "slot": 1,
+      "name": "Alice Acceptance",
+      "dob": "1985-04-10",
+      "relationship": "head",
+      "citizenship_status": "citizen",
+      "ssn": "200-10-0001",
+      "signature_required": true,
+      "is_head_of_household": true,
+      "income_sources": ["employment"],
+      "annual_income": 32000,
+      "has_child_support": false,
+      "has_self_employment": false,
+      "disability": false,
+      "student": false
+    }
+  ],
+  "intake_data": {
+    "applicant": {
+      "full_name": "Alice Acceptance",
+      "email": "alice@example.test",
+      "phone": "555-200-1001",
+      "address_street": "100 Acceptance Way",
+      "address_city_state_zip": "Brockton, MA 02301"
+    },
+    "pets": { "has_pets": false },
+    "vehicle": { "has_vehicle": false }
+  },
+  "expected_forms": {
+    "generated": [
+      "main_application",
+      "citizenship_declaration",
+      "obligations_of_family",
+      "hud_9886a",
+      "hach_release",
+      "hud_92006",
+      "briefing_cert",
+      "debts_owed_phas",
+      "criminal_background_release",
+      "eiv_guide_receipt",
+      "no_child_support_affidavit"
+    ],
+    "not_generated_disabled_or_conditional": [
+      "child_support_affidavit",
+      "pet_addendum",
+      "vehicle_addendum",
+      "self_employment_worksheet",
+      "vawa_certification",
+      "reasonable_accommodation_request",
+      "zero_income_statement",
+      "insurance_settlement",
+      "cd_trust_bond"
+    ],
+    "total_generated_count": 11
+  },
+  "expected_signers": {
+    "hoh_required_form_count": 11,
+    "additional_adult_count": 0,
+    "additional_adult_device_owner": null
+  }
+}

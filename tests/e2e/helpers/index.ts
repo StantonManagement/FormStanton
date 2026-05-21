@@ -30,3 +30,6 @@ export type { MagicLinkInfo } from './extractMagicLinkFromQueue';
 
 export { exportSubmissionPackage } from './exportSubmissionPackage';
 export type { SubmissionPackage, FormDocSummary, SummaryDocSummary, SignatureEventSummary } from './exportSubmissionPackage';
+
+export { createProfileApplication } from './createProfileApplication';
+export type { ProfileFixture, ProfileMember, CreateProfileApplicationResult } from './createProfileApplication';

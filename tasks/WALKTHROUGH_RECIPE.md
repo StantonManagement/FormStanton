@@ -185,3 +185,73 @@ Don't stop for:
 - **Don't fix things outside the scope of "obvious typo" without asking.** A walkthrough that turns into a refactor stops being verifiable.
 - **Don't trust the build report.** PRDs ship marked "all four features implemented" while one of them silently doesn't render. That's literally what this walkthrough exists to catch.
 - **Don't skip the "not tested" section.** It's the most important part for the owner planning the next round.
+
+---
+
+## PBV Finalization Acceptance (PRD-61 closeout)
+
+Use this section to run the **deferred runtime gate** for the PBV full-app finalization batch (PRDs 55–61) after the batch is deployed.
+
+### What this proves
+
+The roadmap's "Definition of Done (the lane)":
+
+> A real applicant can go from the SMS link to a complete, correct, submitted, signed packet — on their own phone, in their own language — without calling Stanton, and without hitting a tenant-safety defect.
+
+Decomposes into seven criteria. Each row resolves to **fixed** (✅ in the cell), **OUT-OF-LANE** (logged separately), or **deferred** (re-run after the noted external dependency lands).
+
+| # | Criterion | Owning PRD | Static proof (in tests) | Runtime proof (this section) |
+|---|---|---|---|---|
+| DoD-1 | Intake completable without confusing/unsafe defaults, EN/ES/PT | 57 | `tests/e2e/pbv-finalization-acceptance.spec.ts` step 1 (every profile reaches `generate-forms` from a seeded intake) | Walk intake on the deploy, each of EN/ES/PT, all three profiles — observe save/resume, defaults, no unsafe carry-forward |
+| DoD-2 | Documents step asks only what answers imply, plain language | 58 | profile-driven `expected_forms` set per profile | Walk documents page in EN/ES/PT — required-doc set matches the intake answers |
+| DoD-3 | Every required form generates, data stamped, no silent skips | 55 + 55b | acceptance spec step 1: generated set == fixture.expected_forms.generated; completeness guard 7/7 | Open a stamped form on the deploy (e.g. `criminal_background_release` or `main_application`), confirm fields populated; `skipped[]` contains only the four currently-disabled rows (pet/vehicle/self-emp/insurance/cd_trust — Alex deferred) |
+| DoD-4 | One signature applies to every form the signer owns; additional adults sign | 56 | acceptance spec steps 2–3: ceremony grouping, `device_owner` correct, `collected ⊇ required` per form | Multi-adult walk on prod (Profile B/C analogue): HOH sign-all → spouse signs on same device |
+| DoD-5 | Submit → locked → tenant downloads copy | 56 | acceptance spec step 4: `signing_status='complete'`, re-finalize returns 409 | Tap submit on the deploy, confirm packet download + lock holds |
+| DoD-6 | All of the above works EN/ES/PT | 59 | — (content depends on deploy) | **DEFERRED — this section's matrix below** |
+| DoD-7 | Scanner captures on real phones + tells tenant why when it can't | 60 | — (device matrix) | **DEFERRED — see PRD-60 build report** |
+
+### Runtime walkthrough matrix (run on deploy of merged batch)
+
+For each profile × language cell: do a Chrome DevTools observation pass on the deploy. Read the `/api/t/<token>/pbv-full-app/generate-forms` response body, check `generated[]` and `skipped[]`, then walk the UI through to submit.
+
+|              | EN | ES | PT |
+|---|---|---|---|
+| Profile A — single adult, employment | ☐ | ☐ | ☐ |
+| Profile B — 2 adults, additional signer | ☐ | ☐ | ☐ |
+| Profile C — pet + vehicle + self-emp + child support | ☐ | ☐ | ☐ |
+
+For each cell, capture:
+- exact `generated[]` form_ids returned by `generate-forms`
+- exact `skipped[]` entries with their skip reason strings
+- any i18n placeholder leakage on intake / documents / summary / sign screens
+- packet contents on download (file names + visual sanity check of one stamped form)
+
+### Test tokens
+
+- **Prod (read-only — do NOT submit destructively):**
+  - `222-224-maple-ave-unit-2n-fa62844782fa4266b5cc1697bfbf734c` — 11/11 docs, clean happy path. Use for observing generate-forms + UI behavior, stop before submit.
+  - `110-martin-unit-1-f39817020e324160b5dae3b5f4c48633` — 1/13 docs, partial state. Use for asserting intake gating + the documents step's "what's still needed" surface.
+- **Preview (submit allowed):** spin up a fresh non-prod application via the staff approve-and-send flow, run the matrix end-to-end including submit. This is the only safe place to submit, per PRD-61 O2 default.
+
+### Residual-defect log (PRD-61 closeout)
+
+Each defect found in the matrix above logs here. **Fixed** = patched in this batch. **OUT-OF-LANE** = will not be fixed in this batch (out of scope or externally blocked). **Deferred** = will be fixed after a specific external dependency.
+
+| # | Defect | Severity | Status | Notes / link |
+|---|---|---|---|---|
+| 1 | `pet_addendum` / `vehicle_addendum` / `self_employment_worksheet` generation disabled (no source PDFs) | Data integrity | **Deferred** | Alex confirmed 2026-05-21: keep deferred. Source PDFs from HACH → re-enable in a follow-up PRD. Conditional rules still fire (Profile C verifies inputs). |
+| 2 | `insurance_settlement` / `cd_trust_bond` template rows possibly vestigial | Polish / data integrity | **Deferred** | Disabled in PRD-55b migration. Confirm with Alex whether to delete rows or source PDFs. |
+| 3 | EN/ES/PT summary + consent prose may need translator polish | Polish | **OUT-OF-LANE** | Alex resolution 2026-05-21: ship best-effort, native review post-launch. |
+| 4 | Scanner low-contrast hint threshold (3.5s) unverified on real devices | Polish | **Deferred** | PRD-60 D3; verify in the device-matrix walk. |
+| 5 | Source-pending forms VAWA / Reasonable Accommodation / Zero-Income Statement | Data integrity | **OUT-OF-LANE** | Externally blocked per roadmap §Source-pending. Track separately. |
+| 6 | `tenant_lookup` retroactive migration | Data integrity | **OUT-OF-LANE** | Staff/HACH side; outside the tenant lane. |
+| 7 | Scanic detector swap (PRD-52) | Polish | **OUT-OF-LANE** | Engine-swap candidate; PRD-60 D5 — Scanic stays IN for v1. |
+| 8 | _add row per defect found in the matrix above_ | | | |
+
+### Acceptance signoff
+
+The lane ships when:
+1. The matrix above has no ☐ left (or every remaining ☐ has a logged residual defect with **OUT-OF-LANE** / **Deferred** + an owner).
+2. No residual defect in the table above is severity **BLOCKER** with status **Open**.
+3. The automated acceptance + integrity specs (`tests/e2e/pbv-finalization-acceptance*.spec.ts`) pass against the deployed preview build, or the gaps are tracked in the table above.
+

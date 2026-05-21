@@ -1,0 +1,89 @@
+{
+  "_comment": "PRD-61 Profile B — two adults (HOH + spouse co-signer), EN. Exercises additional-signer path: HOH same-device + spouse on hoh_device. Same baseline form set as A.",
+  "profile_key": "profile-b-multi-adult",
+  "application": {
+    "building_address": "200 Acceptance Way",
+    "unit_number": "B2",
+    "bedroom_count": 2,
+    "preferred_language": "en",
+    "head_of_household_name": "Brenda Bramble"
+  },
+  "members": [
+    {
+      "slot": 1,
+      "name": "Brenda Bramble",
+      "dob": "1980-08-12",
+      "relationship": "head",
+      "citizenship_status": "citizen",
+      "ssn": "200-10-0002",
+      "signature_required": true,
+      "is_head_of_household": true,
+      "income_sources": ["employment"],
+      "annual_income": 35000,
+      "has_child_support": false,
+      "has_self_employment": false,
+      "disability": false,
+      "student": false
+    },
+    {
+      "slot": 2,
+      "name": "Beau Bramble",
+      "dob": "1979-11-03",
+      "relationship": "spouse",
+      "citizenship_status": "citizen",
+      "ssn": "200-10-0102",
+      "signature_required": true,
+      "is_head_of_household": false,
+      "income_sources": ["employment"],
+      "annual_income": 28000,
+      "has_child_support": false,
+      "has_self_employment": false,
+      "disability": false,
+      "student": false
+    }
+  ],
+  "intake_data": {
+    "applicant": {
+      "full_name": "Brenda Bramble",
+      "email": "brenda@example.test",
+      "phone": "555-200-2002",
+      "address_street": "200 Acceptance Way",
+      "address_city_state_zip": "Brockton, MA 02301"
+    },
+    "pets": { "has_pets": false },
+    "vehicle": { "has_vehicle": false }
+  },
+  "expected_forms": {
+    "generated": [
+      "main_application",
+      "citizenship_declaration",
+      "obligations_of_family",
+      "hud_9886a",
+      "hach_release",
+      "hud_92006",
+      "briefing_cert",
+      "debts_owed_phas",
+      "criminal_background_release",
+      "eiv_guide_receipt",
+      "no_child_support_affidavit"
+    ],
+    "not_generated_disabled_or_conditional": [
+      "child_support_affidavit",
+      "pet_addendum",
+      "vehicle_addendum",
+      "self_employment_worksheet",
+      "vawa_certification",
+      "reasonable_accommodation_request",
+      "zero_income_statement",
+      "insurance_settlement",
+      "cd_trust_bond"
+    ],
+    "total_generated_count": 11
+  },
+  "expected_signers": {
+    "hoh_required_form_count": 11,
+    "additional_adult_count": 1,
+    "additional_adult_slot": 2,
+    "additional_adult_device_owner": "hoh_device"
+  }
+}
