@@ -51,7 +51,7 @@ export async function GET(
     const formIds = [...new Set((docs ?? []).map((d) => d.form_id))];
     const { data: templates } = await supabaseAdmin
       .from('pbv_form_templates')
-      .select('form_id, display_name_en, display_name_es')
+      .select('form_id, display_name_en, display_name_es, display_name_pt')
       .in('form_id', formIds.length > 0 ? formIds : ['__none__']);
 
     const signedFormIds = await (async () => {

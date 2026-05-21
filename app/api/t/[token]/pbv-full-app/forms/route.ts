@@ -38,7 +38,7 @@ export async function GET(
     const formIds = [...new Set((docs ?? []).map((d) => d.form_id))];
     const { data: templates } = await supabaseAdmin
       .from('pbv_form_templates')
-      .select('form_id, display_name_en, display_name_es')
+      .select('form_id, display_name_en, display_name_es, display_name_pt')
       .in('form_id', formIds.length > 0 ? formIds : ['__none__']);
 
     const templateMap = Object.fromEntries(
@@ -50,7 +50,11 @@ export async function GET(
     const forms = (docs ?? []).map((doc) => {
       const tmpl = templateMap[doc.form_id];
       const displayName =
-        lang === 'es' ? (tmpl?.display_name_es ?? doc.form_id) : (tmpl?.display_name_en ?? doc.form_id);
+        lang === 'pt'
+          ? (tmpl?.display_name_pt ?? tmpl?.display_name_en ?? doc.form_id)
+          : lang === 'es'
+            ? (tmpl?.display_name_es ?? doc.form_id)
+            : (tmpl?.display_name_en ?? doc.form_id);
 
       return {
         id: doc.id,

@@ -28,6 +28,7 @@ export interface SignerFormTemplate {
   form_id: string;
   display_name_en: string | null;
   display_name_es: string | null;
+  display_name_pt: string | null;
 }
 
 export interface MappedSignerForm {
@@ -58,9 +59,11 @@ export function mapSignerForms(args: {
     const lang = args.preferredLanguage ?? doc.language ?? 'en';
     const tmpl = templateMap[doc.form_id];
     const displayName =
-      lang === 'es'
-        ? (tmpl?.display_name_es ?? doc.form_id)
-        : (tmpl?.display_name_en ?? doc.form_id);
+      lang === 'pt'
+        ? (tmpl?.display_name_pt ?? tmpl?.display_name_en ?? doc.form_id)
+        : lang === 'es'
+          ? (tmpl?.display_name_es ?? doc.form_id)
+          : (tmpl?.display_name_en ?? doc.form_id);
 
     return {
       id: doc.id,

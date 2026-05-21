@@ -30,8 +30,13 @@ function makeDoc(overrides: Partial<SignerFormDoc> = {}): SignerFormDoc {
   };
 }
 
-function tmpl(form_id: string, en: string | null, es: string | null): SignerFormTemplate {
-  return { form_id, display_name_en: en, display_name_es: es };
+function tmpl(
+  form_id: string,
+  en: string | null,
+  es: string | null,
+  pt: string | null = null
+): SignerFormTemplate {
+  return { form_id, display_name_en: en, display_name_es: es, display_name_pt: pt };
 }
 
 describe('mapSignerForms — Gate 1 (counts + display_name fallback)', () => {
@@ -136,7 +141,17 @@ describe('mapSignerForms — Gate 2 (language fallback)', () => {
     expect(out[0].display_name).toBe('Lease Agreement');
   });
 
-  it('non-es language (e.g. "pt") still selects EN — mirrors HOH route (PRD-68 O3)', () => {
+  it('preferredLanguage="pt" selects display_name_pt when present (PRD-72)', () => {
+    const out = mapSignerForms({
+      docs: [makeDoc({ form_id: 'lease' })],
+      templates: [tmpl('lease', 'Lease Agreement', 'Contrato de Arrendamiento', 'Contrato de Arrendamento')],
+      preferredLanguage: 'pt',
+      signedFormIds: new Set(),
+    });
+    expect(out[0].display_name).toBe('Contrato de Arrendamento');
+  });
+
+  it('preferredLanguage="pt" falls back to EN when display_name_pt is NULL (PRD-72)', () => {
     const out = mapSignerForms({
       docs: [makeDoc({ form_id: 'lease' })],
       templates,
@@ -144,6 +159,16 @@ describe('mapSignerForms — Gate 2 (language fallback)', () => {
       signedFormIds: new Set(),
     });
     expect(out[0].display_name).toBe('Lease Agreement');
+  });
+
+  it('preferredLanguage="pt" falls back to form_id when both _pt and _en are NULL', () => {
+    const out = mapSignerForms({
+      docs: [makeDoc({ form_id: 'unmapped' })],
+      templates: [tmpl('unmapped', null, null, null)],
+      preferredLanguage: 'pt',
+      signedFormIds: new Set(),
+    });
+    expect(out[0].display_name).toBe('unmapped');
   });
 
   it('falls back to form_id even in es when display_name_es is null', () => {
