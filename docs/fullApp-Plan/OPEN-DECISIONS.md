@@ -694,3 +694,15 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Default taken:** flipped to `upsert:true` in the per-iteration upload at `signatures/route.ts`. The filename encodes the new revision so cross-revision collisions can't happen.
 - **Reversible?** yes — flip back if a future change adds non-idempotent semantics to the upload (none today).
 - **Needs Alex:** confirm the change in posture — pre-PRD-81 upsert:false was the explicit guard against collision; post-PRD-81 the DB claim is the guard, and the storage upsert is the idempotent commit.
+
+### [PRD-82] Tenant sign-form route NOT migrated to errorCode in this PRD — DECISION
+- **Context:** A12's typed `errorCode` change is additive — the existing `error` string is preserved. The tenant `sign-form` route (owned by PRD-77) still uses `.toLowerCase().includes('not found')` to map the 404-vs-422 status. PRD-82's scope guard says do not touch tenant routes.
+- **Default taken:** left the tenant route on string matching; it still works because `'Form document not found'` (case-insensitive) contains `'not found'`. The additive errorCode is available on `CompleteFormResult` for any future caller migration.
+- **Reversible?** yes — a follow-up PRD can switch the tenant route to `result.errorCode === 'not_found'` whenever convenient.
+- **Needs Alex:** confirm post-launch follow-up to consolidate the status mapping (low-priority cleanup, not a launch blocker).
+
+### [PRD-82] CompleteFormErrorCode union enumerated from existing branches — DECISION
+- **Context:** A12 calls for a typed errorCode. The implementation enumerated 11 codes — one per existing failure branch in `completeFormSigning` (load_error, not_found, signer_not_required, member_not_found, unsigned_pdf_missing, unsigned_pdf_download_error, event_insert_error, field_map_missing, sig_events_load_error, signed_pdf_upload_error, doc_update_error).
+- **Default taken:** named codes from existing branches; did not invent new failure modes or split any branch into multiple codes.
+- **Reversible?** yes — narrow or widen the union as new branches appear.
+- **Needs Alex:** none — informational. Confirms no failure mode was silently introduced.
