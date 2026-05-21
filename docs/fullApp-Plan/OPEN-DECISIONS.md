@@ -73,6 +73,42 @@ Entry format:
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
+### `supabase/migrations/20260521060000_prd72_form_display_name_pt_backfill.sql`
+**What it does:** Backfills `display_name_pt` for every `pbv_form_templates` row with best-effort PT translations (per PRD-59 / PRD-72 O1 posture — flagged for native PT review). The column was added by `20260515040000_pbv_form_templates.sql` but is NULL on every row in the seed and all subsequent migrations; until this lands, a tenant with `preferred_language='pt'` sees English names on the HOH forms list and on the magic-link signer page.
+
+Idempotent per-row UPDATEs. Handles both `briefing_cert` (post-PRD-55) and `briefing_docs_certification` (pre-PRD-55) so the migration works regardless of whether `20260520000000_prd55…` has been applied to the target env.
+
+**Used by:** the PRD-72 route changes ([forms route](../../app/api/t/[token]/pbv-full-app/forms/route.ts), [signer route](../../app/api/pbv-full-app/signer/[member_token]/forms/route.ts), [mapper](../../lib/pbv/signer-forms-mapping.ts)) — they already select `display_name_pt` and pick it for `lang === 'pt'`. With the column unpopulated, the fallback chain (`pt → en → form_id`) returns English. With this migration applied, `pt` tenants see PT.
+
+**Apply order:** can be applied any time after `20260515040000_pbv_form_templates.sql` (which is APPLIED). Safe to apply before or after `20260521000000_prd55b…` because the `briefing_*` UPDATE targets both forms of the form_id.
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-72 commit (`4500f6c`). Alex applies after native PT review of the values below.
+
+**Full PT-value table (for native review — apply against this single artifact, not by grepping migrations):**
+
+| form_id | display_name_pt (best-effort) |
+|---|---|
+| `main_application` | Pedido HCV de Ocupação Continuada |
+| `citizenship_declaration` | Declaração de Cidadania |
+| `obligations_of_family` | Obrigações da Família |
+| `hud_9886a` | HUD-9886-A Autorização para Divulgação de Informações |
+| `hach_release` | Autorização HACH para Divulgação de Informações |
+| `hud_92006` | Formulário de Contato Suplementar HUD-92006 |
+| `child_support_affidavit` | Declaração Juramentada de Pensão Alimentícia |
+| `no_child_support_affidavit` | Declaração Juramentada de Ausência de Pensão Alimentícia |
+| `pet_addendum` | Adendo de Animais de Estimação |
+| `vehicle_addendum` | Adendo de Veículo |
+| `self_employment_worksheet` | Planilha de Renda de Trabalho Autônomo |
+| `briefing_cert` / `briefing_docs_certification` | Certificação Familiar de Recebimento de Documentos de Orientação |
+| `debts_owed_phas` | Dívidas com Autoridades de Habitação (HUD-52675) |
+| `vawa_certification` | Certificação VAWA (HUD-5382) |
+| `reasonable_accommodation_request` | Pedido de Adaptação Razoável |
+| `zero_income_statement` | Declaração de Renda Zero |
+| `eiv_guide_receipt` | Recibo do Guia EIV |
+| `criminal_background_release` | Autorização de Antecedentes Criminais |
+
+**Rollback (data only — schema unchanged):** `UPDATE public.pbv_form_templates SET display_name_pt = NULL;`. The route fallback chain (`pt → en → form_id`) means rollback is safe — `pt` tenants see English again, not slugs.
+
 ### `supabase/migrations/20260521050000_prd69_pbv_storage_buckets_backfill.sql`
 **What it does:** Backfills the creation rows for three storage buckets that were created live by hand on prod alongside their app code and never had a migration:
 - `pbv-signatures` (signature PNG images)
@@ -429,6 +465,27 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 ### #R4 [PRD-68/70] batch defaults — CONFIRMED (no change)
 - **PRD-68 O1** member-scoping: return all application forms (HOH parity) + per-member `signatures_complete` flag. Confirmed acceptable.
 - **PRD-68 O2** language source: `preferred_language → doc.language → 'en'`. Confirmed.
-- **PRD-68 O3** PT display name: EN/ES only for now; PT-display-name is a shared follow-up for the signer + HOH routes. Scheduled (not closed).
+- **PRD-68 O3** PT display name: EN/ES only for now; PT-display-name is a shared follow-up for the signer + HOH routes. Scheduled (not closed). **Closed by PRD-72 (`4500f6c`).**
 - **PRD-70 O1** Gap A: halt navigation + inline EN/ES/PT error on unit-save failure. Confirmed (matches no-silent-corruption posture).
 - **PRD-70 O2** Gap B: data-fetch errors refetch; bootstrap/pageView errors keep PRD-67's intentional `reload()`. Confirmed.
+
+---
+
+## PRD-72 Decisions (logged during run)
+
+### [PRD-72] O1 — Best-effort PT, flagged for native review — DECISION
+- **Context:** PT translations for 18 `pbv_form_templates` rows. Choice between best-effort machine + Cowork draft (ship now, review post-launch) vs. block on a native Portuguese speaker.
+- **Default taken:** Best-effort. All 18 values written into `20260521060000_prd72_form_display_name_pt_backfill.sql` and tabulated in the "Prod migrations to apply" entry above so the review can run against a single artifact. Matches the PRD-59 posture ("ship best-effort, native review post-launch").
+- **Reversible?** yes — UPDATE per row to replace any value; route fallback chain (`pt → en → form_id`) means even `SET display_name_pt = NULL` safely returns English instead of slugs.
+- **Needs Alex:** route the values above to a native PT speaker. No code change needed for value swaps.
+
+### [PRD-72] O2 — Backfill all rows incl. disabled/source-pending — DECISION
+- **Context:** Whether to backfill `_pt` for rows with `generation_enabled=FALSE` (vawa_certification, reasonable_accommodation_request, zero_income_statement, plus the 55b-disabled insurance_settlement / cd_trust_bond if they ever land as template rows).
+- **Default taken:** Backfill all 18 seeded rows including the source-pending ones. Cheap, complete, future-proof — if any of these flip to `generation_enabled=TRUE` later (e.g. via PRD-55b's tenant-attested follow-up), PT names are already populated. `insurance_settlement`/`cd_trust_bond` are no-ops today (no template rows exist) per the batch-run prompt.
+- **Reversible?** yes — per-row UPDATE.
+- **Needs Alex:** none.
+
+### [PRD-72] D1/D2 — Parity + fallback chain — DECISIONS (per PRD)
+- **D1:** HOH route + signer mapper stay byte-parity. Same `pt → en → form_id` chain, same lookup. Verified: both implementations land in the same shape, only the call site differs.
+- **D2:** Fallback `pt → en → form_id`, NOT `pt → es`. Display names are text; mirrors `summary-doc/content.ts` PT branch. PDF asset routing (`pt → es`) is intentional and untouched (per `lib/pbv/__tests__/language-routing.test.ts:25-28`).
+- **Reversible?** yes for D2 (one-line change in two places + mapper). D1 should remain — divergence between HOH and signer here was the original bug PRD-68 fixed.
