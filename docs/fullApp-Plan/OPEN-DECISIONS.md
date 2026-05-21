@@ -410,3 +410,25 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Default taken:** Do not fix in this PRD (out of lane). PRD-62 only adds passing tests (`completeForm`, `finalizeValidation` extensions, `sign-form-unification`).
 - **Reversible?** n/a — informational.
 - **Needs Alex:** consider a cleanup PRD for the baseline failures; the `field-mapping.test` `briefing_docs_certification` rename was missed by PRD-55.
+
+---
+
+## Resolutions (2026-05-21 — session 2: git recovery + 68–70 decision clearing)
+
+Context: after the 68–70 batch pushed, the local `.git` index corrupted from a mid-session crash. Recovered (index rebuilt from native Windows; commits + remote confirmed intact via `git ls-remote` = `4c624360`). The branch `feat/pbv-launch-hardening` is clean and pushed. No PR opened yet. The decisions below were cleared with Alex in the same session.
+
+### #R1 [PRD-55b] insurance_settlement + cd_trust_bond — RESOLVED: tenant-attested "I have this, send me the form"
+Alex: "let them say yes I have this please send me [the] form or something along those lines." NOT vestigial (do not delete the template rows) and NOT auto-generated. The 55b migration's `generation_enabled=FALSE` for both is correct and stays. New intended behavior: surface a tenant-facing yes/no prompt ("Do you have an insurance settlement / cash deposit or trust bond?"); on "yes," flag the application so the office sends the relevant form (or opens an upload slot). **Action:** scope a follow-up PRD for the prompt + office-send/upload wiring. Until then the rows stay generation-disabled (no silent skip).
+
+### #R2 [PRD-55b] eiv_guide_receipt — RESOLVED: keep generating
+Alex: keep generating. The 55b migration's `generation_enabled=TRUE` (+ `source_pdf_status='sourced'`) is correct. Stays a stamped-and-signed form alongside the HUD EIV guide. No change needed.
+
+### #R3 Unapplied migration set — RESOLVED: none applied; runbook produced
+Alex: none of the six committed-but-unapplied migrations have been applied yet. A sequenced apply-runbook (timestamp order, with the PRD-65 tenant Photo-ID heads-up and the PRD-69 fresh-env reconcile note) is captured in the session handoff doc. The six: `20260521000000_prd55b…`, `…010000_prd62…`, `…020000_finalize_pbv_application_fn`, `…030000_prd65…`, `…040000_prd66…`, `…050000_prd69…`. (PRD-55's `20260520000000` is already APPLIED.)
+
+### #R4 [PRD-68/70] batch defaults — CONFIRMED (no change)
+- **PRD-68 O1** member-scoping: return all application forms (HOH parity) + per-member `signatures_complete` flag. Confirmed acceptable.
+- **PRD-68 O2** language source: `preferred_language → doc.language → 'en'`. Confirmed.
+- **PRD-68 O3** PT display name: EN/ES only for now; PT-display-name is a shared follow-up for the signer + HOH routes. Scheduled (not closed).
+- **PRD-70 O1** Gap A: halt navigation + inline EN/ES/PT error on unit-save failure. Confirmed (matches no-silent-corruption posture).
+- **PRD-70 O2** Gap B: data-fetch errors refetch; bootstrap/pageView errors keep PRD-67's intentional `reload()`. Confirmed.
