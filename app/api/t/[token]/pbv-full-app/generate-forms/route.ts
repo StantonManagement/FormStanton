@@ -168,17 +168,50 @@ export async function POST(
           sourcePdfBytes: sourcePdf,
         });
 
-        // Upload to Storage
-        const storagePath = `pbv/${fullApp.id}/forms/${formId}-${language}-unsigned.pdf`;
+        // PRD-66 (audit #5): decide generation_version + versioned unsigned path
+        // before uploading, so a regenerate during a partially-signed ceremony
+        // produces a NEW object instead of clobbering bytes a prior signer
+        // already hashed.
+        //
+        // - No row yet               -> generation_version=1, upsert:true (first write)
+        // - Row exists, 0 signers    -> keep existing version, upsert:true (safe to
+        //                               overwrite — no signer has committed)
+        // - Row exists, >=1 signers  -> bump to existing+1, upsert:false (brand-new
+        //                               versioned path; collision is a real bug)
+        const { data: existingDoc } = await supabaseAdmin
+          .from('pbv_form_documents')
+          .select('generation_version, collected_signer_member_ids')
+          .eq('full_application_id', fullApp.id)
+          .eq('form_id', formId)
+          .eq('language', language)
+          .maybeSingle();
+
+        const existingVersion = (existingDoc?.generation_version as number | null) ?? null;
+        const collectedSignerCount = (existingDoc?.collected_signer_member_ids?.length ?? 0) as number;
+
+        let generationVersion: number;
+        let upsertOnUpload: boolean;
+        if (existingVersion === null) {
+          generationVersion = 1;
+          upsertOnUpload = true;
+        } else if (collectedSignerCount === 0) {
+          generationVersion = existingVersion;
+          upsertOnUpload = true;
+        } else {
+          generationVersion = existingVersion + 1;
+          upsertOnUpload = false;
+        }
+
+        const storagePath = `pbv/${fullApp.id}/forms/${formId}-${language}-v${generationVersion}.pdf`;
         const { error: uploadError } = await supabaseAdmin.storage
           .from('pbv-forms')
           .upload(storagePath, stampedPdf, {
             contentType: 'application/pdf',
-            upsert: true,
+            upsert: upsertOnUpload,
           });
 
         if (uploadError) {
-          console.error(`[generate-forms] Storage upload failed for ${formId}:`, uploadError);
+          console.error(`[generate-forms] Storage upload failed for ${formId} (v${generationVersion}):`, uploadError);
           throw uploadError;
         }
 
@@ -207,6 +240,7 @@ export async function POST(
               field_data_snapshot: fieldData,
               source_pdf_hash: sourceHash,
               unsigned_pdf_hash: unsignedHash,
+              generation_version: generationVersion,
               field_map_version: fieldMap.field_map_version ?? '1',
               generated_at: new Date().toISOString(),
               required_signer_member_ids: requiredSignerIds,

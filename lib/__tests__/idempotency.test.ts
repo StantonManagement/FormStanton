@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
+// PRD-66 (audit #9): the lookup now chains three .eq() calls
+// (key, endpoint, application_id) before .maybeSingle(), so the mock
+// chain needs a third eq.
 const { mockMaybeSingle, mockUpsert, mockFrom } = vi.hoisted(() => {
   const mockMaybeSingle = vi.fn();
   const mockUpsert = vi.fn().mockResolvedValue({ error: null });
-  const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+  const mockEq3 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
+  const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 });
   const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 });
   const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 });
   const mockFrom = vi.fn().mockReturnValue({ select: mockSelect, upsert: mockUpsert });

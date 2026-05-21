@@ -235,14 +235,41 @@ export async function completeFormSigning(
       },
     });
 
-    signedPdfPath = `pbv/${appId}/forms/${formDoc.form_id}-${formDoc.language}-signed.pdf`;
+    // PRD-66 (audit #11): suffix the signed-PDF path with the ceremony_id so a
+    // restarted ceremony writes a NEW object and the prior signed artifact is
+    // retained for audit. Upload with upsert:false so a different-ceremony
+    // collision (impossible by construction) would fail loudly; a true
+    // same-ceremony replay just re-points signed_pdf_path at the existing
+    // object without throwing.
+    signedPdfPath = `pbv/${appId}/forms/${formDoc.form_id}-${formDoc.language}-${ceremonyId}-signed.pdf`;
 
-    await supabaseAdmin.storage
+    const { error: signedUploadError } = await supabaseAdmin.storage
       .from('pbv-forms')
       .upload(signedPdfPath, signedPdfBuffer, {
         contentType: 'application/pdf',
-        upsert: true,
+        upsert: false,
       });
+
+    if (signedUploadError) {
+      // The Supabase Storage SDK surfaces an "already exists" failure with
+      // statusCode '409' or a message containing "exists" / "already exists"
+      // / "duplicate". For the same ceremony_id this means an idempotent
+      // replay landed at the same path; treat it as already-written.
+      const msg = String(signedUploadError.message ?? '').toLowerCase();
+      const status = String((signedUploadError as any).statusCode ?? '');
+      const benignReplay = status === '409' || msg.includes('exist') || msg.includes('duplicate');
+
+      if (!benignReplay) {
+        return {
+          success: false,
+          alreadySigned: false,
+          allSigned: false,
+          status: 'error',
+          error: signedUploadError.message,
+        };
+      }
+      // Fall through: signedPdfPath already points at the existing object.
+    }
 
     formDocUpdate.status = 'signed';
     formDocUpdate.signed_pdf_path = signedPdfPath;

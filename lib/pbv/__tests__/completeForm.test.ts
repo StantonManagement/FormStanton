@@ -233,6 +233,30 @@ describe('completeFormSigning() — PRD-62', () => {
     expect(memberUpdate).toBeDefined();
   });
 
+  it('PRD-66 (#11): signed-PDF path is suffixed with ceremony_id and uploads with upsert:false', () => {
+    // Structural assertion — the all-signed branch is wrapped in heavy
+    // storage / sigImageMap / stamper mocking, so a focused source check is
+    // the durable shape for this invariant. A future refactor that drops
+    // the ceremony suffix or flips upsert back to true fails this test.
+    const { readFileSync } = require('fs');
+    const { join } = require('path');
+    const src = readFileSync(
+      join(process.cwd(), 'lib', 'pbv', 'signing', 'completeForm.ts'),
+      'utf8'
+    );
+    // The signed path literal includes ceremonyId.
+    expect(src).toMatch(/`pbv\/\$\{appId\}\/forms\/\$\{formDoc\.form_id\}-\$\{formDoc\.language\}-\$\{ceremonyId\}-signed\.pdf`/);
+    // The signed-PDF upload (.upload(signedPdfPath, signedPdfBuffer, {...}))
+    // uses upsert:false — find that exact call and check the options object.
+    const uploadMatch = src.match(/\.upload\(\s*signedPdfPath\s*,\s*signedPdfBuffer\s*,\s*\{([\s\S]*?)\}\s*\)/);
+    expect(uploadMatch, 'expected to find .upload(signedPdfPath, signedPdfBuffer, {...})').not.toBeNull();
+    expect(uploadMatch![1]).toMatch(/upsert:\s*false/);
+    // A benign same-ceremony replay (409 / "exists" / "duplicate") is
+    // caught and treated as already-written rather than throwing.
+    expect(src).toMatch(/benignReplay/);
+    expect(src).toMatch(/statusCode/);
+  });
+
   it('does not read from a Request — options carry ipAddress/userAgent directly', async () => {
     // Compile-time guard: the function signature should no longer require a Request.
     // If a future refactor reintroduces request: Request, the following call

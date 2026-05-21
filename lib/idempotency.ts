@@ -14,11 +14,18 @@ export async function withIdempotency<T>(
     return NextResponse.json(body, { status });
   }
 
+  // PRD-66 (audit #9): scope the lookup by application_id too. The upsert
+  // below has always written application_id, but the WHERE was previously
+  // (key, endpoint) only — so a guessed/reused Idempotency-Key from one
+  // tenant could replay another tenant's cached response. Pre-existing rows
+  // without a matching application_id simply miss the cache and the
+  // idempotent handler re-runs.
   const { data: existing } = await supabaseAdmin
     .from('tenant_idempotency_keys')
     .select('response_body, response_status, expires_at')
     .eq('key', key)
     .eq('endpoint', endpoint)
+    .eq('application_id', applicationId)
     .maybeSingle();
 
   if (existing && new Date(existing.expires_at) > new Date()) {

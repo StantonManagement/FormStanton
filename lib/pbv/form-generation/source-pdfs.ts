@@ -34,7 +34,21 @@ function loadPdf(fileName: string): Buffer {
 function tryLoadPdf(fileName: string): Buffer | null {
   try {
     return loadPdf(fileName);
-  } catch {
+  } catch (err: any) {
+    // PRD-66 (audit #13): the pre-PRD-66 empty catch swallowed every error
+    // — permission denied, EMFILE, anything — and made them indistinguishable
+    // from "this form isn't sourced." Distinguish the intentional not-found
+    // path (loadPdf throws a generic Error with "Source PDF not found" when
+    // existsSync is false; fs.readFileSync would throw ENOENT) from a real
+    // operational failure, which we log at ERROR with the file name so it
+    // shows up in monitoring instead of silently returning null.
+    const code = err?.code;
+    const message = String(err?.message ?? '');
+    const isNotFound = code === 'ENOENT' || message.includes('Source PDF not found');
+
+    if (!isNotFound) {
+      console.error(`[source-pdfs] Failed to load ${fileName}:`, err);
+    }
     return null;
   }
 }

@@ -73,6 +73,17 @@ Entry format:
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
+### `supabase/migrations/20260521040000_prd66_form_generation_version.sql`
+**What it does:** Adds `pbv_form_documents.generation_version INTEGER NOT NULL DEFAULT 1`, the monotonic regeneration counter. The unsigned-PDF storage path is now suffixed `-v${generation_version}.pdf` (see `generate-forms/route.ts`) so a regenerate during signing produces a NEW object instead of clobbering bytes a prior signer hashed. Enforcement of "signed-against version no longer matches current" rides PRD-62's `unsigned_pdf_hash` + `finalizeValidation` Check 5.
+
+**Used by:** `app/api/t/[token]/pbv-full-app/generate-forms/route.ts`.
+
+**Apply order:** Apply BEFORE deploying the PRD-66 code change. The route writes `generation_version` on every upsert; if the column isn't there, generate-forms 500s. The DEFAULT 1 fills existing rows safely.
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-66 commit. Alex applies after review.
+
+**Rollback:** `ALTER TABLE public.pbv_form_documents DROP COLUMN IF EXISTS generation_version;` plus reverting `generate-forms/route.ts` to the fixed `-unsigned.pdf` path.
+
 ### `supabase/migrations/20260521030000_prd65_government_id_required.sql`
 **What it does:**
 1. Inserts a `government_id` template row into `form_document_templates` (`form_id='pbv-full-application'`, `required=TRUE`, `display_order=5` so it sorts first, `category='identity'`, `applies_to='submission'`).
@@ -269,6 +280,42 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Default taken:** Added `'identity'` as a first-class category. DB is forwards-compatible (no enum to update). UI: extended the `DocCategory` union, added an `identity` `categories[]` entry placed FIRST (EN/ES/PT label), initialized the `identity: []` bucket. Legacy/custom `government_id` rows from pre-PRD-65 are mapped to `identity` even if their DB `category` is null.
 - **Reversible?** yes — drop the row in the UI + DB if a different categorization is preferred.
 - **Needs Alex:** none expected.
+
+### [PRD-66] Unsigned PDF versioning — DECISION (D1, O1)
+- **Context:** Audit #5. `generate-forms` could overwrite the unsigned PDF a signer is mid-ceremony on (`upsert: true`, fixed path `…-{lang}-unsigned.pdf`). Two options: 409-refuse if any signer has been collected, or version-and-bump.
+- **Default taken:** Durable version variant (D1). `pbv_form_documents.generation_version` (new column, migration `20260521040000`). The unsigned path is now `…-v${generationVersion}.pdf`. Decision rule: no row → v1 + `upsert:true`; row with 0 signers → reuse existing version + `upsert:true` (safe to overwrite, no signer committed); row with ≥1 signer → bump + `upsert:false` (brand-new path, clobber should fail loudly). O1 = the zero-signer no-bump rule.
+- **Reversible?** yes — drop the column + revert the route to the fixed path. Old v1 objects remain in storage and are reachable via `pbv_form_documents.unsigned_pdf_path` for any row that wasn't re-stamped.
+- **Needs Alex:** confirm we want a regenerate during signing to succeed (creating v2) rather than 409-refuse. Either way the in-flight signer ends up with a "please re-sign" via PRD-62 hash check.
+
+### [PRD-66] No `generation_version` column on `pbv_signature_events` — DECISION (D2, O2)
+- **Context:** Audit #5 also suggested writing the version onto each signature event so finalize could compare. PRD-62 already added `pbv_form_documents.unsigned_pdf_hash` + Check 5, and bumping the version rewrites the hash — so any signature event with the old hash already blocks finalize.
+- **Default taken:** No new column. Rely on PRD-62 Check 5. The version is for human-readable diagnostics + the storage path; the hash is the enforcement.
+- **Reversible?** yes — add the column later if Alex wants a separate version-mismatch message.
+- **Needs Alex:** none expected.
+
+### [PRD-66] Signed-PDF path includes ceremony_id; upsert:false — DECISION (D3)
+- **Context:** Audit #11. The signed PDF was written to `…-signed.pdf` with `upsert:true`, so a restarted ceremony silently overwrote the prior artifact.
+- **Default taken:** Signed path is `…-${ceremonyId}-signed.pdf`, uploaded with `upsert:false`. `signed_pdf_path` points at the latest; prior ceremonies' objects remain in storage for audit. A benign same-ceremony replay (409 / "exists" / "duplicate" from Supabase Storage) is detected and treated as already-written (no throw).
+- **Reversible?** yes — revert the path literal + upsert flag.
+- **Needs Alex:** none expected.
+
+### [PRD-66] Idempotency scoped by application_id — DECISION (D4)
+- **Context:** Audit #9. The cached-response lookup in `lib/idempotency.ts` filtered only by `(key, endpoint)`, leaving a theoretical cross-tenant replay if an `Idempotency-Key` was guessable.
+- **Default taken:** Added `.eq('application_id', applicationId)` to the lookup. Pre-existing cache rows miss the (now narrower) WHERE and fall through to the (idempotent) handler.
+- **Reversible?** yes (would be a regression).
+- **Needs Alex:** none expected.
+
+### [PRD-66] tryLoadPdf logs non-ENOENT errors — DECISION (D5)
+- **Context:** Audit #13. `lib/pbv/form-generation/source-pdfs.ts:tryLoadPdf` had an empty catch that swallowed permission denied / EMFILE / anything indistinguishably from "this form isn't sourced."
+- **Default taken:** Inspect `err.code` + `err.message`. `ENOENT` or the wrapper's "Source PDF not found" message → return null silently. Any other error → `console.error('[source-pdfs] Failed to load ${fileName}:', err)` and still return null (so module import / generate-forms doesn't crash).
+- **Reversible?** yes.
+- **Needs Alex:** none expected.
+
+### [PRD-66] No "discard & regenerate" UI — DECISION (O3)
+- **Context:** PRD-66 makes regeneration version-safe server-side. A tenant who edits intake mid-signing now silently triggers a v2; the in-flight signer's hash no longer matches and finalize blocks with "please re-sign."
+- **Default taken:** Server-side safety only. No UI affordance built. A future PRD should give the tenant an explicit "discard signatures & regenerate" choice so the version bump isn't a silent surprise.
+- **Reversible?** n/a — this is a flag, not a build.
+- **Needs Alex:** schedule a follow-up UI PRD when bandwidth allows.
 
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.
