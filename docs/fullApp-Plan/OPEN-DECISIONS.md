@@ -552,6 +552,37 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Reversible?** yes — one-line change in `lib/cron/auth.ts` to switch the status.
 - **Needs Alex:** none expected.
 
+### [PRD-75] `pbv_document_requirements` not brought under migration control — DECISION (O2)
+- **Context:** The PRD's preferred path was to reverse-engineer a `CREATE TABLE IF NOT EXISTS` for `pbv_document_requirements` using introspected prod columns, since the table was created out-of-band and has no committed migration. The PRD's documented fallback: "If the real schema can't be confirmed in-session, scope this migration to the RLS policy statements only".
+- **Default taken:** Took the fallback. Supabase MCP introspection is not available in this batch's tooling, so the corrective migration is RLS-only. The table's column definitions remain out-of-band; only the RLS policy is corrected.
+- **Reversible?** n/a — a future PRD with prod-introspection access can write a follow-up `CREATE TABLE IF NOT EXISTS` migration with the real columns + COMMENT.
+- **Needs Alex:** schedule a follow-up to bring `pbv_document_requirements` under migration control (introspect prod → write CREATE TABLE IF NOT EXISTS with the real columns). The RLS fix in this PRD remediates audit #3 fully; the schema-under-migration gap is a separate hygiene concern.
+
+### [PRD-75] No `authenticated` SELECT on `pbv_document_requirements` — DECISION (O1)
+- **Context:** PRD-75 O1: does the admin UI read `pbv_document_requirements` with the `authenticated` client?
+- **Default taken:** `service_role`-only. The only known reader in the codebase is `app/api/t/[token]/pbv-full-app/generate-forms/route.ts:287` via `supabaseAdmin` (service_role). Grepping for `pbv_document_requirements` finds no other application reads.
+- **Reversible?** yes — add `CREATE POLICY ... FOR SELECT TO authenticated USING (true)` in a follow-up migration if an admin UI later reads it through the authenticated session.
+- **Needs Alex:** confirm no other reader is planned.
+
+### [PRD-75] Policy-name discovery via `pg_policies` loop (defensive idempotency) — DECISION
+- **Context:** The drifted `public ALL` policy name is unknown (it was added out-of-band; no committed migration declares it). Hardcoding a guess at the policy name and `DROP POLICY IF EXISTS <guess>` would silently fail to drop the actual drift.
+- **Default taken:** A `DO $$` block enumerates `pg_policies` and drops every policy on either table whose `roles` array contains `public`. This is targeted (does not touch the locked-down policies) and idempotent (safe to re-run after apply).
+- **Reversible?** n/a — defensive cleanup. The reasserted policies below are explicit and idempotent.
+- **Needs Alex:** none expected; the post-apply verification SELECT in the migration comment confirms no `public` policy remains.
+
+### [PRD-75] `supabase/migrations/20260521090000_pbv_rls_lockdown.sql` — MIGRATION-TO-APPLY
+- **What it does:** (1) Drops every policy on `pbv_document_requirements` and `pbv_rejection_reason_templates` that grants the `public` role anything (drift remediation). (2) Ensures RLS enabled on both. (3) Reasserts `service_role` ALL + `authenticated` SELECT on `pbv_rejection_reason_templates` (mirrors 20260514220000). (4) Asserts `service_role` ALL on `pbv_document_requirements`.
+- **Apply order:** any time after PRD-75 ships. Idempotent — safe to re-apply.
+- **Status:** ⏳ NOT APPLIED — committed only.
+- **Verification (run by hand after apply):** `SELECT tablename, policyname, roles, cmd FROM pg_policies WHERE schemaname='public' AND tablename IN ('pbv_document_requirements','pbv_rejection_reason_templates');` — expect no row with `public` in the `roles` array.
+- **Rollback:** the previous wide-open state was a vulnerability; the rollback is "do not run this migration." If for some reason a `public` read is intentionally needed later, add a narrow `CREATE POLICY ... FOR SELECT TO anon USING (<condition>)` rather than reverting.
+
+### [PRD-75] `supabase/migrations/20260521100000_pbv_signature_events_hash_index.sql` — MIGRATION-TO-APPLY
+- **What it does:** Adds `CREATE INDEX IF NOT EXISTS idx_pbv_signature_events_form_hash ON pbv_signature_events (form_document_id, document_hash)` — a covering index for `finalizeValidation` Check 5. The existing single-column `idx_pbv_signature_events_form` is intentionally kept.
+- **Apply order:** any time. Safe to apply concurrently.
+- **Status:** ⏳ NOT APPLIED — committed only.
+- **Rollback:** `DROP INDEX IF EXISTS public.idx_pbv_signature_events_form_hash;`
+
 ### [PRD-74] `supabase/migrations/20260521080000_cron_run_locks.sql` — MIGRATION-TO-APPLY
 - **What it does:** Creates `public.cron_run_locks` (job_name PK, locked_until, updated_at) + `service_role`-only RLS policy + `public.claim_cron_run(job_name, lease_seconds)` SECURITY DEFINER function. The function does an atomic conditional UPSERT and RETURNS BOOLEAN (TRUE = caller holds new lease; FALSE = another holder is active).
 - **Used by:** `lib/cron/runLock.ts` (`claimCronRun`), called at the start of every cron route handler after auth passes.
