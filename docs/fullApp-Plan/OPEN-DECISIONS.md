@@ -73,6 +73,17 @@ Entry format:
 
 **Rollback:** Reverse the UPDATE statements if needed.
 
+### `supabase/migrations/20260521020000_finalize_pbv_application_fn.sql`
+**What it does:** Creates `public.finalize_pbv_application(p_app_id uuid, p_submitted_at timestamptz, p_actor_display_name text)`, a `SECURITY DEFINER` plpgsql function that updates `pbv_full_applications.submitted_at` and inserts the `application.submitted` row into `application_events` inside a single transaction. `RAISE` on any error rolls both back. `GRANT EXECUTE ... TO service_role` so `supabaseAdmin.rpc(...)` can call it.
+
+**Used by:** `app/api/t/[token]/pbv-full-app/finalize/route.ts` (replaces the previous separate UPDATE + best-effort event insert).
+
+**Apply order:** **Apply BEFORE deploying the PRD-64 code change.** The route is hard-coded to call this RPC; if the function isn't there, every finalize attempt returns 500. (Acceptable for a coordinated cutover; document in the deploy runbook.)
+
+**Status:** ⏳ NOT APPLIED — written + committed in PRD-64 commit. Alex applies after review.
+
+**Rollback:** `DROP FUNCTION IF EXISTS public.finalize_pbv_application(uuid, timestamptz, text);` plus a revert of `finalize/route.ts` to the previous JS-side submit + writePbvApplicationEvent ordering.
+
 ### `supabase/migrations/20260521010000_prd62_unsigned_pdf_hash.sql`
 **What it does:**
 1. Adds `pbv_form_documents.unsigned_pdf_hash TEXT` (nullable). Distinct from `source_pdf_hash` (template hash) — this hashes the stamped unsigned bytes the signer downloads.
@@ -194,6 +205,24 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Default taken:** Implemented as specified — the summary gate is in `app/api/t/[token]/pbv-full-app/sign-form/route.ts`; `completeFormSigning` knows nothing about it.
 - **Reversible?** yes — could be moved into the shared fn behind an option flag if a future flow needs it.
 - **Needs Alex:** none expected.
+
+### [PRD-64] X-Assisted-By verification — DECISION (D1)
+- **Context:** Audit #4. Pre-PRD-64 code accepted any `X-Assisted-By` value present in `admin_users` (forgeable). PRD specified session-verification as preferred, 401-stopgap as fallback if `getSession()` can't reach the cookie from `/api/t/...`.
+- **Default taken:** Session-verification path. The route now reads `getSession()` and verifies `assistedMode.staffUserId === assistedByHeader && assistedMode.applicationId === app.id`. Mismatch → 401 `assisted_session_unverified` + structured `console.warn`. The same pattern is already used by `app/api/t/[token]/pbv-full-app/assisted-mode/route.ts:42-55`, so the iron-session cookie is known-readable from this route family.
+- **Reversible?** yes — could downgrade to 401-only stopgap (or upgrade to HMAC-signed header) later.
+- **Needs Alex:** none expected. Confirm post-deploy R2 walk shows the header rejected when no session is active.
+
+### [PRD-64] Atomic finalize via SQL function — DECISION (D2)
+- **Context:** Audit #10. Pre-PRD-64 code set `submitted_at` then wrote `application.submitted` in a swallowing `try/catch` — submission/event could diverge.
+- **Default taken:** SQL function `finalize_pbv_application(p_app_id, p_submitted_at, p_actor_display_name)` in migration `20260521020000_finalize_pbv_application_fn.sql`. `SECURITY DEFINER` plpgsql; UPDATE + INSERT in one transaction; `RAISE` on error to roll back; `GRANT EXECUTE ... TO service_role`. The route calls `supabaseAdmin.rpc('finalize_pbv_application', ...)`; RPC error → 500 + no submitted_at + no event.
+- **Reversible?** yes — revert to event-first code-only path by restoring the previous JS submit + writePbvApplicationEvent ordering. The migration is additive (adds a function) — `DROP FUNCTION public.finalize_pbv_application(uuid, timestamptz, text);` to roll back the schema side.
+- **Needs Alex:** apply migration `20260521020000_finalize_pbv_application_fn.sql` BEFORE deploying the PRD-64 code change (otherwise every finalize attempt 500s). Confirm Gate R1 on staging after apply: force an event-insert failure (e.g. add a constraint violation) and confirm `submitted_at` is rolled back too.
+
+### [PRD-64] SQL path bypasses _notifySubscribers — DECISION (informational)
+- **Context:** The RPC-based finalize writes the `application.submitted` event directly via SQL, so the in-process `_notifySubscribers` hook in `lib/events/application-events.ts:459` is bypassed.
+- **Default taken:** Acceptable for now — `application.submitted` has no subscriber today (`lib/notifications/init.ts` does not wire one for it). Logged as a divergence so a future submit-notification feature isn't silently dropped.
+- **Reversible?** yes — if/when a subscriber is added, either (a) emit the notification from the route after a successful RPC, (b) switch to a postgres LISTEN/NOTIFY trigger, or (c) revert to the event-first code path.
+- **Needs Alex:** before wiring any `application.submitted` subscriber, decide which of (a)/(b)/(c) to use.
 
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.

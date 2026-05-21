@@ -8,17 +8,22 @@
  * 2. If submitted_at IS NOT NULL: returns 200 with existing submitted_at (replay-safe)
  * 3. Else: validates completion via validateReadyToFinalize()
  * 4. If validation fails: returns 422 with missing items
- * 5. If validation passes: writes submitted_at and application_events row in transaction
+ * 5. If validation passes: calls finalize_pbv_application(...) RPC which sets
+ *    submitted_at AND inserts the application.submitted event in a single
+ *    transaction. RPC failure -> 500 and the app stays unsubmitted.
  * 6. Returns 200 with submitted_at
+ *
+ * PRD-64 (audit #10): the pre-PRD-64 code set submitted_at first and wrote
+ * the audit event in a swallowing try/catch — an event-insert failure left
+ * the app submitted with no submission row in the timeline. The SQL function
+ * `finalize_pbv_application` (migration 20260521020000) makes both writes
+ * atomic. Note: this bypasses the in-process _notifySubscribers hook for
+ * application.submitted; that event has no subscribers today.
  */
 
 import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { validateReadyToFinalize } from '@/lib/pbv/finalizeValidation';
-import {
-  writePbvApplicationEvent,
-  ApplicationEventType,
-} from '@/lib/events/application-events';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 
 export async function POST(
@@ -43,29 +48,26 @@ export async function POST(
         };
       }
 
-      // ── Step 2: Atomic finalize — set submitted_at and write event ──────────
+      // ── Step 2: Atomic finalize — submitted_at + application.submitted event
+      // share a transaction inside finalize_pbv_application().
       const submittedAt = new Date().toISOString();
 
-      const { error: updateError } = await supabaseAdmin
-        .from('pbv_full_applications')
-        .update({ submitted_at: submittedAt })
-        .eq('id', app.id);
+      const { error: rpcError } = await supabaseAdmin.rpc('finalize_pbv_application', {
+        p_app_id: app.id,
+        p_submitted_at: submittedAt,
+        p_actor_display_name: 'Tenant',
+      });
 
-      if (updateError) {
-        console.error('[pbv-finalize] Failed to set submitted_at:', updateError);
-        return { body: { success: false, message: 'Failed to finalize application' }, status: 500 };
-      }
-
-      try {
-        await writePbvApplicationEvent({
-          applicationId: app.id,
-          eventType: ApplicationEventType.APPLICATION_SUBMITTED,
-          actorUserId: null,
-          actorDisplayName: 'Tenant',
-          payload: { submitted_at: submittedAt },
-        });
-      } catch (eventError) {
-        console.error('[pbv-finalize] Failed to write application event:', eventError);
+      if (rpcError) {
+        console.error('[pbv-finalize] finalize_pbv_application RPC failed:', rpcError);
+        return {
+          body: {
+            success: false,
+            message: 'Failed to finalize application',
+            code: 'finalize_atomic_failed',
+          },
+          status: 500,
+        };
       }
 
       return {

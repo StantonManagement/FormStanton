@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
+import { getSession } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
@@ -58,17 +59,47 @@ export async function POST(
   const idempotencyKey = `sign-form:${ceremony_id}:${form_document_id}`;
 
   return withTenantContext(request, token, 'sign-form', async (app) => {
-    // Read X-Assisted-By header — set by tenantFetch when session carries assistedMode.
-    // Validate that this staff user exists in admin_users before trusting it.
+    // PRD-64 (audit #4): X-Assisted-By is an audit-integrity signal — HACH
+    // sees it as "staff X assisted this signature." The pre-PRD-64 check
+    // accepted any admin_users.id (existence-only), which any client able to
+    // reach this route could spoof. We now require the header to match the
+    // CURRENT request's active assisted staff session: getSession() reads the
+    // signed httpOnly admin_session cookie (the same cookie the
+    // /api/t/[token]/pbv-full-app/assisted-mode GET route reads), and we
+    // verify both staffUserId and applicationId. Mismatch -> 401 fail-closed
+    // (do NOT silently downgrade to a self-signed event).
     const assistedByHeader = request.headers.get('X-Assisted-By');
     let assistedByStaffUserId: string | null = null;
     if (assistedByHeader) {
-      const { data: staffRow } = await supabaseAdmin
-        .from('admin_users')
-        .select('id')
-        .eq('id', assistedByHeader)
-        .maybeSingle();
-      if (staffRow) assistedByStaffUserId = staffRow.id;
+      let assistedMode: { staffUserId: string; applicationId: string } | undefined;
+      try {
+        const session = await getSession();
+        assistedMode = session.assistedMode;
+      } catch {
+        assistedMode = undefined;
+      }
+
+      const verified =
+        !!assistedMode &&
+        assistedMode.staffUserId === assistedByHeader &&
+        assistedMode.applicationId === app.id;
+
+      if (!verified) {
+        console.warn(
+          JSON.stringify({
+            event: 'assisted_by_unverified',
+            header_value: assistedByHeader,
+            app_id: app.id,
+            has_session: !!assistedMode,
+          })
+        );
+        return {
+          body: { success: false, code: 'assisted_session_unverified', message: 'Assisted-by header could not be verified against an active staff session' },
+          status: 401,
+        };
+      }
+
+      assistedByStaffUserId = assistedMode!.staffUserId;
     }
 
     // ── HOH-only gate: summary doc must be signed first ─────────────────────
