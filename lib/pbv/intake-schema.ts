@@ -94,8 +94,7 @@ export interface IntakeMemberIncome {
   member_name: string;
   income_sources: IntakeIncomeSource[];
   has_any_income: boolean;
-  annual_income: number;
-  annual_was_manually_edited?: boolean;
+  annual_income: number; // Derived from monthly amounts (× 12)
 }
 
 export interface IntakeIncome {
@@ -186,6 +185,18 @@ export interface IntakeHouseholdExpenses {
   expense_explanation?: string;
 }
 
+// ── Section 11 — pets (PRD-55 cross-dependency) ──────────────────────────────────
+
+export interface IntakePets {
+  has_pets: boolean;
+}
+
+// ── Section 12 — vehicle (PRD-55 cross-dependency) ───────────────────────────────
+
+export interface IntakeVehicle {
+  has_vehicle: boolean;
+}
+
 // ── Top-level IntakeData ───────────────────────────────────────────────────────
 
 export interface IntakeData {
@@ -199,6 +210,8 @@ export interface IntakeData {
   criminal_history?: IntakeCriminalHistory;
   dv_homeless_ra?: IntakeDvHomelessRa;
   household_expenses?: IntakeHouseholdExpenses;
+  pets?: IntakePets; // PRD-55 cross-dependency
+  vehicle?: IntakeVehicle; // PRD-55 cross-dependency
   _last_saved_at?: string;
 }
 

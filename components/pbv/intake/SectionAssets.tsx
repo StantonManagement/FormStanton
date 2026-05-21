@@ -9,7 +9,27 @@ import { useState, useEffect } from 'react';
 import FormField from '@/components/form/FormField';
 import FormSection from '@/components/form/FormSection';
 import type { PreferredLanguage } from '@/types/compliance';
-import type { IntakeData, IntakeAssets, SectionSlug } from '@/lib/pbv/intake-schema';
+import type { IntakeData, IntakeAssets, SectionSlug, IntakePets, IntakeVehicle } from '@/lib/pbv/intake-schema';
+
+function YesNo({ name, value, onChange, yesLabel, noLabel }: {
+  name: string; value: boolean | null; onChange: (v: boolean) => void;
+  yesLabel: string; noLabel: string;
+}) {
+  return (
+    <div className="flex gap-4 mt-2" role="radiogroup" aria-required="true">
+      <label className="flex items-center gap-2 text-sm min-h-[44px]">
+        <input type="radio" name={name} checked={value === true}
+          onChange={() => onChange(true)} className="w-4 h-4" />
+        {yesLabel}
+      </label>
+      <label className="flex items-center gap-2 text-sm min-h-[44px]">
+        <input type="radio" name={name} checked={value === false}
+          onChange={() => onChange(false)} className="w-4 h-4" />
+        {noLabel}
+      </label>
+    </div>
+  );
+}
 
 interface Props {
   language: PreferredLanguage;
@@ -38,19 +58,34 @@ const ASSET_FIELDS: Array<{ key: BooleanAssetKey; en: string; es: string; pt: st
 const copy: Record<PreferredLanguage, Record<string, string>> = {
   en: {
     disposed_value: 'Estimated value of disposed asset ($)',
-    total_value: 'Estimated total asset value ($)',
+    total_value: 'Estimated total value of all checked assets ($)',
+    total_value_context: 'Applies to:',
     none: 'None of the above',
+    pets_label: 'Does the household have any pets?',
+    vehicle_label: 'Does the household have a vehicle?',
+    yes: 'Yes',
+    no: 'No',
   },
   es: {
     disposed_value: 'Valor estimado del activo dispuesto ($)',
-    total_value: 'Valor total estimado de activos ($)',
+    total_value: 'Valor total estimado de todos los activos marcados ($)',
+    total_value_context: 'Aplica a:',
     none: 'Ninguno de los anteriores',
+    pets_label: '¿El hogar tiene mascotas?',
+    vehicle_label: '¿El hogar tiene un vehículo?',
+    yes: 'Sí',
+    no: 'No',
   },
   pt: {
     // PT: tentative — review
     disposed_value: 'Valor estimado do bem alienado ($)',
-    total_value: 'Valor total estimado dos bens ($)',
+    total_value: 'Valor total estimado de todos os bens marcados ($)',
+    total_value_context: 'Aplica-se a:', // PT: tentative — review
     none: 'Nenhum dos acima',
+    pets_label: 'A família tem animais de estimação?', // PT: tentative — review
+    vehicle_label: 'A família tem um veículo?', // PT: tentative — review
+    yes: 'Sim',
+    no: 'Não',
   },
 };
 
@@ -62,20 +97,39 @@ function emptyAssets(): IntakeAssets {
   };
 }
 
+type IntakePetsWithNeutral = IntakePets | { has_pets: boolean | null };
+type IntakeVehicleWithNeutral = IntakeVehicle | { has_vehicle: boolean | null };
+
 export default function SectionAssets({ language, intakeData, onChange }: Props) {
   const c = copy[language] ?? copy.en;
   const [assets, setAssets] = useState<IntakeAssets>(intakeData.assets ?? emptyAssets());
+  // Phase 6: Pets/vehicle with neutral defaults (null, not pre-selected)
+  const [pets, setPets] = useState<IntakePetsWithNeutral>(intakeData.pets ?? { has_pets: null });
+  const [vehicle, setVehicle] = useState<IntakeVehicleWithNeutral>(intakeData.vehicle ?? { has_vehicle: null });
 
-  const emit = (updated: IntakeAssets) => {
+  const emitAssets = (updated: IntakeAssets) => {
     onChange('assets', updated as unknown as Record<string, unknown>);
   };
+  // Phase 6: Emit pets/vehicle via type assertion (not standard sections)
+  const emitPets = (updated: IntakePets) => {
+    onChange('assets' as SectionSlug, { pets: updated } as unknown as Record<string, unknown>);
+  };
+  const emitVehicle = (updated: IntakeVehicle) => {
+    onChange('assets' as SectionSlug, { vehicle: updated } as unknown as Record<string, unknown>);
+  };
 
-  useEffect(() => { emit(assets); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { emitAssets(assets); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (pets.has_pets !== null) emitPets(pets as IntakePets);
+  }, [pets]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (vehicle.has_vehicle !== null) emitVehicle(vehicle as IntakeVehicle);
+  }, [vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (key: BooleanAssetKey, val: boolean) => {
     const updated = { ...assets, [key]: val };
     setAssets(updated);
-    emit(updated);
+    emitAssets(updated);
   };
 
   const hasAnyAsset = ASSET_FIELDS.some((f) => assets[f.key]);
@@ -106,7 +160,7 @@ export default function SectionAssets({ language, intakeData, onChange }: Props)
               onChange={(e) => {
                 const updated = { ...assets, disposed_asset_value: parseFloat(e.target.value) || 0 };
                 setAssets(updated);
-                emit(updated);
+                emitAssets(updated);
               }}
               className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
             />
@@ -126,13 +180,43 @@ export default function SectionAssets({ language, intakeData, onChange }: Props)
               onChange={(e) => {
                 const updated = { ...assets, total_asset_value: parseFloat(e.target.value) || 0 };
                 setAssets(updated);
-                emit(updated);
+                emitAssets(updated);
               }}
               className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
             />
           </FormField>
+          {/* Phase 5: Show checked asset types for clarity */}
+          <p className="text-xs text-[var(--muted)] mt-2">
+            <span className="font-medium">{c.total_value_context}</span>{' '}
+            {ASSET_FIELDS.filter((f) => assets[f.key] && f.key !== 'disposed_asset_last_2yr')
+              .map((f) => f[language] ?? f.en)
+              .join(', ')}
+          </p>
         </FormSection>
       )}
+
+      {/* Phase 6: Pets/vehicle capture (PRD-55 cross-dependency) */}
+      <FormSection background>
+        <p className="text-sm">{c.pets_label}</p>
+        <YesNo
+          name="has_pets"
+          value={pets.has_pets as boolean | null}
+          onChange={(v) => setPets({ has_pets: v })}
+          yesLabel={c.yes}
+          noLabel={c.no}
+        />
+      </FormSection>
+
+      <FormSection background>
+        <p className="text-sm">{c.vehicle_label}</p>
+        <YesNo
+          name="has_vehicle"
+          value={vehicle.has_vehicle as boolean | null}
+          onChange={(v) => setVehicle({ has_vehicle: v })}
+          yesLabel={c.yes}
+          noLabel={c.no}
+        />
+      </FormSection>
     </div>
   );
 }

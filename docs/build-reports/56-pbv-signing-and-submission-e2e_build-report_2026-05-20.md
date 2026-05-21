@@ -1,7 +1,7 @@
 # PRD-56 Build Report: Signing & Submission End-to-End Correctness
 
 **Date:** 2026-05-20  
-**Commit:** (to be determined after commit)  
+**Commit:** 2e33ede  
 **Branch:** feat/pbv-full-finalization  
 
 ---

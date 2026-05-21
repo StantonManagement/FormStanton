@@ -48,6 +48,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     member: 'Member',
     hoh: 'Head of Household',
     no_income: 'No income',
+    has_pets: 'Has pets',
+    has_vehicle: 'Has vehicle',
   },
   es: {
     not_answered: 'Sin responder',
@@ -68,6 +70,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     member: 'Miembro',
     hoh: 'Jefe de hogar',
     no_income: 'Sin ingresos',
+    has_pets: 'Tiene mascotas',
+    has_vehicle: 'Tiene vehículo',
   },
   pt: {
     // PT: tentative -- review
@@ -89,6 +93,8 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     member: 'Membro',
     hoh: 'Chefe de familia',
     no_income: 'Sem renda',
+    has_pets: 'Tem animais de estimacao', // PT: tentative — review
+    has_vehicle: 'Tem veiculo', // PT: tentative — review
   },
 };
 
@@ -266,6 +272,13 @@ function buildBlocks(
             <Row label="Disposed value" value={fmtMoney(a.disposed_asset_value)} mode={mode} />
           )}
           <Row label="Total asset value" value={fmtMoney(a.total_asset_value)} mode={mode} />
+          {/* Phase 6: Pets/vehicle on review (PRD-55 cross-dependency) */}
+          {intakeData.pets !== undefined && (
+            <Row label={c.has_pets} value={yesNo(intakeData.pets?.has_pets, c)} mode={mode} />
+          )}
+          {intakeData.vehicle !== undefined && (
+            <Row label={c.has_vehicle} value={yesNo(intakeData.vehicle?.has_vehicle, c)} mode={mode} />
+          )}
         </div>
       ) : c.not_answered,
     });

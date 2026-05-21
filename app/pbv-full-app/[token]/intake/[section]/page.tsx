@@ -20,7 +20,7 @@ import { useSectionVisibility } from '@/lib/pbv/hooks/useSectionVisibility';
 import { useSectionAutoSave } from '@/lib/pbv/hooks/useSectionAutoSave';
 import IntakeShell from '@/components/pbv/intake/IntakeShell';
 import type { SectionSlug, IntakeData } from '@/lib/pbv/intake-schema';
-import { isSectionComplete, SECTION_SLUGS } from '@/lib/pbv/intake-schema';
+import { isSectionComplete, SECTION_SLUGS, ALWAYS_SECTIONS } from '@/lib/pbv/intake-schema';
 import type { PreferredLanguage } from '@/types/compliance';
 
 // Section components (built in commits 2-4)
@@ -79,7 +79,9 @@ export default function IntakeSectionPage({ params }: Props) {
   // F9: Use max-denominator (all non-review slugs) so the count never shifts
   // as conditional sections appear or disappear during intake.
   const totalSections = SECTION_SLUGS.filter((s) => s !== 'review').length;
-  const sectionNumber = currentIndex >= 0 ? currentIndex + 1 : 1;
+  // Phase 3: Use ALWAYS_SECTIONS for stable numerator (conditional sections don't shift the number)
+  const alwaysIndex = ALWAYS_SECTIONS.indexOf(currentSlug);
+  const sectionNumber = alwaysIndex >= 0 ? alwaysIndex + 1 : totalSections + 1;
 
   // Track active section data for auto-save
   const [sectionData, setSectionData] = useState<Record<string, unknown> | null>(null);

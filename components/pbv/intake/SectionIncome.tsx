@@ -48,23 +48,23 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
   en: {
     none_label: 'No income of any kind',
     amount_label: 'Monthly amount ($)',
-    annual_label: 'Estimated annual income ($)',
-    annual_caption: 'Auto-calculated from monthly. Edit to override.',
+    annual_label: 'Estimated annual income',
+    annual_caption: 'Calculated from monthly amounts',
     zero_note: 'This person will need to complete a zero-income declaration.',
   },
   es: {
     none_label: 'Sin ingresos de ningún tipo',
     amount_label: 'Monto mensual ($)',
-    annual_label: 'Ingreso anual estimado ($)',
-    annual_caption: 'Calculado automáticamente desde el monto mensual. Edite para anular.',
+    annual_label: 'Ingreso anual estimado',
+    annual_caption: 'Calculado desde los montos mensuales',
     zero_note: 'Esta persona deberá completar una declaración de cero ingresos.',
   },
   pt: {
     // PT: tentative — review
     none_label: 'Nenhuma renda de nenhum tipo',
     amount_label: 'Valor mensal ($)',
-    annual_label: 'Renda anual estimada ($)',
-    annual_caption: 'Calculado automaticamente a partir do valor mensal. Edite para substituir.', // PT: tentative — review
+    annual_label: 'Renda anual estimada',
+    annual_caption: 'Calculado a partir dos valores mensais', // PT: tentative — review
     zero_note: 'Esta pessoa precisará preencher uma declaração de renda zero.',
   },
 };
@@ -152,24 +152,20 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
     updateMemberIncome(slot, { income_sources: sources });
   };
 
+  // Phase 4: Always derive annual from monthly amounts (no manual override)
   const recomputeAnnual = (slot: number) => {
     setByMember((prev) => {
       const member = prev.find((m) => m.member_slot === slot);
-      if (!member || member.annual_was_manually_edited) return prev;
+      if (!member) return prev;
       const totalMonthly = member.income_sources
         .filter((s) => s.type !== 'none' && s.has_income)
         .reduce((sum, s) => sum + (s.amount_monthly ?? 0), 0);
-      if (totalMonthly === 0) return prev;
       const updated = prev.map((m) =>
         m.member_slot === slot ? { ...m, annual_income: totalMonthly * 12 } : m
       );
       emit(updated);
       return updated;
     });
-  };
-
-  const handleAnnualManualEdit = (slot: number, value: number) => {
-    updateMemberIncome(slot, { annual_income: value, annual_was_manually_edited: true });
   };
 
   const currentMember = byMember[currentAdultIndex];
@@ -244,24 +240,15 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
             );
           })}
 
-          {/* Annual total */}
+          {/* Phase 4: Annual total — read-only, derived from monthly */}
           {currentMember.has_any_income && (
-            <FormField label={c.annual_label} htmlFor="annual_income" helperText={c.annual_caption}>
-              <input
-                id="annual_income"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                value={currentMember.annual_income || ''}
-                onChange={(e) =>
-                  handleAnnualManualEdit(
-                    currentMember.member_slot,
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
-              />
-            </FormField>
+            <div className="pt-2 border-t border-[var(--border)]">
+              <p className="text-sm font-medium">{c.annual_label}</p>
+              <p className="text-lg font-semibold text-[var(--primary)]">
+                ${currentMember.annual_income.toLocaleString()}
+              </p>
+              <p className="text-xs text-[var(--muted)]">{c.annual_caption}</p>
+            </div>
           )}
 
           {noneSelected && (

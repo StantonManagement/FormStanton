@@ -89,21 +89,21 @@ export default function SectionContact({ language, intakeData, onChange }: Props
           <span aria-hidden="true">*</span> {c.at_least_one}
         </p>
 
-        <FormField label={c.phone_cell} htmlFor="phone_cell">
+        <FormField label={c.phone_cell} htmlFor="phone_cell" required>
           <FormPhoneInput
             value={phoneCell}
             onChange={(v) => { setPhoneCell(v); emit({ phone_cell: v }); }}
           />
         </FormField>
 
-        <FormField label={c.phone_home} htmlFor="phone_home">
+        <FormField label={c.phone_home} htmlFor="phone_home" required>
           <FormPhoneInput
             value={phoneHome}
             onChange={(v) => { setPhoneHome(v); emit({ phone_home: v }); }}
           />
         </FormField>
 
-        <FormField label={c.phone_work} htmlFor="phone_work">
+        <FormField label={c.phone_work} htmlFor="phone_work" required>
           <FormPhoneInput
             value={phoneWork}
             onChange={(v) => { setPhoneWork(v); emit({ phone_work: v }); }}
