@@ -26,7 +26,7 @@ export interface DocContent {
 
 /**
  * Content for all document types in the PBV application.
- * TODO: Complete es and pt translations.
+ * PRD-59: EN/ES/PT translations complete for titles, descriptions, and fallback text.
  */
 export const DOC_CONTENT: Record<string, DocContent> = {
   // ─── INCOME (10 docs) ──────────────────────────────────────────────────────

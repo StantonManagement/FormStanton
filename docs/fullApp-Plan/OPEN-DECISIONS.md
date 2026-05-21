@@ -44,6 +44,18 @@ Entry format:
 - **Reversible?** yes — if this IS a generated form, source the PDFs and re-enable.
 - **Needs Alex:** confirm `criminal_background_release` is upload-only vs sign-generated. If generated, source PDFs needed.
 
+### [PRD-59] Real EN/ES/PT summary + consent prose needs human authoring — DECISION
+- **Context:** The signed summary document and consent flow contain prose that must be legally accurate and culturally appropriate. Machine translations are insufficient for this content.
+- **Default taken:** Built against current `// CONTENT: tentative` / `// CONSENT: tentative` draft strings in `lib/pbv/summary-doc/content.ts` and `lib/pbv/consent-text.ts`. All mechanical string tables (docTypeHelp.ts, docContent.ts) are complete; only the narrative prose remains tentative.
+- **Reversible?** yes — update the marked strings and remove the tentative comments when final copy is ready.
+- **Needs Alex:** Review tentative prose with Dan and a professional translator for EN/ES/PT parity. Mark final when approved.
+
+### [PRD-59] Tentative summary/consent acceptable to ship behind — DECISION
+- **Context:** The batch needs to complete without blocking on final legal copy.
+- **Default taken:** Tentative strings are acceptable for internal/staging deploy. They are clearly marked `// CONTENT: tentative — review with Dan + translator` and `// CONSENT: tentative` for grep-ability.
+- **Reversible?** yes — replace with final copy when available; no code changes needed.
+- **Needs Alex:** Confirm go/no-go for staging deploy with tentative prose. Production deploy should wait for final copy.
+
 ---
 
 ## Prod migrations to apply (do NOT auto-apply — Alex applies after review)
