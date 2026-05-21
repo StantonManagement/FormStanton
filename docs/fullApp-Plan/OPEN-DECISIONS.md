@@ -682,3 +682,15 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Default taken:** added the same `isUuid` import and a guard on the optional body field `ceremony_id` (which IS body-supplied) so garbage doesn't propagate into the storage path. Did **not** add a `signer_member_id` guard because the route never reads that body field.
 - **Reversible?** yes — the additive guard is a one-liner to remove if it ever becomes wrong.
 - **Needs Alex:** confirm the route's body contract (no `signer_member_id`), so this gap stays "checked, not skipped" in the audit log.
+
+### [PRD-81] A2 deploy gate (signatures POST race) — needs Alex
+- **Context:** the audit's findings section tags A2 **CRITICAL**, but its Launch Decision Matrix demotes it to **v1.1** ("storage-first without rollback — fix in v1.1"). The build prompt's deploy-blocker line passes after PRD-81 is on the branch regardless.
+- **Default taken:** built the fix (DB-claim-first w/ optimistic lock, `upsert:true`, row-revert on storage failure). The fix is on the branch — Alex decides whether to gate launch on it or treat it as already-shipped post-launch hardening.
+- **Reversible?** yes — revert this commit if the decision is "don't ship A2 with this batch." But there's no reason to: the fix is small, contained, and orthogonal to the rest of the lane.
+- **Needs Alex:** is A2 a launch blocker or v1.1 ship? The findings section and the matrix disagree.
+
+### [PRD-81] Storage upload mode in signatures POST flipped from upsert:false → upsert:true — DECISION
+- **Context:** PRD-81's race-fix changes the ordering to DB-claim-first. The storage upload now runs only AFTER the row has been claimed via optimistic lock on (status, revision). With that ordering, `upsert:false` would false-409 on a benign retry of the same claim (e.g., a transient network blip after the DB UPDATE landed); `upsert:true` makes the upload idempotent for the same path/bytes.
+- **Default taken:** flipped to `upsert:true` in the per-iteration upload at `signatures/route.ts`. The filename encodes the new revision so cross-revision collisions can't happen.
+- **Reversible?** yes — flip back if a future change adds non-idempotent semantics to the upload (none today).
+- **Needs Alex:** confirm the change in posture — pre-PRD-81 upsert:false was the explicit guard against collision; post-PRD-81 the DB claim is the guard, and the storage upsert is the idempotent commit.
