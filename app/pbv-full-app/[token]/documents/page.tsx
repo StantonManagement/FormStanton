@@ -3,11 +3,22 @@
 /**
  * app/pbv-full-app/[token]/documents/page.tsx
  *
- * Tenant document upload page (PRD-42 + PRD-44).
+ * Tenant document upload page (PRD-42 + PRD-44, with PRD-67 navigation +
+ * view-all subview).
+ *
+ * URL search params (PRD-67 Gate 5 / U10):
+ *   - ?view=all       — open the view-all-documents subview directly (from
+ *                       the dashboard "View my documents" link).
+ *   - ?filter=rejected — deep-link from the dashboard's rejected-doc banner
+ *                       to the first rejected card.
+ *
+ * Navigation: router.push (not window.location.href) everywhere except the
+ * full-page error fallback, so browser back works across subviews.
  */
 
 import { use } from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useIntakeBootstrap, type BootstrapData } from '@/lib/pbv/hooks/useIntakeBootstrap';
 import DocumentCardStack, { type DocumentCardData } from '@/components/pbv/cards/DocumentCardStack';
 import AlmostDoneReview from '@/components/pbv/cards/AlmostDoneReview';
@@ -27,6 +38,7 @@ type PageView =
   | { kind: 'loading' }
   | { kind: 'card_stack'; initialIndex: number; showToast: ReEntryState['kind'] | null }
   | { kind: 'review' }
+  | { kind: 'view_all' }
   | { kind: 'submitted' }
   | { kind: 'error'; message: string };
 
@@ -36,6 +48,11 @@ interface Props {
 
 export default function DocumentsPage({ params }: Props) {
   const { token } = use(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const filterParam = searchParams.get('filter');
+
   const { state } = useIntakeBootstrap(token);
   const [documents, setDocuments] = useState<DocumentCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,16 +131,22 @@ export default function DocumentsPage({ params }: Props) {
     [token, fetchDocuments, preferredLanguage]
   );
 
+  // PRD-67 navigation: router.push instead of window.location.href so browser
+  // back is well-behaved across the tenant flow.
   const handleComplete = useCallback(() => {
-    window.location.href = `/pbv-full-app/${token}/dashboard`;
-  }, [token]);
+    router.push(`/pbv-full-app/${token}/dashboard`);
+  }, [router, token]);
 
   const handleProceedToSign = useCallback(() => {
-    window.location.href = `/pbv-full-app/${token}/sign/summary`;
-  }, [token]);
+    router.push(`/pbv-full-app/${token}/sign/summary`);
+  }, [router, token]);
 
   const handleGoToReview = useCallback(() => {
     setPageView({ kind: 'review' });
+  }, []);
+
+  const handleGoToViewAll = useCallback(() => {
+    setPageView({ kind: 'view_all' });
   }, []);
 
   const handleRetakeFromReview = useCallback((docId: string) => {
@@ -136,9 +159,34 @@ export default function DocumentsPage({ params }: Props) {
     setPageView({ kind: 'card_stack', initialIndex: lastIndex, showToast: null });
   }, [documents.length]);
 
+  // PRD-67 U10: honor ?filter=rejected — deep-link to the first rejected card.
+  const firstRejectedIndex = useMemo(() => {
+    if (filterParam !== 'rejected') return -1;
+    return documents.findIndex((d) => d.status === 'rejected');
+  }, [documents, filterParam]);
+
   useEffect(() => {
     if (!readyData || loading || documents.length === 0) return;
     const isSubmitted = !!submittedAt;
+
+    // PRD-67 Step 1: ?view=all wins over the re-entry classifier so the
+    // dashboard's "View my documents" link always lands on the view-all
+    // subview, even mid-flow.
+    if (viewParam === 'all') {
+      setPageView({ kind: 'view_all' });
+      return;
+    }
+
+    // PRD-67 U10: ?filter=rejected jumps to the first rejected card.
+    if (filterParam === 'rejected' && firstRejectedIndex >= 0) {
+      setPageView({
+        kind: 'card_stack',
+        initialIndex: firstRejectedIndex,
+        showToast: 'rejection_pending',
+      });
+      return;
+    }
+
     const reEntryState = classifyReEntry({ documents, isSubmitted });
     switch (reEntryState.kind) {
       case 'first_visit':
@@ -165,7 +213,7 @@ export default function DocumentsPage({ params }: Props) {
         setPageView({ kind: 'submitted' });
         break;
     }
-  }, [readyData, submittedAt, documents, loading]);
+  }, [readyData, submittedAt, documents, loading, viewParam, filterParam, firstRejectedIndex]);
 
   const language: PreferredLanguage = (preferredLanguage ?? 'en') as PreferredLanguage;
   const firstName = readyData?.head_of_household_name?.split(' ')[0] ?? 'there';
@@ -226,6 +274,24 @@ export default function DocumentsPage({ params }: Props) {
     );
   }
 
+  // PRD-67 Step 1: view-all subview. Reuses AlmostDoneReview's grouped
+  // listing. Pre-submission this surface lets the tenant retake any uploaded
+  // doc; post-submission AlmostDoneReview is read-only (it filters to
+  // uploaded docs and the parent gates the back button to the dashboard).
+  if (pageView.kind === 'view_all') {
+    return (
+      <AlmostDoneReview
+        token={token}
+        firstName={firstName}
+        documents={documents}
+        language={language}
+        onProceedToSign={handleProceedToSign}
+        onRetake={handleRetakeFromReview}
+        onBackToCards={handleComplete}
+      />
+    );
+  }
+
   if (pageView.kind === 'review') {
     return (
       <AlmostDoneReview
@@ -259,6 +325,7 @@ export default function DocumentsPage({ params }: Props) {
         onComplete={handleComplete}
         onProceedToSign={handleProceedToSign}
         onGoToReview={handleGoToReview}
+        onGoToViewAll={handleGoToViewAll}
         initialCardIndex={pageView.kind === 'card_stack' ? pageView.initialIndex : 0}
         skipLanding={pageView.kind === 'card_stack' && pageView.initialIndex > 0}
         useAnalytics={useAnalytics}

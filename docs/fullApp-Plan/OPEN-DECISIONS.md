@@ -317,6 +317,31 @@ Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/
 - **Reversible?** n/a — this is a flag, not a build.
 - **Needs Alex:** schedule a follow-up UI PRD when bandwidth allows.
 
+### [PRD-67] Post-complete editing deferred — DECISION
+- **Context:** PRD-67 Step 2 called for editing intake answers after `intake_status='complete'`, which requires (a) a confirmation gate, (b) a write to `intake_snapshot` (NOT the old `intake_data`), (c) re-running `bridgeIntakeToDatabase` for member-affecting sections, (d) invoking `generate-forms` (PRD-66 bumps `generation_version`), (e) clearing changed forms' `collected_signer_member_ids` + summary signature if changed + calling `updateApplicationSigningStatus`. Five-step interaction touching two routes, two helpers, and the dashboard.
+- **Default taken:** Ship the **read-only** review surface only. Editing post-complete is not enabled in this PRD. The user instead sees a "To change any of your answers, call our office (860) 993-3401" line — matching the long-standing posture for building/unit. Pre-complete editing is unchanged (it still flows through the intake screens; SectionReview's Edit links work as before).
+- **Why defer:** the prompt warns "do not let an edit silently overwrite a signed packet's data." Wiring the regenerate-on-edit confirmation + signing reset partially is the worst outcome — it could leave a packet in a state where `intake_snapshot` says X but signed PDFs were stamped from Y. PRD-62 Check 5 + PRD-66's version bump would catch it at finalize, but the UX would be confusing. The right thing is to land the whole interaction in a focused follow-up PRD with its own test plan.
+- **Reversible?** yes — the follow-up PRD adds the edit endpoint + the regenerate/reset call. The review page already has the section structure; only the "Edit" button + the wire-up needs to be added.
+- **Needs Alex:** schedule the follow-up. Until then, tenants who need to correct answers post-complete call the office. (This is the current production behavior — PRD-67 doesn't regress anything; it just doesn't add the missing edit path.)
+
+### [PRD-67] Download link gated on `submitted_at` — DECISION
+- **Context:** Pre-PRD-67 the dashboard offered "Download my application copy" whenever `intake_status === 'complete'`, but `/api/t/[token]/pbv-full-app/print/download` requires `submitted_at`. Tenants who finished intake but hadn't submitted saw a working-looking link that 403'd.
+- **Default taken:** Gate on `data.submitted_at` instead. The link is hidden until the application is actually submitted, which is the unambiguous "copy ready" point.
+- **Reversible?** yes — flip the condition back.
+- **Needs Alex:** none expected. Confirm in R3 post-deploy that the link appears after finalize and returns a real PDF.
+
+### [PRD-67] No new migration written — DECISION (O5)
+- **Context:** PRD O5 asked whether to add `pbv_full_applications.intake_edited_after_generation_at` for diagnostics.
+- **Default taken:** No. PRD-66's `generation_version` already records that a regenerate happened; the `signing_status` reset (when wired in by the follow-up) records the signing reset. A separate edit-timestamp column would be useful only with the editing path enabled.
+- **Reversible?** yes — the follow-up edit PRD can add it then.
+- **Needs Alex:** revisit when the follow-up edit PRD is scoped.
+
+### [PRD-67] Deferred usability items (U7, U9, U11) — DECISION
+- **U7 (hub progress indicator):** not built. Existing dashboard cards already show per-task state via `CardStatus`; a global progress bar is a polish item, not a launch blocker.
+- **U9 (PT prose review):** ships best-effort per [PRD-59] resolution; native PT review is post-launch.
+- **U11 (leave-with-missing confirmation):** not built. The card stack already has explicit "I'll get this later" + the dashboard re-entry path handles partial completion gracefully.
+- **Needs Alex:** prioritize U7 + U11 in a polish PRD; schedule PT native review.
+
 ### [PRD-62] Pre-existing test-suite baseline failures — DECISION (informational)
 - **Context:** `npx vitest run` shows ~10 unrelated failing test files on this branch: `components/review/{DocumentRow,useReviewKeyboardShortcuts}.test`, `lib/__tests__/{in-app-signature-capture-staff,in-app-signature-capture-tenant,signing-api,tenantApiCall}.test`, `lib/workspaces/__tests__/client.test`, `lib/pbv/__tests__/{age,documentTriggers,field-mapping}.test`. Confirmed pre-existing by stashing PRD-62 changes and re-running (still failed). `field-mapping.test` failure references `briefing_docs_certification`, which PRD-55 renamed to `briefing_cert` — that test was not updated in PRD-55.
 - **Default taken:** Do not fix in this PRD (out of lane). PRD-62 only adds passing tests (`completeForm`, `finalizeValidation` extensions, `sign-form-unification`).

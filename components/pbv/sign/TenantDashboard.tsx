@@ -45,6 +45,8 @@ interface CopyMap {
   submit_disabled_reason: string;
   download_copy: string;
   download_copy_sub: string;
+  view_documents: string;
+  review_application: string;
 }
 
 const copy: Record<PreferredLanguage, CopyMap> = {
@@ -73,6 +75,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submit_disabled_reason: 'Complete all tasks above before submitting.',
     download_copy: 'Download my application copy',
     download_copy_sub: 'Get a PDF copy of your submitted application for your records.',
+    view_documents: 'View my documents',
+    review_application: 'Review my application',
   },
   es: {
     title: 'Panel de Solicitud',
@@ -98,6 +102,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submit_disabled_reason: 'Complete todas las tareas para enviar.',
     download_copy: 'Descargar copia de mi solicitud',
     download_copy_sub: 'Obtenga una copia PDF de su solicitud para sus archivos.',
+    view_documents: 'Ver mis documentos',
+    review_application: 'Revisar mi solicitud',
   },
   pt: {
     // PT: tentative — review
@@ -124,6 +130,8 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     submit_disabled_reason: 'Conclua todas as tarefas acima para enviar.',
     download_copy: 'Baixar c\u00f3pia da solicita\u00e7\u00e3o',
     download_copy_sub: 'Obtenha uma c\u00f3pia PDF da sua solicita\u00e7\u00e3o para seus registros.',
+    view_documents: 'Ver meus documentos',
+    review_application: 'Revisar minha inscri\u00e7\u00e3o',
   },
 };
 
@@ -271,8 +279,28 @@ export default function TenantDashboard({ token, data, onReload }: Props) {
           />
         </div>
 
-        {/* Download application copy link - only when complete */}
-        {data.intake_status === 'complete' && (
+        {/* PRD-67: secondary actions (view docs, review answers) — available
+            before & after submission. */}
+        <div className="mt-6 pt-6 border-t border-[var(--border)] space-y-3">
+          <button
+            type="button"
+            onClick={() => router.push(`/pbv-full-app/${token}/documents?view=all`)}
+            className="w-full text-sm text-[var(--primary)] underline hover:opacity-75 transition-opacity text-center min-h-[44px]"
+          >
+            {c.view_documents}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/pbv-full-app/${token}/review`)}
+            className="w-full text-sm text-[var(--primary)] underline hover:opacity-75 transition-opacity text-center min-h-[44px]"
+          >
+            {c.review_application}
+          </button>
+        </div>
+
+        {/* Download application copy link - PRD-67 U2/Gate 6: gated on
+            submitted_at (the print/download endpoint 403s until then). */}
+        {data.submitted_at && (
           <div className="mt-6 pt-6 border-t border-[var(--border)]">
             <a
               href={`/api/t/${token}/pbv-full-app/print/download`}

@@ -20,6 +20,7 @@ import DocumentCard, { type DocumentCardData } from './DocumentCard';
 export type { DocumentCardData } from './DocumentCard';
 import type { SupportedLanguage } from '@/lib/pbv/cards/docContent';
 import type { ScannerMetadata } from '@/components/DocumentScanner/DocumentScanner';
+import { defaultOfficeContact } from '@/lib/pbv/officeContacts';
 
 type StackStage = 'landing' | 'card' | 'end' | 'review';
 
@@ -62,6 +63,8 @@ interface DocumentCardStackProps {
   onProceedToSign?: () => void;
   /** Navigate to review screen */
   onGoToReview?: () => void;
+  /** Navigate to view-all-documents screen (PRD-67 U5) */
+  onGoToViewAll?: () => void;
 }
 
 const translations = {
@@ -123,6 +126,7 @@ export default function DocumentCardStack({
   skipLanding = false,
   onProceedToSign,
   onGoToReview,
+  onGoToViewAll,
 }: DocumentCardStackProps) {
   const t = translations[language];
   const { emit: emitAnalytics } = useAnalytics?.() ?? { emit: () => {} };
@@ -229,13 +233,16 @@ export default function DocumentCardStack({
   }, [stats, emitAnalytics]);
 
   const handleSeeFullList = useCallback(() => {
-    // F6: Sidesheet - Phase 3
-    // For now, just emit analytics and show alert
+    // PRD-67 U5: navigate to the view-all-documents subview instead of the
+    // pre-PRD-67 alert placeholder. The page-level handler does router.push
+    // (?view=all) so browser back works.
     emitAnalytics('DOCUMENT_SIDESHEET_OPENED', {
       from_stage: stage,
     });
-    alert('Sidesheet coming in Phase 3 (F6)');
-  }, [emitAnalytics, stage]);
+    if (onGoToViewAll) {
+      onGoToViewAll();
+    }
+  }, [emitAnalytics, stage, onGoToViewAll]);
 
   const handleNext = useCallback(() => {
     if (currentCardIndex < documentQueue.length - 1) {
@@ -549,11 +556,15 @@ export default function DocumentCardStack({
             )}
           </div>
 
-          {/* Help phone number */}
+          {/* Help phone number — PRD-67 U6: real office number from
+              lib/pbv/officeContacts (was a placeholder before). */}
           <p className="text-sm text-[var(--muted)] text-center pt-4">
             {t.callHelp}{' '}
-            <a href="tel:+12035551234" className="text-[var(--primary)] underline">
-              (203) 555-1234
+            <a
+              href={`tel:${defaultOfficeContact.phone.replace(/[^0-9+]/g, '')}`}
+              className="text-[var(--primary)] underline"
+            >
+              {defaultOfficeContact.phone}
             </a>
           </p>
 
