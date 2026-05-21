@@ -570,6 +570,25 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Reversible?** n/a — defensive cleanup. The reasserted policies below are explicit and idempotent.
 - **Needs Alex:** none expected; the post-apply verification SELECT in the migration comment confirms no `public` policy remains.
 
+### [PRD-76] Collision-detect (not RPC advisory-lock) for first-gen race — DECISION (O2)
+- **Context:** PRD-76 O2 asks RPC advisory-lock vs collision-detect for the `generate-forms` zero-prior-version race. Default per PRD: RPC advisory-lock IF it can be validated in-session; otherwise the documented collision-detect fallback (`upsert:false` + re-read on 409/exist/duplicate).
+- **Default taken:** Took the collision-detect fallback. The RPC path requires (1) a new migration with a `SECURITY DEFINER` function that mixes `pg_advisory_xact_lock` with a row read of `pbv_form_documents`, AND (2) validation against a live DB to confirm advisory-lock semantics. With the migration commit-only constraint and no DB access in-session, the collision-detect path is the safer ship-now choice. It is structurally identical to PRD-66's `completeForm.ts:254-260` benign-replay handling and reuses the same status/message detection.
+- **Behavior:** first-gen now uses `upsert:false`. On a `409` / "exist" / "duplicate" storage error AND `existingVersion === null`, the route re-reads the winning row and surfaces its `form_document_id` in the response WITHOUT re-upserting (preserves winner's hash → bytes consistency, since the stamper is not guaranteed byte-deterministic across processes).
+- **Reversible?** yes — the RPC advisory-lock path can be added in a follow-up PRD; this PRD's defensive guard is forward-compatible (the RPC would simply make the collision path unreachable).
+- **Needs Alex:** schedule the RPC-based serialization as a follow-up if the collision-detect approach turns out to be tripped frequently in observability (it shouldn't be — true concurrent first-gen for the same form is rare).
+
+### [PRD-76] supabase-js `count: 'exact'` on UPDATE returns count (no `.select()` needed) — DECISION (O1)
+- **Context:** PRD-76 O1 asks whether `.update(data, { count: 'exact' })` returns `count` directly or requires `.select()`. The installed supabase-js (per package-lock) does return `count` on the response object when `{ count: 'exact' }` is passed — no `.select()` needed.
+- **Default taken:** Used `.update(updateData, { count: 'exact' })` and destructured `{ error: updateError, count: updatedCount }`.
+- **Reversible?** yes — fall back to `.select('id')` + `data?.length` check if a future supabase-js upgrade changes the contract.
+- **Needs Alex:** none expected; verify in R2 walk that the path returns 409 on a simulated concurrent upload.
+
+### [PRD-76] No `generate_form_claim_fn.sql` migration written — DECISION
+- **Context:** The PRD lists this migration as "new, only if RPC path". The collision-detect path is the alternative; no migration is needed.
+- **Default taken:** Skipped. No new migration for PRD-76.
+- **Reversible?** yes — write the migration in a follow-up if the RPC path is later chosen.
+- **Needs Alex:** none.
+
 ### [PRD-75] `supabase/migrations/20260521090000_pbv_rls_lockdown.sql` — MIGRATION-TO-APPLY
 - **What it does:** (1) Drops every policy on `pbv_document_requirements` and `pbv_rejection_reason_templates` that grants the `public` role anything (drift remediation). (2) Ensures RLS enabled on both. (3) Reasserts `service_role` ALL + `authenticated` SELECT on `pbv_rejection_reason_templates` (mirrors 20260514220000). (4) Asserts `service_role` ALL on `pbv_document_requirements`.
 - **Apply order:** any time after PRD-75 ships. Idempotent — safe to re-apply.

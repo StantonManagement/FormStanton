@@ -189,11 +189,31 @@ export async function POST(
         const existingVersion = (existingDoc?.generation_version as number | null) ?? null;
         const collectedSignerCount = (existingDoc?.collected_signer_member_ids?.length ?? 0) as number;
 
+        // PRD-76 #4: first-generation race hardening.
+        //
+        // PRD-66 covered the >=1 signer case (bump + upsert:false). The
+        // remaining exposure is the zero-prior-version case — two concurrent
+        // first-gen requests both read existingVersion=null, both pick v1, and
+        // with upsert:true the second silently overwrites the first's bytes.
+        // A signer who already hashed the first PDF would mismatch the stored
+        // (overwritten) bytes at finalize Check 5.
+        //
+        // Hardening: use upsert:false on the first-gen path too. On a
+        // "exists" / "409" / "duplicate" storage error, re-read the doc row;
+        // if a row now exists with the same version, treat this as
+        // "another request generated v1 first" and reuse that path (no
+        // overwrite, no throw — same shape as PRD-66's signed-PDF benign
+        // replay handling in completeForm.ts:254-260).
+        //
+        // The zero-signer reuse case (existing row, 0 signers) keeps
+        // upsert:true: the existing row's bytes are not yet committed-to by
+        // any signer, and re-stamping with the same fieldData produces the
+        // same content. This preserves PRD-66's no-bump rule.
         let generationVersion: number;
         let upsertOnUpload: boolean;
         if (existingVersion === null) {
           generationVersion = 1;
-          upsertOnUpload = true;
+          upsertOnUpload = false;
         } else if (collectedSignerCount === 0) {
           generationVersion = existingVersion;
           upsertOnUpload = true;
@@ -211,7 +231,45 @@ export async function POST(
           });
 
         if (uploadError) {
-          console.error(`[generate-forms] Storage upload failed for ${formId} (v${generationVersion}):`, uploadError);
+          const msg = String(uploadError.message ?? '').toLowerCase();
+          const status = String((uploadError as any).statusCode ?? '');
+          const benignFirstGenCollision =
+            existingVersion === null &&
+            (status === '409' || msg.includes('exist') || msg.includes('duplicate'));
+
+          if (benignFirstGenCollision) {
+            // Another concurrent first-gen request landed v1 first. Re-read
+            // the winning row and surface it in the response. Do NOT upsert:
+            // overwriting the row with this loser's hash would desync it
+            // from the bytes actually stored (the stamper may not be byte-
+            // deterministic across processes/time).
+            console.log(
+              `[generate-forms] First-gen collision for ${formId}/${language} v1 — reusing the row written by the concurrent request.`
+            );
+            const { data: winnerRow } = await supabaseAdmin
+              .from('pbv_form_documents')
+              .select('id, generation_version, unsigned_pdf_path')
+              .eq('full_application_id', fullApp.id)
+              .eq('form_id', formId)
+              .eq('language', language)
+              .maybeSingle();
+            if (winnerRow?.id) {
+              generated.push({
+                form_id: formId,
+                form_document_id: winnerRow.id,
+                status: 'generated',
+                language,
+              });
+            }
+            // Skip the upsert below for this iteration.
+            if (isPerPersonAllAdults) break;
+            continue;
+          }
+
+          console.error(
+            `[generate-forms] Storage upload failed for ${formId} (v${generationVersion}):`,
+            uploadError
+          );
           throw uploadError;
         }
 

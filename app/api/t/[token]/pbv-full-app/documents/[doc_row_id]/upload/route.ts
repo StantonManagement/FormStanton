@@ -144,16 +144,35 @@ export async function POST(
           rejection_reason: isReplace ? null : undefined,
         };
 
+        // PRD-76 #2: request the affected-row count on the guarded (non-replace)
+        // update so two concurrent uploads racing for the same `missing` slot
+        // are detected. The second writer's `.eq('status','missing')` matches
+        // zero rows once the first has flipped status to `submitted`; we abort
+        // to 409 BEFORE any storage upload, so no orphan storage object can be
+        // created and the existing rollback branch is not entangled.
         const baseQuery = supabaseAdmin
           .from('application_documents')
-          .update(updateData)
+          .update(updateData, { count: 'exact' })
           .eq('id', doc_row_id);
 
-        const { error: updateError } = isReplace
+        const { error: updateError, count: updatedCount } = isReplace
           ? await baseQuery
           : await baseQuery.eq('status', 'missing');
         if (updateError) {
           throw new Error(`Failed to update document: ${updateError.message}`);
+        }
+        if (!isReplace && (updatedCount ?? 0) === 0) {
+          console.warn(
+            `[pbv-upload] superseded doc=${doc_row_id} — concurrent upload claimed the missing slot first`
+          );
+          return {
+            body: {
+              success: false,
+              message: 'This document was just uploaded from another tab or device. Refresh to see it.',
+              code: 'upload_superseded',
+            },
+            status: 409,
+          };
         }
 
         if (isReplace) {
