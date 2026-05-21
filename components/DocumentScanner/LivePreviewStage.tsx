@@ -7,6 +7,7 @@ import FirstScanTooltip from './FirstScanTooltip';
 import QuadOverlay from './QuadOverlay';
 import { startDetectionLoop, type Quad, type DetectorAdapter, createScanicAdapter } from './edgeDetectionLoop';
 import { createStabilityTracker, type StabilityState } from './stabilityTracker';
+import { createLockTimeoutTracker } from './lockTimeout';
 
 // Extend Window interface for scanic (loaded via script tag from /public/scanic/)
 // Using unknown to avoid type mismatches with actual scanic types - runtime works fine
@@ -120,9 +121,9 @@ export default function LivePreviewStage({
   // Timestamp of last valid quad detection — used to decide if capture had a doc in frame
   const lastValidQuadAtRef = useRef<number>(0);
 
-  // Stuck-detection: track last time stability state was non-seeking (PRD-47)
-  const lastNonSeekingAtRef = useRef<number>(Date.now());
-  const [isStuck, setIsStuck] = useState(false);
+  // PRD-60: Lock timeout tracker for low-contrast / can't-lock hint (3.5s threshold)
+  const lockTimeoutRef = useRef(createLockTimeoutTracker({ thresholdMs: 3500 }));
+  const [showContrastHint, setShowContrastHint] = useState(false);
 
   // Attach stream to video element
   useEffect(() => {
@@ -177,10 +178,10 @@ export default function LivePreviewStage({
         const state = trackerRef.current.push(detectedQuad);
         setStabilityState(state);
 
-        if (state.kind !== 'seeking') {
-          lastNonSeekingAtRef.current = Date.now();
-          setIsStuck((prev) => (prev ? false : prev));
-        }
+        // PRD-60: Update lock timeout tracker based on seeking state
+        const isLocked = state.kind !== 'seeking';
+        const shouldShowHint = lockTimeoutRef.current.update(isLocked, Date.now());
+        setShowContrastHint(shouldShowHint);
 
         if (detectedQuad === null) {
           setOverlayColor('amber');
@@ -204,15 +205,8 @@ export default function LivePreviewStage({
     };
   }, [adapter, videoReady]);
 
-  // Polling effect: set isStuck if stuck in seeking for > 8s (PRD-47)
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (Date.now() - lastNonSeekingAtRef.current > 8000) {
-        setIsStuck(true);
-      }
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+  // PRD-60: Lock timeout tracker handles the timing internally via update() calls
+  // No polling effect needed — the tracker is driven by onQuad callbacks
 
   const handleCancel = useCallback(() => {
     streamRef.current.getTracks().forEach((track) => track.stop());
@@ -277,10 +271,11 @@ export default function LivePreviewStage({
         </div>
       )}
 
-      {isStuck && !showLowLightWarning && detectionAvailable && (
-        <div className="absolute top-4 left-4 right-4 z-40 bg-amber-100/95 border border-amber-300 px-4 py-3 rounded-none">
-          <p className="text-sm text-amber-900 leading-snug">{t.stuckHint}</p>
-          <p className="text-xs text-amber-900/80 mt-1 leading-snug">{t.stuckHintSecondary}</p>
+      {/* PRD-60: Transparent, non-blocking contrast hint — positioned clear of bottom controls */}
+      {showContrastHint && !showLowLightWarning && detectionAvailable && (
+        <div className="absolute top-4 left-4 right-4 z-40 bg-black/55 px-4 py-2 pointer-events-none">
+          <p className="text-sm text-white/90 text-center leading-snug">{t.stuckHint}</p>
+          <p className="text-xs text-white/70 text-center mt-1 leading-snug">{t.stuckHintSecondary}</p>
         </div>
       )}
 

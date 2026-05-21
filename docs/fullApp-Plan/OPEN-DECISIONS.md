@@ -69,6 +69,45 @@ Entry format:
    - `self_employment_worksheet` — missing source PDFs
    - `criminal_background_release` — upload-only (assumed)
 
-**When to apply:** After Alex reviews and confirms the classifications (especially `criminal_background_release`).
+**Status:** ✅ APPLIED 2026-05-20 — Migration executed on Tenant Communication project.
 
 **Rollback:** Reverse the UPDATE statements if needed.
+
+---
+
+## PRD-60 Decisions (logged during run)
+
+### [PRD-60] Scanic detector stays IN for v1 — DECISION (D5)
+- **Context:** PRD-60 Part B was to verify Scanic detector and decide in/out for v1.
+- **Default taken:** Scanic stays IN for v1. Detector is intact: `ensureScanicLoaded` is the only path, `public/scanic/scanic.umd.cjs` exists, `createScanicAdapter` is wired. No jscanify fallback is active (dead code flagged as O3).
+- **Reversible?** yes — can swap detector by changing `ensureScanicLoaded` implementation.
+- **Needs Alex:** confirm v1 ship with Scanic as primary edge detector.
+
+### [PRD-60] 3.5s hint threshold default — DECISION (D3)
+- **Context:** The no-lock hint needs a time threshold before showing.
+- **Default taken:** 3500ms default in `createLockTimeoutTracker`. This is faster than the previous 8s polling, but not so fast it flickers during normal seeking. Tunable via constructor param.
+- **Reversible?** yes — change the default constant or pass different threshold when constructing tracker.
+- **Needs Alex:** confirm 3.5s feels right in real-device testing (deferred Gate R1).
+
+### [PRD-60] Dead jscanify factory flagged — OUT-OF-LANE (O3)
+- **Context:** There may be dead `createJscanifyAdapter` factory code + `window.jscanify?` type.
+- **Default taken:** NOT fixed in this lane. Only flagged for cleanup in a future maintenance PR.
+- **Reversible?** n/a — cleanup only.
+- **Needs Alex:** schedule dead code removal post-v1.
+
+---
+
+## Resolutions & corrections (2026-05-21 — Alex calls + Claude review)
+
+### #1 [PRD-59] Summary/consent prose — RESOLVED: ship best-effort
+Alex: "just put your best there." Existing `content.ts` + `consent-text.ts` are already complete best-effort (EN clean + partnership-toned; ES/PT competent). Accepted as shipping copy; do NOT gate on Dan. Native ES/PT review = recommended, non-blocking, post-launch.
+
+### #2 [PRD-55] pet/vehicle/self-employment — RESOLVED: stay deferred
+Alex: not sourcing PDFs now. Keep disabled; genuinely unsourced (not in packet; only `.docx` templates in repo root). **Revisit when PDFs are produced** → extract to `assets/pbv-source-pdfs/` + field maps + resolvers + re-enable.
+
+### #3 [PRD-55] criminal_background_release — CORRECTION: it's a sign form, source EXISTS
+Alex: "should be within the original PDF" — confirmed: pages 39–40 of `docs/templates/Full Application Package (5-28-2025 bilingual).pdf`, and extracted `docs/templates/criminal-background-release-{en,es}.pdf` already exist (+ field map exists per build report). Cascade's "upload-only" was wrong — it only checked `assets/pbv-source-pdfs/` (PRD-54 copied just 10 forms), not `docs/templates/`. **Migration already APPLIED disabling it**, so a follow-up is needed: copy PDFs → assets/, add `SOURCE_PDFS` entry + resolver, re-enable (`generation_enabled=TRUE`). Claude still has full `docs/templates/` access.
+
+### #4 eiv / insurance_settlement / cd_trust_bond — checked
+- **eiv_guide_receipt:** same as #3 — source exists (`docs/templates/eiv-guide-receipt-{en,es}.pdf`) + field map exists; left disabled as "source-pending." Can be enabled the same way. Needs Alex: should it generate?
+- **insurance_settlement + cd_trust_bond:** GAP — were in the live skip list (enabled+skipping) but ABSENT from PRD-55's reconciliation → likely still enabled and silently skipping. Not in packet, no source PDFs anywhere. Confirm DB state; disable if vestigial, source if real.
