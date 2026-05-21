@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isMagicLinkExpired } from '@/lib/pbv/magicLinkExpiry';
 
 export async function GET(
   _request: NextRequest,
@@ -31,8 +32,11 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Link not found.', code: 'not_found' }, { status: 404 });
     }
 
-    const now = new Date();
-    if (!member.magic_link_expires_at || new Date(member.magic_link_expires_at) < now) {
+    // PRD-78 #8: centralized epoch-based expiry check (fail-closed on null/
+    // unparseable). magic_link_expires_at is TIMESTAMPTZ per migration
+    // 20260515000000_pbv_form_execution_columns.sql:68, so Date.parse()
+    // round-trips as a UTC instant.
+    if (isMagicLinkExpired(member.magic_link_expires_at)) {
       return NextResponse.json({
         success: false,
         message: 'This link has expired.',

@@ -595,6 +595,19 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Reversible?** yes — a follow-up cleanup PRD can drop the local check once the central gate is verified in production.
 - **Needs Alex:** none.
 
+### [PRD-78] `magic_link_expires_at` is already TIMESTAMPTZ — DECISION (O1 confirmed)
+- **Context:** PRD-78 O1 asks whether the column is `timestamptz`. The batch prompt audit-corrections note: "Confirm `magic_link_expires_at` is `timestamptz`; if so, #8 is consistency hardening, and the helper is the deliverable."
+- **Finding:** Confirmed via `supabase/migrations/20260515000000_pbv_form_execution_columns.sql:68`: `ADD COLUMN IF NOT EXISTS magic_link_expires_at TIMESTAMPTZ;`. No prod-drift suspected — the column has lived in migration control since day one.
+- **Default taken:** Ship the helper (`lib/pbv/magicLinkExpiry.ts`) as consistency hardening. No type-conversion migration needed.
+- **Reversible?** n/a — informational.
+- **Needs Alex:** none.
+
+### [PRD-78] No type-conversion migration written — DECISION
+- **Context:** PRD-78 lists `*_magic_link_expires_timestamptz.sql` as an optional migration only if the column is NOT timestamptz.
+- **Default taken:** Skipped. Column is already TIMESTAMPTZ.
+- **Reversible?** n/a.
+- **Needs Alex:** none.
+
 ### [PRD-77] Tenant UI does not differentiate `packet_locked` from `submitted_locked` — DECISION (O1)
 - **Context:** PRD-77 O1 asks whether the tenant UI needs a distinct message/redirect for `packet_locked`.
 - **Default taken:** No UI work in this PRD. The response shape (`{ success:false, message, code }`) matches the existing `submitted_locked` 409, so the tenant client treats it the same way (generic 409 toast / redirect). The `message` text is distinct ("This packet is currently under review. Please contact the Stanton office.") so the user-visible string differs without a code-aware UI branch.

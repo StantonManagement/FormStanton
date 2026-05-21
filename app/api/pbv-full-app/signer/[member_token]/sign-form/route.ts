@@ -20,6 +20,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { headers } from 'next/headers';
 import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
+import { isMagicLinkExpired } from '@/lib/pbv/magicLinkExpiry';
+import { validateSignFormBody } from '@/lib/pbv/signing/validateSignFormBody';
 
 export async function POST(
   request: NextRequest,
@@ -37,14 +39,22 @@ export async function POST(
     if (!member) {
       return NextResponse.json({ success: false, message: 'Link not found.' }, { status: 404 });
     }
-    if (!member.magic_link_expires_at || new Date(member.magic_link_expires_at) < new Date()) {
+    // PRD-78 #8: centralized epoch-based expiry check (matches the bootstrap
+    // GET route; both now use the same helper).
+    if (isMagicLinkExpired(member.magic_link_expires_at)) {
       return NextResponse.json({ success: false, message: 'This link has expired.', code: 'expired' }, { status: 410 });
     }
 
     const body = await request.json().catch(() => null);
-    if (!body?.form_document_id || !body?.typed_name || !body?.signature_image_path || !body?.ceremony_id) {
+
+    // PRD-78 #6 (member route): shared validator. requireSignerMemberId: false
+    // because the member is derived from the magic-link token, not the body.
+    // device_owner is hard-coded 'self' below — the validator's enum branch
+    // is skipped for the member route (no body field).
+    const validation = validateSignFormBody(body, { requireSignerMemberId: false });
+    if (!validation.ok) {
       return NextResponse.json(
-        { success: false, message: 'form_document_id, typed_name, signature_image_path, ceremony_id required' },
+        { success: false, message: validation.message },
         { status: 400 }
       );
     }
