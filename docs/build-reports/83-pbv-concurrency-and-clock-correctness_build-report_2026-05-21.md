@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Branch:** `feat/pbv-adjacent-errors-hardening`
-**Commit SHA:** (filled by commit step)
+**Commit SHA:** `a600202`
 **Audit source:** `docs/audits/pbv-adjacent-errors-deep-check_2026-05-21.md` (A7, A10, A11)
 
 ---

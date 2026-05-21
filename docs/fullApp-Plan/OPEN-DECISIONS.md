@@ -718,3 +718,15 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Default taken:** no cleanup script. Downstream code (signer routes, summary signing) reads `pbv_summary_documents.pdf_storage_path`, not a reconstructed path — so the orphan is invisible to the application. It's a cosmetic storage concern only.
 - **Reversible?** yes — a cleanup migration could enumerate `pbv_summary_documents` and remove any storage object at the legacy path. Low priority.
 - **Needs Alex:** if storage cost is a concern, write a one-shot cleanup script post-deploy. Otherwise ignore.
+
+### [PRD-84] events route posture: async + persistence_initiated (not await) — DECISION
+- **Context:** A8 calls out the fire-and-forget pattern as opaque to the client. The PRD's default posture is async + a `persistence_initiated` count; the alternative is to `await Promise.allSettled(...)` and report settled results at the cost of 50–100ms on the tenant's request path.
+- **Default taken:** kept the writes async (non-blocking) and added `persistence_initiated: processedEvents.length` to the response. The route's role per its own header comment is analytics ingestion — no downstream consumer needs confirmed persistence today.
+- **Reversible?** yes — flip to `await Promise.allSettled(writePromises)` and replace `processedEvents.length` with a settled-results count.
+- **Needs Alex:** confirm the analytics-only role. If any tooling treats this as authoritative ingest, flip to await.
+
+### [PRD-84] signature-thumbnails prefix mismatch: skip + log — DECISION
+- **Context:** A9 calls out the silent `.replace()` strip. PRD-84 made the strip explicit with `.startsWith()` + `.slice()`. If `createSignedUrl` fails (or returns no signedUrl), the route now logs `signature_thumbnail_signed_url_failed` and omits the entry instead of emitting a broken URL.
+- **Default taken:** skip + log on failure (no broken URL surfaced). The per-app `safePaths` filter still gates eligibility; the explicit slice is a future-proofing guard so a future regression can't reintroduce the silent-no-op failure mode.
+- **Reversible?** yes — if a caller ever needs to see a "this path failed" marker, the omit-entry path can become an explicit `urlMap[storagePath] = null` so the client can distinguish missing-from-failed.
+- **Needs Alex:** none — informational.

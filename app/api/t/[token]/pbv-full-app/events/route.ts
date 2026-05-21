@@ -156,11 +156,22 @@ export async function POST(
       }
     });
 
+    // PRD-84 #A8: surface persistence status. Pre-PRD-84 the writes ran
+    // fire-and-forget (Promise.allSettled without await) and the response
+    // gave the client no way to tell whether the events actually got
+    // written. Default posture is async-non-blocking — the route's role
+    // is analytics ingestion, not authoritative persistence, so adding
+    // 50–100ms to the tenant request path to await the writes is the
+    // wrong trade. Instead we tell the client how many writes were
+    // INITIATED. A future change can flip to `await Promise.allSettled`
+    // and report settled results if a downstream consumer ever needs
+    // confirmed persistence.
     return NextResponse.json({
       success: true,
       data: {
         accepted: results.filter((r) => r.status === 'accepted').length,
         rejected: results.filter((r) => r.status === 'rejected').length,
+        persistence_initiated: processedEvents.length,
         results,
       },
     });
