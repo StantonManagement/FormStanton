@@ -583,6 +583,24 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Reversible?** yes — fall back to `.select('id')` + `data?.length` check if a future supabase-js upgrade changes the contract.
 - **Needs Alex:** none expected; verify in R2 walk that the path returns 409 on a simulated concurrent upload.
 
+### [PRD-77] Plain UUID/enum validator, no `zod` dependency — DECISION (O2 default)
+- **Context:** PRD-77 O2 asks whether to use `zod` (if already a dependency) or a plain helper.
+- **Default taken:** plain helper. `zod` is not in `package.json`; per PRD don't add a heavyweight dependency for a 20-line validator. `lib/pbv/signing/validateSignFormBody.ts` exports a regex UUID check, an enum tuple, and a small function.
+- **Reversible?** yes — swap for zod later if it becomes a project-wide dependency.
+- **Needs Alex:** none.
+
+### [PRD-77] Upload route's local `packet_locked` check left in place — DECISION
+- **Context:** PRD-77 centralizes the gate in `withTenantContext`. The upload route still has its own check at `upload/route.ts:40`. That check is now redundant (the wrapper already 409'd before the handler runs).
+- **Default taken:** leave the local check in place per PRD goal #3 ("belt-and-suspenders; note it in the build report"). PRD-76 owns the upload file and this PRD does not edit it.
+- **Reversible?** yes — a follow-up cleanup PRD can drop the local check once the central gate is verified in production.
+- **Needs Alex:** none.
+
+### [PRD-77] Tenant UI does not differentiate `packet_locked` from `submitted_locked` — DECISION (O1)
+- **Context:** PRD-77 O1 asks whether the tenant UI needs a distinct message/redirect for `packet_locked`.
+- **Default taken:** No UI work in this PRD. The response shape (`{ success:false, message, code }`) matches the existing `submitted_locked` 409, so the tenant client treats it the same way (generic 409 toast / redirect). The `message` text is distinct ("This packet is currently under review. Please contact the Stanton office.") so the user-visible string differs without a code-aware UI branch.
+- **Reversible?** yes — a follow-up UI PRD can special-case `code: 'packet_locked'` (e.g. route to a "your application is under review" page) when needed.
+- **Needs Alex:** confirm post-deploy that the existing 409 handler shows the new message gracefully.
+
 ### [PRD-76] No `generate_form_claim_fn.sql` migration written — DECISION
 - **Context:** The PRD lists this migration as "new, only if RPC path". The collision-detect path is the alternative; no migration is needed.
 - **Default taken:** Skipped. No new migration for PRD-76.
