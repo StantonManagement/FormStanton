@@ -730,3 +730,13 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Default taken:** skip + log on failure (no broken URL surfaced). The per-app `safePaths` filter still gates eligibility; the explicit slice is a future-proofing guard so a future regression can't reintroduce the silent-no-op failure mode.
 - **Reversible?** yes — if a caller ever needs to see a "this path failed" marker, the omit-entry path can become an explicit `urlMap[storagePath] = null` so the client can distinguish missing-from-failed.
 - **Needs Alex:** none — informational.
+
+---
+
+## Post-audit remediation batch (PRP-001..022) — 2026-05-21
+
+### [BATCH-RUN] Branch base — DECISION
+- **Context:** BATCH_PLAN says "create branch off main if missing." Branch did not exist. `main` is far behind the current `feat/pbv-adjacent-errors-hardening` HEAD (PRDs 75–84 + recent fix are unmerged on the source branch and form the foundation the 2026-05-21 audits inspected). Creating off `main` would lose that baseline.
+- **Default taken:** Created `feat/pbv-post-audit-remediation` off `feat/pbv-adjacent-errors-hardening` HEAD (commit `bac8b67`) so all audit-baseline work is present. The single PR opened at end of Batch 05 will therefore include PRDs 75–84 + the 22 PRP commits unless the prior branch lands to main first.
+- **Reversible?** Yes — once the prior PRD branches merge to `main`, this branch can be rebased onto a fresher base.
+- **Needs Alex:** Confirm the PR base. If you prefer the remediation PR to only include the 22 PRP commits, merge `feat/pbv-adjacent-errors-hardening` first.
