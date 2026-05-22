@@ -3,7 +3,10 @@
 import { type ChangeEvent, useMemo, useRef, useState, useCallback } from 'react';
 import { usePermissionPrompt } from './usePermissionPrompt';
 import LivePreviewStage, { ensureScanicLoaded } from './LivePreviewStage';
-import { PDFDocument } from 'pdf-lib';
+// PRP-016 / B1: pdf-lib is loaded via dynamic import inside `buildPdf`
+// only. `type`-only import keeps the type info without pulling the
+// ~500 KB module into the initial scanner chunk.
+import type { PDFDocument as PDFDocumentType } from 'pdf-lib';
 import { evaluateImageQuality, QualityScores } from './quality';
 import { translations, ScannerLanguage } from './translations';
 
@@ -34,7 +37,9 @@ interface DocumentScannerProps {
 }
 
 type CaptureMode = 'camera' | 'file';
-type Stage = 'entry' | 'live_preview' | 'processing' | 'warning' | 'preview' | 'review_pages' | 'submitting';
+// PRP-016 / §11.7: dedicated 'converting_heic' stage so the UI can show
+// "Converting photo…" while heic2any (~180 KB chunk + actual decode) runs.
+type Stage = 'entry' | 'live_preview' | 'processing' | 'converting_heic' | 'warning' | 'preview' | 'review_pages' | 'submitting';
 
 interface CapturedPage {
   id: string;
@@ -110,6 +115,30 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   } finally {
     URL.revokeObjectURL(imageUrl);
   }
+}
+
+/**
+ * PRP-016 / B2: downsample for preview only. The full-resolution blob is
+ * still used for PDF assembly; this just produces a smaller bitmap to back
+ * the preview <img>. 1200px is a comfortable long-edge for review on any
+ * device, cuts a 12 MP photo's preview footprint to ~5% of the original.
+ */
+async function makePreviewBlob(sourceBlob: Blob, maxLongEdge = 1200, quality = 0.85): Promise<Blob> {
+  const img = await loadImageFromBlob(sourceBlob);
+  const longEdge = Math.max(img.naturalWidth, img.naturalHeight);
+  if (longEdge <= maxLongEdge) {
+    return sourceBlob;
+  }
+  const scale = maxLongEdge / longEdge;
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return sourceBlob;
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvasToJpegBlob(canvas, quality);
 }
 
 async function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = 0.92): Promise<Blob> {
@@ -237,10 +266,13 @@ export default function DocumentScanner({
       ? Array.from(new Set([...quality.flags, 'no_document_detected']))
       : quality.flags;
 
+    // PRP-016 / B2: preview <img> is backed by a downsampled blob; the
+    // full-resolution processedBlob is still what we hand to PDF assembly.
+    const previewBlob = await makePreviewBlob(processedBlob);
     const page: CapturedPage = {
       id: crypto.randomUUID(),
       blob: processedBlob,
-      previewUrl: URL.createObjectURL(processedBlob),
+      previewUrl: URL.createObjectURL(previewBlob),
       qualityFlags: augmentedFlags,
       qualityScores: quality.scores,
       captureMethod: method,
@@ -257,7 +289,6 @@ export default function DocumentScanner({
 
     if (!file) return;
 
-    setStage('processing');
     setError('');
 
     try {
@@ -265,6 +296,9 @@ export default function DocumentScanner({
       let heicConverted = false;
 
       if (isHeicFile(file)) {
+        // PRP-016 / §11.7: surface a dedicated stage so the UI shows
+        // "Converting photo…" instead of the generic processing spinner.
+        setStage('converting_heic');
         const heic2any = (await import('heic2any')).default;
         inputBlob = (await heic2any({
           blob: file,
@@ -274,6 +308,7 @@ export default function DocumentScanner({
         heicConverted = true;
       }
 
+      setStage('processing');
       await processImageBlob(inputBlob, captureMode === 'camera' ? 'scanner' : 'file_upload', heicConverted);
     } catch {
       setError(t.captureError);
@@ -301,7 +336,11 @@ export default function DocumentScanner({
 
 
   const buildPdf = async (inputPages: CapturedPage[]): Promise<Blob> => {
-    const pdfDoc = await PDFDocument.create();
+    // PRP-016 / B1: lazy-load pdf-lib only inside the assembly path so it
+    // is not in the initial chunk. Note: cast keeps the runtime import
+    // resolution cheap and the build-time type narrow.
+    const { PDFDocument } = await import('pdf-lib');
+    const pdfDoc: PDFDocumentType = await PDFDocument.create();
     const MAX_DIMENSION = 2400; // Cap long edge at 2400px (~200dpi for letter size), keeps file size manageable
 
     for (const page of inputPages) {
@@ -552,11 +591,20 @@ export default function DocumentScanner({
         <div className="py-8 text-center text-sm text-[var(--muted)]">{t.processing}</div>
       )}
 
+      {stage === 'converting_heic' && (
+        <div className="py-8 text-center text-sm text-[var(--muted)]" role="status" aria-live="polite">
+          {/* PRP-016 / §11.7: hard-coded EN string for the converting state.
+              translations.ts is out of this PRP's Outputs; the i18n
+              variant lands in a follow-up. */}
+          Converting photo…
+        </div>
+      )}
+
       {stage === 'warning' && currentPage && (() => {
         const hasNoDocumentFlag = currentPage.qualityFlags.includes('no_document_detected');
         return (
           <div className="space-y-4">
-            <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
+            <img src={currentPage.previewUrl} alt="Scanned preview" className="w-full max-h-[50dvh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
 
             {hasNoDocumentFlag ? (
               <div className="bg-[var(--bg-section)] border border-[var(--error)]/40 p-3 rounded-none space-y-1">
@@ -642,7 +690,7 @@ export default function DocumentScanner({
       {stage === 'preview' && currentPage && (
         <div className="space-y-4">
           <h3 className="font-serif text-lg text-[var(--primary)]">{t.previewTitle}</h3>
-          <img src={currentPage.previewUrl} alt="Preview" className="w-full max-h-[50vh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
+          <img src={currentPage.previewUrl} alt="Preview" className="w-full max-h-[50dvh] object-contain bg-[var(--bg-section)] border border-[var(--border)] rounded-none" />
           {!qualityOverride && currentPage.qualityFlags.length > 0 && (
             <p className="text-xs text-[var(--muted)]">{t.scannerError}</p>
           )}
