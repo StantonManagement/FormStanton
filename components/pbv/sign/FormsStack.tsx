@@ -12,7 +12,7 @@
  * per-form confirmation modal; signing is serial with clear progress. No bulk-sign.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FormReviewSignModal from './FormReviewSignModal';
 import { useSigningCeremony } from '@/lib/pbv/hooks/useSigningCeremony';
@@ -104,11 +104,18 @@ export default function FormsStack({
   const [stepperQueue, setStepperQueue] = useState<string[]>([]);
   const [stepperIndex, setStepperIndex] = useState(0);
 
-  const sorted = [...forms].sort((a, b) => {
-    if (a.signatures_complete && !b.signatures_complete) return 1;
-    if (!a.signatures_complete && b.signatures_complete) return -1;
-    return a.display_name.localeCompare(b.display_name);
-  });
+  // PRP-008 / E4: memoize the sort so the array reference is stable across
+  // re-renders that don't change `forms`. Prevents the row list from
+  // re-rendering every time stepperIndex/activeFormId/etc. change.
+  const sorted = useMemo(
+    () =>
+      [...forms].sort((a, b) => {
+        if (a.signatures_complete && !b.signatures_complete) return 1;
+        if (!a.signatures_complete && b.signatures_complete) return -1;
+        return a.display_name.localeCompare(b.display_name);
+      }),
+    [forms]
+  );
 
   const unsigned = sorted.filter((f) => !f.signatures_complete);
   const allSigned = forms.length > 0 && unsigned.length === 0;
@@ -204,12 +211,27 @@ export default function FormsStack({
           </button>
         )}
 
-        {/* Stepper progress */}
-        {stepperQueue.length > 0 && (
-          <p className="text-xs text-[var(--muted)] mb-4 text-center">
-            {c.signing_progress(stepperIndex + 1, stepperQueue.length)}
-          </p>
-        )}
+        {/* Stepper progress — PRP-008 A8: persistent aria-live region.
+            Mounted always so SR observes the change rather than a brand-new
+            region appearing with text already in it (which is not announced). */}
+        <p
+          className="text-xs text-[var(--muted)] mb-4 text-center"
+          role="status"
+          aria-live="polite"
+          data-testid="stepper-progress"
+        >
+          {stepperQueue.length > 0
+            ? c.signing_progress(stepperIndex + 1, stepperQueue.length)
+            : ''}
+        </p>
+
+        {/* Stepper errors — PRP-008 A3: own live region, polite, mounted
+            always so the empty-then-filled write is announced. */}
+        <div role="status" aria-live="polite" data-testid="stepper-error" className="min-h-[0.5rem]">
+          {ceremony.error && stepperQueue.length > 0 && (
+            <p className="text-xs text-[var(--error)] mb-4 text-center">{ceremony.error}</p>
+          )}
+        </div>
 
         {/* Form rows */}
         <div className="space-y-2">

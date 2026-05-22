@@ -28,13 +28,36 @@ export interface CompleteFormOptions {
   userAgent: string | null;
 }
 
+/**
+ * PRD-82 #A12: typed error codes for the structural failure branches.
+ * Added alongside the existing `error` string (additive — every existing
+ * caller keeps working unchanged). The member-token sign-form route uses
+ * `errorCode === 'not_found'` to map status to 404 vs 422 instead of
+ * brittle case-sensitive substring matching on the error string.
+ */
+export type CompleteFormErrorCode =
+  | 'not_found'                    // form document row missing for (id, app)
+  | 'load_error'                   // DB error loading the form doc
+  | 'signer_not_required'          // member is not in required_signer_member_ids
+  | 'member_not_found'             // signer member row missing for (id, app)
+  | 'unsigned_pdf_missing'         // form doc has no unsigned_pdf_path
+  | 'unsigned_pdf_download_error'  // storage failed to return the unsigned PDF
+  | 'event_insert_error'           // failed to write pbv_signature_events row
+  | 'field_map_missing'            // signed-PDF stamp could not locate field map
+  | 'sig_events_load_error'        // failed to load sibling signature events
+  | 'signed_pdf_upload_error'      // signed-PDF upload to storage failed (non-benign)
+  | 'doc_update_error';            // final pbv_form_documents UPDATE failed
+
 export interface CompleteFormResult {
   success: boolean;
   alreadySigned: boolean;
   allSigned: boolean;
   status: string;
   signedPdfPath?: string | null;
+  /** Human-readable error message — preserved for existing callers. */
   error?: string;
+  /** PRD-82 #A12: typed error code; callers map to HTTP status via this. */
+  errorCode?: CompleteFormErrorCode;
 }
 
 /**
@@ -67,10 +90,10 @@ export async function completeFormSigning(
     .maybeSingle();
 
   if (formDocError) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: formDocError.message };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: formDocError.message, errorCode: 'load_error' };
   }
   if (!formDoc) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Form document not found' };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Form document not found', errorCode: 'not_found' };
   }
 
   // Already fully signed?
@@ -87,7 +110,7 @@ export async function completeFormSigning(
   // ── Validate signer is required ─────────────────────────────────────────
   const requiredIds: string[] = formDoc.required_signer_member_ids ?? [];
   if (!requiredIds.includes(signerMemberId)) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Signer not required for this form' };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Signer not required for this form', errorCode: 'signer_not_required' };
   }
 
   // ── Idempotent: already collected? ────────────────────────────────────────
@@ -111,12 +134,12 @@ export async function completeFormSigning(
     .maybeSingle();
 
   if (!member) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Member not found' };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Member not found', errorCode: 'member_not_found' };
   }
 
   // ── Download unsigned PDF ──────────────────────────────────────────────────
   if (!formDoc.unsigned_pdf_path) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Unsigned PDF not available' };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Unsigned PDF not available', errorCode: 'unsigned_pdf_missing' };
   }
 
   const { data: pdfDownload, error: pdfError } = await supabaseAdmin.storage
@@ -124,7 +147,7 @@ export async function completeFormSigning(
     .download(formDoc.unsigned_pdf_path);
 
   if (pdfError || !pdfDownload) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: pdfError?.message ?? 'Failed to download unsigned PDF' };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: pdfError?.message ?? 'Failed to download unsigned PDF', errorCode: 'unsigned_pdf_download_error' };
   }
 
   const unsignedPdfBytes = Buffer.from(await pdfDownload.arrayBuffer());
@@ -151,7 +174,7 @@ export async function completeFormSigning(
     });
 
   if (eventError) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: eventError.message };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: eventError.message, errorCode: 'event_insert_error' };
   }
 
   // ── Update collected signers ─────────────────────────────────────────────
@@ -170,7 +193,7 @@ export async function completeFormSigning(
     const fieldMap = await loadFieldMapForSigning(formDoc.form_id, formDoc.language as 'en' | 'es');
 
     if (!fieldMap) {
-      return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Field map not found' };
+      return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: 'Field map not found', errorCode: 'field_map_missing' };
     }
 
     // Load all signature events for this form
@@ -180,7 +203,7 @@ export async function completeFormSigning(
       .eq('form_document_id', formDoc.id);
 
     if (sigEventsError) {
-      return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: sigEventsError.message };
+      return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: sigEventsError.message, errorCode: 'sig_events_load_error' };
     }
 
     // Build signature image map
@@ -266,6 +289,7 @@ export async function completeFormSigning(
           allSigned: false,
           status: 'error',
           error: signedUploadError.message,
+          errorCode: 'signed_pdf_upload_error',
         };
       }
       // Fall through: signedPdfPath already points at the existing object.
@@ -283,7 +307,7 @@ export async function completeFormSigning(
     .eq('id', formDoc.id);
 
   if (docUpdateError) {
-    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: docUpdateError.message };
+    return { success: false, alreadySigned: false, allSigned: false, status: 'error', error: docUpdateError.message, errorCode: 'doc_update_error' };
   }
 
   // ── Update member signing_device ──────────────────────────────────────────
@@ -291,6 +315,27 @@ export async function completeFormSigning(
     .from('pbv_household_members')
     .update({ signing_device: deviceOwner })
     .eq('id', signerMemberId);
+
+  // ── PRP-023: dual-write application_documents (signed_forms) ──────────────
+  // Finalize Check 4 reads application_documents.status. The new pbv_form_documents
+  // signing flow does not touch application_documents, so signed_forms-category
+  // rows stayed 'missing' forever and finalize never went green. Mark them
+  // submitted here so Check 3 (form docs) and Check 4 (application docs) agree.
+  //
+  // Mapping:
+  //  - HOH-scope (submission_level / head_of_household_only): when the form
+  //    is fully signed, mark every matching signed_forms row (any person_slot).
+  //  - Per-person scope (each_adult / individual / each_member): mark only
+  //    the row for the slot of the member who just signed.
+  //  - PRD-55 alias: pbv_form_documents.form_id='briefing_cert' maps to
+  //    application_documents.doc_type='briefing_docs_certification' as well.
+  await syncApplicationDocumentsForSignedForm({
+    appId,
+    formId: formDoc.form_id,
+    signerMemberId,
+    signerSlot: member.slot,
+    allSigned,
+  });
 
   // ── Check if all forms signed — update signing_status ────────────────────
   await updateApplicationSigningStatus(appId);
@@ -336,7 +381,101 @@ export async function updateApplicationSigningStatus(appId: string): Promise<voi
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Promise<FieldMap | null> {
+/**
+ * PRP-023: map a pbv_form_documents.form_id to the doc_type(s) that the
+ * matching signed_forms-category application_documents rows use.
+ *
+ * One special case today: PRD-55 renamed `briefing_docs_certification` to
+ * `briefing_cert` inside pbv_form_templates / pbv_form_documents only.
+ * form_document_templates (and therefore application_documents.doc_type)
+ * was never updated, so a fully-signed briefing_cert form has to look up
+ * the OLD doc_type to find its application_documents row.
+ *
+ * Exported so a regression test can lock the mapping in place.
+ */
+export function formIdToDocTypes(formId: string): string[] {
+  if (formId === 'briefing_cert') return ['briefing_cert', 'briefing_docs_certification'];
+  return [formId];
+}
+
+/**
+ * PRP-023: dual-write application_documents (signed_forms category) when a
+ * pbv_form_documents row gains a signer. See call site in completeFormSigning
+ * for the rules — summary: HOH-scope marks every matching slot, per-person
+ * scope marks only the slot of the signer who just signed.
+ *
+ * Non-fatal: a sync failure logs but does not abort the signing flow. The
+ * finalize migration backfill can repair stragglers.
+ */
+async function syncApplicationDocumentsForSignedForm(opts: {
+  appId: string;
+  formId: string;
+  signerMemberId: string;
+  signerSlot: number;
+  allSigned: boolean;
+}): Promise<void> {
+  const { appId, formId, signerSlot, allSigned } = opts;
+  try {
+    // Look up the template's per_person_scope to decide the update shape.
+    const { data: template } = await supabaseAdmin
+      .from('pbv_form_templates')
+      .select('per_person_scope')
+      .eq('form_id', formId)
+      .maybeSingle();
+
+    const scope = (template?.per_person_scope ?? null) as string | null;
+    const docTypes = formIdToDocTypes(formId);
+    const nowIso = new Date().toISOString();
+
+    if (scope === 'submission_level' || scope === 'head_of_household_only') {
+      // HOH signs once for the family. Only flip rows when the form has
+      // reached all required signers (= the single HOH signature here).
+      if (!allSigned) return;
+      const { error } = await supabaseAdmin
+        .from('application_documents')
+        .update({ status: 'submitted', updated_at: nowIso })
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', appId)
+        .in('doc_type', docTypes)
+        .eq('category', 'signed_forms')
+        .eq('status', 'missing');
+      if (error) {
+        console.error('[completeForm] syncApplicationDocuments (HOH) failed:', error);
+      }
+      return;
+    }
+
+    if (scope === 'each_adult' || scope === 'individual' || scope === 'each_member') {
+      // Per-person: each signer marks their own row.
+      const { error } = await supabaseAdmin
+        .from('application_documents')
+        .update({ status: 'submitted', updated_at: nowIso })
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', appId)
+        .in('doc_type', docTypes)
+        .eq('category', 'signed_forms')
+        .eq('person_slot', signerSlot)
+        .eq('status', 'missing');
+      if (error) {
+        console.error('[completeForm] syncApplicationDocuments (per-person) failed:', error);
+      }
+      return;
+    }
+
+    // Unknown scope or no template row found: log + skip (fail open, the
+    // migration backfill will mop up).
+    console.warn(
+      `[completeForm] No matching pbv_form_templates row or unknown scope for form_id=${formId}; ` +
+        `application_documents will be backfilled on finalize migration apply.`
+    );
+  } catch (e) {
+    console.error('[completeForm] syncApplicationDocuments threw:', e);
+  }
+}
+
+// PRP-005 / #8: exported for the regression test that asserts a missing
+// field map cannot advance form_doc.status to 'signed'.
+export async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Promise<FieldMap | null> {
   const { readFileSync, existsSync } = require('fs');
   const { join } = require('path');
   const slug = formId.replace(/_/g, '-');
@@ -349,7 +488,9 @@ async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Pr
   }
 }
 
-function buildSignatureFieldData(
+// PRP-005 / #5: exported for the regression test that asserts each adult
+// row gets its own `__sig__:${memberId}` marker (not a shared buffer).
+export function buildSignatureFieldData(
   fieldMap: FieldMap,
   requiredSignerIds: string[],
   memberSlotMap: Map<string, number>

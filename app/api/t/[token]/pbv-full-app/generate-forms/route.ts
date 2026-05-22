@@ -91,7 +91,8 @@ export async function POST(
         | 'field_map_missing'
         | 'conditional_skipped'
         | 'unknown_conditional_rule'  // PRD-63: rule string not handled by shouldGenerateForm
-        | 'resolver_missing';          // PRD-63: form_id has no field-data resolver
+        | 'resolver_missing'          // PRD-63: form_id has no field-data resolver
+        | 'stamp_failed';             // PRD-67: stampForm threw an error
     }> = [];
 
     for (const template of templates) {
@@ -161,12 +162,42 @@ export async function POST(
           continue;
         }
 
-        // Stamp the PDF
-        const stampedPdf = await stampForm({
-          fieldMap,
-          data: fieldData,
-          sourcePdfBytes: sourcePdf,
-        });
+        // Stamp the PDF. PRP-017 / B4: per-form timing log so operations
+        // can see when a household + form-stack approach the 120s Vercel
+        // limit. Chunking / a background queue is the documented follow-up.
+        //
+        // L9: isolate stamping per-form. stamper.getPage throws when a field
+        // map references a page the source PDF does not have; an unhandled
+        // throw here would abort the ENTIRE generate-forms request, so one
+        // bad form/field-map would block every other form the tenant needs.
+        // Catch it, record the form as skipped, and continue.
+        let stampedPdf: Awaited<ReturnType<typeof stampForm>>;
+        const stampStartedAt = Date.now();
+        try {
+          stampedPdf = await stampForm({
+            fieldMap,
+            data: fieldData,
+            sourcePdfBytes: sourcePdf,
+          });
+        } catch (e: any) {
+          console.error(
+            `[generate-forms] stampForm failed for ${formId}/${language} — skipping:`,
+            e
+          );
+          skipped.push({ form_id: formId, language, reason: 'stamp_failed' });
+          if (isPerPersonAllAdults) break;
+          continue;
+        }
+        const stampMs = Date.now() - stampStartedAt;
+        if (stampMs > 5_000) {
+          console.warn(
+            `[generate-forms] slow stamp form_id=${formId} language=${language} ms=${stampMs}`
+          );
+        } else {
+          console.log(
+            `[generate-forms] stamp form_id=${formId} language=${language} ms=${stampMs}`
+          );
+        }
 
         // PRD-66 (audit #5): decide generation_version + versioned unsigned path
         // before uploading, so a regenerate during a partially-signed ceremony
@@ -189,11 +220,31 @@ export async function POST(
         const existingVersion = (existingDoc?.generation_version as number | null) ?? null;
         const collectedSignerCount = (existingDoc?.collected_signer_member_ids?.length ?? 0) as number;
 
+        // PRD-76 #4: first-generation race hardening.
+        //
+        // PRD-66 covered the >=1 signer case (bump + upsert:false). The
+        // remaining exposure is the zero-prior-version case — two concurrent
+        // first-gen requests both read existingVersion=null, both pick v1, and
+        // with upsert:true the second silently overwrites the first's bytes.
+        // A signer who already hashed the first PDF would mismatch the stored
+        // (overwritten) bytes at finalize Check 5.
+        //
+        // Hardening: use upsert:false on the first-gen path too. On a
+        // "exists" / "409" / "duplicate" storage error, re-read the doc row;
+        // if a row now exists with the same version, treat this as
+        // "another request generated v1 first" and reuse that path (no
+        // overwrite, no throw — same shape as PRD-66's signed-PDF benign
+        // replay handling in completeForm.ts:254-260).
+        //
+        // The zero-signer reuse case (existing row, 0 signers) keeps
+        // upsert:true: the existing row's bytes are not yet committed-to by
+        // any signer, and re-stamping with the same fieldData produces the
+        // same content. This preserves PRD-66's no-bump rule.
         let generationVersion: number;
         let upsertOnUpload: boolean;
         if (existingVersion === null) {
           generationVersion = 1;
-          upsertOnUpload = true;
+          upsertOnUpload = false;
         } else if (collectedSignerCount === 0) {
           generationVersion = existingVersion;
           upsertOnUpload = true;
@@ -211,7 +262,45 @@ export async function POST(
           });
 
         if (uploadError) {
-          console.error(`[generate-forms] Storage upload failed for ${formId} (v${generationVersion}):`, uploadError);
+          const msg = String(uploadError.message ?? '').toLowerCase();
+          const status = String((uploadError as any).statusCode ?? '');
+          const benignFirstGenCollision =
+            existingVersion === null &&
+            (status === '409' || msg.includes('exist') || msg.includes('duplicate'));
+
+          if (benignFirstGenCollision) {
+            // Another concurrent first-gen request landed v1 first. Re-read
+            // the winning row and surface it in the response. Do NOT upsert:
+            // overwriting the row with this loser's hash would desync it
+            // from the bytes actually stored (the stamper may not be byte-
+            // deterministic across processes/time).
+            console.log(
+              `[generate-forms] First-gen collision for ${formId}/${language} v1 — reusing the row written by the concurrent request.`
+            );
+            const { data: winnerRow } = await supabaseAdmin
+              .from('pbv_form_documents')
+              .select('id, generation_version, unsigned_pdf_path')
+              .eq('full_application_id', fullApp.id)
+              .eq('form_id', formId)
+              .eq('language', language)
+              .maybeSingle();
+            if (winnerRow?.id) {
+              generated.push({
+                form_id: formId,
+                form_document_id: winnerRow.id,
+                status: 'generated',
+                language,
+              });
+            }
+            // Skip the upsert below for this iteration.
+            if (isPerPersonAllAdults) break;
+            continue;
+          }
+
+          console.error(
+            `[generate-forms] Storage upload failed for ${formId} (v${generationVersion}):`,
+            uploadError
+          );
           throw uploadError;
         }
 
@@ -220,6 +309,28 @@ export async function POST(
         const requiredSignerIds = iter.allAdultIds
           ? members.filter((m) => (m.age ?? 0) >= 18).map((m) => m.id).filter(Boolean) as string[]
           : getRequiredSignerIds(template.per_person_scope, members, iter.slot);
+
+        // PRP-023: fail loudly if a known scope produced no signers. The pre-PRP-023
+        // bug left rows with required_signer_member_ids=[] so completeFormSigning
+        // never matched a signer, the form could never reach status='signed', and
+        // finalize stayed blocked. Skip the row (do NOT write a 0-signer row) and
+        // surface it in the skipped[] response so the caller can diagnose.
+        //
+        // Diagnostic hint logged separately: most common cause is members[] missing
+        // an age (intake didn't capture DOB on slot=1), so the each_adult / individual
+        // filter excludes the HOH.
+        if (requiredSignerIds.length === 0) {
+          console.error(
+            `[generate-forms] required_signer_member_ids empty for form_id=${formId} ` +
+              `scope=${template.per_person_scope} iter_slot=${iter.slot} ` +
+              `members_total=${members.length} ` +
+              `members_with_age=${members.filter((m) => m.age != null).length} ` +
+              `adults=${members.filter((m) => (m.age ?? 0) >= 18).length}`
+          );
+          skipped.push({ form_id: formId, language, reason: 'resolver_missing' });
+          if (isPerPersonAllAdults) break;
+          continue;
+        }
 
         // Compute source hash (template) + unsigned hash (stamped bytes the
         // signer will hash at sign time — PRD-62 Check 5).
@@ -310,16 +421,49 @@ export async function POST(
         generatedAt: new Date(),
       });
 
-      const summaryStoragePath = `pbv/${fullApp.id}/summary-${summaryLang}-unsigned.pdf`;
+      // PRD-83 #A11: version the summary path with SUMMARY_TEMPLATE_VERSION
+      // and switch to upsert:false. Pre-PRD-83 the path was a fixed
+      // `summary-${lang}-unsigned.pdf` written with upsert:true, so two
+      // concurrent generate-forms calls silently clobbered each other's
+      // summary (`generateSummaryPdf` embeds a per-call `generatedAt`, so
+      // the bytes differ even when the template version is identical).
+      //
+      // With the version suffix, different template versions cannot collide.
+      // For the same template version, upsert:false surfaces concurrent
+      // writes as a 409 — which we treat as a benign replay: the other
+      // request's summary is already at this path; we reuse it without
+      // overwriting. Same shape as PRD-66/PRD-76's signed-PDF benign-replay
+      // handling in completeForm.ts and generate-forms' form-document loop.
+      const summaryStoragePath = `pbv/${fullApp.id}/summary-${summaryLang}-v${SUMMARY_TEMPLATE_VERSION}-unsigned.pdf`;
 
       const { error: summaryUploadError } = await supabaseAdmin.storage
         .from('pbv-forms')
         .upload(summaryStoragePath, summaryPdfBytes, {
           contentType: 'application/pdf',
-          upsert: true,
+          upsert: false,
         });
 
-      if (summaryUploadError) throw summaryUploadError;
+      if (summaryUploadError) {
+        const msg = String(summaryUploadError.message ?? '').toLowerCase();
+        const status = String((summaryUploadError as any).statusCode ?? '');
+        const benignReplay = status === '409' || msg.includes('exist') || msg.includes('duplicate');
+
+        if (!benignReplay) {
+          throw summaryUploadError;
+        }
+        // Fall through: another concurrent generate-forms request landed
+        // this summary version first. Reuse the existing object at the
+        // same path; the upsert below points the pbv_summary_documents
+        // row at it.
+        console.log(
+          JSON.stringify({
+            event: 'generate_forms_summary_benign_replay',
+            app_id: fullApp.id,
+            language: summaryLang,
+            template_version: SUMMARY_TEMPLATE_VERSION,
+          })
+        );
+      }
 
       // Idempotent upsert into pbv_summary_documents
       const { error: summaryUpsertError } = await supabaseAdmin

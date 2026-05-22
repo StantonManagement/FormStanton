@@ -56,6 +56,27 @@ npm run build
 - On hang: kill, retry once with the same command.
 - If the second attempt also hangs, capture the last output and stop. Do NOT try `next build` directly or change the build script — the failure mode is the signal.
 
+**`npm run build` is a BATCH-BOUNDARY gate, not a per-PRD gate.** A full production build is the single most expensive command in this repo (~300s budget) and running it after every PRD was the dominant cause of ~50-minute autonomous batches. It also certifies only "compiles + bundles" — not that the feature works. Run it **once, after the last PRD of a batch** (plus the critical-path smoke; see `BATCH-RUN-PROTOCOL.md`). The per-PRD gate is type-check + targeted tests (fast). The one exception: if a PRD changes build-affecting surface (`next.config.js`, `middleware.ts`, a new top-level import that could break bundling, a server/client boundary), build *that* PRD before its commit, and note why in the build report.
+
+## Tests (vitest)
+
+**Do not run `npx vitest`.** Same Windows `npx` cold-start hang risk as `npx tsc` (binary resolution, anti-virus scanning, Husky postinstall interference). Call the binary directly:
+
+**Preferred — bypass npx:**
+```sh
+node ./node_modules/.bin/vitest run <path>
+```
+
+**Alternative — project npm script** if one exists (`test`, `vitest`):
+```sh
+npm run test -- run <path>
+```
+
+- **Per-PRD: run only the PRD's targeted paths** (`node ./node_modules/.bin/vitest run lib/pbv/__tests__/<file>`). Do not run the full suite per PRD.
+- **Full `node ./node_modules/.bin/vitest run` (whole suite) is a batch-boundary gate**, run once after the last PRD — and only where the batch's goal includes suite-wide stability (e.g. a test-stabilization PRD). The pre-existing non-PBV failures are a known baseline; do not let them block per-PRD progress.
+- **Timeout:** ~60–120s for a targeted run. No output for 120s on a targeted run = real hang; kill and retry once.
+- **No Playwright / e2e as a batch gate.** e2e specs are authored as deliverables and run in CI / manual passes, never as autonomous-batch static gates.
+
 ---
 
 ## Git

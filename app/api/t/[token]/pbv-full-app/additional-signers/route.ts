@@ -41,9 +41,25 @@ export async function GET(
     const memberIds = (members ?? []).map((m) => m.id);
     const { data: formDocs } = await supabaseAdmin
       .from('pbv_form_documents')
-      .select('id, required_signer_member_ids, collected_signer_member_ids')
+      .select('id, required_signer_member_ids')
       .eq('full_application_id', app.id)
       .not('status', 'eq', 'skipped');
+
+    // L10: completion is sourced from pbv_signature_events (the source of
+    // truth), not the cached collected_signer_member_ids array. The cache is
+    // written AFTER the signature event row (completeForm.ts), so reading the
+    // cache could under-report a signer who has actually signed, and any drift
+    // between the array and the events table would surface as a wrong status.
+    const formDocIds = (formDocs ?? []).map((f) => f.id);
+    const { data: sigEvents } = await supabaseAdmin
+      .from('pbv_signature_events')
+      .select('form_document_id, signer_member_id')
+      .in('form_document_id', formDocIds.length > 0 ? formDocIds : ['__none__']);
+
+    const signedSet = new Set<string>();
+    for (const ev of (sigEvents ?? [])) {
+      signedSet.add(`${ev.form_document_id}:${ev.signer_member_id}`);
+    }
 
     // Build a map: member_id -> { requiredForms, signedForms }
     const memberFormStatus = new Map<string, { required: number; signed: number }>();
@@ -53,13 +69,12 @@ export async function GET(
 
     for (const formDoc of (formDocs ?? [])) {
       const requiredIds: string[] = formDoc.required_signer_member_ids ?? [];
-      const collectedIds: string[] = formDoc.collected_signer_member_ids ?? [];
 
       for (const memberId of memberIds) {
         if (requiredIds.includes(memberId)) {
           const status = memberFormStatus.get(memberId)!;
           status.required++;
-          if (collectedIds.includes(memberId)) {
+          if (signedSet.has(`${formDoc.id}:${memberId}`)) {
             status.signed++;
           }
         }

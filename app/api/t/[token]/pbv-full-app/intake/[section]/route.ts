@@ -42,7 +42,7 @@ export async function POST(
     // Read current intake_data so we can merge
     const { data: current, error: readError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('intake_data, intake_status, intake_started_at')
+      .select('intake_data, intake_status, intake_started_at, resume_section')
       .eq('id', app.id)
       .maybeSingle();
 
@@ -57,10 +57,25 @@ export async function POST(
       _last_saved_at: new Date().toISOString(),
     };
 
+    // resume_section is a monotonic high-water mark: the furthest section the
+    // applicant has reached. The section page's deep-link guard redirects any
+    // request for a section *ahead* of resume_section back to it, so this
+    // autosave must never move the pointer BACKWARD — otherwise editing an
+    // earlier section after navigating Back would re-trap the applicant there.
+    // Forward advancement is owned by POST .../intake/progress (called on Next);
+    // here we only raise the pointer to `section` when `section` is further
+    // along the canonical order than the stored value.
+    const existingResume = (current?.resume_section as string | null) ?? null;
+    const order = SECTION_SLUGS as readonly string[];
+    const nextResume =
+      order.indexOf(section) > order.indexOf(existingResume ?? '')
+        ? section
+        : existingResume ?? section;
+
     const updatePayload: Record<string, unknown> = {
       intake_data: mergedIntakeData,
       intake_status: 'in_progress',
-      resume_section: section,
+      resume_section: nextResume,
       updated_at: new Date().toISOString(),
     };
 

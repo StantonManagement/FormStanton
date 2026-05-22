@@ -532,7 +532,15 @@ export default function TenantDocumentUpload({
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className={`w-2 h-2 rounded-full ${statusDotClasses[doc.status]}`} />
+                              {/* PRP-009 / A5: the status dot is also conveyed
+                                  by color in the badge below; the dot itself
+                                  carries an accessible name so the status is
+                                  not color-only (grayscale users / SR). */}
+                              <span
+                                className={`w-2 h-2 rounded-full ${statusDotClasses[doc.status]}`}
+                                role="img"
+                                aria-label={String(t[`status_${doc.status}` as keyof typeof t] || doc.status)}
+                              />
                               <span className="font-medium text-base">{doc.label}</span>
                               {doc.required ? (
                                 <span className="text-xs text-[var(--error)]">({t.required})</span>

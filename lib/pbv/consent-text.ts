@@ -9,6 +9,26 @@
 
 export const CONSENT_TEXT_VERSION = '2026-05-15-v1';
 
+/**
+ * PRP-018 / G1: every consent_text_version the app may emit. Sign-summary
+ * validates the submitted version against the DB-backed `consent_versions`
+ * table at request time; this constant mirrors that table so a deploy
+ * that ships a new version but forgets to insert the row is caught
+ * locally too.
+ *
+ * Bump procedure:
+ *   1. INSERT a new row into consent_versions (migration).
+ *   2. Add the new version string here.
+ *   3. Bump CONSENT_TEXT_VERSION above.
+ */
+export const KNOWN_CONSENT_VERSIONS: readonly string[] = [
+  '2026-05-15-v1',
+] as const;
+
+export function isKnownConsentVersion(v: unknown): v is string {
+  return typeof v === 'string' && (KNOWN_CONSENT_VERSIONS as readonly string[]).includes(v);
+}
+
 export type ConsentLanguage = 'en' | 'es' | 'pt';
 
 // Summary document consent

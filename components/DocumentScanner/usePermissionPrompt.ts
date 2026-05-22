@@ -51,9 +51,13 @@ export function usePermissionPrompt(opts: UsePermissionPromptOptions): {
     setState({ kind: 'requesting' });
 
     try {
+      // PRP-016 / H2 + mobile §2.4: prefer the back camera but don't
+      // require it. `{ ideal: 'environment' }` is a soft constraint, so a
+      // device without a rear camera (front-facing tablets, some Samsung
+      // models that refuse a hard requirement) still grants access.
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: 'environment',
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         },

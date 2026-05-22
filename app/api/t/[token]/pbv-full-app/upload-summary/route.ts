@@ -49,9 +49,16 @@ export async function GET(
     // PRD-58 Phase 5: Apply intake-based trigger filter so dashboard counts
     // match the documents page (same filter logic as documents/route.ts)
     const intakeSnapshot = (app.intake_snapshot ?? null) as IntakeData | null;
-    const triggeredDocs = intakeSnapshot
+    const triggeredDocsAll = intakeSnapshot
       ? filterByTriggers(all, intakeSnapshot)
       : all;
+
+    // PRP-023: signed_forms-category rows are tracked by the forms/signing
+    // subsystem (pbv_form_documents), counted separately on the dashboard
+    // under "forms signed". Including them in upload counts double-counted
+    // the same work and made canSubmit go red even when every upload card
+    // showed complete. Exclude them from this endpoint's counts.
+    const triggeredDocs = triggeredDocsAll.filter((d) => d.category !== 'signed_forms');
 
     // Required documents (after trigger filtering)
     const requiredDocs = triggeredDocs.filter((d) => d.required === true);

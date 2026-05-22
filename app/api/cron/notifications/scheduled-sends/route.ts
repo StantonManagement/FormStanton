@@ -13,18 +13,26 @@ import { sendTenantNotification } from '@/lib/notifications/send';
 import { resolvePredicate } from '@/lib/notifications/predicates';
 import { initNotificationTriggers } from '@/lib/notifications/init';
 import type { NotificationType } from '@/lib/notifications/types';
+import { assertCronAuthorized } from '@/lib/cron/auth';
+import { claimCronRun } from '@/lib/cron/runLock';
 
 initNotificationTriggers();
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const denied = assertCronAuthorized(request);
+  if (denied) return denied;
+
+  // PRD-74 Phase 3: this route reads pending schedules then updates them in
+  // separate statements — two parallel regional invocations can claim the
+  // same row. Lease covers a generous batch (100 rows × occasional send).
+  const acquired = await claimCronRun('notifications-scheduled-sends', 300);
+  if (!acquired) {
+    console.log(
+      JSON.stringify({ event: 'cron_skipped_locked', job: 'notifications-scheduled-sends' })
+    );
+    return NextResponse.json({ processed: 0, skipped: true });
   }
 
   const now = new Date().toISOString();

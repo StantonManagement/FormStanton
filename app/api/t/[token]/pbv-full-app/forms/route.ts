@@ -45,16 +45,33 @@ export async function GET(
       (templates ?? []).map((t) => [t.form_id, t])
     );
 
-    const lang = app.preferred_language ?? 'en';
-
     const forms = (docs ?? []).map((doc) => {
       const tmpl = templateMap[doc.form_id];
+      // L8: display the name in the language the form was actually generated
+      // in (doc.language, set from submission_language at generation time),
+      // not the tenant's current preferred_language. Those can differ, which
+      // previously showed a form's name in a different language than its body.
+      const docLang = doc.language ?? app.preferred_language ?? 'en';
       const displayName =
-        lang === 'pt'
+        docLang === 'pt'
           ? (tmpl?.display_name_pt ?? tmpl?.display_name_en ?? doc.form_id)
-          : lang === 'es'
+          : docLang === 'es'
             ? (tmpl?.display_name_es ?? doc.form_id)
             : (tmpl?.display_name_en ?? doc.form_id);
+
+      const requiredCount = (doc.required_signer_member_ids ?? []).length;
+      const collectedCount = (doc.collected_signer_member_ids ?? []).length;
+      // PRP-023: harden the L5 guard. The pre-PRP-023 rule was
+      // `collected >= required`, which silently treats a row with
+      // required=[] / collected=[] as complete. Combined with the
+      // generate-forms bug that left required_signer_member_ids=[] on real
+      // federal forms, this let unsigned forms pass canSubmit. Use the
+      // canonical pbv_form_documents.status the signing flow sets when all
+      // signers complete, and accept 'skipped' for conditionally-excluded
+      // forms. (collected >= required > 0) is kept only as a defensive
+      // bridge while the migration backfill rolls out.
+      const signedByStatus = doc.status === 'signed' || doc.status === 'finalized' || doc.status === 'skipped';
+      const signedByCount = requiredCount > 0 && collectedCount >= requiredCount;
 
       return {
         id: doc.id,
@@ -64,12 +81,9 @@ export async function GET(
         status: doc.status,
         generated_at: doc.generated_at,
         finalized_at: doc.finalized_at,
-        required_signer_count: (doc.required_signer_member_ids ?? []).length,
-        collected_signer_count: (doc.collected_signer_member_ids ?? []).length,
-        signatures_complete:
-          (doc.required_signer_member_ids ?? []).length > 0 &&
-          (doc.collected_signer_member_ids ?? []).length >=
-            (doc.required_signer_member_ids ?? []).length,
+        required_signer_count: requiredCount,
+        collected_signer_count: collectedCount,
+        signatures_complete: signedByStatus || signedByCount,
         conditional_trigger: doc.conditional_trigger ?? null,
       };
     });

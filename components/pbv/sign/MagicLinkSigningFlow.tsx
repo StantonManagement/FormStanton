@@ -11,7 +11,7 @@
  * Completion screen: "You're done! Close this tab."
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import IdentityCapturePanel from './IdentityCapturePanel';
 import SignerIntro from './SignerIntro';
 import SignaturePadGate from './SignaturePadGate';
@@ -19,6 +19,52 @@ import ConsentText from './ConsentText';
 import { CONSENT_TEXT_VERSION, getFormConsent } from '@/lib/pbv/consent-text';
 import type { FormDoc } from '@/lib/pbv/hooks/useFormStack';
 import type { PreferredLanguage } from '@/types/compliance';
+
+/**
+ * PRP-020 / F3: in-app browser detection. Instagram / Facebook / LinkedIn
+ * /Twitter and Gmail/Outlook in-app browsers often strip cookies, lack
+ * localStorage/sessionStorage, and refuse third-party redirects — which
+ * breaks the signer flow with no obvious failure mode. We detect the
+ * known UA strings and prompt the user to open the link in their
+ * default browser. Non-blocking (informational only).
+ *
+ * Exported for tests.
+ */
+export function isInAppBrowser(ua: string): boolean {
+  if (!ua) return false;
+  const u = ua.toLowerCase();
+  return (
+    u.includes('instagram') ||
+    u.includes('fbav') ||
+    u.includes('fban') ||
+    u.includes('messenger') ||
+    u.includes('linkedinapp') ||
+    u.includes('twitter') ||
+    u.includes('gmailapp') ||
+    u.includes('snapchat') ||
+    u.includes('tiktok') ||
+    u.includes('line/') ||
+    u.includes('wkwebview') && u.includes('mail/')
+  );
+}
+
+const inAppBrowserCopy: Record<PreferredLanguage, { title: string; body: string; dismiss: string }> = {
+  en: {
+    title: 'Open in your browser',
+    body: 'For the best experience, please open this link in your default browser (Safari, Chrome). Some features may not work in this app.',
+    dismiss: 'Continue anyway',
+  },
+  es: {
+    title: 'Abra en su navegador',
+    body: 'Para una mejor experiencia, abra este enlace en su navegador predeterminado (Safari, Chrome). Algunas funciones pueden no funcionar en esta aplicación.',
+    dismiss: 'Continuar de todos modos',
+  },
+  pt: {
+    title: 'Abra no seu navegador',
+    body: 'Para a melhor experiência, abra este link no seu navegador padrão (Safari, Chrome). Alguns recursos podem não funcionar neste aplicativo.',
+    dismiss: 'Continuar mesmo assim',
+  },
+};
 
 interface Props {
   memberToken: string;
@@ -180,11 +226,11 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
           <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
           {/* PDF iframe — guarded by form status to prevent raw JSON display */}
           {isPdfReady ? (
-            <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+            <div className="border border-[var(--border)]" style={{ height: '40dvh' }}>
               <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
             </div>
           ) : (
-            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40dvh' }}>
               <p className="text-sm text-[var(--muted)]">{preparingText}</p>
             </div>
           )}
@@ -209,11 +255,11 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
         <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
         {/* PDF iframe — guarded by form status to prevent raw JSON display */}
         {isPdfReady ? (
-          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+          <div className="border border-[var(--border)]" style={{ height: '40dvh' }}>
             <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
           </div>
         ) : (
-          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40dvh' }}>
             <p className="text-sm text-[var(--muted)]">{preparingText}</p>
           </div>
         )}
@@ -249,8 +295,45 @@ export default function MagicLinkSigningFlow({
   memberToken, memberId: _memberId, memberName, hohName, language, forms, onFormsUpdated,
 }: Props) {
   const c = doneCopy[language] ?? doneCopy.en;
+  const inApp = inAppBrowserCopy[language] ?? inAppBrowserCopy.en;
   const [step, setStep] = useState<FlowStep>('identity');
   const [confirmedName, setConfirmedName] = useState('');
+
+  // PRP-020 / F3: detect in-app browser on mount. Dismissable banner; if the
+  // user dismisses we set sessionStorage so the warning doesn't re-appear
+  // every navigation within the same tab.
+  const [showInAppWarning, setShowInAppWarning] = useState(false);
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    if (!isInAppBrowser(navigator.userAgent)) return;
+    try {
+      if (window.sessionStorage.getItem('pbv-in-app-warning-dismissed') === '1') return;
+    } catch {
+      // ignore (private mode)
+    }
+    setShowInAppWarning(true);
+  }, []);
+
+  if (showInAppWarning) {
+    return (
+      <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white border border-amber-400 p-6 space-y-4" role="alertdialog" aria-labelledby="in-app-warning-title">
+          <h1 id="in-app-warning-title" className="font-serif text-lg text-[var(--primary)]">{inApp.title}</h1>
+          <p className="text-sm text-[var(--body)]">{inApp.body}</p>
+          <button
+            type="button"
+            onClick={() => {
+              try { window.sessionStorage.setItem('pbv-in-app-warning-dismissed', '1'); } catch { /* ignore */ }
+              setShowInAppWarning(false);
+            }}
+            className="w-full min-h-[44px] bg-[var(--primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            {inApp.dismiss}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleIdentityConfirmed = (typedName: string) => {
     setConfirmedName(typedName);

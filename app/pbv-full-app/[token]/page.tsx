@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { pbvFullAppTranslations, type PbvFullAppStrings } from '@/lib/pbvFullAppTranslations';
 import TenantDocumentUpload from '@/components/pbv/TenantDocumentUpload';
 import type { PreferredLanguage } from '@/types/compliance';
@@ -184,7 +184,7 @@ type PageState =
 export default function PbvFullAppPageWrapper() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+      <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center">
         <p className="text-[var(--muted)] text-sm">Loading...</p>
       </div>
     }>
@@ -198,6 +198,16 @@ function PbvFullAppPage() {
   const token = params?.token ?? '';
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // PRP-017 / B6 + H1: honor the OS prefers-reduced-motion setting. When
+  // the user has motion reduced, framer-motion's transitions are disabled
+  // (zero-duration) so vestibular-sensitive users don't see entry/exit
+  // shifts. globals.css also forces transition-duration:0s for any other
+  // CSS-driven animation (progress bar, etc.).
+  const prefersReducedMotion = useReducedMotion();
+  const motionProps = prefersReducedMotion
+    ? { initial: false, animate: { opacity: 1, y: 0 }, exit: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+    : { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -8 }, transition: { duration: 0.25, ease: 'easeOut' as const } };
 
   const [pageState, setPageState] = useState<PageState>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -839,7 +849,7 @@ function PbvFullAppPage() {
 
   if (pageState === 'loading') {
     return (
-      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+      <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center">
         <p className="text-[var(--muted)] text-sm">{pbvFullAppTranslations['en'].loading}</p>
       </div>
     );
@@ -847,7 +857,7 @@ function PbvFullAppPage() {
 
   if (pageState === 'error') {
     return (
-      <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center px-4">
+      <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center px-4">
         <div className="max-w-md w-full border border-[var(--border)] bg-white p-8 text-center space-y-4">
           <p className="text-sm font-medium text-[var(--error)]">{errorMsg}</p>
           <button
@@ -902,7 +912,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4 print:py-0 print:px-0 print:bg-white">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4 print:py-0 print:px-0 print:bg-white">
           <div className="max-w-3xl mx-auto space-y-6 print:space-y-4">
             {/* Sticky header */}
             <div className="bg-white border border-[var(--border)] p-5 print:border-none print:p-0 print:bg-white">
@@ -1036,7 +1046,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
           <div className="max-w-md mx-auto space-y-4">
             <div className="bg-white border border-[var(--border)] shadow-sm p-6">
               <h2 className="text-xl font-bold font-serif text-[var(--primary)] mb-4">{t.intro_title}</h2>
@@ -1117,7 +1127,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
           <div className="max-w-md mx-auto space-y-4">
             {/* Progress Steps */}
             <div className="bg-white border border-[var(--border)] shadow-sm p-5">
@@ -1396,7 +1406,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
           <div className="max-w-md mx-auto space-y-4">
             {/* Progress Steps */}
             <div className="bg-white border border-[var(--border)] shadow-sm p-5">
@@ -1643,7 +1653,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
           <div className="max-w-lg mx-auto">
             <button
               type="button"
@@ -1676,14 +1686,14 @@ function PbvFullAppPage() {
   if (pageState === 'signatures') {
     if (sigLoading) {
       return (
-        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center">
+        <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center">
           <p className="text-[var(--muted)] text-sm">{t.sig_loading}</p>
         </div>
       );
     }
     if (sigError && signers.length === 0) {
       return (
-        <div className="min-h-screen bg-[var(--paper)] flex items-center justify-center px-4">
+        <div className="min-h-dvh bg-[var(--paper)] flex items-center justify-center px-4">
           <div className="max-w-md w-full border border-[var(--border)] bg-white p-8 text-center">
             <p className="text-sm text-[var(--error)]">{sigError}</p>
           </div>
@@ -1695,7 +1705,7 @@ function PbvFullAppPage() {
       return (
         <>
           <Header language={language} onLanguageChange={setLanguage} />
-          <main className="min-h-screen bg-[var(--paper)] py-12 px-4">
+          <main className="min-h-dvh bg-[var(--paper)] py-12 px-4">
             <div className="max-w-md mx-auto text-center">
               <div className="bg-white border border-[var(--border)] shadow-sm p-8 space-y-4">
                 <h2 className="text-xl font-bold font-serif text-[var(--primary)]">{t.sig_all_signed_title}</h2>
@@ -1725,7 +1735,7 @@ function PbvFullAppPage() {
       return (
         <>
           <Header language={language} onLanguageChange={setLanguage} />
-          <main className="min-h-screen bg-[var(--paper)] py-8 px-4">
+          <main className="min-h-dvh bg-[var(--paper)] py-8 px-4">
             <div className="max-w-md mx-auto space-y-4">
               <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide text-center">
                 {t.sig_signer_progress(signerIndex + 1, signers.length)}
@@ -1774,7 +1784,7 @@ function PbvFullAppPage() {
       return (
         <>
           <Header language={language} onLanguageChange={setLanguage} />
-          <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+          <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
             <div className="max-w-2xl mx-auto space-y-4">
               <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide">
                 {t.sig_signer_progress(signerIndex + 1, signers.length)}
@@ -1846,7 +1856,7 @@ function PbvFullAppPage() {
       return (
         <>
           <Header language={language} onLanguageChange={setLanguage} />
-          <main className="min-h-screen bg-[var(--paper)] py-12 px-4">
+          <main className="min-h-dvh bg-[var(--paper)] py-12 px-4">
             <div className="max-w-md mx-auto">
               <div className="bg-white border border-[var(--border)] shadow-sm p-8 space-y-6 text-center">
                 <div className="w-12 h-12 mx-auto bg-green-100 flex items-center justify-center">
@@ -1924,7 +1934,7 @@ function PbvFullAppPage() {
       return (
         <>
           <Header language={language} onLanguageChange={setLanguage} />
-          <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+          <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
             <div className="max-w-2xl mx-auto space-y-4">
               <button type="button" onClick={() => { setResigningDocId(null); setSigError(''); }}
                 className="text-sm text-[var(--muted)] underline">
@@ -1966,7 +1976,7 @@ function PbvFullAppPage() {
     return (
       <>
         <Header language={language} onLanguageChange={setLanguage} />
-        <main className="min-h-screen bg-[var(--paper)] py-6 px-4">
+        <main className="min-h-dvh bg-[var(--paper)] py-6 px-4">
           <div className="max-w-2xl mx-auto space-y-6">
             <div className="bg-white border border-[var(--border)] shadow-sm px-5 py-4">
               <h2 className="text-xl font-bold font-serif text-[var(--primary)]">{t.sig_review_title}</h2>
@@ -2084,10 +2094,7 @@ function PbvFullAppPage() {
           <AnimatePresence mode="wait">
             <motion.div
               key={currentSection}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              {...motionProps}
             >
 
               {/* ── Section 1: Household ──────────────────────────────── */}

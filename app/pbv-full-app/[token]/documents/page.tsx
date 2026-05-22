@@ -52,7 +52,12 @@ export default function DocumentsPage({ params }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam = searchParams.get('view');
-  const filterParam = searchParams.get('filter');
+  // PRP-015 / F1: validate ?filter= against a strict allow-list. Anything
+  // outside { null, 'all', 'rejected' } is silently coerced to null so a
+  // crafted URL can't smuggle a value into downstream comparisons / strings.
+  const rawFilterParam = searchParams.get('filter');
+  const filterParam: 'all' | 'rejected' | null =
+    rawFilterParam === 'rejected' || rawFilterParam === 'all' ? rawFilterParam : null;
 
   const { state } = useIntakeBootstrap(token);
   const [documents, setDocuments] = useState<DocumentCardData[]>([]);

@@ -12,13 +12,52 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { isMagicLinkExpired } from '@/lib/pbv/magicLinkExpiry';
+import {
+  checkRateLimit,
+  ipKeyFromHeaders,
+  peekRateLimit,
+  rateLimitedResponse,
+  registerFailedAttempt,
+  SIGNER_FAILED_ATTEMPTS_LIMIT,
+  SIGNER_LOCKOUT_WINDOW_SEC,
+  SIGNER_PER_IP_LIMIT,
+} from '@/lib/rateLimit';
+
+const GENERIC_DENY = { success: false, message: 'Unable to verify link.', code: 'invalid_or_expired' as const };
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ member_token: string }> }
 ) {
   try {
     const { member_token } = await context.params;
+    const ipKey = ipKeyFromHeaders(request.headers);
+
+    // PRP-002 / D3: entry per-IP rate limit (always increments).
+    const ipCheck = await checkRateLimit({
+      key: `signer-bootstrap-ip:${ipKey}`,
+      limit: SIGNER_PER_IP_LIMIT.limit,
+      windowSec: SIGNER_PER_IP_LIMIT.windowSec,
+    });
+    if (!ipCheck.allowed) {
+      const r = rateLimitedResponse(ipCheck.retryAfterSec);
+      return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+    }
+
+    // PRP-002 / D3: rolling-failure lockout (peek before deciding so the
+    // gate itself does not count as a failure).
+    const failKey = `signer-bootstrap-fail:${ipKey}`;
+    const lockState = await peekRateLimit({
+      key: failKey,
+      limit: SIGNER_FAILED_ATTEMPTS_LIMIT,
+      windowSec: SIGNER_LOCKOUT_WINDOW_SEC,
+    });
+    if (!lockState.allowed) {
+      const r = rateLimitedResponse(lockState.retryAfterSec);
+      // Generic body so the response is not an oracle for token validity.
+      return NextResponse.json(GENERIC_DENY, { status: r.status, headers: r.headers });
+    }
 
     const { data: member, error: memberError } = await supabaseAdmin
       .from('pbv_household_members')
@@ -28,11 +67,18 @@ export async function GET(
 
     if (memberError) throw memberError;
     if (!member) {
-      return NextResponse.json({ success: false, message: 'Link not found.', code: 'not_found' }, { status: 404 });
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
+      return NextResponse.json(GENERIC_DENY, { status: 404 });
     }
 
-    const now = new Date();
-    if (!member.magic_link_expires_at || new Date(member.magic_link_expires_at) < now) {
+    // PRD-78 #8: centralized epoch-based expiry check (fail-closed on null/
+    // unparseable). magic_link_expires_at is TIMESTAMPTZ per migration
+    // 20260515000000_pbv_form_execution_columns.sql:68, so Date.parse()
+    // round-trips as a UTC instant.
+    if (isMagicLinkExpired(member.magic_link_expires_at)) {
+      // PRP-002 / D3: count expired as a "failure" so the IP cannot use
+      // the expired/valid distinction to probe the token space.
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
       return NextResponse.json({
         success: false,
         message: 'This link has expired.',
@@ -44,12 +90,27 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'HOH uses the primary token.' }, { status: 400 });
     }
 
-    // Load HOH name from application
+    // PRD-82 #A4: packet_locked gate. PRD-77 added this in withTenantContext
+    // for the tenant lane, but the magic-link lane resolves the application
+    // from the member token and never flowed through that wrapper. Without
+    // this check, a non-HOH adult on a magic link could keep viewing forms
+    // and signing after staff sent the packet to HACH review.
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id')
+      .select('id, packet_locked')
       .eq('id', member.full_application_id)
       .maybeSingle();
+
+    if (app?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This packet is currently under review. Please contact the Stanton office.',
+          code: 'packet_locked',
+        },
+        { status: 409 }
+      );
+    }
 
     let hohName = '';
     if (app) {

@@ -32,12 +32,24 @@ Run ascending: **55 → 56 → 57 → 58 → 59 → 60 → 61.** Dependencies ar
 - Add every migration that needs applying to the **"Prod migrations to apply"** section of `OPEN-DECISIONS.md` so Alex applies them deliberately after review.
 - Never run a destructive statement (DROP, DELETE, TRUNCATE, or an UPDATE without a tight WHERE) against any database in this run.
 
-## Verification: static now, runtime later
+## Verification: three tiers — per-PRD, batch-boundary, deferred
 
-Each PRD has two kinds of gates:
+**This replaces the old "build after every PRD" rule.** Running a full `npm run build` per PRD was the dominant cause of ~50-minute batches and gave false confidence (a clean build certifies "compiles + bundles," not "works"). The gate model now has three tiers:
 
-- **Static gates (do these inline, every PRD):** `node ./node_modules/typescript/bin/tsc --noEmit` clean, `npm run build` clean, and any unit/integration tests the PRD specifies. These must pass before you commit a PRD. (See `docs/SHELL-PROTOCOL.md` — use `node ./node_modules/typescript/bin/tsc`, never `npx tsc`; it hangs on Windows.)
-- **Deferred gates (do NOT block on these):** anything requiring a deployed Vercel preview or a live device/browser walk (e.g. "open `/sign/summary` on prod and read the response", iOS/Android camera matrix). You cannot deploy mid-run. **List these in the build report under "Deferred runtime gates"** for the post-run verification pass. Do not fail a PRD because a deploy-only gate couldn't run in-session.
+- **Per-PRD gates (inline, before each commit — fast):**
+  - `node ./node_modules/typescript/bin/tsc --noEmit` clean. (Never `npx tsc` — it hangs on Windows. See `docs/SHELL-PROTOCOL.md`.)
+  - The PRD's **targeted** tests: `node ./node_modules/.bin/vitest run <path>`. (Never `npx vitest` — same Windows hang risk.) Targeted paths only, not the full suite.
+  - **No full `npm run build` per PRD** — *unless* the PRD touches build-affecting surface (`next.config.js`, `middleware.ts`, a new top-level import, a server/client boundary). If it does, build that PRD and note why.
+
+- **Batch-boundary gates (once, after the last PRD of the batch — before opening the PR):**
+  - One full `npm run build` — clean.
+  - One full `node ./node_modules/.bin/vitest run` if the batch's goal includes suite-wide stability.
+  - **A thin critical-path smoke** on a preview deploy where one can be stood up: walk intake → generate-forms → sign → finalize and confirm no integration-seam break (the kind of defect unit tests can't see — e.g. the double-idempotency-wrap that returned 200 `{}`). If no preview is available in-session, list it as the first deferred gate with an explicit owner + date.
+  - **A pattern-sweep:** before declaring the batch done, grep the touched files for the batch's own defect shapes (races, fail-open defaults, trusted input) to catch clones the per-PRD isolation missed. Log findings.
+
+- **Deferred gates (do NOT block on these):** anything needing a deployed Vercel preview or a live device/browser walk beyond the smoke (iOS/Android camera matrix, RLS-applied checks, magic-link expiry walks). **List these in the build report under "Deferred runtime gates"** with an owner. Do not fail a PRD because a deploy-only gate couldn't run in-session.
+
+**What each gate certifies (state it; don't over-trust green):** `tsc` = types. Targeted vitest = the touched files behave. Full build = compiles + bundles. Smoke = the critical path is wired correctly end-to-end. None of them certify accessibility, security headers, rate limiting, or adversarial-input handling — those are covered by the relevant PRD's own checks and the launch definition-of-done, not by these gates.
 
 ## Build report per PRD (this is the memory between PRDs)
 
@@ -63,8 +75,8 @@ It is **not** broken (verified 2026-05-20 — line 23 is a harmless tab line; gi
 
 ## TL;DR for the session
 
-1. Branch `feat/pbv-full-finalization` off `main`.
-2. For each PRD 55→61: read its prompt + PRD, implement, take-default-and-log on anything ambiguous, pass static gates, commit `PRD-NN: …`, write the build report, move on.
+1. Branch off `main` (one cumulative branch per batch).
+2. For each PRD: read its prompt + PRD, implement, take-default-and-log on anything ambiguous, pass **per-PRD gates** (`tsc --noEmit` + targeted `vitest`, both via the direct binary — no `npx`, no full build unless build-surface touched), commit `PRD-NN: …`, write the build report, move on.
 3. Write migrations but don't apply to prod — list them in OPEN-DECISIONS.
 4. Defer deploy/device gates to the build report; don't block on them.
-5. At the end: one PR (don't merge) + a complete `OPEN-DECISIONS.md` for Alex.
+5. At the end (batch boundary): one full `npm run build`, the critical-path smoke + pattern-sweep, then one PR (don't merge) + a complete `OPEN-DECISIONS.md` for Alex.

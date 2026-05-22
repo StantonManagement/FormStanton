@@ -50,9 +50,18 @@ export interface DashboardData {
   submitted_at: string | null;
 }
 
+/** PRP-011 / C3: per-slice fetch status so the dashboard can render
+ *  partial data + a warning instead of failing the whole page on one bad
+ *  slice. */
+export interface DashboardSliceStatus {
+  forms: 'ok' | 'failed';
+  upload: 'ok' | 'failed' | 'fallback';
+  signers: 'ok' | 'failed';
+}
+
 export type DashboardState =
   | { status: 'loading' }
-  | { status: 'ready'; data: DashboardData }
+  | { status: 'ready'; data: DashboardData; slices?: DashboardSliceStatus }
   | { status: 'error'; message: string };
 
 export function useDashboardState(token: string) {
@@ -63,21 +72,36 @@ export function useDashboardState(token: string) {
     setState({ status: 'loading' });
 
     try {
-      const [bootstrapRes, formsRes, uploadRes, signersRes] = await Promise.all([
+      // PRP-011 / C3: Promise.allSettled so one rejected slice doesn't
+      // fail the entire dashboard. Bootstrap is still load-bearing
+      // (everything keys off its language/signing_status/etc); the other
+      // three slices degrade to defaults + a per-slice warning.
+      const [bootstrapSettled, formsSettled, uploadSettled, signersSettled] = await Promise.allSettled([
         tenantFetch(`/api/t/${token}/pbv-full-app`),
         tenantFetch(`/api/t/${token}/pbv-full-app/forms`),
         tenantFetch(`/api/t/${token}/pbv-full-app/upload-summary`),
         tenantFetch(`/api/t/${token}/pbv-full-app/additional-signers`),
       ]);
 
-      if (!bootstrapRes.ok) throw new Error('Failed to load application state.');
+      if (bootstrapSettled.status === 'rejected' || !bootstrapSettled.value.ok) {
+        const msg =
+          bootstrapSettled.status === 'rejected'
+            ? (bootstrapSettled.reason instanceof Error ? bootstrapSettled.reason.message : 'Network error')
+            : 'Failed to load application state.';
+        throw new Error(msg);
+      }
+      const bootstrapRes = bootstrapSettled.value;
       const bootstrap = await bootstrapRes.json();
       const d = bootstrap.data ?? bootstrap;
 
+      const slices: DashboardSliceStatus = { forms: 'ok', upload: 'ok', signers: 'ok' };
+
       let forms: FormDoc[] = [];
-      if (formsRes.ok) {
-        const formsJson = await formsRes.json();
-        forms = formsJson.data?.forms ?? [];
+      if (formsSettled.status === 'fulfilled' && formsSettled.value.ok) {
+        const formsJson = await formsSettled.value.json().catch(() => ({}));
+        forms = (formsJson as any).data?.forms ?? [];
+      } else {
+        slices.forms = 'failed';
       }
 
       const signingStatus: SigningStatus = (d.signing_status ?? 'not_started') as SigningStatus;
@@ -90,23 +114,26 @@ export function useDashboardState(token: string) {
       let uploadTotal = 0;
       let uploadComplete = 0;
       let optionalUploadedCount = 0;
-      if (uploadRes.ok) {
-        const uploadJson = await uploadRes.json();
-        uploadTotal = uploadJson.data?.total ?? 0;
-        uploadComplete = uploadJson.data?.complete ?? 0;
-        optionalUploadedCount = uploadJson.data?.optional_complete ?? 0;
+      if (uploadSettled.status === 'fulfilled' && uploadSettled.value.ok) {
+        const uploadJson = await uploadSettled.value.json().catch(() => ({}));
+        uploadTotal = (uploadJson as any).data?.total ?? 0;
+        uploadComplete = (uploadJson as any).data?.complete ?? 0;
+        optionalUploadedCount = (uploadJson as any).data?.optional_complete ?? 0;
       } else {
-        // Fallback to bootstrap document_summary if upload-summary endpoint unavailable
+        // Fallback to bootstrap document_summary if upload-summary endpoint unavailable.
         const uploadSummary = d.document_summary ?? {};
         uploadTotal = (uploadSummary.total ?? 0) as number;
         uploadComplete = (uploadSummary.complete ?? 0) as number;
         optionalUploadedCount = 0;
+        slices.upload = uploadSettled.status === 'fulfilled' ? 'failed' : 'fallback';
       }
 
       let additionalSignersPendingCount = 0;
-      if (signersRes.ok) {
-        const signersJson = await signersRes.json().catch(() => ({}));
+      if (signersSettled.status === 'fulfilled' && signersSettled.value.ok) {
+        const signersJson = await signersSettled.value.json().catch(() => ({}));
         additionalSignersPendingCount = (signersJson as any).data?.pending_count ?? 0;
+      } else {
+        slices.signers = 'failed';
       }
 
       const canSubmit =
@@ -119,6 +146,7 @@ export function useDashboardState(token: string) {
 
       setState({
         status: 'ready',
+        slices,
         data: {
           preferred_language: (d.preferred_language ?? 'en') as PreferredLanguage,
           submission_language: (d.submission_language ?? 'en') as 'en' | 'es',

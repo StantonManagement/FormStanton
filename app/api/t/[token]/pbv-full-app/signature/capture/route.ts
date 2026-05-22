@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
+import { isUuid } from '@/lib/pbv/signing/validateSignFormBody';
 
 
 export async function POST(
@@ -41,6 +42,23 @@ export async function POST(
     }
 
     const { signature_image_data_url, signer_member_id, ceremony_id } = body;
+
+    // PRD-80 #A6: UUID validation before storage / DB work. A malformed
+    // signer_member_id would otherwise propagate into the storage path
+    // (pbv/<app>/signatures/<member>-<ceremony>.ext) and the member lookup.
+    // ceremony_id is optional; only validate when supplied.
+    if (!isUuid(signer_member_id)) {
+      return {
+        body: { success: false, message: 'signer_member_id must be a valid UUID' },
+        status: 400,
+      };
+    }
+    if (ceremony_id !== undefined && !isUuid(ceremony_id)) {
+      return {
+        body: { success: false, message: 'ceremony_id must be a valid UUID' },
+        status: 400,
+      };
+    }
 
     // Verify the member belongs to this application
     const { data: member, error: memberError } = await supabaseAdmin

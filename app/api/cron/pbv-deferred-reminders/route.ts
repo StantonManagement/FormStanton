@@ -11,9 +11,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendTenantNotification } from '@/lib/notifications/send';
 import { NotificationType } from '@/lib/notifications/types';
 import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/application-events';
-
-// Cadence schedule: days when reminders should be sent
-const REMINDER_CADENCE_DAYS = [3, 7, 14, 21, 28, 35, 42];
+import { assertCronAuthorized } from '@/lib/cron/auth';
+import { claimCronRun } from '@/lib/cron/runLock';
+import { getNextReminderDate } from '@/lib/cron/reminderCadence';
 
 // Helper to get tenant local time (defaults to America/New_York)
 function getTenantLocalTime(date: Date, timezone?: string): Date {
@@ -29,23 +29,6 @@ function getTenantLocalTime(date: Date, timezone?: string): Date {
 function isQuietHours(localTime: Date): boolean {
   const hour = localTime.getHours();
   return hour >= 21 || hour < 9;
-}
-
-// Helper to calculate next reminder date based on cadence
-function getNextReminderDate(currentDay: number): Date | null {
-  const nextDayIndex = REMINDER_CADENCE_DAYS.findIndex(day => day > currentDay);
-  
-  if (nextDayIndex === -1) {
-    // No more reminders in cadence
-    return null;
-  }
-  
-  const nextDay = REMINDER_CADENCE_DAYS[nextDayIndex];
-  const now = new Date();
-  const daysUntilNext = nextDay - currentDay;
-  
-  const nextDate = new Date(now.getTime() + daysUntilNext * 24 * 60 * 60 * 1000);
-  return nextDate;
 }
 
 // Helper to count missing documents for an application
@@ -109,17 +92,23 @@ async function exceededWeeklyLimit(applicationId: string): Promise<boolean> {
 }
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (secret) {
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const denied = assertCronAuthorized(request);
+  if (denied) return denied;
+
+  // PRD-74 Phase 3: claim the run lease before doing work. Lease lifetime
+  // generous enough for the longest expected run (~10 min). If another
+  // region holds the lease, skip cleanly with 200 { skipped: true }.
+  const acquired = await claimCronRun('pbv-deferred-reminders', 600);
+  if (!acquired) {
+    console.log(
+      JSON.stringify({ event: 'cron_skipped_locked', job: 'pbv-deferred-reminders' })
+    );
+    return NextResponse.json({ success: true, skipped: true });
   }
 
   const now = new Date();
   const nowIso = now.toISOString();
-  
+
   console.log(`[pbv-deferred-reminders] Starting cron run at ${nowIso}`);
 
   try {
@@ -180,7 +169,7 @@ export async function GET(request: NextRequest) {
           console.log(`[pbv-deferred-reminders] Skipping ${app.id} - recent upload detected`);
           
           // Reschedule for next cycle
-          const nextDate = getNextReminderDate(app.reminders_sent_count);
+          const nextDate = getNextReminderDate(app.reminders_sent_count, app.intake_submitted_at);
           if (nextDate) {
             await supabaseAdmin
               .from('pbv_full_applications')
@@ -264,7 +253,7 @@ export async function GET(request: NextRequest) {
 
           // 8. Update reminder count and schedule next reminder
           const newCount = app.reminders_sent_count + 1;
-          const nextDate = getNextReminderDate(newCount);
+          const nextDate = getNextReminderDate(newCount, app.intake_submitted_at);
 
           if (nextDate) {
             await supabaseAdmin

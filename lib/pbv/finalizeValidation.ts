@@ -8,6 +8,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase';
+import { sha256Hex } from '@/lib/pbv/form-generation/source-pdfs';
 
 export interface MissingSignature {
   signer_name: string;
@@ -77,7 +78,7 @@ export async function validateReadyToFinalize(
   // Load form documents and members
   const { data: formDocs } = await supabaseAdmin
     .from('pbv_form_documents')
-    .select('id, form_id, status, required_signer_member_ids, collected_signer_member_ids, unsigned_pdf_hash')
+    .select('id, form_id, status, required_signer_member_ids, collected_signer_member_ids, unsigned_pdf_hash, unsigned_pdf_path')
     .eq('full_application_id', applicationId)
     .not('status', 'eq', 'skipped'); // Skip forms that are conditionally excluded
 
@@ -118,8 +119,17 @@ export async function validateReadyToFinalize(
     .eq('anchor_type', 'pbv_full_application')
     .eq('anchor_id', applicationId);
 
+  // 'no_longer_required' is the conditional-suppression status: a doc that was
+  // seeded as required but the applicant's answers mean it isn't needed (e.g. an
+  // SSI award letter for a wage-only household). recomputeApplicationDocSummary
+  // already excludes it from the "missing" count; finalize must treat it the
+  // same, or every application with any conditional suppression (≈ all of them)
+  // can never finalize despite the tenant having nothing left to provide.
   const isCompleteStatus = (status: string): boolean =>
-    status === 'submitted' || status === 'approved' || status === 'waived';
+    status === 'submitted' ||
+    status === 'approved' ||
+    status === 'waived' ||
+    status === 'no_longer_required';
 
   for (const doc of allDocs ?? []) {
     // Only check required documents, and only those that are missing or rejected
@@ -135,6 +145,36 @@ export async function validateReadyToFinalize(
   // skipped to avoid retroactively blocking packets generated before this PRD.
   for (const formDoc of (formDocs ?? [])) {
     if (!formDoc.unsigned_pdf_hash) continue;
+
+    // #6: re-hash the CURRENT unsigned PDF bytes in storage and confirm they
+    // still match the stored unsigned_pdf_hash. The event-vs-stored check
+    // below catches a signer who signed *different* bytes; this catches the
+    // case where the stored bytes themselves drifted from the recorded hash
+    // (storage overwrite / corruption) without the hash column being updated.
+    // Uses the same sha256Hex helper generate-forms used to write the hash,
+    // so the comparison is format-consistent.
+    if (formDoc.unsigned_pdf_path) {
+      try {
+        const { data: pdfBlob, error: dlErr } = await supabaseAdmin.storage
+          .from('pbv-forms')
+          .download(formDoc.unsigned_pdf_path);
+        if (!dlErr && pdfBlob) {
+          const liveHash = sha256Hex(Buffer.from(await pdfBlob.arrayBuffer()));
+          if (liveHash !== formDoc.unsigned_pdf_hash) {
+            result.missing.signatures.push({
+              signer_name: 'Head of Household',
+              doc_label: `${formDoc.form_id.replace(/_/g, ' ')} (document changed since signing — please regenerate and re-sign)`,
+              doc_id: formDoc.id,
+            });
+          }
+        }
+        // A download failure is intentionally NOT a hard block: finalize must
+        // not fail on a transient storage error. The event-vs-stored check
+        // below still runs as the primary integrity gate.
+      } catch (e) {
+        console.error(`[finalize] live unsigned-PDF hash check failed for ${formDoc.id}:`, e);
+      }
+    }
 
     const { data: events } = await supabaseAdmin
       .from('pbv_signature_events')

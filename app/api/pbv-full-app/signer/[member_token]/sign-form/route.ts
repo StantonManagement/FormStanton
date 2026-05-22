@@ -20,6 +20,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { headers } from 'next/headers';
 import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
+import { isMagicLinkExpired } from '@/lib/pbv/magicLinkExpiry';
+import { validateSignFormBody } from '@/lib/pbv/signing/validateSignFormBody';
+import {
+  checkRateLimit,
+  ipKeyFromHeaders,
+  peekRateLimit,
+  rateLimitedResponse,
+  registerFailedAttempt,
+  SIGNER_FAILED_ATTEMPTS_LIMIT,
+  SIGNER_LOCKOUT_WINDOW_SEC,
+  SIGNER_PER_IP_LIMIT,
+} from '@/lib/rateLimit';
+
+const GENERIC_DENY = { success: false, message: 'Unable to verify link.', code: 'invalid_or_expired' as const };
 
 export async function POST(
   request: NextRequest,
@@ -27,6 +41,31 @@ export async function POST(
 ) {
   try {
     const { member_token } = await context.params;
+    const ipKey = ipKeyFromHeaders(request.headers);
+
+    // PRP-002 / D3: per-IP entry limit + rolling-failure lockout (same
+    // counter as the bootstrap route so probes across both endpoints share
+    // the failure budget).
+    const ipCheck = await checkRateLimit({
+      key: `signer-sign-form-ip:${ipKey}`,
+      limit: SIGNER_PER_IP_LIMIT.limit,
+      windowSec: SIGNER_PER_IP_LIMIT.windowSec,
+    });
+    if (!ipCheck.allowed) {
+      const r = rateLimitedResponse(ipCheck.retryAfterSec);
+      return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+    }
+
+    const failKey = `signer-bootstrap-fail:${ipKey}`;
+    const lockState = await peekRateLimit({
+      key: failKey,
+      limit: SIGNER_FAILED_ATTEMPTS_LIMIT,
+      windowSec: SIGNER_LOCKOUT_WINDOW_SEC,
+    });
+    if (!lockState.allowed) {
+      const r = rateLimitedResponse(lockState.retryAfterSec);
+      return NextResponse.json(GENERIC_DENY, { status: r.status, headers: r.headers });
+    }
 
     const { data: member } = await supabaseAdmin
       .from('pbv_household_members')
@@ -35,16 +74,26 @@ export async function POST(
       .maybeSingle();
 
     if (!member) {
-      return NextResponse.json({ success: false, message: 'Link not found.' }, { status: 404 });
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
+      return NextResponse.json(GENERIC_DENY, { status: 404 });
     }
-    if (!member.magic_link_expires_at || new Date(member.magic_link_expires_at) < new Date()) {
+    // PRD-78 #8: centralized epoch-based expiry check (matches the bootstrap
+    // GET route; both now use the same helper).
+    if (isMagicLinkExpired(member.magic_link_expires_at)) {
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
       return NextResponse.json({ success: false, message: 'This link has expired.', code: 'expired' }, { status: 410 });
     }
 
     const body = await request.json().catch(() => null);
-    if (!body?.form_document_id || !body?.typed_name || !body?.signature_image_path || !body?.ceremony_id) {
+
+    // PRD-78 #6 (member route): shared validator. requireSignerMemberId: false
+    // because the member is derived from the magic-link token, not the body.
+    // device_owner is hard-coded 'self' below — the validator's enum branch
+    // is skipped for the member route (no body field).
+    const validation = validateSignFormBody(body, { requireSignerMemberId: false });
+    if (!validation.ok) {
       return NextResponse.json(
-        { success: false, message: 'form_document_id, typed_name, signature_image_path, ceremony_id required' },
+        { success: false, message: validation.message },
         { status: 400 }
       );
     }
@@ -57,16 +106,31 @@ export async function POST(
       consent_text_version?: string;
     };
 
-    // F8: Check parent application lock (submitted_at must be null)
+    // F8: Check parent application lock (submitted_at must be null).
+    // PRD-82 #A4: also check packet_locked. The tenant lane gates this in
+    // PRD-77's withTenantContext, but the magic-link lane resolves the app
+    // via the member token and never hit that wrapper — so a non-HOH adult
+    // could sign while staff held the packet for review.
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, submitted_at')
+      .select('id, submitted_at, packet_locked')
       .eq('id', member.full_application_id)
       .maybeSingle();
 
     if (app?.submitted_at) {
       return NextResponse.json(
         { success: false, message: 'Application already submitted', code: 'submitted_locked' },
+        { status: 409 }
+      );
+    }
+
+    if (app?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This packet is currently under review. Please contact the Stanton office.',
+          code: 'packet_locked',
+        },
         { status: 409 }
       );
     }
@@ -91,9 +155,14 @@ export async function POST(
     });
 
     if (!result.success) {
+      // PRD-82 #A12: map HTTP status from the typed errorCode. Pre-PRD-82
+      // this route did substring matching on the human-readable error
+      // string; any wording change in completeForm.ts would have silently
+      // flipped the 404-vs-422 decision.
+      const status = result.errorCode === 'not_found' ? 404 : 422;
       return NextResponse.json(
-        { success: false, message: result.error ?? 'Signing failed' },
-        { status: result.error?.includes('not found') ? 404 : 422 }
+        { success: false, message: result.error ?? 'Signing failed', code: result.errorCode ?? null },
+        { status }
       );
     }
 

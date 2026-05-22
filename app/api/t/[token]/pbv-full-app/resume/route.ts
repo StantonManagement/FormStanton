@@ -9,77 +9,72 @@
  * This endpoint records the re-send event and returns the application state.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 
 const RESEND_COOLDOWN_MINUTES = 60;
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ token: string }> }
 ) {
-  try {
-    const { token } = await context.params;
+  const { token } = await context.params;
 
-    const { data: app, error: appError } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('id, phone, submitted_at, resume_token_last_sent_at, resume_token_expires_at')
-      .eq('tenant_access_token', token)
-      .maybeSingle();
+  // L1: route through withTenantContext so resume gets the same centralized
+  // rate-limit, packet_locked / submitted_at gates, CSRF (warn) and
+  // idempotency as the rest of the tenant API. The 60-minute resend cooldown
+  // below is domain-specific and stays inside the handler.
+  return withTenantContext(
+    request,
+    token,
+    'resume',
+    async (app) => {
+      try {
+        const phone = app.phone as string | null;
+        if (!phone) {
+          return {
+            body: { success: false, message: 'No phone number on file for this application', code: 'no_phone' },
+            status: 422,
+          };
+        }
 
-    if (appError) throw appError;
-    if (!app) return NextResponse.json({ success: false, message: 'Not found' }, { status: 404 });
+        const lastSentRaw = app.resume_token_last_sent_at as string | null;
+        if (lastSentRaw) {
+          const minutesSince = (Date.now() - new Date(lastSentRaw).getTime()) / (1000 * 60);
+          if (minutesSince < RESEND_COOLDOWN_MINUTES) {
+            const cooldownRemaining = Math.ceil(RESEND_COOLDOWN_MINUTES - minutesSince);
+            return {
+              body: {
+                success: false,
+                message: `Please wait ${cooldownRemaining} more minute(s) before resending.`,
+                code: 'rate_limited',
+                retry_after_minutes: cooldownRemaining,
+              },
+              status: 429,
+            };
+          }
+        }
 
-    if (app.submitted_at) {
-      return NextResponse.json(
-        { success: false, message: 'Application already submitted', code: 'submitted_locked' },
-        { status: 409 }
-      );
-    }
+        const now = new Date().toISOString();
+        const { error: updateError } = await supabaseAdmin
+          .from('pbv_full_applications')
+          .update({ resume_token_last_sent_at: now, updated_at: now })
+          .eq('id', app.id);
+        if (updateError) throw updateError;
 
-    if (!app.phone) {
-      return NextResponse.json(
-        { success: false, message: 'No phone number on file for this application', code: 'no_phone' },
-        { status: 422 }
-      );
-    }
-
-    // Rate-limit check
-    if (app.resume_token_last_sent_at) {
-      const lastSent = new Date(app.resume_token_last_sent_at);
-      const minutesSince = (Date.now() - lastSent.getTime()) / (1000 * 60);
-      if (minutesSince < RESEND_COOLDOWN_MINUTES) {
-        const cooldownRemaining = Math.ceil(RESEND_COOLDOWN_MINUTES - minutesSince);
-        return NextResponse.json(
-          {
-            success: false,
-            message: `Please wait ${cooldownRemaining} more minute(s) before resending.`,
-            code: 'rate_limited',
-            retry_after_minutes: cooldownRemaining,
-          },
-          { status: 429 }
-        );
+        return {
+          body: { success: true, data: { resume_token_last_sent_at: now, phone_hint: phone.slice(-4) } },
+          status: 200,
+        };
+      } catch (error: any) {
+        console.error('[resume] POST error:', error);
+        return {
+          body: { success: false, message: 'Internal server error', code: 'server_error' },
+          status: 500,
+        };
       }
-    }
-
-    const now = new Date().toISOString();
-
-    const { error: updateError } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .update({ resume_token_last_sent_at: now, updated_at: now })
-      .eq('id', app.id);
-
-    if (updateError) throw updateError;
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        resume_token_last_sent_at: now,
-        phone_hint: app.phone.slice(-4),
-      },
-    });
-  } catch (error: any) {
-    console.error('[resume] POST error:', error);
-    return NextResponse.json({ success: false, message: 'Internal server error', code: 'server_error' }, { status: 500 });
-  }
+    },
+    'id, submitted_at, phone, resume_token_last_sent_at, resume_token_expires_at'
+  );
 }

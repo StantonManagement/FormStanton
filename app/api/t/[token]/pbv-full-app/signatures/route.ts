@@ -130,7 +130,7 @@ export async function POST(
 
       const { data: doc } = await supabaseAdmin
         .from('application_documents')
-        .select('id, doc_type, label, person_slot, signer_scope, revision, status, file_name')
+        .select('id, doc_type, label, person_slot, signer_scope, revision, status, file_name, storage_path')
         .eq('id', document_id)
         .eq('anchor_type', 'pbv_full_application')
         .eq('anchor_id', app.id)
@@ -148,7 +148,12 @@ export async function POST(
       const base64 = data_url.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64, 'base64');
 
-      const newRevision = (doc.revision ?? 0) + 1;
+      const priorStatus = doc.status as string;
+      const priorRevision = (doc.revision ?? 0) as number;
+      const priorStoragePath = doc.storage_path as string | null;
+      const priorFileName = doc.file_name as string | null;
+
+      const newRevision = priorRevision + 1;
       const fileName = buildStantonFilename({
         assetId,
         unit,
@@ -161,13 +166,19 @@ export async function POST(
 
       const storagePath = `pbv-applications/${app.id}/${doc.doc_type}/${fileName}`;
 
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('pbv-applications')
-        .upload(storagePath, buffer, { contentType: 'image/png', upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      await supabaseAdmin
+      // PRD-81 #A2: DB-claim-first. Pre-PRD-81 we uploaded to storage with
+      // upsert:false BEFORE the DB UPDATE, so two concurrent signs of the
+      // same document collided at storage (409) and the throw bubbled out
+      // before any row was updated — leaving the document in its prior
+      // status while one tenant believed the signature was captured.
+      //
+      // Now: optimistic-lock the UPDATE on the (status, revision) we just
+      // read. If 0 rows are affected, another request already claimed this
+      // signature — skip cleanly with no storage write (so no orphan).
+      // If the claim succeeds, upload with upsert:true (idempotent for
+      // identical bytes). If storage then fails, revert the row to its
+      // prior values so the DB never records a signature without bytes.
+      const { data: claimedRows, error: claimError } = await supabaseAdmin
         .from('application_documents')
         .update({
           revision: newRevision,
@@ -179,7 +190,48 @@ export async function POST(
           uploaded_by_role: 'tenant',
           updated_at: new Date().toISOString(),
         })
-        .eq('id', document_id);
+        .eq('id', document_id)
+        .eq('anchor_id', app.id)
+        .eq('status', priorStatus)
+        .eq('revision', priorRevision)
+        .select('id');
+
+      if (claimError) throw claimError;
+      if ((claimedRows?.length ?? 0) === 0) {
+        // Race lost — another request already advanced this row. Skip
+        // without uploading; the winning request's bytes are authoritative.
+        console.log(
+          JSON.stringify({
+            event: 'pbv_signatures_race_lost',
+            document_id,
+            app_id: app.id,
+            member_id,
+          })
+        );
+        continue;
+      }
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('pbv-applications')
+        .upload(storagePath, buffer, { contentType: 'image/png', upsert: true });
+
+      if (uploadError) {
+        // Storage write failed AFTER a successful DB claim: revert the
+        // row so it doesn't read as signed without backing bytes. The
+        // updated_at bump on rollback is intentional — it's still a
+        // modification of the row.
+        await supabaseAdmin
+          .from('application_documents')
+          .update({
+            revision: priorRevision,
+            status: priorStatus,
+            file_name: priorFileName,
+            storage_path: priorStoragePath,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', document_id);
+        throw uploadError;
+      }
 
       signedDocTypes.push(doc.doc_type);
       if (!firstSignaturePath) firstSignaturePath = storagePath;

@@ -498,10 +498,8 @@ function ThresholdsPanel() {
       if (!res.ok) throw new Error('Failed to load');
       const json = await res.json();
       const allData: Threshold[] = json.data ?? [];
-      // Filter by selected zipcode (or null/undefined for default)
-      const filteredData = allData.filter(
-        (t) => t.zipcode === selectedZipcode || (!t.zipcode && selectedZipcode === '06106')
-      );
+      // Filter by selected zipcode
+      const filteredData = allData.filter((t) => t.zipcode === selectedZipcode);
       setRows(filteredData);
       const initial: Record<number, { income_limit: string; effective_date: string }> = {};
       for (const r of filteredData) {

@@ -6,9 +6,17 @@
  * abuse small, and just console.errors so Vercel function logs capture it.
  *
  * Intentionally no DB / Sentry / external calls — cheap and reliable.
+ *
+ * PRP-018:
+ *   - G2: payload runs through `redact()` before logging so any
+ *     tenant_access_token in `url` (or other sensitive key) is stripped.
+ *   - D5: client IP derived via `clientIpFromHeaders()` (prefers
+ *     x-vercel-forwarded-for, then leftmost non-private x-forwarded-for)
+ *     instead of trusting the raw x-forwarded-for header.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { clientIpFromHeaders, redact } from '@/lib/log/redact';
 
 const MAX_STR = 4096;
 
@@ -24,16 +32,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
-    const payload = {
+    const payload = redact({
       message: clip((body as any).message),
       stack: clip((body as any).stack),
       digest: clip((body as any).digest),
       userAgent: clip((body as any).userAgent),
       url: clip((body as any).url),
       when: clip((body as any).when),
-      ip: request.headers.get('x-forwarded-for') ?? null,
+      ip: clientIpFromHeaders(request.headers),
       ts: new Date().toISOString(),
-    };
+    });
 
     // Vercel captures stderr from console.error in the Functions log.
     console.error('[client-error]', JSON.stringify(payload));

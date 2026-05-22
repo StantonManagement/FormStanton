@@ -89,15 +89,47 @@ export async function POST(
     const newToken = generateToken();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { error: updateError } = await supabaseAdmin
+    // PRD-83 #A10: optimistic lock on the token we read. Pre-PRD-83 two
+    // concurrent regenerations could both pass the expiry check, both
+    // generate a fresh token, and the second UPDATE silently overwrote
+    // the first — invalidating a link the first caller had already handed
+    // out. Now the UPDATE is scoped to the token value we read; if 0 rows
+    // are affected another writer won, so we re-read and return the
+    // winning token with `regenerated:false, race:true` instead of
+    // overwriting it.
+    const { data: updateRows, error: updateError } = await supabaseAdmin
       .from('pbv_household_members')
       .update({
         magic_link_token: newToken,
         magic_link_expires_at: expiresAt,
       })
-      .eq('id', member.id);
+      .eq('id', member.id)
+      .eq('magic_link_token', member.magic_link_token ?? '')
+      .select('id');
 
     if (updateError) throw updateError;
+
+    if ((updateRows?.length ?? 0) === 0) {
+      // Race lost — another concurrent call already wrote a new token.
+      // Read it back and return that one rather than clobbering it.
+      const { data: fresh } = await supabaseAdmin
+        .from('pbv_household_members')
+        .select('magic_link_token, magic_link_expires_at')
+        .eq('id', member.id)
+        .maybeSingle();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          member_id: member.id,
+          member_name: member.name,
+          magic_link_token: fresh?.magic_link_token ?? null,
+          magic_link_expires_at: fresh?.magic_link_expires_at ?? null,
+          regenerated: false,
+          race: true,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

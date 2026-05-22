@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
+import { validateSignFormBody } from '@/lib/pbv/signing/validateSignFormBody';
 import { getSession } from '@/lib/auth';
 
 export async function POST(
@@ -35,13 +36,14 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
 
-  if (!body?.form_document_id || !body?.signer_member_id || !body?.typed_name ||
-      !body?.signature_image_path || !body?.ceremony_id) {
+  // PRD-77 #6 (tenant): UUID + enum validation BEFORE any DB work. The
+  // pre-PRD-77 presence-only check let malformed UUIDs propagate to Supabase
+  // (opaque error) and crafted device_owner values reach the CHECK constraint
+  // round-trip.
+  const validation = validateSignFormBody(body, { requireSignerMemberId: true });
+  if (!validation.ok) {
     return NextResponse.json(
-      {
-        success: false,
-        message: 'form_document_id, signer_member_id, typed_name, signature_image_path, and ceremony_id are required',
-      },
+      { success: false, message: validation.message },
       { status: 400 }
     );
   }

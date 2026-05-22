@@ -34,6 +34,27 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'This link has expired.', code: 'expired' }, { status: 410 });
     }
 
+    // PRD-82 #A4: packet_locked gate (same shape as the signer bootstrap
+    // route and PRD-77's withTenantContext). Block the forms list while the
+    // packet is under HACH review so a non-HOH adult on a magic link can't
+    // even see what's left to sign.
+    const { data: app } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .select('preferred_language, packet_locked')
+      .eq('id', member.full_application_id)
+      .maybeSingle();
+
+    if (app?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This packet is currently under review. Please contact the Stanton office.',
+          code: 'packet_locked',
+        },
+        { status: 409 }
+      );
+    }
+
     const { data: docs, error } = await supabaseAdmin
       .from('pbv_form_documents')
       .select('id, form_id, language, status, generated_at, finalized_at, required_signer_member_ids, collected_signer_member_ids, conditional_trigger')
@@ -41,12 +62,6 @@ export async function GET(
       .in('status', ['generated', 'signed', 'finalized']);
 
     if (error) throw error;
-
-    const { data: app } = await supabaseAdmin
-      .from('pbv_full_applications')
-      .select('preferred_language')
-      .eq('id', member.full_application_id)
-      .maybeSingle();
 
     const formIds = [...new Set((docs ?? []).map((d) => d.form_id))];
     const { data: templates } = await supabaseAdmin

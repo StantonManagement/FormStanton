@@ -52,6 +52,14 @@ const requiredVars = [
     name: 'SESSION_SECRET',
     description: 'Session encryption secret',
     validate: (val: string) => val.length >= 32
+  },
+  {
+    // PRP-004 / I1: CRON_SECRET is now mandatory for cron auth — missing
+    // value silently 401s every cron run in production. Gate it here so
+    // local/CI fails loudly before the deploy.
+    name: 'CRON_SECRET',
+    description: 'Vercel Cron Bearer secret (required by /api/cron/* routes)',
+    validate: (val: string) => val.length >= 16
   }
 ];
 

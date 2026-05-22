@@ -36,6 +36,9 @@ input[type="text"],
 input[type="tel"],
 input[type="number"],
 input[type="email"],
+/* PRP-014 / mobile review §5.1: include date so the native picker
+   trigger does not trip iOS zoom-on-focus. */
+input[type="date"],
 select,
 textarea {
   min-height: 44px;
