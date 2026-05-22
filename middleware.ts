@@ -18,6 +18,19 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const httpMethod = request.method;
 
+  // ----------------------------------------------------------------
+  // Tenant surfaces: headers only, skip iron-session work (PRP-001 / D6).
+  // /pbv-full-app and /api/t use tenant_access_token (URL-bound), not the
+  // iron-session cookie, so decoding the session here is pure latency.
+  // ----------------------------------------------------------------
+  if (pathname.startsWith('/pbv-full-app/') || pathname.startsWith('/api/t/')) {
+    const tenantResponse = NextResponse.next();
+    tenantResponse.headers.set('X-Content-Type-Options', 'nosniff');
+    tenantResponse.headers.set('X-Frame-Options', 'DENY');
+    tenantResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    return tenantResponse;
+  }
+
   // Load session once for all guarded route trees
   const session = await getIronSession<SessionData>(request.cookies as any, sessionOptions);
 
@@ -163,7 +176,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // ----------------------------------------------------------------
-  // Security headers for all admin + hach routes
+  // Security headers for all admin + hach routes (tenant routes handled
+  // at the top by the early-exit branch).
   // ----------------------------------------------------------------
   const response = NextResponse.next();
 
@@ -178,5 +192,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/hach/:path*', '/api/hach/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/api/admin/:path*',
+    '/hach/:path*',
+    '/api/hach/:path*',
+    '/pbv-full-app/:path*',
+    '/api/t/:path*',
+  ],
 };
