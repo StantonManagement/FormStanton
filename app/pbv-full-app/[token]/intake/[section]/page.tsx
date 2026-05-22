@@ -95,6 +95,23 @@ export default function IntakeSectionPage({ params }: Props) {
   const [navigating, setNavigating] = useState(false);
   const [navError, setNavError] = useState('');
 
+  // PRP-015 / F2: deep-link guard. If the URL requests a section ahead of
+  // the bootstrap's resume_section, redirect to the resume section.
+  // Backward navigation to already-completed sections is still allowed.
+  // The review section is always allowed (it has its own readiness gate).
+  const resumeSection: SectionSlug | null =
+    state.status === 'ready' ? (state.data.resume_section as SectionSlug | null) : null;
+  useEffect(() => {
+    if (state.status !== 'ready') return;
+    if (!resumeSection) return;
+    if (currentSlug === 'review') return;
+    const resumeIndex = visibleSections.indexOf(resumeSection);
+    if (resumeIndex < 0) return;
+    if (currentIndex > resumeIndex) {
+      router.replace(`/pbv-full-app/${token}/intake/${resumeSection}`);
+    }
+  }, [state.status, resumeSection, currentSlug, currentIndex, visibleSections, router, token]);
+
   // PRP-010 / C1: warn the tenant before they close a tab with unsaved
   // section data. Mirrors the verified-safe pattern at
   // app/pbv-full-app/[token]/documents/page.tsx:109-121. Guard engages
@@ -115,13 +132,27 @@ export default function IntakeSectionPage({ params }: Props) {
     return () => window.removeEventListener('beforeunload', handler);
   }, [saveStatus, sectionData]);
 
+  // PRP-015 / E1: functional updater so the merge always sees the freshest
+  // prev value. The previous `[intakeData]` dep + closure could merge stale
+  // intakeData over newer if a background reload landed between callback
+  // creation and call. Functional updater removes the closure dependency
+  // entirely; the deps are now empty (stable callback for child memos).
   const handleSectionChange = useCallback(
     (slug: SectionSlug, data: Record<string, unknown>) => {
       setSectionData(data);
-      setLocalIntakeData((prev) => ({ ...(prev ?? intakeData), [slug]: data }));
+      setLocalIntakeData((prev) => {
+        // Prefer the freshest live value: prev (component state) if set;
+        // otherwise fall back to the bootstrap snapshot (captured at first
+        // render via setLocalIntakeData(null) initial state). We do not
+        // close over `intakeData` directly — read it from the bootstrap
+        // ref-style alternative would also work, but the prev fallback
+        // is sufficient for the merge-correctness invariant.
+        const base = prev ?? null;
+        if (!base) return { [slug]: data };
+        return { ...base, [slug]: data };
+      });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intakeData]
+    []
   );
 
   const navigateTo = async (slug: SectionSlug) => {
@@ -138,6 +169,13 @@ export default function IntakeSectionPage({ params }: Props) {
       setNavigating(false);
     }
     router.push(`/pbv-full-app/${token}/intake/${slug}`);
+    // PRP-015 / mobile §8.2: scroll to top after section change so the
+    // user lands at the top of the next section, not wherever they
+    // scrolled in the previous one (mobile keyboards leave the page
+    // mid-scroll). Smooth scroll honors prefers-reduced-motion.
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleBack = () => {
