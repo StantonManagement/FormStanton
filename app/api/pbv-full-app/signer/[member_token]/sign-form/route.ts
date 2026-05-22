@@ -22,6 +22,18 @@ import { headers } from 'next/headers';
 import { completeFormSigning } from '@/lib/pbv/signing/completeForm';
 import { isMagicLinkExpired } from '@/lib/pbv/magicLinkExpiry';
 import { validateSignFormBody } from '@/lib/pbv/signing/validateSignFormBody';
+import {
+  checkRateLimit,
+  ipKeyFromHeaders,
+  peekRateLimit,
+  rateLimitedResponse,
+  registerFailedAttempt,
+  SIGNER_FAILED_ATTEMPTS_LIMIT,
+  SIGNER_LOCKOUT_WINDOW_SEC,
+  SIGNER_PER_IP_LIMIT,
+} from '@/lib/rateLimit';
+
+const GENERIC_DENY = { success: false, message: 'Unable to verify link.', code: 'invalid_or_expired' as const };
 
 export async function POST(
   request: NextRequest,
@@ -29,6 +41,31 @@ export async function POST(
 ) {
   try {
     const { member_token } = await context.params;
+    const ipKey = ipKeyFromHeaders(request.headers);
+
+    // PRP-002 / D3: per-IP entry limit + rolling-failure lockout (same
+    // counter as the bootstrap route so probes across both endpoints share
+    // the failure budget).
+    const ipCheck = await checkRateLimit({
+      key: `signer-sign-form-ip:${ipKey}`,
+      limit: SIGNER_PER_IP_LIMIT.limit,
+      windowSec: SIGNER_PER_IP_LIMIT.windowSec,
+    });
+    if (!ipCheck.allowed) {
+      const r = rateLimitedResponse(ipCheck.retryAfterSec);
+      return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+    }
+
+    const failKey = `signer-bootstrap-fail:${ipKey}`;
+    const lockState = await peekRateLimit({
+      key: failKey,
+      limit: SIGNER_FAILED_ATTEMPTS_LIMIT,
+      windowSec: SIGNER_LOCKOUT_WINDOW_SEC,
+    });
+    if (!lockState.allowed) {
+      const r = rateLimitedResponse(lockState.retryAfterSec);
+      return NextResponse.json(GENERIC_DENY, { status: r.status, headers: r.headers });
+    }
 
     const { data: member } = await supabaseAdmin
       .from('pbv_household_members')
@@ -37,11 +74,13 @@ export async function POST(
       .maybeSingle();
 
     if (!member) {
-      return NextResponse.json({ success: false, message: 'Link not found.' }, { status: 404 });
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
+      return NextResponse.json(GENERIC_DENY, { status: 404 });
     }
     // PRD-78 #8: centralized epoch-based expiry check (matches the bootstrap
     // GET route; both now use the same helper).
     if (isMagicLinkExpired(member.magic_link_expires_at)) {
+      await registerFailedAttempt(failKey, SIGNER_FAILED_ATTEMPTS_LIMIT, SIGNER_LOCKOUT_WINDOW_SEC);
       return NextResponse.json({ success: false, message: 'This link has expired.', code: 'expired' }, { status: 410 });
     }
 

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withIdempotency } from '@/lib/idempotency';
+import {
+  checkRateLimit,
+  ipKeyFromHeaders,
+  rateLimitedResponse,
+  resolveTenantLimit,
+} from '@/lib/rateLimit';
 
 export interface TenantApp {
   id: string;
@@ -50,6 +56,34 @@ export async function withTenantContext(
   select?: string,
   idempotencyKey?: string // F5: optional custom key for fine-grained idempotency
 ): Promise<NextResponse> {
+  // PRP-002 / D2: limiter runs BEFORE the DB lookup so token brute-force and
+  // compute floods (generate-forms, finalize) are throttled at the wrapper.
+  // Two checks: per-token+route and per-IP backstop. Either denial → 429.
+  const ipKey = ipKeyFromHeaders(request.headers);
+  const { limit, windowSec } = resolveTenantLimit(endpoint);
+
+  const tokenCheck = await checkRateLimit({
+    key: `tenant:${endpoint}:${token}`,
+    limit,
+    windowSec,
+  });
+  if (!tokenCheck.allowed) {
+    const r = rateLimitedResponse(tokenCheck.retryAfterSec);
+    return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+  }
+
+  // Per-IP backstop. Larger window/limit so legitimate multi-tab users aren't
+  // hurt, but a single host hammering tokens across the space is still capped.
+  const ipCheck = await checkRateLimit({
+    key: `tenant-ip:${ipKey}`,
+    limit: 240,
+    windowSec: 60,
+  });
+  if (!ipCheck.allowed) {
+    const r = rateLimitedResponse(ipCheck.retryAfterSec);
+    return NextResponse.json(r.body, { status: r.status, headers: r.headers });
+  }
+
   const app = await resolveTokenToApp(token, select);
 
   if (!app) {
