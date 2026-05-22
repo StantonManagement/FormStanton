@@ -382,3 +382,19 @@
     transform: scale(1.1);
   }
 }
+
+/* PRP-017 / B6 + H1: global reduced-motion override. Covers CSS-driven
+   animations / transitions that don't pass through framer-motion (e.g.
+   the IntakeShell progress bar's `transition-all duration-300`). The
+   framer-motion gate in app/pbv-full-app/[token]/page.tsx handles the
+   JS-driven page transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -161,12 +161,25 @@ export async function POST(
           continue;
         }
 
-        // Stamp the PDF
+        // Stamp the PDF. PRP-017 / B4: per-form timing log so operations
+        // can see when a household + form-stack approach the 120s Vercel
+        // limit. Chunking / a background queue is the documented follow-up.
+        const stampStartedAt = Date.now();
         const stampedPdf = await stampForm({
           fieldMap,
           data: fieldData,
           sourcePdfBytes: sourcePdf,
         });
+        const stampMs = Date.now() - stampStartedAt;
+        if (stampMs > 5_000) {
+          console.warn(
+            `[generate-forms] slow stamp form_id=${formId} language=${language} ms=${stampMs}`
+          );
+        } else {
+          console.log(
+            `[generate-forms] stamp form_id=${formId} language=${language} ms=${stampMs}`
+          );
+        }
 
         // PRD-66 (audit #5): decide generation_version + versioned unsigned path
         // before uploading, so a regenerate during a partially-signed ceremony

@@ -239,8 +239,15 @@ export default function SectionHousehold({ language, intakeData, onChange }: Pro
             type="date"
             value={hohDob}
             onChange={(e) => { setHohDob(e.target.value); emit({ hohDob: e.target.value }); }}
+            // PRP-017 / H4: Firefox sometimes does not fire `onChange` when
+            // a date picker is cleared. The onBlur handler re-syncs the
+            // bound state from the DOM value so computeAge sees an empty
+            // string rather than the previously-typed date.
+            onBlur={(e) => { if (e.target.value !== hohDob) { setHohDob(e.target.value); emit({ hohDob: e.target.value }); } }}
+            aria-describedby="hoh_dob_hint"
             className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
           />
+          <span id="hoh_dob_hint" className="mt-1 block text-xs text-[var(--muted)]">YYYY-MM-DD</span>
         </FormField>
 
         <FormField label={c.ssn} htmlFor="hoh_ssn">
@@ -336,8 +343,17 @@ export default function SectionHousehold({ language, intakeData, onChange }: Pro
                   const age = computeAge(e.target.value);
                   updateMember(i, { dob: e.target.value, is_minor: age !== null && age < 18 });
                 }}
+                // PRP-017 / H4: Firefox-safe clear handling.
+                onBlur={(e) => {
+                  if (e.target.value !== m.dob) {
+                    const age = computeAge(e.target.value);
+                    updateMember(i, { dob: e.target.value, is_minor: age !== null && age < 18 });
+                  }
+                }}
+                aria-describedby={`m${i}_dob_hint`}
                 className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
               />
+              <span id={`m${i}_dob_hint`} className="mt-1 block text-xs text-[var(--muted)]">YYYY-MM-DD</span>
             </FormField>
 
             <FormField label={c.member_ssn} htmlFor={`m${i}_ssn`}>
