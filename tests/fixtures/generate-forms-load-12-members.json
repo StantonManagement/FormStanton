@@ -1,0 +1,32 @@
+{
+  "$comment": "PRP-022 / J4 — 12-member household fixture for generate-forms load baseline. Loaded by tests/e2e/pbv-load-generate-forms.spec.ts. Touches the each_adult code path with the upper bound of realistic household sizes.",
+  "head_of_household": {
+    "name": "Load Test HOH",
+    "dob": "1965-01-15",
+    "ssn_last_four": "0001",
+    "phone": "8605270000",
+    "email": "load-test@example.com",
+    "preferred_language": "en"
+  },
+  "household_members": [
+    { "slot": 2, "name": "Adult 2", "dob": "1968-02-01", "relationship": "spouse", "is_minor": false },
+    { "slot": 3, "name": "Adult 3", "dob": "1985-03-01", "relationship": "other", "is_minor": false },
+    { "slot": 4, "name": "Adult 4", "dob": "1988-04-01", "relationship": "other", "is_minor": false },
+    { "slot": 5, "name": "Adult 5", "dob": "1991-05-01", "relationship": "other", "is_minor": false },
+    { "slot": 6, "name": "Adult 6", "dob": "1994-06-01", "relationship": "other", "is_minor": false },
+    { "slot": 7, "name": "Adult 7", "dob": "1997-07-01", "relationship": "other", "is_minor": false },
+    { "slot": 8, "name": "Minor 1", "dob": "2015-08-01", "relationship": "child", "is_minor": true },
+    { "slot": 9, "name": "Minor 2", "dob": "2017-09-01", "relationship": "child", "is_minor": true },
+    { "slot": 10, "name": "Minor 3", "dob": "2019-10-01", "relationship": "child", "is_minor": true },
+    { "slot": 11, "name": "Minor 4", "dob": "2021-11-01", "relationship": "child", "is_minor": true },
+    { "slot": 12, "name": "Minor 5", "dob": "2023-12-01", "relationship": "child", "is_minor": true }
+  ],
+  "expected_signers": 7,
+  "expected_min_forms": 10,
+  "performance_baseline": {
+    "$comment": "Set after the first passing run. PRP-017 adds per-form stampMs logging; total should stay well under Vercel's 120s function limit.",
+    "total_stamp_ms_p50": null,
+    "total_stamp_ms_p95": null,
+    "per_form_stamp_ms_p95": null
+  }
+}
