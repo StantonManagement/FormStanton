@@ -360,7 +360,9 @@ export async function updateApplicationSigningStatus(appId: string): Promise<voi
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Promise<FieldMap | null> {
+// PRP-005 / #8: exported for the regression test that asserts a missing
+// field map cannot advance form_doc.status to 'signed'.
+export async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Promise<FieldMap | null> {
   const { readFileSync, existsSync } = require('fs');
   const { join } = require('path');
   const slug = formId.replace(/_/g, '-');
@@ -373,7 +375,9 @@ async function loadFieldMapForSigning(formId: string, language: 'en' | 'es'): Pr
   }
 }
 
-function buildSignatureFieldData(
+// PRP-005 / #5: exported for the regression test that asserts each adult
+// row gets its own `__sig__:${memberId}` marker (not a shared buffer).
+export function buildSignatureFieldData(
   fieldMap: FieldMap,
   requiredSignerIds: string[],
   memberSlotMap: Map<string, number>
