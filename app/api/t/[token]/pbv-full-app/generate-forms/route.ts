@@ -310,6 +310,28 @@ export async function POST(
           ? members.filter((m) => (m.age ?? 0) >= 18).map((m) => m.id).filter(Boolean) as string[]
           : getRequiredSignerIds(template.per_person_scope, members, iter.slot);
 
+        // PRP-023: fail loudly if a known scope produced no signers. The pre-PRP-023
+        // bug left rows with required_signer_member_ids=[] so completeFormSigning
+        // never matched a signer, the form could never reach status='signed', and
+        // finalize stayed blocked. Skip the row (do NOT write a 0-signer row) and
+        // surface it in the skipped[] response so the caller can diagnose.
+        //
+        // Diagnostic hint logged separately: most common cause is members[] missing
+        // an age (intake didn't capture DOB on slot=1), so the each_adult / individual
+        // filter excludes the HOH.
+        if (requiredSignerIds.length === 0) {
+          console.error(
+            `[generate-forms] required_signer_member_ids empty for form_id=${formId} ` +
+              `scope=${template.per_person_scope} iter_slot=${iter.slot} ` +
+              `members_total=${members.length} ` +
+              `members_with_age=${members.filter((m) => m.age != null).length} ` +
+              `adults=${members.filter((m) => (m.age ?? 0) >= 18).length}`
+          );
+          skipped.push({ form_id: formId, language, reason: 'resolver_missing' });
+          if (isPerPersonAllAdults) break;
+          continue;
+        }
+
         // Compute source hash (template) + unsigned hash (stamped bytes the
         // signer will hash at sign time — PRD-62 Check 5).
         const sourceHash = sha256Hex(sourcePdf);

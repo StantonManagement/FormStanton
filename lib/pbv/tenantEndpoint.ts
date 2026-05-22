@@ -180,7 +180,31 @@ export async function withTenantContext(
 
   // F5: Use custom idempotency key if provided (e.g., ceremony_id + form_document_id)
   const effectiveKey = idempotencyKey ?? endpoint;
-  const response = await withIdempotency(request, app.id, effectiveKey, () => handler(app));
+  let response: NextResponse;
+  try {
+    response = await withIdempotency(request, app.id, effectiveKey, () => handler(app));
+  } catch (err: any) {
+    // A handler that throws would otherwise propagate to Next.js and surface as
+    // an opaque empty-body 500 (observed on generate-forms 2026-05-22, where the
+    // tenant just saw "Failed to generate forms" with nothing logged). Log
+    // structured detail and return a diagnosable body. Centralized here so it
+    // covers every tenant route (generate-forms, finalize, sign-form,
+    // intake/complete, ...) rather than per-route try/catch.
+    console.error(
+      '[withTenantContext] handler threw',
+      JSON.stringify({
+        endpoint,
+        method: request.method,
+        app_id: app.id,
+        message: err?.message ?? String(err),
+      }),
+      err?.stack ?? ''
+    );
+    return NextResponse.json(
+      { success: false, message: 'Internal server error', code: 'server_error', endpoint },
+      { status: 500 }
+    );
+  }
 
   // PRP-020 / D7: issue a fresh CSRF token on every GET response so the
   // client always has a valid (short-TTL) token for its next mutating

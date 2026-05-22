@@ -33,6 +33,7 @@ export async function POST(
   const { token } = await context.params;
 
   return withTenantContext(request, token, 'sign-summary', async (app) => {
+   try {
     const body = await request.json().catch(() => null);
 
     if (!body?.typed_name || !body?.signature_image_path || !body?.ceremony_id) {
@@ -283,5 +284,21 @@ export async function POST(
       },
       status: 200,
     };
+   } catch (error: any) {
+     // Previously this handler had no try/catch, so any DB error surfaced as an
+     // opaque 500 with an empty body (which masked the form_document_id NOT NULL
+     // violation for weeks). Log the full error server-side for diagnosis and
+     // return a generic message to the client.
+     console.error('[sign-summary] error:', {
+       message: error?.message,
+       code: error?.code,
+       details: error?.details,
+       hint: error?.hint,
+     });
+     return {
+       body: { success: false, message: 'Internal server error', code: 'server_error' },
+       status: 500,
+     };
+   }
   });
 }

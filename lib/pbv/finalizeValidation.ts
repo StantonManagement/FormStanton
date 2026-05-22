@@ -119,8 +119,17 @@ export async function validateReadyToFinalize(
     .eq('anchor_type', 'pbv_full_application')
     .eq('anchor_id', applicationId);
 
+  // 'no_longer_required' is the conditional-suppression status: a doc that was
+  // seeded as required but the applicant's answers mean it isn't needed (e.g. an
+  // SSI award letter for a wage-only household). recomputeApplicationDocSummary
+  // already excludes it from the "missing" count; finalize must treat it the
+  // same, or every application with any conditional suppression (≈ all of them)
+  // can never finalize despite the tenant having nothing left to provide.
   const isCompleteStatus = (status: string): boolean =>
-    status === 'submitted' || status === 'approved' || status === 'waived';
+    status === 'submitted' ||
+    status === 'approved' ||
+    status === 'waived' ||
+    status === 'no_longer_required';
 
   for (const doc of allDocs ?? []) {
     // Only check required documents, and only those that are missing or rejected

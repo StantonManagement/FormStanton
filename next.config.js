@@ -5,6 +5,9 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', '@dnd-kit/core', '@dnd-kit/sortable'],
   },
 
+  // Silence Turbopack vs webpack config warning (Next.js 16 default)
+  turbopack: {},
+
   // Include field maps and source PDFs in serverless bundle for generate-forms.
   // docs/ is .vercelignore'd, so source PDFs live in assets/pbv-source-pdfs/.
   outputFileTracingIncludes: {

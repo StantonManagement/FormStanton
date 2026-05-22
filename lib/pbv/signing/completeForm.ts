@@ -316,6 +316,27 @@ export async function completeFormSigning(
     .update({ signing_device: deviceOwner })
     .eq('id', signerMemberId);
 
+  // ── PRP-023: dual-write application_documents (signed_forms) ──────────────
+  // Finalize Check 4 reads application_documents.status. The new pbv_form_documents
+  // signing flow does not touch application_documents, so signed_forms-category
+  // rows stayed 'missing' forever and finalize never went green. Mark them
+  // submitted here so Check 3 (form docs) and Check 4 (application docs) agree.
+  //
+  // Mapping:
+  //  - HOH-scope (submission_level / head_of_household_only): when the form
+  //    is fully signed, mark every matching signed_forms row (any person_slot).
+  //  - Per-person scope (each_adult / individual / each_member): mark only
+  //    the row for the slot of the member who just signed.
+  //  - PRD-55 alias: pbv_form_documents.form_id='briefing_cert' maps to
+  //    application_documents.doc_type='briefing_docs_certification' as well.
+  await syncApplicationDocumentsForSignedForm({
+    appId,
+    formId: formDoc.form_id,
+    signerMemberId,
+    signerSlot: member.slot,
+    allSigned,
+  });
+
   // ── Check if all forms signed — update signing_status ────────────────────
   await updateApplicationSigningStatus(appId);
 
@@ -359,6 +380,98 @@ export async function updateApplicationSigningStatus(appId: string): Promise<voi
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * PRP-023: map a pbv_form_documents.form_id to the doc_type(s) that the
+ * matching signed_forms-category application_documents rows use.
+ *
+ * One special case today: PRD-55 renamed `briefing_docs_certification` to
+ * `briefing_cert` inside pbv_form_templates / pbv_form_documents only.
+ * form_document_templates (and therefore application_documents.doc_type)
+ * was never updated, so a fully-signed briefing_cert form has to look up
+ * the OLD doc_type to find its application_documents row.
+ *
+ * Exported so a regression test can lock the mapping in place.
+ */
+export function formIdToDocTypes(formId: string): string[] {
+  if (formId === 'briefing_cert') return ['briefing_cert', 'briefing_docs_certification'];
+  return [formId];
+}
+
+/**
+ * PRP-023: dual-write application_documents (signed_forms category) when a
+ * pbv_form_documents row gains a signer. See call site in completeFormSigning
+ * for the rules — summary: HOH-scope marks every matching slot, per-person
+ * scope marks only the slot of the signer who just signed.
+ *
+ * Non-fatal: a sync failure logs but does not abort the signing flow. The
+ * finalize migration backfill can repair stragglers.
+ */
+async function syncApplicationDocumentsForSignedForm(opts: {
+  appId: string;
+  formId: string;
+  signerMemberId: string;
+  signerSlot: number;
+  allSigned: boolean;
+}): Promise<void> {
+  const { appId, formId, signerSlot, allSigned } = opts;
+  try {
+    // Look up the template's per_person_scope to decide the update shape.
+    const { data: template } = await supabaseAdmin
+      .from('pbv_form_templates')
+      .select('per_person_scope')
+      .eq('form_id', formId)
+      .maybeSingle();
+
+    const scope = (template?.per_person_scope ?? null) as string | null;
+    const docTypes = formIdToDocTypes(formId);
+    const nowIso = new Date().toISOString();
+
+    if (scope === 'submission_level' || scope === 'head_of_household_only') {
+      // HOH signs once for the family. Only flip rows when the form has
+      // reached all required signers (= the single HOH signature here).
+      if (!allSigned) return;
+      const { error } = await supabaseAdmin
+        .from('application_documents')
+        .update({ status: 'submitted', updated_at: nowIso })
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', appId)
+        .in('doc_type', docTypes)
+        .eq('category', 'signed_forms')
+        .eq('status', 'missing');
+      if (error) {
+        console.error('[completeForm] syncApplicationDocuments (HOH) failed:', error);
+      }
+      return;
+    }
+
+    if (scope === 'each_adult' || scope === 'individual' || scope === 'each_member') {
+      // Per-person: each signer marks their own row.
+      const { error } = await supabaseAdmin
+        .from('application_documents')
+        .update({ status: 'submitted', updated_at: nowIso })
+        .eq('anchor_type', 'pbv_full_application')
+        .eq('anchor_id', appId)
+        .in('doc_type', docTypes)
+        .eq('category', 'signed_forms')
+        .eq('person_slot', signerSlot)
+        .eq('status', 'missing');
+      if (error) {
+        console.error('[completeForm] syncApplicationDocuments (per-person) failed:', error);
+      }
+      return;
+    }
+
+    // Unknown scope or no template row found: log + skip (fail open, the
+    // migration backfill will mop up).
+    console.warn(
+      `[completeForm] No matching pbv_form_templates row or unknown scope for form_id=${formId}; ` +
+        `application_documents will be backfilled on finalize migration apply.`
+    );
+  } catch (e) {
+    console.error('[completeForm] syncApplicationDocuments threw:', e);
+  }
+}
 
 // PRP-005 / #8: exported for the regression test that asserts a missing
 // field map cannot advance form_doc.status to 'signed'.

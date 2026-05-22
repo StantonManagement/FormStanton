@@ -303,4 +303,61 @@ describe('completeFormSigning() — PRD-62', () => {
 
     expect(result.success).toBe(true);
   });
+
+  // PRP-023: completeFormSigning must dual-write to application_documents so
+  // finalize's Check 4 (application_documents) can agree with Check 3
+  // (pbv_form_documents). These are source-shape assertions because the
+  // mock-builder above doesn't model `.in(col, vals)` chains the way the
+  // real client does, so we lock the behavior at the source level.
+  describe('PRP-023: application_documents dual-write', () => {
+    it('exports formIdToDocTypes with the briefing_cert alias', async () => {
+      const { formIdToDocTypes } = await import('../signing/completeForm');
+      expect(formIdToDocTypes('hach_release')).toEqual(['hach_release']);
+      // PRD-55 renamed briefing_docs_certification → briefing_cert in
+      // pbv_form_templates only. The alias maps the new form_id back to the
+      // legacy doc_type so application_documents still gets marked submitted.
+      expect(formIdToDocTypes('briefing_cert').sort()).toEqual(
+        ['briefing_cert', 'briefing_docs_certification'].sort()
+      );
+    });
+
+    it('source: HOH-scope branch only writes when allSigned, and clears status=missing on signed_forms rows', () => {
+      const { readFileSync } = require('fs');
+      const { join } = require('path');
+      const src = readFileSync(
+        join(process.cwd(), 'lib', 'pbv', 'signing', 'completeForm.ts'),
+        'utf8'
+      );
+
+      // Isolate syncApplicationDocumentsForSignedForm so the branch-level
+      // assertions can't accidentally pick up matches from elsewhere in the file.
+      const fnStart = src.indexOf('async function syncApplicationDocumentsForSignedForm');
+      expect(fnStart).toBeGreaterThan(-1);
+      const fnAfter = src.indexOf('\n// PRP-005', fnStart); // next sentinel after the function
+      expect(fnAfter).toBeGreaterThan(fnStart);
+      const fnBody = src.slice(fnStart, fnAfter);
+
+      // HOH branch — must guard on allSigned and update application_documents
+      // with status='submitted' / category='signed_forms'.
+      const hohBranchMatch = fnBody.match(
+        /scope === 'submission_level' \|\| scope === 'head_of_household_only'[\s\S]+?return;\s*\}/
+      );
+      expect(hohBranchMatch, 'expected HOH-scope branch in syncApplicationDocumentsForSignedForm').not.toBeNull();
+      const hohBranch = hohBranchMatch![0];
+      expect(hohBranch).toMatch(/if \(!allSigned\) return;/);
+      expect(hohBranch).toMatch(/status: 'submitted'/);
+      expect(hohBranch).toMatch(/category[^\n]*signed_forms/);
+      expect(hohBranch).toMatch(/status[^\n]*missing/);
+
+      // Per-person branch — must NOT gate on allSigned; matches on person_slot.
+      const perPersonMatch = fnBody.match(
+        /scope === 'each_adult' \|\| scope === 'individual' \|\| scope === 'each_member'[\s\S]+?return;\s*\}/
+      );
+      expect(perPersonMatch, 'expected per-person scope branch').not.toBeNull();
+      const perPersonBranch = perPersonMatch![0];
+      expect(perPersonBranch).toMatch(/person_slot/);
+      expect(perPersonBranch).toMatch(/signerSlot/);
+      expect(perPersonBranch).not.toMatch(/if \(!allSigned\) return;/);
+    });
+  });
 });

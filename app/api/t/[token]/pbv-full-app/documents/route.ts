@@ -208,7 +208,13 @@ export async function GET(
     });
 
     // F4: Exclude no_longer_required docs from tenant view entirely
-    const visibleDocs = mappedDocs.filter((d) => d.status !== 'no_longer_required');
+    // PRP-023: also exclude signed_forms category — these are handled by
+    // the dedicated /sign/forms flow (pbv_form_documents + FormsStack), not
+    // by the upload UI. Showing them as upload cards confused tenants into
+    // thinking they had to scan a federal form they were about to sign.
+    const visibleDocs = mappedDocs.filter(
+      (d) => d.status !== 'no_longer_required' && d.category !== 'signed_forms'
+    );
 
     return NextResponse.json({
       success: true,

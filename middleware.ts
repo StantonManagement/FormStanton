@@ -26,7 +26,16 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/pbv-full-app/') || pathname.startsWith('/api/t/')) {
     const tenantResponse = NextResponse.next();
     tenantResponse.headers.set('X-Content-Type-Options', 'nosniff');
-    tenantResponse.headers.set('X-Frame-Options', 'DENY');
+    // The application summary PDF and each generated form PDF are embedded in
+    // same-origin <iframe>s on the tenant signing pages. X-Frame-Options: DENY
+    // blocks ALL framing — even same-origin — so those previews render blank and
+    // the tenant is asked to read/sign a document they cannot see. Serve
+    // SAMEORIGIN for those PDF-preview endpoints (still blocks cross-origin
+    // clickjacking); keep DENY for the rest of the tenant surface.
+    const isFramedPdf =
+      /\/pbv-full-app\/summary-pdf$/.test(pathname) ||
+      /\/pbv-full-app\/forms\/[^/]+\/preview$/.test(pathname);
+    tenantResponse.headers.set('X-Frame-Options', isFramedPdf ? 'SAMEORIGIN' : 'DENY');
     tenantResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     return tenantResponse;
   }

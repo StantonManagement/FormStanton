@@ -59,6 +59,20 @@ export async function GET(
             ? (tmpl?.display_name_es ?? doc.form_id)
             : (tmpl?.display_name_en ?? doc.form_id);
 
+      const requiredCount = (doc.required_signer_member_ids ?? []).length;
+      const collectedCount = (doc.collected_signer_member_ids ?? []).length;
+      // PRP-023: harden the L5 guard. The pre-PRP-023 rule was
+      // `collected >= required`, which silently treats a row with
+      // required=[] / collected=[] as complete. Combined with the
+      // generate-forms bug that left required_signer_member_ids=[] on real
+      // federal forms, this let unsigned forms pass canSubmit. Use the
+      // canonical pbv_form_documents.status the signing flow sets when all
+      // signers complete, and accept 'skipped' for conditionally-excluded
+      // forms. (collected >= required > 0) is kept only as a defensive
+      // bridge while the migration backfill rolls out.
+      const signedByStatus = doc.status === 'signed' || doc.status === 'finalized' || doc.status === 'skipped';
+      const signedByCount = requiredCount > 0 && collectedCount >= requiredCount;
+
       return {
         id: doc.id,
         form_id: doc.form_id,
@@ -67,16 +81,9 @@ export async function GET(
         status: doc.status,
         generated_at: doc.generated_at,
         finalized_at: doc.finalized_at,
-        required_signer_count: (doc.required_signer_member_ids ?? []).length,
-        collected_signer_count: (doc.collected_signer_member_ids ?? []).length,
-        // L5: a form is "complete" when it has no outstanding required
-        // signatures — i.e. collected >= required. The previous form also
-        // required `required > 0`, so any conditionally-skipped form (zero
-        // required signers) was counted in formsTotal but never in
-        // formsSigned, leaving the dashboard `canSubmit` false forever.
-        signatures_complete:
-          (doc.collected_signer_member_ids ?? []).length >=
-          (doc.required_signer_member_ids ?? []).length,
+        required_signer_count: requiredCount,
+        collected_signer_count: collectedCount,
+        signatures_complete: signedByStatus || signedByCount,
         conditional_trigger: doc.conditional_trigger ?? null,
       };
     });

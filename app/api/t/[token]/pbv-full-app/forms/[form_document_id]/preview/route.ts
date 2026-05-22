@@ -1,13 +1,29 @@
 /**
  * GET /api/t/[token]/pbv-full-app/forms/[form_document_id]/preview
  *
- * Returns a signed URL for previewing the form PDF (unsigned or signed).
- * Prefers the signed_pdf_path if available, otherwise unsigned_pdf_path.
- * URL expires in 60 seconds.
+ * Serves the form PDF BYTES (signed if available, else unsigned) for inline
+ * display in the review-and-sign <iframe>. Mirrors summary-pdf: returns raw
+ * application/pdf so the same-origin iframe renders the document.
+ *
+ * Previously this returned JSON ({ data: { url } }) and the sign-form dialog
+ * pointed its iframe straight at this endpoint, so tenants saw raw JSON instead
+ * of the form (observed 2026-05-22). Pointing the iframe at the cross-origin
+ * signed Supabase URL instead would also break under the enforced CSP
+ * (`frame-src 'self'`), so we proxy the bytes same-origin — identical to how
+ * summary-pdf already works (and middleware already serves this route
+ * X-Frame-Options: SAMEORIGIN).
+ *
+ * Auth: tenant access_token → resolves to pbv_full_applications row.
+ * Returns:
+ *   200 + PDF bytes (Content-Type: application/pdf)
+ *   404 if token invalid, doc not found, or PDF not generated/in storage
+ *   500 on unexpected error
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
@@ -39,26 +55,37 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Form document not found' }, { status: 404 });
     }
 
+    // Prefer the signed PDF once it exists; fall back to the unsigned source.
     const pdfPath = doc.signed_pdf_path ?? doc.unsigned_pdf_path;
     if (!pdfPath) {
-      return NextResponse.json({ success: false, message: 'PDF not yet generated' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: 'PDF not yet generated', code: 'not_generated' },
+        { status: 404 }
+      );
     }
 
-    const { data: signedUrlData, error: urlError } = await supabaseAdmin.storage
+    const { data: fileData, error: storageError } = await supabaseAdmin.storage
       .from('pbv-forms')
-      .createSignedUrl(pdfPath, 60);
+      .download(pdfPath);
 
-    if (urlError || !signedUrlData?.signedUrl) {
-      throw urlError ?? new Error('Failed to create signed URL');
+    if (storageError || !fileData) {
+      return NextResponse.json(
+        { success: false, message: 'Form PDF not found in storage.', code: 'storage_missing' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        url: signedUrlData.signedUrl,
-        expires_in_seconds: 60,
-        status: doc.status,
-        is_signed: !!doc.signed_pdf_path,
+    const bytes = await fileData.arrayBuffer();
+
+    return new NextResponse(bytes, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="pbv-form-${doc.id}.pdf"`,
+        // The same path serves the unsigned PDF before signing and the signed
+        // PDF after; no-store avoids serving a stale unsigned copy post-sign.
+        'Cache-Control': 'private, no-store',
+        'X-Form-Signed': doc.signed_pdf_path ? 'true' : 'false',
       },
     });
   } catch (error: any) {

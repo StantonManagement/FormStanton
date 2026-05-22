@@ -15,6 +15,7 @@
 
 import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { tenantFetch } from '@/lib/tenantFetch';
 import { useIntakeBootstrap } from '@/lib/pbv/hooks/useIntakeBootstrap';
 import { useSectionVisibility } from '@/lib/pbv/hooks/useSectionVisibility';
 import { useSectionAutoSave } from '@/lib/pbv/hooks/useSectionAutoSave';
@@ -156,11 +157,30 @@ export default function IntakeSectionPage({ params }: Props) {
   );
 
   const navigateTo = async (slug: SectionSlug) => {
-    if (sectionData) {
+    const targetIndex = visibleSections.indexOf(slug);
+    const movingForward = targetIndex > currentIndex;
+
+    if (sectionData || movingForward) {
       setNavigating(true);
       setNavError('');
       try {
-        await saveNow();
+        if (sectionData) {
+          await saveNow();
+        }
+        // Advance the resume high-water mark BEFORE routing forward. The F2
+        // deep-link guard (below) redirects any section ahead of
+        // resume_section back to it; because autosave pins resume_section to
+        // the *current* section, every forward Next would otherwise land one
+        // section past resume_section and bounce straight back. Persisting the
+        // target here (monotonic — never lowered server-side) lets the guard
+        // admit it. Backward navigation (movingForward === false) skips this.
+        if (movingForward) {
+          const res = await tenantFetch(`/api/t/${token}/pbv-full-app/intake/progress`, {
+            method: 'POST',
+            body: { section: slug },
+          });
+          if (!res.ok) throw new Error(`Failed to advance progress (${res.status})`);
+        }
       } catch {
         setNavError('Could not save. Please try again.');
         setNavigating(false);
