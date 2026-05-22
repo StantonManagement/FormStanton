@@ -41,6 +41,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     success_title: 'Summary signed!',
     success_body: 'You may now proceed to sign your required forms.',
     success_btn: 'Continue to forms',
+    scroll_cue: 'Scroll down to continue ↓',
   },
   es: {
     title: 'Revise el Resumen de Su Solicitud',
@@ -52,6 +53,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     success_title: '\u00a1Resumen firmado!',
     success_body: 'Ahora puede proceder a firmar los formularios requeridos.',
     success_btn: 'Continuar a formularios',
+    scroll_cue: 'Deslice hacia abajo para continuar ↓',
   },
   pt: {
     // PT: tentative — review
@@ -64,6 +66,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     success_title: 'Resumo assinado!',
     success_body: 'Agora voc\u00ea pode prosseguir para assinar os formul\u00e1rios obrigat\u00f3rios.',
     success_btn: 'Continuar para formul\u00e1rios',
+    scroll_cue: 'Role para baixo para continuar \u2193',
   },
 };
 
@@ -175,12 +178,14 @@ export default function SummaryDocReviewSign({ token, language, hohName, hohMemb
         <h1 className="font-serif text-2xl text-[var(--primary)] mb-2">{c.title}</h1>
         <p className="text-sm text-[var(--muted)] mb-6">{c.intro}</p>
 
-        {/* PDF preview — iframe approach */}
+        {/* PDF preview — iframe approach. PRP-007: loading=lazy + dvh for
+            iOS Safari toolbar tolerance. */}
         {/* PR-2: Guard with summaryReady to prevent raw JSON in iframe if PDF not generated */}
         {summaryPdfUrl && summaryReady ? (
-          <div className="border border-[var(--border)] mb-6" style={{ height: '60vh' }}>
+          <div className="border border-[var(--border)] mb-2 h-[60dvh]">
             <iframe
               src={summaryPdfUrl}
+              loading="lazy"
               className="w-full h-full"
               title="Application Summary"
             />
@@ -189,6 +194,12 @@ export default function SummaryDocReviewSign({ token, language, hohName, hohMemb
           <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center mb-6">
             <p className="text-sm text-[var(--muted)]">{c.no_pdf}</p>
           </div>
+        )}
+
+        {summaryPdfUrl && summaryReady && (
+          <p className="text-xs text-[var(--muted)] text-center mb-4 sm:hidden" aria-hidden="true">
+            {c.scroll_cue}
+          </p>
         )}
 
         {/* Checkbox */}
