@@ -129,12 +129,25 @@ export default function IntakeShell({
             aria-valuenow={Math.round(progress)}
             aria-valuemin={0}
             aria-valuemax={100}
+            aria-label={
+              isReviewSection
+                ? reviewLabels[language]
+                : sectionOfLabels[language]?.(sectionNumber, totalSections)
+            }
           >
             <div
               className="h-full bg-[var(--primary)] transition-all duration-300 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
+          {/* PRP-009 A6: announce section transitions via a polite live
+              region. The visually-hidden region is mounted at first render
+              so a subsequent text change is observed by screen readers. */}
+          <p className="sr-only" role="status" aria-live="polite" data-testid="intake-progress-live">
+            {isReviewSection
+              ? reviewLabels[language]
+              : sectionOfLabels[language]?.(sectionNumber, totalSections)}
+          </p>
         </div>
       </header>
 
@@ -145,12 +158,14 @@ export default function IntakeShell({
         </div>
       </div>
 
-      {/* Section content */}
-      <main className="flex-1 px-4 py-6">
+      {/* Section content. PRP-009 A7: the page-level <main> landmark lives
+          in the route layout. We render a <section> here so the document
+          has exactly one main landmark, not two nested ones. */}
+      <section className="flex-1 px-4 py-6" aria-label={sectionTitle}>
         <div className="max-w-lg mx-auto space-y-6">
           {children}
         </div>
-      </main>
+      </section>
 
       {/* Footer navigation */}
       {/* F7: Review section has its own submit button inside SectionReview.
