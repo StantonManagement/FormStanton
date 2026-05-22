@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { withIdempotency } from '@/lib/idempotency';
 import {
@@ -7,6 +8,51 @@ import {
   rateLimitedResponse,
   resolveTenantLimit,
 } from '@/lib/rateLimit';
+
+/**
+ * PRP-020 / D7 — CSRF defense-in-depth (Phase 1: WARN mode).
+ *
+ * Token shape: `${expEpochSec}.${base64url(hmac(appId|expEpochSec))}`,
+ * signed with SESSION_SECRET (already a required env). 15-minute TTL.
+ *
+ * Phase 1 (this PRP): bootstrap GET responses get `_csrf` injected into
+ * their JSON body; mutating POSTs that send an X-CSRF-Token header have
+ * it verified; missing/invalid currently LOGS a warning but does not 403,
+ * so the client wiring can land in a follow-up without breaking the live
+ * flow. Phase 2 flips to strict 403 once tenantFetch sends the header
+ * on every mutating call.
+ */
+const CSRF_TTL_SECONDS = 15 * 60;
+
+function csrfSecret(): string {
+  return process.env.SESSION_SECRET ?? 'pbv-csrf-dev-secret-only-for-test';
+}
+
+export function issueCsrfToken(appId: string, nowMs = Date.now()): string {
+  const exp = Math.floor(nowMs / 1000) + CSRF_TTL_SECONDS;
+  const payload = `${appId}|${exp}`;
+  const sig = createHmac('sha256', csrfSecret()).update(payload).digest('base64url');
+  return `${exp}.${sig}`;
+}
+
+export function verifyCsrfToken(appId: string, token: string | null | undefined, nowMs = Date.now()): boolean {
+  if (!token || typeof token !== 'string') return false;
+  const [expStr, sig] = token.split('.', 2);
+  if (!expStr || !sig) return false;
+  const exp = Number.parseInt(expStr, 10);
+  if (!Number.isFinite(exp)) return false;
+  if (exp < Math.floor(nowMs / 1000)) return false;
+  const expected = createHmac('sha256', csrfSecret()).update(`${appId}|${exp}`).digest('base64url');
+  // Length-mismatch is a fast reject; timing-safe compare otherwise.
+  if (sig.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+const CSRF_METHODS_TO_VERIFY = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export interface TenantApp {
   id: string;
@@ -116,7 +162,41 @@ export async function withTenantContext(
     );
   }
 
+  // PRP-020 / D7 — CSRF verification (Phase 1: WARN mode).
+  // On mutating methods, check the X-CSRF-Token header against the
+  // HMAC over the application id. Missing/invalid currently logs a
+  // warning so we can see how often clients call without the header
+  // before flipping to strict 403 in Phase 2.
+  if (CSRF_METHODS_TO_VERIFY.has(request.method.toUpperCase())) {
+    const token = request.headers.get('x-csrf-token');
+    if (!verifyCsrfToken(app.id, token)) {
+      console.warn(
+        '[csrf] missing or invalid token',
+        JSON.stringify({ endpoint, method: request.method, app_id: app.id, has_token: !!token })
+      );
+      // Phase 1: do NOT 403. Phase 2 follow-up will return 403 here.
+    }
+  }
+
   // F5: Use custom idempotency key if provided (e.g., ceremony_id + form_document_id)
   const effectiveKey = idempotencyKey ?? endpoint;
-  return withIdempotency(request, app.id, effectiveKey, () => handler(app));
+  const response = await withIdempotency(request, app.id, effectiveKey, () => handler(app));
+
+  // PRP-020 / D7: issue a fresh CSRF token on every GET response so the
+  // client always has a valid (short-TTL) token for its next mutating
+  // call. We rewrap the JSON body to inject `_csrf`. Non-JSON responses
+  // and non-2xx responses are passed through unchanged.
+  if (request.method.toUpperCase() === 'GET' && response.status >= 200 && response.status < 300) {
+    try {
+      const cloned = response.clone();
+      const body = await cloned.json();
+      if (body && typeof body === 'object') {
+        const augmented = { ...body, _csrf: issueCsrfToken(app.id) };
+        return NextResponse.json(augmented, { status: response.status, headers: response.headers });
+      }
+    } catch {
+      // body wasn't JSON; pass through.
+    }
+  }
+  return response;
 }
