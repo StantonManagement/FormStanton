@@ -21,6 +21,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { isUuid } from '@/lib/pbv/signing/validateSignFormBody';
 import { getSession } from '@/lib/auth';
+import { isKnownConsentVersion } from '@/lib/pbv/consent-text';
 import { createHash } from 'crypto';
 
 const SUMMARY_LANGUAGES = ['en', 'es', 'pt'] as const;
@@ -76,6 +77,21 @@ export async function POST(
     if (typeof template_version !== 'string' || !template_version.trim()) {
       return {
         body: { success: false, message: 'template_version must be a non-empty string' },
+        status: 400,
+      };
+    }
+    // PRP-018 / G1: consent_text_version must be a value the app knows
+    // about. The DB-backed consent_versions table is the source of truth
+    // long-term; the local allow-list mirrors it and short-circuits the
+    // round-trip. Unknown versions cannot be silently accepted because
+    // the audit-trail would be unverifiable.
+    if (!isKnownConsentVersion(consent_text_version)) {
+      return {
+        body: {
+          success: false,
+          message: 'Unknown consent_text_version',
+          code: 'unknown_consent_version',
+        },
         status: 400,
       };
     }
