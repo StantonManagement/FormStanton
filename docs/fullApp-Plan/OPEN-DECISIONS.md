@@ -735,6 +735,24 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 
 ## Post-audit remediation batch (PRP-001..022) — 2026-05-21
 
+### [PRP-002] Rate-limiter backend — BLOCKER (needs Alex to provision)
+- **Context:** PRP-002 demands a shared, cross-instance store (Upstash/Redis/Vercel KV) for the counter; a per-instance `Map` resets every cold start and does not limit a distributed attacker. No `UPSTASH_*`, `KV_*`, or `REDIS_*` env vars are set and no client SDK is in `package.json`.
+- **Default taken:** Built `lib/rateLimit.ts` behind a clean `RateLimitAdapter` interface and shipped the in-memory adapter as the only currently available implementation. It is wired into `withTenantContext` and both signer routes so the behaviour is real in dev/test. A startup `console.warn` and a comment on the adapter both say "NOT distributed-attacker safe."
+- **Reversible?** Yes — provision Upstash (or Vercel KV) and add a real branch to `createRateLimitAdapter()` in `lib/rateLimit.ts`. The interface accepts `incr(key, windowSec)` and `peek(key)`; an `@upstash/ratelimit` adapter is ~20 LOC.
+- **Needs Alex:** decide on the backend (Upstash REST is cheapest/fastest for Vercel; Vercel KV is the same Upstash under the hood with simpler env wiring), provision it, add the env vars, and switch the branch. Until then, treat the limiter as smoke-test wiring, not production protection.
+
+### [PRP-002] Signer lockout via counter, not DB column — DECISION
+- **Context:** PRP allowed lockout via DB column (`failed_magic_link_attempts`) OR in-memory/store counter.
+- **Default taken:** counter-only (no schema change). The store-backed adapter will own this once Upstash lands; until then the in-memory counter is per-instance (same caveat as the throughput limiter).
+- **Reversible?** Yes — adding a `failed_magic_link_attempts` column is additive; PRP allowed it.
+- **Needs Alex:** none unless we want forensic/audit-grade lockout history (then add the column).
+
+### [SHELL-PROTOCOL] vitest direct-binary on Windows — DEFAULT
+- **Context:** `node ./node_modules/.bin/vitest` fails on Windows because that file is a bash shim. `npx vitest` is banned by SHELL-PROTOCOL.md.
+- **Default taken:** invoke `node node_modules/vitest/dist/cli.js run <path>` for the remainder of this batch run. Same result, no shell shim.
+- **Reversible?** Yes — once SHELL-PROTOCOL.md is updated, this note can move there.
+- **Needs Alex:** none — informational; consider updating SHELL-PROTOCOL.md in a follow-up.
+
 ### [BATCH-RUN] Branch base — DECISION
 - **Context:** BATCH_PLAN says "create branch off main if missing." Branch did not exist. `main` is far behind the current `feat/pbv-adjacent-errors-hardening` HEAD (PRDs 75–84 + recent fix are unmerged on the source branch and form the foundation the 2026-05-21 audits inspected). Creating off `main` would lose that baseline.
 - **Default taken:** Created `feat/pbv-post-audit-remediation` off `feat/pbv-adjacent-errors-hardening` HEAD (commit `bac8b67`) so all audit-baseline work is present. The single PR opened at end of Batch 05 will therefore include PRDs 75–84 + the 22 PRP commits unless the prior branch lands to main first.
