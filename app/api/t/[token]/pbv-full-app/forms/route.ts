@@ -45,14 +45,17 @@ export async function GET(
       (templates ?? []).map((t) => [t.form_id, t])
     );
 
-    const lang = app.preferred_language ?? 'en';
-
     const forms = (docs ?? []).map((doc) => {
       const tmpl = templateMap[doc.form_id];
+      // L8: display the name in the language the form was actually generated
+      // in (doc.language, set from submission_language at generation time),
+      // not the tenant's current preferred_language. Those can differ, which
+      // previously showed a form's name in a different language than its body.
+      const docLang = doc.language ?? app.preferred_language ?? 'en';
       const displayName =
-        lang === 'pt'
+        docLang === 'pt'
           ? (tmpl?.display_name_pt ?? tmpl?.display_name_en ?? doc.form_id)
-          : lang === 'es'
+          : docLang === 'es'
             ? (tmpl?.display_name_es ?? doc.form_id)
             : (tmpl?.display_name_en ?? doc.form_id);
 
@@ -66,10 +69,14 @@ export async function GET(
         finalized_at: doc.finalized_at,
         required_signer_count: (doc.required_signer_member_ids ?? []).length,
         collected_signer_count: (doc.collected_signer_member_ids ?? []).length,
+        // L5: a form is "complete" when it has no outstanding required
+        // signatures — i.e. collected >= required. The previous form also
+        // required `required > 0`, so any conditionally-skipped form (zero
+        // required signers) was counted in formsTotal but never in
+        // formsSigned, leaving the dashboard `canSubmit` false forever.
         signatures_complete:
-          (doc.required_signer_member_ids ?? []).length > 0 &&
           (doc.collected_signer_member_ids ?? []).length >=
-            (doc.required_signer_member_ids ?? []).length,
+          (doc.required_signer_member_ids ?? []).length,
         conditional_trigger: doc.conditional_trigger ?? null,
       };
     });

@@ -17,6 +17,7 @@
  */
 
 import type { IntakeData } from './intake-schema';
+import { computeAge } from './age';
 
 export interface DocTrigger {
   doc_type: string;
@@ -40,8 +41,12 @@ function anyNonCitizenOver62(intake: IntakeData): boolean {
   const members = intake.household?.members ?? [];
   return members.some((m) => {
     if (!m.dob || m.citizenship_status === 'citizen') return false;
-    const age = (Date.now() - new Date(m.dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-    return age >= 62;
+    // L13: use the canonical calendar-accurate age util (lib/pbv/age.ts).
+    // The previous inline `ms / (…*365.25)` drifted across leap years and
+    // could misclassify members near the 62 boundary, changing which
+    // documents the tenant is told to upload.
+    const age = computeAge(m.dob);
+    return age !== null && age >= 62;
   });
 }
 

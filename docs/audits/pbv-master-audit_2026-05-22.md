@@ -7,6 +7,18 @@
 
 ---
 
+## ⚠️ STATUS RECONCILIATION — added 2026-05-22 after verification vs branch `feat/pbv-post-audit-remediation`
+
+**This list is largely STALE.** Findings were re-listed from earlier audits without re-reading the remediation branch; many were already closed by the 22 post-audit PRPs (build reports in `docs/build-reports/`). 20 of the L-/#-series findings were checked against current code this session.
+
+- **Already fixed before this session — verified, do NOT rework:** L2, L3, L6, L11, L12, #2, #3, #4, #5, #11, #12, #13, #14, A12. Also the 2026-05-21 signature/capture double-idempotency launch blocker (now a single `withTenantContext` wrap). The A–J / mobile / open-items rows map to PRPs 001–022 (spot-verified A1-alt keyboard fallback + C1 beforeunload). [Inference] treat as closed pending a fresh audit that reads this branch.
+- **Fixed this session (direct code edits, tenant-flow scope):** L5, L8, L13, L10, L9, #6, L7, and L1 (`resume` + `signer-completed` POSTs only). Not yet typechecked/built natively or committed.
+- **Intentionally OUT OF SCOPE (not "a tenant filling out the form"):** D1–D8 (headers/CSP/rate-limit/CSRF/magic-bytes), G1–G5 (consent-version DB enforcement, GDPR deletion, tamper-evident audit, retention), I2–I5 (health check, runbook, Vercel build validation, migration back-compat), J1–J5 (tests), L4 (audit-trail cascade). Untouched by design.
+- **L1 partial-by-design:** only the mutating POSTs were wrapped. The read-only GETs (forms/documents/upload-summary/additional-signers/action-items/summary-pdf) were left unwrapped on purpose — `withTenantContext` returns 409 on submitted/locked regardless of method, so wrapping reads would break the post-submission status view; the residual read concern is rate-limiting (security hardening), out of scope.
+- **Line numbers in the tables below are stale** (code shifted). Grep by content, not by line.
+
+---
+
 ## Critical (Deploy-Blockers or Data-Integrity Loss)
 
 | # | ID | Finding | File |

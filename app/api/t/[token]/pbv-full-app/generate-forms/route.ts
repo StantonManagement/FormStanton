@@ -91,7 +91,8 @@ export async function POST(
         | 'field_map_missing'
         | 'conditional_skipped'
         | 'unknown_conditional_rule'  // PRD-63: rule string not handled by shouldGenerateForm
-        | 'resolver_missing';          // PRD-63: form_id has no field-data resolver
+        | 'resolver_missing'          // PRD-63: form_id has no field-data resolver
+        | 'stamp_failed';             // PRD-67: stampForm threw an error
     }> = [];
 
     for (const template of templates) {
@@ -164,12 +165,29 @@ export async function POST(
         // Stamp the PDF. PRP-017 / B4: per-form timing log so operations
         // can see when a household + form-stack approach the 120s Vercel
         // limit. Chunking / a background queue is the documented follow-up.
+        //
+        // L9: isolate stamping per-form. stamper.getPage throws when a field
+        // map references a page the source PDF does not have; an unhandled
+        // throw here would abort the ENTIRE generate-forms request, so one
+        // bad form/field-map would block every other form the tenant needs.
+        // Catch it, record the form as skipped, and continue.
+        let stampedPdf: Awaited<ReturnType<typeof stampForm>>;
         const stampStartedAt = Date.now();
-        const stampedPdf = await stampForm({
-          fieldMap,
-          data: fieldData,
-          sourcePdfBytes: sourcePdf,
-        });
+        try {
+          stampedPdf = await stampForm({
+            fieldMap,
+            data: fieldData,
+            sourcePdfBytes: sourcePdf,
+          });
+        } catch (e: any) {
+          console.error(
+            `[generate-forms] stampForm failed for ${formId}/${language} — skipping:`,
+            e
+          );
+          skipped.push({ form_id: formId, language, reason: 'stamp_failed' });
+          if (isPerPersonAllAdults) break;
+          continue;
+        }
         const stampMs = Date.now() - stampStartedAt;
         if (stampMs > 5_000) {
           console.warn(
