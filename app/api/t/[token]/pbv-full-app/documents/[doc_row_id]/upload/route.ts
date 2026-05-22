@@ -4,6 +4,7 @@ import { writePbvApplicationEvent, ApplicationEventType } from '@/lib/events/app
 import sharp from 'sharp';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { createHash } from 'crypto';
+import { isAllowedUpload } from '@/lib/upload/magicBytes';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // seconds; Vercel Pro allows up to 300, 120 gives generous headroom over client TENANT_FETCH_TIMEOUT_UPLOAD (55s)
@@ -83,33 +84,53 @@ export async function POST(
         const startedAt = Date.now();
         console.log(`[pbv-upload] start doc=${doc_row_id} size=${file.size} mime=${file.type} revision=${doc.revision}`);
 
-        let mimeType = file.type;
-        const isHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
+        const mimeType = file.type;
+        const claimsHeic = mimeType === 'image/heic' || mimeType === 'image/heif';
 
-        if (!ALLOWED_MIME_TYPES.has(mimeType) && !isHeic) {
+        // -- Step 3a: Read the buffer and validate by magic bytes BEFORE any
+        // storage work (PRP-003 / D4). The browser-supplied `file.type` is
+        // spoofable; the true leading bytes are not. Zero-byte / unreadable /
+        // disallowed-type all return 415 here, leaving the row untouched and
+        // skipping storage.upload entirely.
+        const rawArrayBuffer = await file.arrayBuffer();
+        const rawBuffer = Buffer.from(rawArrayBuffer);
+        const magic = isAllowedUpload(rawBuffer, mimeType);
+        if (!magic.ok) {
+          console.warn(
+            `[pbv-upload] rejected doc=${doc_row_id} reason=${magic.reason} claimedMime=${magic.claimedMime} detected=${magic.detected}`
+          );
+          // Empty buffer is a client/transport bug → 400; spoofed/unknown type → 415.
+          const status = magic.reason === 'empty' ? 400 : 415;
+          const message =
+            magic.reason === 'empty'
+              ? 'Empty file. Please choose a file and try again.'
+              : 'Invalid file type. Accepted: JPEG, PNG, WebP, PDF, HEIC.';
+          return { body: { success: false, message }, status };
+        }
+        // Keep the legacy MIME allow-list as belt-and-suspenders. If the
+        // browser claimed an outright disallowed MIME (e.g. application/zip)
+        // but the bytes are valid, prefer rejecting — the staff UI relies
+        // on a small MIME set downstream.
+        if (!ALLOWED_MIME_TYPES.has(mimeType) && !claimsHeic) {
           return { body: { success: false, message: 'Invalid file type. Accepted: JPEG, PNG, WebP, PDF, HEIC.' }, status: 415 };
         }
 
-        // -- Step 4: HEIC -> JPG conversion
-        let fileBuffer: Buffer;
+        // -- Step 4: HEIC -> JPG conversion. We only enter this branch when
+        // magic bytes confirmed the buffer is genuinely HEIC.
+        let fileBuffer: Buffer = rawBuffer;
         let finalFileName = file.name;
         let finalMimeType = mimeType;
+        const isHeic = magic.detected === 'heic';
 
         if (isHeic) {
           try {
-            const arrayBuffer = await file.arrayBuffer();
-            fileBuffer = await sharp(Buffer.from(arrayBuffer))
-              .jpeg({ quality: 90 })
-              .toBuffer();
+            fileBuffer = await sharp(rawBuffer).jpeg({ quality: 90 }).toBuffer();
             finalFileName = file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg');
             finalMimeType = 'image/jpeg';
           } catch (err) {
             console.error('[pbv-upload] HEIC conversion failed:', err);
             return { body: { success: false, message: 'Failed to convert HEIC image. Please upload as JPEG instead.' }, status: 400 };
           }
-        } else {
-          const arrayBuffer = await file.arrayBuffer();
-          fileBuffer = Buffer.from(arrayBuffer);
         }
 
         // -- Step 5: Emit packet_intake_started
