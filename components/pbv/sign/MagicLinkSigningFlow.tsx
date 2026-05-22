@@ -180,11 +180,11 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
           <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
           {/* PDF iframe — guarded by form status to prevent raw JSON display */}
           {isPdfReady ? (
-            <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+            <div className="border border-[var(--border)]" style={{ height: '40dvh' }}>
               <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
             </div>
           ) : (
-            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+            <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40dvh' }}>
               <p className="text-sm text-[var(--muted)]">{preparingText}</p>
             </div>
           )}
@@ -209,11 +209,11 @@ function MagicLinkFormsSigningInner({ memberToken, signerName, language, forms, 
         <p className="font-semibold text-[var(--body)]">{form.display_name}</p>
         {/* PDF iframe — guarded by form status to prevent raw JSON display */}
         {isPdfReady ? (
-          <div className="border border-[var(--border)]" style={{ height: '40vh' }}>
+          <div className="border border-[var(--border)]" style={{ height: '40dvh' }}>
             <iframe src={pdfUrl} className="w-full h-full" title={form.display_name} />
           </div>
         ) : (
-          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40vh' }}>
+          <div className="border border-[var(--border)] bg-[var(--paper)] p-6 text-center" style={{ height: '40dvh' }}>
             <p className="text-sm text-[var(--muted)]">{preparingText}</p>
           </div>
         )}
