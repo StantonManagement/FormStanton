@@ -101,6 +101,34 @@ export default function SummarySignPage({ params }: Props) {
     }
   }, [state.status, maybeGenerateForms]);
 
+  // PRP-010 / C1: warn before closing while a long-running operation is in
+  // flight. Two signals:
+  //   1) form generation (this page owns genState)
+  //   2) signature submit — listened to via a window-level boolean event
+  //      `pbv:signing-in-flight`. The child SummaryDocReviewSign dispatches
+  //      it from its submit/finally blocks (see follow-up note in the
+  //      PRP-010 build report — the dispatcher is owned by a separate
+  //      change since this PRP cannot edit the child).
+  const [signingInFlight, setSigningInFlight] = useState(false);
+  useEffect(() => {
+    const onFlight = (e: Event) => {
+      const detail = (e as CustomEvent<{ inFlight: boolean }>).detail;
+      if (detail && typeof detail.inFlight === 'boolean') setSigningInFlight(detail.inFlight);
+    };
+    window.addEventListener('pbv:signing-in-flight', onFlight as EventListener);
+    return () => window.removeEventListener('pbv:signing-in-flight', onFlight as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!(genState.status === 'generating' || signingInFlight)) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [genState.status, signingInFlight]);
+
   // Loading states
   if (state.status === 'loading' || genState.status === 'generating') {
     return (

@@ -7,7 +7,7 @@
  * Shows an explainer screen instead of a silent redirect.
  */
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useDashboardState } from '@/lib/pbv/hooks/useDashboardState';
 import { useFormStack } from '@/lib/pbv/hooks/useFormStack';
@@ -21,6 +21,32 @@ export default function FormsSignPage({ params }: Props) {
   const { token } = use(params);
   const { state: dashState } = useDashboardState(token);
   const { state: formsState, reload: reloadForms } = useFormStack(token);
+
+  // PRP-010 / C1: warn before close while a signature submit is in flight.
+  // FormsStack (and its useSigningCeremony hook) own the live `submitting`
+  // state, so the page listens to a window-level `pbv:signing-in-flight`
+  // boolean event the child dispatches from its submit/finally blocks.
+  // The event channel is established here; the dispatcher is wired in a
+  // follow-up since this PRP cannot edit FormsStack/useSigningCeremony.
+  const [signingInFlight, setSigningInFlight] = useState(false);
+  useEffect(() => {
+    const onFlight = (e: Event) => {
+      const detail = (e as CustomEvent<{ inFlight: boolean }>).detail;
+      if (detail && typeof detail.inFlight === 'boolean') setSigningInFlight(detail.inFlight);
+    };
+    window.addEventListener('pbv:signing-in-flight', onFlight as EventListener);
+    return () => window.removeEventListener('pbv:signing-in-flight', onFlight as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!signingInFlight) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [signingInFlight]);
 
   if (dashState.status === 'loading' || formsState.status === 'loading') {
     return (

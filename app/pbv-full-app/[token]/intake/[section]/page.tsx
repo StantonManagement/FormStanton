@@ -13,7 +13,7 @@
  * Stores _resume_section in intake_data so re-entry drops here.
  */
 
-import { use, useState, useCallback } from 'react';
+import { use, useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIntakeBootstrap } from '@/lib/pbv/hooks/useIntakeBootstrap';
 import { useSectionVisibility } from '@/lib/pbv/hooks/useSectionVisibility';
@@ -94,6 +94,26 @@ export default function IntakeSectionPage({ params }: Props) {
 
   const [navigating, setNavigating] = useState(false);
   const [navError, setNavError] = useState('');
+
+  // PRP-010 / C1: warn the tenant before they close a tab with unsaved
+  // section data. Mirrors the verified-safe pattern at
+  // app/pbv-full-app/[token]/documents/page.tsx:109-121. Guard engages
+  // once the user has touched a field (sectionData !== null) AND the
+  // debounced autosave has not yet landed (saveStatus !== 'saved'). The
+  // 600ms debounce window between keystroke and save means a too-fast
+  // close can still slip the prompt; the value here is catching the
+  // common "type a lot then close" case where saveStatus is still
+  // 'saving' / 'error'.
+  useEffect(() => {
+    if (!sectionData) return;
+    if (saveStatus === 'saved') return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saveStatus, sectionData]);
 
   const handleSectionChange = useCallback(
     (slug: SectionSlug, data: Record<string, unknown>) => {
