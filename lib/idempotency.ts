@@ -28,7 +28,14 @@ export async function withIdempotency<T>(
     .eq('application_id', applicationId)
     .maybeSingle();
 
-  if (existing && new Date(existing.expires_at) > new Date()) {
+  // PRD-83 #A7: epoch-ms comparison is the UTC-safe form. Pre-PRD-83 the
+  // comparison was `new Date(existing.expires_at) > new Date()` — fine when
+  // expires_at round-trips as a UTC instant (it does today, the column is
+  // stored ISO), but ambiguous on a host with naive-timestamp drift. The
+  // explicit `.getTime() > Date.now()` removes the ambiguity. A null or
+  // unparseable expires_at evaluates to NaN, which is not greater than
+  // Date.now() — so the cache is skipped fail-safe and the handler re-runs.
+  if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
     return NextResponse.json(existing.response_body, { status: existing.response_status });
   }
 

@@ -67,16 +67,31 @@ export async function POST(
       consent_text_version?: string;
     };
 
-    // F8: Check parent application lock (submitted_at must be null)
+    // F8: Check parent application lock (submitted_at must be null).
+    // PRD-82 #A4: also check packet_locked. The tenant lane gates this in
+    // PRD-77's withTenantContext, but the magic-link lane resolves the app
+    // via the member token and never hit that wrapper — so a non-HOH adult
+    // could sign while staff held the packet for review.
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, submitted_at')
+      .select('id, submitted_at, packet_locked')
       .eq('id', member.full_application_id)
       .maybeSingle();
 
     if (app?.submitted_at) {
       return NextResponse.json(
         { success: false, message: 'Application already submitted', code: 'submitted_locked' },
+        { status: 409 }
+      );
+    }
+
+    if (app?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This packet is currently under review. Please contact the Stanton office.',
+          code: 'packet_locked',
+        },
         { status: 409 }
       );
     }
@@ -101,9 +116,14 @@ export async function POST(
     });
 
     if (!result.success) {
+      // PRD-82 #A12: map HTTP status from the typed errorCode. Pre-PRD-82
+      // this route did substring matching on the human-readable error
+      // string; any wording change in completeForm.ts would have silently
+      // flipped the 404-vs-422 decision.
+      const status = result.errorCode === 'not_found' ? 404 : 422;
       return NextResponse.json(
-        { success: false, message: result.error ?? 'Signing failed' },
-        { status: result.error?.includes('not found') ? 404 : 422 }
+        { success: false, message: result.error ?? 'Signing failed', code: result.errorCode ?? null },
+        { status }
       );
     }
 

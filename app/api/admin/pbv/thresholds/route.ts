@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .from('pbv_income_thresholds')
-      .select('id, household_size, income_limit, effective_date, created_at')
+      .select('id, household_size, income_limit, effective_date, zipcode, created_at')
       .order('household_size', { ascending: true });
 
     if (error) throw error;

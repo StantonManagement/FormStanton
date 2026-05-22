@@ -48,12 +48,27 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'HOH uses the primary token.' }, { status: 400 });
     }
 
-    // Load HOH name from application
+    // PRD-82 #A4: packet_locked gate. PRD-77 added this in withTenantContext
+    // for the tenant lane, but the magic-link lane resolves the application
+    // from the member token and never flowed through that wrapper. Without
+    // this check, a non-HOH adult on a magic link could keep viewing forms
+    // and signing after staff sent the packet to HACH review.
     const { data: app } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id')
+      .select('id, packet_locked')
       .eq('id', member.full_application_id)
       .maybeSingle();
+
+    if (app?.packet_locked) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'This packet is currently under review. Please contact the Stanton office.',
+          code: 'packet_locked',
+        },
+        { status: 409 }
+      );
+    }
 
     let hohName = '';
     if (app) {

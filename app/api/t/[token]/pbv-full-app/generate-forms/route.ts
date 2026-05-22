@@ -368,16 +368,49 @@ export async function POST(
         generatedAt: new Date(),
       });
 
-      const summaryStoragePath = `pbv/${fullApp.id}/summary-${summaryLang}-unsigned.pdf`;
+      // PRD-83 #A11: version the summary path with SUMMARY_TEMPLATE_VERSION
+      // and switch to upsert:false. Pre-PRD-83 the path was a fixed
+      // `summary-${lang}-unsigned.pdf` written with upsert:true, so two
+      // concurrent generate-forms calls silently clobbered each other's
+      // summary (`generateSummaryPdf` embeds a per-call `generatedAt`, so
+      // the bytes differ even when the template version is identical).
+      //
+      // With the version suffix, different template versions cannot collide.
+      // For the same template version, upsert:false surfaces concurrent
+      // writes as a 409 — which we treat as a benign replay: the other
+      // request's summary is already at this path; we reuse it without
+      // overwriting. Same shape as PRD-66/PRD-76's signed-PDF benign-replay
+      // handling in completeForm.ts and generate-forms' form-document loop.
+      const summaryStoragePath = `pbv/${fullApp.id}/summary-${summaryLang}-v${SUMMARY_TEMPLATE_VERSION}-unsigned.pdf`;
 
       const { error: summaryUploadError } = await supabaseAdmin.storage
         .from('pbv-forms')
         .upload(summaryStoragePath, summaryPdfBytes, {
           contentType: 'application/pdf',
-          upsert: true,
+          upsert: false,
         });
 
-      if (summaryUploadError) throw summaryUploadError;
+      if (summaryUploadError) {
+        const msg = String(summaryUploadError.message ?? '').toLowerCase();
+        const status = String((summaryUploadError as any).statusCode ?? '');
+        const benignReplay = status === '409' || msg.includes('exist') || msg.includes('duplicate');
+
+        if (!benignReplay) {
+          throw summaryUploadError;
+        }
+        // Fall through: another concurrent generate-forms request landed
+        // this summary version first. Reuse the existing object at the
+        // same path; the upsert below points the pbv_summary_documents
+        // row at it.
+        console.log(
+          JSON.stringify({
+            event: 'generate_forms_summary_benign_replay',
+            app_id: fullApp.id,
+            language: summaryLang,
+            template_version: SUMMARY_TEMPLATE_VERSION,
+          })
+        );
+      }
 
       // Idempotent upsert into pbv_summary_documents
       const { error: summaryUpsertError } = await supabaseAdmin

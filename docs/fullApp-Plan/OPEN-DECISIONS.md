@@ -670,3 +670,63 @@ Alex: none of the six committed-but-unapplied migrations have been applied yet. 
 - **Apply order:** any time after PRD-74 ships. Until applied, `claimCronRun` logs `cron_claim_error` and fails-open (route runs). After apply, the lock works as intended.
 - **Status:** ⏳ NOT APPLIED — committed only.
 - **Rollback:** `DROP FUNCTION IF EXISTS public.claim_cron_run(TEXT, INTEGER); DROP TABLE IF EXISTS public.cron_run_locks;` (the table has no app data — leases are short-lived state).
+
+### [PRD-80] sign-summary `template_version` validation shape — DECISION
+- **Context:** A5 calls for validating `template_version` "matches expected format." The current codebase uses free-form date-like strings (default `'2026-05-15-v1'`) with no published regex.
+- **Default taken:** validate as a non-empty string only. Rejecting empty/non-string values catches the actual error mode (truncated client request, type drift) without inventing a regex that doesn't match the wild.
+- **Reversible?** yes — tighten to `/^\d{4}-\d{2}-\d{2}-v\d+$/` (or similar) in `sign-summary/route.ts` once the format is locked down.
+- **Needs Alex:** is the `YYYY-MM-DD-v\d+` shape a hard contract or convention? If hard, swap the non-empty check for a regex.
+
+### [PRD-80] Member-token `signature/capture` body shape — DECISION
+- **Context:** A6 says to apply UUID validation on the member-token `signature/capture` route **iff it shares the gap.** Checked the file: `signer_member_id` is **derived from the magic-link token** (`member.id`), not body-supplied — so there's no UUID body field to validate for that one.
+- **Default taken:** added the same `isUuid` import and a guard on the optional body field `ceremony_id` (which IS body-supplied) so garbage doesn't propagate into the storage path. Did **not** add a `signer_member_id` guard because the route never reads that body field.
+- **Reversible?** yes — the additive guard is a one-liner to remove if it ever becomes wrong.
+- **Needs Alex:** confirm the route's body contract (no `signer_member_id`), so this gap stays "checked, not skipped" in the audit log.
+
+### [PRD-81] A2 deploy gate (signatures POST race) — needs Alex
+- **Context:** the audit's findings section tags A2 **CRITICAL**, but its Launch Decision Matrix demotes it to **v1.1** ("storage-first without rollback — fix in v1.1"). The build prompt's deploy-blocker line passes after PRD-81 is on the branch regardless.
+- **Default taken:** built the fix (DB-claim-first w/ optimistic lock, `upsert:true`, row-revert on storage failure). The fix is on the branch — Alex decides whether to gate launch on it or treat it as already-shipped post-launch hardening.
+- **Reversible?** yes — revert this commit if the decision is "don't ship A2 with this batch." But there's no reason to: the fix is small, contained, and orthogonal to the rest of the lane.
+- **Needs Alex:** is A2 a launch blocker or v1.1 ship? The findings section and the matrix disagree.
+
+### [PRD-81] Storage upload mode in signatures POST flipped from upsert:false → upsert:true — DECISION
+- **Context:** PRD-81's race-fix changes the ordering to DB-claim-first. The storage upload now runs only AFTER the row has been claimed via optimistic lock on (status, revision). With that ordering, `upsert:false` would false-409 on a benign retry of the same claim (e.g., a transient network blip after the DB UPDATE landed); `upsert:true` makes the upload idempotent for the same path/bytes.
+- **Default taken:** flipped to `upsert:true` in the per-iteration upload at `signatures/route.ts`. The filename encodes the new revision so cross-revision collisions can't happen.
+- **Reversible?** yes — flip back if a future change adds non-idempotent semantics to the upload (none today).
+- **Needs Alex:** confirm the change in posture — pre-PRD-81 upsert:false was the explicit guard against collision; post-PRD-81 the DB claim is the guard, and the storage upsert is the idempotent commit.
+
+### [PRD-82] Tenant sign-form route NOT migrated to errorCode in this PRD — DECISION
+- **Context:** A12's typed `errorCode` change is additive — the existing `error` string is preserved. The tenant `sign-form` route (owned by PRD-77) still uses `.toLowerCase().includes('not found')` to map the 404-vs-422 status. PRD-82's scope guard says do not touch tenant routes.
+- **Default taken:** left the tenant route on string matching; it still works because `'Form document not found'` (case-insensitive) contains `'not found'`. The additive errorCode is available on `CompleteFormResult` for any future caller migration.
+- **Reversible?** yes — a follow-up PRD can switch the tenant route to `result.errorCode === 'not_found'` whenever convenient.
+- **Needs Alex:** confirm post-launch follow-up to consolidate the status mapping (low-priority cleanup, not a launch blocker).
+
+### [PRD-82] CompleteFormErrorCode union enumerated from existing branches — DECISION
+- **Context:** A12 calls for a typed errorCode. The implementation enumerated 11 codes — one per existing failure branch in `completeFormSigning` (load_error, not_found, signer_not_required, member_not_found, unsigned_pdf_missing, unsigned_pdf_download_error, event_insert_error, field_map_missing, sig_events_load_error, signed_pdf_upload_error, doc_update_error).
+- **Default taken:** named codes from existing branches; did not invent new failure modes or split any branch into multiple codes.
+- **Reversible?** yes — narrow or widen the union as new branches appear.
+- **Needs Alex:** none — informational. Confirms no failure mode was silently introduced.
+
+### [PRD-83] A10 race signal is count-based, not error-based — DECISION
+- **Context:** the audit's suggested A10 fix said "if (updateError)" treat as race-lost. In supabase-js v2 (what this codebase uses), a guarded UPDATE that matches 0 rows returns `data: []` with `error: null`. So `updateError` isn't a reliable race signal — the affected-row count is.
+- **Default taken:** matched PRD-81's claim/race pattern: `.select('id')` on the UPDATE, then check `(updateRows?.length ?? 0) === 0`. A real DB error still throws as before.
+- **Reversible?** yes — switch to whatever signal works if the SDK ever changes its semantics.
+- **Needs Alex:** none. Informational.
+
+### [PRD-83] A11 summary path migration leaves legacy objects orphaned — DECISION
+- **Context:** the summary path changed from `summary-${lang}-unsigned.pdf` to `summary-${lang}-v${SUMMARY_TEMPLATE_VERSION}-unsigned.pdf`. Existing tenants who had a summary generated under the old path still have that object in storage; the next generate-forms run writes to the new path and updates `pbv_summary_documents.pdf_storage_path` to point at it. The old object stays in storage, unreferenced.
+- **Default taken:** no cleanup script. Downstream code (signer routes, summary signing) reads `pbv_summary_documents.pdf_storage_path`, not a reconstructed path — so the orphan is invisible to the application. It's a cosmetic storage concern only.
+- **Reversible?** yes — a cleanup migration could enumerate `pbv_summary_documents` and remove any storage object at the legacy path. Low priority.
+- **Needs Alex:** if storage cost is a concern, write a one-shot cleanup script post-deploy. Otherwise ignore.
+
+### [PRD-84] events route posture: async + persistence_initiated (not await) — DECISION
+- **Context:** A8 calls out the fire-and-forget pattern as opaque to the client. The PRD's default posture is async + a `persistence_initiated` count; the alternative is to `await Promise.allSettled(...)` and report settled results at the cost of 50–100ms on the tenant's request path.
+- **Default taken:** kept the writes async (non-blocking) and added `persistence_initiated: processedEvents.length` to the response. The route's role per its own header comment is analytics ingestion — no downstream consumer needs confirmed persistence today.
+- **Reversible?** yes — flip to `await Promise.allSettled(writePromises)` and replace `processedEvents.length` with a settled-results count.
+- **Needs Alex:** confirm the analytics-only role. If any tooling treats this as authoritative ingest, flip to await.
+
+### [PRD-84] signature-thumbnails prefix mismatch: skip + log — DECISION
+- **Context:** A9 calls out the silent `.replace()` strip. PRD-84 made the strip explicit with `.startsWith()` + `.slice()`. If `createSignedUrl` fails (or returns no signedUrl), the route now logs `signature_thumbnail_signed_url_failed` and omits the entry instead of emitting a broken URL.
+- **Default taken:** skip + log on failure (no broken URL surfaced). The per-app `safePaths` filter still gates eligibility; the explicit slice is a future-proofing guard so a future regression can't reintroduce the silent-no-op failure mode.
+- **Reversible?** yes — if a caller ever needs to see a "this path failed" marker, the omit-entry path can become an explicit `urlMap[storagePath] = null` so the client can distinguish missing-from-failed.
+- **Needs Alex:** none — informational.

@@ -131,8 +131,15 @@ export async function POST(
 
     if (uploadError) throw uploadError;
 
-    // Update document slot
-    const { error: updateError } = await supabaseAdmin
+    // PRD-81 #A3: race-guard the UPDATE on the (status, revision) we read.
+    // Pre-PRD-81 the route uploaded with upsert:false and then ran an
+    // unconditional UPDATE — so two concurrent uploads of the same doc both
+    // wrote a revision-bumped file, the loser 409'd at storage, but if the
+    // winner's UPDATE had not yet run the row could end up out of sync.
+    // Now: if 0 rows are affected (another request claimed first), remove
+    // the orphan storage object and return 409 so the tenant retries with
+    // fresh state instead of seeing a phantom success.
+    const { data: updatedRows, error: updateError } = await supabaseAdmin
       .from('application_documents')
       .update({
         revision: newRevision,
@@ -146,9 +153,40 @@ export async function POST(
         uploaded_by_role: 'tenant',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', documentId);
+      .eq('id', documentId)
+      .eq('status', doc.status)
+      .eq('revision', doc.revision ?? 0)
+      .select('id');
 
     if (updateError) throw updateError;
+
+    if ((updatedRows?.length ?? 0) === 0) {
+      // Race lost — another request already advanced this document.
+      // Delete the orphan storage object we just uploaded so the bucket
+      // stays in sync with the row that actually represents the document.
+      const { error: removeError } = await supabaseAdmin.storage
+        .from('pbv-applications')
+        .remove([storagePath]);
+      if (removeError) {
+        console.warn(
+          JSON.stringify({
+            event: 'tenant_document_orphan_remove_failed',
+            document_id: documentId,
+            storage_path: storagePath,
+            error: removeError.message,
+          })
+        );
+      }
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'This document was just uploaded by another request. Refresh to see the latest version.',
+          code: 'document_superseded',
+        },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
