@@ -210,13 +210,27 @@ export function DataTable<TRow extends object>(props: DataTableProps<TRow>) {
   const initialState = useMemo((): TableState => {
     const persisted = loadPersistedColumns(urlNamespace);
     const ps = defaultPageSize > 0 ? defaultPageSize : 50;
+    // Sanitize the persisted column order against the columns that actually
+    // exist now. A saved view (URL/localStorage) can reference a column id that
+    // was since renamed or removed; passing that stale id through to react-table
+    // and the column menus crashes the page ("reading 'map' of undefined").
+    // Keep the saved order for ids that still exist, drop unknown ids, and append
+    // any current columns the saved view didn't know about so new columns appear.
+    const knownColumnIds = columns.map((c) => c.id).filter((id): id is string => !!id);
+    const columnOrder = (() => {
+      if (!persisted.cols) return knownColumnIds;
+      const knownSet = new Set(knownColumnIds);
+      const kept = persisted.cols.filter((id) => knownSet.has(id));
+      const missing = knownColumnIds.filter((id) => !kept.includes(id));
+      return [...kept, ...missing];
+    })();
     return {
       globalSearch: '',
       sorting: [],
       columnFilters: {},
       pagination: { pageIndex: 0, pageSize: persisted.pageSize ?? ps },
       columnVisibility: {},
-      columnOrder: persisted.cols ?? columns.map((c) => c.id),
+      columnOrder,
       rowSelection: {},
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
