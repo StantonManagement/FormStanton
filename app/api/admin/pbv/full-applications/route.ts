@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       .from('pbv_full_applications')
       .select(
         `id, created_at, head_of_household_name, building_address, unit_number,
-         bedroom_count, household_size, intake_submitted_at,
+         bedroom_count, household_size, intake_status, intake_completed_at,
          stanton_review_status,
          tenant_access_token, form_submission_id, preapp_id`
       )
@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
       .select('id, tenant_access_token')
       .eq('building_address', building_address.trim())
       .eq('unit_number', unit_number.trim())
-      .is('intake_submitted_at', null)
+      .neq('intake_status', 'complete')
       .maybeSingle();
 
     if (existing) {

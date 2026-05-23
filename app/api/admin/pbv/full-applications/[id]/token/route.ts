@@ -18,14 +18,14 @@ export async function PATCH(
 
     const { data: existing } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, intake_submitted_at, building_address, unit_number')
+      .select('id, intake_status, building_address, unit_number')
       .eq('id', id)
       .single();
 
     if (!existing) {
       return NextResponse.json({ success: false, message: 'Not found' }, { status: 404 });
     }
-    if (existing.intake_submitted_at) {
+    if (existing.intake_status === 'complete') {
       return NextResponse.json(
         {
           success: false,

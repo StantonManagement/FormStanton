@@ -73,7 +73,8 @@ interface AppDetail {
   unit_number: string; 
   bedroom_count: number | null; 
   household_size: number; 
-  intake_submitted_at: string | null; 
+  intake_status: string;
+  intake_completed_at: string | null;
   stanton_review_status: string; 
   stanton_reviewer: string | null; 
   stanton_review_date: string | null; 

@@ -19,7 +19,8 @@ interface FullAppRow {
   unit_number: string;
   bedroom_count: number | null;
   household_size: number;
-  intake_submitted_at: string | null;
+  intake_status: string;
+  intake_completed_at: string | null;
   stanton_review_status: string;
   tenant_access_token: string;
   form_submission_id: string | null;
@@ -51,7 +52,7 @@ function formatDate(s: string | null | undefined) {
 }
 
 function deriveDisplayStatus(row: FullAppRow): string {
-  if (!row.intake_submitted_at) return 'Invited';
+  if (row.intake_status !== 'complete') return 'Invited';
   if (row.stanton_review_status === 'approved') return 'Approved';
   if (row.stanton_review_status === 'denied') return 'Denied';
   if (row.stanton_review_status === 'under_review') return 'Under Review';
@@ -185,7 +186,7 @@ export default function PbvFullApplicationsPage() {
 
   const tableData = useMemo(() => {
     if (!filterIntakeOnly) return rows;
-    return rows.filter((row) => !!row.intake_submitted_at);
+    return rows.filter((row) => row.intake_status === 'complete');
   }, [rows, filterIntakeOnly]);
 
   const columns = useMemo<ColumnDef<FullAppRow>[]>(
@@ -308,14 +309,14 @@ export default function PbvFullApplicationsPage() {
         cell: ({ value }) => <DateCell value={value as string} />, 
       },
       {
-        id: 'intake_submitted_at',
-        accessorKey: 'intake_submitted_at',
+        id: 'intake_completed_at',
+        accessorKey: 'intake_completed_at',
         header: 'Intake Submitted',
         enableSorting: true,
         meta: {
-          csvValue: (row) => row.intake_submitted_at ?? '',
+          csvValue: (row) => row.intake_completed_at ?? '',
         },
-        cell: ({ value }) => <DateCell value={(value as string) ?? undefined} />, 
+        cell: ({ value }) => <DateCell value={(value as string) ?? undefined} />,
       },
       {
         id: 'actions',
@@ -335,7 +336,7 @@ export default function PbvFullApplicationsPage() {
             >
               {copiedId === row.id ? 'Copied!' : 'Copy Link'}
             </button>
-            {!row.intake_submitted_at && (
+            {row.intake_status !== 'complete' && (
               <button
                 type="button"
                 onClick={() => handleRegenerateToken(row)}

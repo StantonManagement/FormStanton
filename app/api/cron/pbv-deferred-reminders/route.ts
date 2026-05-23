@@ -123,11 +123,12 @@ export async function GET(request: NextRequest) {
         tenant_access_token,
         next_reminder_scheduled_at,
         reminders_sent_count,
-        intake_submitted_at,
+        intake_status,
+        intake_completed_at,
         stanton_review_status,
         tenant_timezone
       `)
-      .not('intake_submitted_at', 'is', null)
+      .eq('intake_status', 'complete')
       .neq('stanton_review_status', 'submitted')
       .lte('next_reminder_scheduled_at', nowIso)
       .not('next_reminder_scheduled_at', 'is', null);
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest) {
           console.log(`[pbv-deferred-reminders] Skipping ${app.id} - recent upload detected`);
           
           // Reschedule for next cycle
-          const nextDate = getNextReminderDate(app.reminders_sent_count, app.intake_submitted_at);
+          const nextDate = getNextReminderDate(app.reminders_sent_count, app.intake_completed_at);
           if (nextDate) {
             await supabaseAdmin
               .from('pbv_full_applications')
@@ -253,7 +254,7 @@ export async function GET(request: NextRequest) {
 
           // 8. Update reminder count and schedule next reminder
           const newCount = app.reminders_sent_count + 1;
-          const nextDate = getNextReminderDate(newCount, app.intake_submitted_at);
+          const nextDate = getNextReminderDate(newCount, app.intake_completed_at);
 
           if (nextDate) {
             await supabaseAdmin

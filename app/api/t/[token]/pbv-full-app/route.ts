@@ -575,10 +575,18 @@ export async function POST(
       return { body: { success: false, message: 'Failed to prepare your document checklist. Please try submitting again.' }, status: 500 };
     }
 
-    // Commit point: stamp intake_submitted_at only after everything succeeded.
+    // Commit point: stamp intake completion only after everything succeeded.
+    // Write the canonical signal (intake_status / intake_completed_at) that the
+    // admin and downstream consumers read, alongside the legacy intake_submitted_at
+    // for backward compatibility. Both are set together so the two paths agree.
+    const committedAt = new Date().toISOString();
     const { error: commitError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .update({ intake_submitted_at: new Date().toISOString() })
+      .update({
+        intake_submitted_at: committedAt,
+        intake_status: 'complete',
+        intake_completed_at: committedAt,
+      })
       .eq('id', app.id);
 
     if (commitError) throw commitError;

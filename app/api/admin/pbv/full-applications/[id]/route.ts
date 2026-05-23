@@ -19,7 +19,7 @@ export async function GET(
       .from('pbv_full_applications')
       .select(
         `id, created_at, head_of_household_name, building_address, unit_number,
-         bedroom_count, household_size, intake_submitted_at,
+         bedroom_count, household_size, intake_status, intake_completed_at,
          stanton_review_status, stanton_reviewer, stanton_review_date, stanton_review_notes,
          hha_application_file, hach_review_status,
          tenant_access_token, form_submission_id, preapp_id,
@@ -53,6 +53,41 @@ export async function GET(
       .eq('anchor_id', id)
       .order('display_order', { ascending: true });
 
+    // Signature state must reflect BOTH signing models, because the admin counter
+    // historically read only pbv_household_members.signed_forms:
+    //   * Legacy flow (POST .../signatures) writes members.signed_forms directly.
+    //   * Canonical flow (completeForm.ts on pbv_form_documents) writes
+    //     collected_signer_member_ids and never touches members.signed_forms.
+    // Reading only the legacy column made every modern-signed member show as
+    // unsigned. Derive each member's signed forms as the UNION of the legacy
+    // column and the forms whose collected_signer_member_ids include them, so
+    // neither signing model is missed and legacy-signed apps don't regress.
+    const { data: formDocs } = await supabaseAdmin
+      .from('pbv_form_documents')
+      .select('form_id, collected_signer_member_ids')
+      .eq('full_application_id', id);
+
+    const signedFormsByMember = new Map<string, string[]>();
+    for (const fd of (formDocs ?? [])) {
+      const collected = (fd.collected_signer_member_ids as string[] | null) ?? [];
+      for (const memberId of collected) {
+        const list = signedFormsByMember.get(memberId) ?? [];
+        list.push(fd.form_id as string);
+        signedFormsByMember.set(memberId, list);
+      }
+    }
+
+    const membersWithSignatures = (members ?? []).map((m) => {
+      const legacy = Array.isArray((m as { signed_forms?: unknown }).signed_forms)
+        ? ((m as { signed_forms: string[] }).signed_forms)
+        : [];
+      const derived = signedFormsByMember.get(m.id as string) ?? [];
+      return {
+        ...m,
+        signed_forms: Array.from(new Set([...legacy, ...derived])),
+      };
+    });
+
     // Extract assigned_to_name from the join
     const assignedToName = (app.admin_users as unknown as { display_name: string } | null)?.display_name ?? null;
     const { admin_users, ...appWithoutJoin } = app as unknown as Record<string, unknown>;
@@ -62,7 +97,7 @@ export async function GET(
       data: {
         ...appWithoutJoin,
         assigned_to_name: assignedToName,
-        members: members ?? [],
+        members: membersWithSignatures,
         documents: documents ?? [],
         magic_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${app.tenant_access_token}`,
       },

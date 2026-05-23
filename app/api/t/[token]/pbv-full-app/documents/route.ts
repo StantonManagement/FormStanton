@@ -77,15 +77,15 @@ export async function GET(
       );
     }
 
-    // Check if token is expired (applications with intake_submitted_at and no form_submission_id are "expired")
+    // Check if token is expired (applications with intake complete and no form_submission_id are "expired")
     // This is a guard against tokens that should no longer be used
     const { data: appStatus } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('intake_submitted_at, form_submission_id')
+      .select('intake_status, form_submission_id')
       .eq('id', app.id)
       .single();
 
-    if (appStatus?.intake_submitted_at && !appStatus?.form_submission_id) {
+    if (appStatus?.intake_status === 'complete' && !appStatus?.form_submission_id) {
       // Token is expired — intake done but no document portal available
       return NextResponse.json(
         { success: false, message: 'Token expired' },
