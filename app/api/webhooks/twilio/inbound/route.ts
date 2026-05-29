@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
     } else if (keyword === 'START') {
       await handleStart(fromPhone);
     } else {
+      // Always keep the raw audit row.
       await supabaseAdmin.from('tenant_inbound_messages').insert({
         from_phone: fromPhone,
         body: bodyRaw,
@@ -66,6 +67,23 @@ export async function POST(request: NextRequest) {
         matched_keyword: null,
         handled: false,
       });
+
+      // Resolve the sender to a PBV application so the reply shows up in the
+      // staff<->applicant thread. Unresolvable numbers are left in the audit
+      // table only.
+      const appId = await resolveApplicationByPhone(fromPhone);
+      if (appId) {
+        await supabaseAdmin.from('pbv_application_messages').insert({
+          full_application_id: appId,
+          direction: 'inbound',
+          channel: 'sms',
+          body: bodyRaw,
+          sender_role: 'tenant',
+          twilio_message_sid: messageSid,
+          delivery_status: 'received',
+          created_by: 'tenant',
+        });
+      }
     }
 
     return new NextResponse(EMPTY_TWIML, { headers: { 'Content-Type': 'text/xml' } });
@@ -73,6 +91,38 @@ export async function POST(request: NextRequest) {
     console.error('[twilio-inbound] error:', err);
     return new NextResponse(EMPTY_TWIML, { headers: { 'Content-Type': 'text/xml' } });
   }
+}
+
+/**
+ * Resolve an inbound sender phone to the most recent PBV application.
+ * Phones are stored in varied formats (e.g. "8609954901"); Twilio sends E.164
+ * ("+18609954901"). Match on the last 10 digits across a few candidate formats.
+ * Returns the most-recently-created matching application id, or null.
+ */
+async function resolveApplicationByPhone(fromPhone: string): Promise<string | null> {
+  const digits = (fromPhone || '').replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  const last10 = digits.slice(-10);
+
+  const candidates = Array.from(
+    new Set([
+      fromPhone,
+      digits,
+      last10,
+      `+1${last10}`,
+      `1${last10}`,
+      `+${digits}`,
+    ])
+  );
+
+  const { data } = await supabaseAdmin
+    .from('pbv_full_applications')
+    .select('id, phone, created_at')
+    .in('phone', candidates)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  return data && data.length > 0 ? (data[0].id as string) : null;
 }
 
 async function handleStop(fromPhone: string): Promise<void> {
@@ -115,54 +165,4 @@ async function handleStop(fromPhone: string): Promise<void> {
 
 async function handleStart(fromPhone: string): Promise<void> {
   const { data: apps } = await supabaseAdmin
-    .from('pbv_full_applications')
-    .select('id')
-    .eq('phone', fromPhone)
-    .not('sms_opted_out_at', 'is', null);
-
-  if (apps && apps.length > 0) {
-    await supabaseAdmin
-      .from('pbv_full_applications')
-      .update({ sms_opted_out_at: null })
-      .eq('phone', fromPhone);
-
-    for (const app of apps) {
-      try {
-        await writePbvApplicationEvent({
-          applicationId: app.id,
-          eventType: ApplicationEventType.NOTIFICATION_OPTED_OUT,
-          actorUserId: null,
-          actorDisplayName: 'system',
-          payload: { action: 'rescinded' },
-        });
-      } catch (err) {
-        console.error('[twilio-inbound] failed to emit opted_out rescinded event:', err);
-      }
-    }
-  }
-
-  await supabaseAdmin.from('tenant_inbound_messages').insert({
-    from_phone: fromPhone,
-    body: 'START',
-    matched_keyword: 'START',
-    handled: true,
-  });
-
-  await sendAutoReply(fromPhone, 'You have been re-subscribed to Stanton Management SMS notifications.');
-}
-
-async function sendAutoReply(toPhone: string, message: string): Promise<void> {
-  const fromNumber = process.env.PBV_TWILIO_PHONE_NUMBER;
-  if (!fromNumber) {
-    console.warn('[twilio-inbound] PBV_TWILIO_PHONE_NUMBER not set — cannot send auto-reply');
-    return;
-  }
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const twilio = require('twilio');
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    await client.messages.create({ from: fromNumber, to: toPhone, body: message });
-  } catch (err) {
-    console.error('[twilio-inbound] auto-reply send failed:', err);
-  }
-}
+    .from('pbv_full_applications'
