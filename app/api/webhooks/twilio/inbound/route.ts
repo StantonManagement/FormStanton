@@ -165,4 +165,54 @@ async function handleStop(fromPhone: string): Promise<void> {
 
 async function handleStart(fromPhone: string): Promise<void> {
   const { data: apps } = await supabaseAdmin
-    .from('pbv_full_applications'
+    .from('pbv_full_applications')
+    .select('id')
+    .eq('phone', fromPhone)
+    .not('sms_opted_out_at', 'is', null);
+
+  if (apps && apps.length > 0) {
+    await supabaseAdmin
+      .from('pbv_full_applications')
+      .update({ sms_opted_out_at: null })
+      .eq('phone', fromPhone);
+
+    for (const app of apps) {
+      try {
+        await writePbvApplicationEvent({
+          applicationId: app.id,
+          eventType: ApplicationEventType.NOTIFICATION_OPTED_OUT,
+          actorUserId: null,
+          actorDisplayName: 'system',
+          payload: { action: 'rescinded' },
+        });
+      } catch (err) {
+        console.error('[twilio-inbound] failed to emit opted_out rescinded event:', err);
+      }
+    }
+  }
+
+  await supabaseAdmin.from('tenant_inbound_messages').insert({
+    from_phone: fromPhone,
+    body: 'START',
+    matched_keyword: 'START',
+    handled: true,
+  });
+
+  await sendAutoReply(fromPhone, 'You have been re-subscribed to Stanton Management SMS notifications.');
+}
+
+async function sendAutoReply(toPhone: string, message: string): Promise<void> {
+  const fromNumber = process.env.PBV_TWILIO_PHONE_NUMBER;
+  if (!fromNumber) {
+    console.warn('[twilio-inbound] PBV_TWILIO_PHONE_NUMBER not set — cannot send auto-reply');
+    return;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const twilio = require('twilio');
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({ from: fromNumber, to: toPhone, body: message });
+  } catch (err) {
+    console.error('[twilio-inbound] auto-reply send failed:', err);
+  }
+}

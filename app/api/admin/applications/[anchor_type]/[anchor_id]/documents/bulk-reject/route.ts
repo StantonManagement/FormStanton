@@ -252,4 +252,52 @@ export async function POST(
             notification_type: 'doc_rejected',
             notification_id: notificationResult.notificationId,
             twilio_message_sid: notificationResult.twilioSid,
- 
+          },
+        });
+      } else if (notificationResult.status === 'email_fallback' || notificationResult.status === 'failed') {
+        await writePbvApplicationEvent({
+          applicationId: anchor_id,
+          eventType: ApplicationEventType.NOTIFICATION_FAILED,
+          actorUserId: sessionUser.userId,
+          actorDisplayName: reviewer,
+          payload: {
+            notification_type: 'doc_rejected',
+            notification_id: notificationResult.notificationId,
+            reason: notificationResult.reason,
+          },
+        });
+      }
+    }
+
+    // Log audit
+    await logAudit(
+      sessionUser,
+      'document.bulk_reject',
+      'application_documents',
+      anchor_id,
+      {
+        anchor_type,
+        anchor_id,
+        rejection_count: successfulRejections.length,
+        notification_sent: send_notification,
+        notification_result: notificationResult?.status,
+      },
+      getClientIp(request)
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        results: rejectionResults,
+        notification: notificationResult,
+      },
+    });
+
+  } catch (error: any) {
+    console.error('[document bulk-reject] error:', error);
+    return NextResponse.json(
+      { success: false, message: error.message },
+      { status: 500 }
+    );
+  }
+}

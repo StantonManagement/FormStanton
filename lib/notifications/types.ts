@@ -10,4 +10,4 @@ export const NotificationType = {
   STAFF_MESSAGE:              'staff_message',
 } as const;
 
-export type NotificationType = (typeof Not
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];

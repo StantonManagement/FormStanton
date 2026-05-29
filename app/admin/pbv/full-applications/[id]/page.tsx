@@ -649,4 +649,109 @@ export default function PbvFullApplicationDetailPage() {
                 <div className="flex gap-2 text-xs">
                   {m.disability&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-600">Disability</span>}
                   {m.student&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-600">Student</span>}
-           
+                  {m.signature_required&&(m.signed_forms.length>0?<span className="px-1.5 py-0.5 bg-green-100 text-green-700">Signed</span>:<span className="px-1.5 py-0.5 bg-amber-100 text-amber-700">Sig. Pending</span>)}
+                </div>
+              </div>
+              <div className="text-xs text-[var(--muted)] flex flex-wrap gap-4">
+                <span>Citizenship: {m.citizenship_status}</span>
+                {m.ssn_last_four&&<span>SSN: lastfour {m.ssn_last_four}</span>}
+                {m.income_sources?.length>0&&<span>Income: {m.income_sources.join(', ')}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-white border border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--divider)]">
+          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
+        </div>
+        <div className="px-5 py-4 space-y-4">
+          {/* Manual SMS Send Buttons */}
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--muted)]">Send notifications manually (staff-controlled):</p>
+            
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleSendSms('magic_link_initial')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'magic_link_initial' ? 'Sending...' : 'Send Magic Link'}
+              </button>
+              
+              <button
+                onClick={() => handleSendSms('docs_upload_reminder')}
+                disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                className="px-3 py-2 text-xs border border-[var(--border)] text-[var(--ink)] rounded-none hover:bg-[var(--bg-section)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingSms === 'docs_upload_reminder' ? 'Sending...' : 'Send Doc Reminder'}
+              </button>
+              
+              {detail.hach_review_status === 'approved_by_hach' && (
+                <button
+                  onClick={() => handleSendSms('hach_approved_signing_ready')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs border border-green-600 text-green-700 rounded-none hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hach_approved_signing_ready' ? 'Sending...' : 'Send HACH Approval Notice'}
+                </button>
+              )}
+              
+              {detail.packet_locked && (
+                <button
+                  onClick={() => handleSendSms('hap_executed_move_in')}
+                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
+                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-none hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingSms === 'hap_executed_move_in' ? 'Sending...' : 'Send HAP Executed Notice'}
+                </button>
+              )}
+            </div>
+            
+            {!!detail.sms_opted_out_at && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2">
+                Tenant has opted out of SMS notifications.
+              </p>
+            )}
+            
+            {smsResult && (
+              <div className={`text-xs p-2 rounded-none ${smsResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {smsResult.message}
+              </div>
+            )}
+          </div>
+          
+          <div className="border-t border-[var(--divider)] pt-4">
+            <NotificationTimeline
+              applicationId={detail.id}
+              optedOut={!!detail.sms_opted_out_at}
+              onResendMagicLink={fetchDetail}
+            />
+          </div>
+        </div>
+      </section>
+
+      <ApplicantMessagesPanel
+        applicationId={detail.id}
+        optedOut={!!detail.sms_opted_out_at}
+      />
+
+      {showSendToHach && (
+        <SendToHachDialog
+          applicationId={detail.id}
+          onClose={()=>setShowSendToHach(false)}
+          onSuccess={()=>{ setShowSendToHach(false); fetchDetail(); }}
+        />
+      )}
+
+      {showReopen && (
+        <ReopenPacketDialog
+          applicationId={detail.id}
+          onClose={()=>setShowReopen(false)}
+          onSuccess={()=>{ setShowReopen(false); fetchDetail(); }}
+        />
+      )}
+    </div>
+  );
+}

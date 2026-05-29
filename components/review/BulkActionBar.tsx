@@ -109,4 +109,88 @@ export default function BulkActionBar({
       {showRequestDialog && onRequestChanges && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white border border-[var(--border)] w-full max-w-md p-5 shadow-xl">
-            <h3 classN
+            <h3 className="text-base font-semibold text-[var(--primary)] mb-1">
+              Request changes
+            </h3>
+            <p className="text-sm text-[var(--muted)] mb-3">
+              The applicant will get an SMS asking them to redo <strong>{selectedCount}</strong> selected document{selectedCount !== 1 ? 's' : ''}. Your note explains what to fix.
+            </p>
+            <textarea
+              value={requestNote}
+              onChange={(e) => setRequestNote(e.target.value)}
+              placeholder="e.g. Your paystub is cut off — please re-upload all 4 pages clearly."
+              rows={4}
+              className="w-full p-3 text-sm border border-[var(--border)] rounded-none resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            />
+            {requestError && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 text-xs text-red-700">
+                {requestError}
+              </div>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => { setShowRequestDialog(false); setRequestNote(''); setRequestError(''); }}
+                disabled={requestSubmitting}
+                className="px-4 py-2 text-sm text-[var(--muted)] hover:text-[var(--ink)] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestSubmit}
+                disabled={requestSubmitting || !requestNote.trim()}
+                className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {requestSubmitting ? 'Sending...' : 'Send request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Soft confirmation for large selections */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white border border-[var(--border)] w-full max-w-sm p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-[var(--primary)] mb-2">
+              Confirm bulk assignment
+            </h3>
+            <p className="text-sm text-[var(--ink)] mb-4">
+              You are about to assign <strong>{selectedCount}</strong> documents at once.
+              Are you sure?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="px-4 py-2 text-sm text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmedAssign}
+                className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign dialog */}
+      <AssignDialog
+        isOpen={showAssignDialog}
+        onClose={() => setShowAssignDialog(false)}
+        onAssign={handleAssignSubmit}
+        currentAssigneeId={null}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        documentLabel={`${selectedCount} documents`}
+        count={selectedCount}
+      />
+    </>
+  );
+}

@@ -99,4 +99,38 @@ A tenant gets one link, completes everything HACH needs to review their PBV appl
 ## How to update this file
 
 At session end, edit:
-1. **Repo snapshot** — new last commit hash + subject (`git log -1 --pretty=format:'%h %s'`
+1. **Repo snapshot** — new last commit hash + subject (`git log -1 --pretty=format:'%h %s'`).
+2. **What's next** — strike completed items, add new ones.
+3. **Open decisions** — log new items, remove resolved ones.
+4. **Last updated** date at the top.
+
+Keep it short. If a section grows past ~10 lines, the detail belongs in a PRD, handoff, or build report — link to it from here.
+
+## Pointers (read on demand, not by default)
+
+- Project plan & PRD index: `docs/` (numbered `01-` through `21-`)
+- Build reports: `docs/build-reports/`
+- Active task lists: `tasks/pbv-todo.md`, `tasks/todo.md`
+- Handoffs from past sessions: `docs/handoffs/`
+- Verification methodology: `docs/verification-methodology_2026-05-13.md`
+- Lessons learned (if/when): `tasks/lessons.md`
+- **North star:** `docs/NORTH_STAR.md` (goal = `hap_executed`; pipeline stages 1–7; design principles)
+- **Project-level knowledge base:** `docs/PROJECT_KNOWLEDGE.md` (Stanton Management context, last March 19 2026)
+- **Tenant form spec:** `docs/TENANT_FORM_SPECIFICATION.md` (pet/insurance/parking compliance spec)
+- **AppFolio insurance decision:** `docs/appfolio-insurance-decision-memo_2026-04-30.md`
+- **Document inventory:** `docs/document-inventory.md` (PBV full app — 33 templates, evidence vs fill-in form breakdown, source-PDF page map)
+- **Tenant requirements (plain language):** `docs/tenant-requirements.md` (same 33 items written for tenant/UX audience — forms vs documents split, freshness rules, common failure modes)
+
+## PBV form-execution build sweep (2026-05-15)
+
+PRD + prompt pairs written to `docs/fullApp-Plan/` — 22 through 32. Run sequentially in Windsurf per the order in `tasks/pbv-form-execution-prd-sweep_2026-05-15.md`. Each PRD has a matching prompt file with the same number.
+
+**PRD-32** (`32-pbv-tenant-link-blockers_prd_2026-05-15.md`) is the next live PRD. Closes 6 critical/high defects that block the real EN tenant link flow. Two of the six (F1, F2) are structural defects the PRD-31 audit missed because the E2E helper sidesteps them.
+
+Architecture documents (read with the PRDs):
+- `docs/fullApp-Plan/05-pbv-form-execution_prd_2026-05-14.md` — overarching spec
+- `docs/fullApp-Plan/form-execution-plan_2026-05-14.md` — strategic plan
+- `docs/fullApp-Plan/pdf-overlay-validated_2026-05-14.md` — architecture decision memo
+- `docs/fullApp-Plan/pdf-overlay-build-handoff_2026-05-14.md` — original handoff (now superseded by PRDs 22-30)
+- `docs/fullApp-Plan/dan-hach-decision-log_2026-05-14.md` — decisions log
+- `docs/fullApp-Plan/pbv-field-inventory.md` — source of truth for fields + conditional triggers

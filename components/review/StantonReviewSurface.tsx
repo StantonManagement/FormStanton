@@ -669,4 +669,41 @@ export default function StantonReviewSurface({
 
       {recategorizingDoc && (
         <RecategorizeDialog
-          categorizeUrl={`/api/admi
+          categorizeUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/${recategorizingDoc.id}/categorize`}
+          doc={recategorizingDoc}
+          availableSlots={documents}
+          onClose={() => setRecategorizingDoc(null)}
+          onSuccess={() => {
+            setRecategorizingDoc(null);
+            showToast(`Moved — ${recategorizingDoc.label}`, 'success');
+            onDocumentAction('refresh', recategorizingDoc.id);
+          }}
+        />
+      )}
+
+      {/* Assign Dialog */}
+      {assigningDoc && (
+        <AssignDialog
+          isOpen={true}
+          onClose={() => setAssigningDoc(null)}
+          onAssign={handleAssignSubmit}
+          currentAssigneeId={assigningDoc.assigned_to_user_id ?? null}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          documentLabel={assigningDoc.label}
+        />
+      )}
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedDocIds.size}
+        totalCount={documents.length}
+        onAssign={handleBulkAssign}
+        onClear={handleClearSelection}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        onRequestChanges={handleBulkRequestChanges}
+      />
+    </div>
+  );
+}

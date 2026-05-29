@@ -209,4 +209,44 @@ export async function PATCH(
       const { data: snapshotRow } = await supabaseAdmin
         .from('pbv_full_applications')
         .select('intake_snapshot')
- 
+        .eq('id', id)
+        .single();
+      const snapshot = (snapshotRow?.intake_snapshot as Record<string, any>) ?? null;
+
+      for (const update of member_income_updates) {
+        if (!update.id) continue;
+        await supabaseAdmin
+          .from('pbv_household_members')
+          .update({ documented_income: update.documented_income ?? null })
+          .eq('id', update.id)
+          .eq('full_application_id', id);
+
+        // F7: Log snapshot vs normalized drift
+        if (snapshot) {
+          const { data: member } = await supabaseAdmin
+            .from('pbv_household_members')
+            .select('slot, name, annual_income')
+            .eq('id', update.id)
+            .single();
+          if (member) {
+            const snapshotIncome = snapshot.income?.by_member?.find(
+              (m: any) => m.member_slot === member.slot
+            );
+            const snapshotAnnual = snapshotIncome?.annual_income ?? null;
+            if (snapshotAnnual !== null && update.documented_income !== null && snapshotAnnual !== update.documented_income) {
+              console.log(
+                `[pbv-drift] app=${id} member=${member.name} slot=${member.slot}: ` +
+                `snapshot_annual_income=${snapshotAnnual} documented_income=${update.documented_income}`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('PATCH /api/admin/pbv/full-applications/[id] error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
