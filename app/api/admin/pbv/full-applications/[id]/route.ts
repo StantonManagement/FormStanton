@@ -78,6 +78,36 @@ export async function GET(
       }
     }
 
+    // Generated form PDFs for the admin "Generated Forms" review block. Lets
+    // staff preview the filled (unsigned) and signed PDFs without leaving the
+    // page. Join template display names so the UI shows readable labels.
+    const { data: formDocsDetail } = await supabaseAdmin
+      .from('pbv_form_documents')
+      .select('id, form_id, language, status, generated_at, finalized_at, unsigned_pdf_path, signed_pdf_path, required_signer_member_ids, collected_signer_member_ids')
+      .eq('full_application_id', id)
+      .order('form_id', { ascending: true });
+
+    const { data: formTemplates } = await supabaseAdmin
+      .from('pbv_form_templates')
+      .select('form_id, display_name_en');
+    const formNameById = new Map<string, string>(
+      (formTemplates ?? []).map((t) => [t.form_id as string, (t.display_name_en as string) ?? (t.form_id as string)])
+    );
+
+    const generatedForms = (formDocsDetail ?? []).map((fd) => ({
+      id: fd.id,
+      form_id: fd.form_id,
+      display_name: formNameById.get(fd.form_id as string) ?? (fd.form_id as string),
+      language: fd.language,
+      status: fd.status,
+      generated_at: fd.generated_at,
+      finalized_at: fd.finalized_at,
+      has_unsigned_pdf: !!fd.unsigned_pdf_path,
+      has_signed_pdf: !!fd.signed_pdf_path,
+      required_signer_member_ids: (fd.required_signer_member_ids as string[] | null) ?? [],
+      collected_signer_member_ids: (fd.collected_signer_member_ids as string[] | null) ?? [],
+    }));
+
     const membersWithSignatures = (members ?? []).map((m) => {
       const legacy = Array.isArray((m as { signed_forms?: unknown }).signed_forms)
         ? ((m as { signed_forms: string[] }).signed_forms)
@@ -100,6 +130,7 @@ export async function GET(
         assigned_to_name: assignedToName,
         members: membersWithSignatures,
         documents: documents ?? [],
+        generated_forms: generatedForms,
         magic_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/pbv-full-app/${app.tenant_access_token}`,
       },
     });

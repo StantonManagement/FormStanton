@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
 import NotificationTimeline from '@/components/admin/NotificationTimeline';
+import ApplicantMessagesPanel from '@/components/admin/ApplicantMessagesPanel';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
 import ReopenPacketDialog from '@/components/review/ReopenPacketDialog';
 import PacketLockBanner from '@/components/review/PacketLockBanner';
@@ -14,7 +15,8 @@ import type { PreferredLanguage } from '@/types/compliance';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean;revision?:number;file_name?:string|null;storage_path?:string|null;uploaded_by_role?:string|null;uploaded_by_display_name?:string|null;staff_upload_note?:string|null;original_doc_type?:string|null; }
-interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[]; }
+interface GeneratedForm { id:string;form_id:string;display_name:string;language:string;status:string;generated_at:string|null;finalized_at:string|null;has_unsigned_pdf:boolean;has_signed_pdf:boolean;required_signer_member_ids:string[];collected_signer_member_ids:string[]; }
+interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[];generated_forms:GeneratedForm[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
 const STATUS_COLORS:Record<string,string> = {pending:'bg-gray-100 text-gray-700',under_review:'bg-yellow-100 text-yellow-800',needs_info:'bg-orange-100 text-orange-800',approved:'bg-green-100 text-green-800',denied:'bg-red-100 text-red-800'};
@@ -392,6 +394,48 @@ export default function PbvFullApplicationDetailPage() {
 
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
+          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Generated Forms</h2>
+          <p className="text-xs text-[var(--muted)] mt-0.5">Filled federal/HACH forms. Preview the unsigned copy to verify field mapping before signature; preview the signed copy after.</p>
+        </div>
+        <div className="divide-y divide-[var(--divider)]">
+          {detail.generated_forms.length === 0 ? (
+            <p className="text-sm text-[var(--muted)] p-5">No forms have been generated yet.</p>
+          ) : (
+            detail.generated_forms.map(f=>(
+              <div key={f.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-sm text-[var(--ink)] truncate">{f.display_name}</div>
+                  <div className="text-xs text-[var(--muted)] mt-0.5">
+                    {f.has_signed_pdf
+                      ? 'Signed '+fmtDate(f.finalized_at)
+                      : f.has_unsigned_pdf
+                        ? 'Generated '+fmtDate(f.generated_at)
+                        : 'Not generated'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`px-2 py-0.5 text-xs ${f.has_signed_pdf?'bg-green-100 text-green-700':f.has_unsigned_pdf?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-600'}`}>
+                    {f.has_signed_pdf?'Signed':f.has_unsigned_pdf?'Awaiting signature':'Pending'}
+                  </span>
+                  {(f.has_unsigned_pdf||f.has_signed_pdf) && (
+                    <a
+                      href={`/api/admin/pbv/full-applications/${detail.id}/forms/${f.id}/preview`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
+                    >
+                      Preview {f.has_signed_pdf?'signed':'filled'}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="bg-white border border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Qualification — Income Review</h2>
           <p className="text-xs text-[var(--muted)] mt-0.5">Enter documented income per member. Delta 10% flagged.</p>
         </div>
@@ -687,6 +731,11 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         </div>
       </section>
+
+      <ApplicantMessagesPanel
+        applicationId={detail.id}
+        optedOut={!!detail.sms_opted_out_at}
+      />
 
       {showSendToHach && (
         <SendToHachDialog

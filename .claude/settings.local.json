@@ -4,7 +4,11 @@
       "PowerShell(New-Item -ItemType Directory -Force -Path 'assets\\\\pbv-source-pdfs' | Out-Null; $names = @\\('main-application-en','main-application-es','citizenship-declaration-en','citizenship-declaration-es','obligations-of-family-en','obligations-of-family-es','hud-9886a-en','hud-9886a-es','hach-release-en','hach-release-es','hud-92006-en','hud-92006-es','child-support-affidavit-en','child-support-affidavit-es','no-child-support-affidavit-en','no-child-support-affidavit-es','briefing-cert-en','briefing-cert-es','debts-owed-phas-en','debts-owed-phas-es'\\); foreach \\($n in $names\\) { $src = \"docs\\\\templates\\\\$n.pdf\"; $dst = \"assets\\\\pbv-source-pdfs\\\\$n.pdf\"; if \\(Test-Path $src\\) { Copy-Item -Path $src -Destination $dst -Force; \"OK   $n\" } else { \"MISS $n\" } })",
       "Bash(git check-ignore *)",
       "Bash(node ./node_modules/typescript/bin/tsc --noEmit)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx tsx *)",
+      "Bash(git config *)",
+      "Bash(Select-String -Pattern \"user\\\\.|remote\\\\.\")"
     ]
   }
 }

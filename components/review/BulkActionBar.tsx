@@ -10,6 +10,10 @@ interface BulkActionBarProps {
   onClear: () => void;
   currentUserId: string;
   currentUserName: string;
+  /** When provided, shows a "Request changes" action that asks the applicant
+   *  to redo the selected documents with a note. Resolves when the request is
+   *  sent so the bar can clear its dialog. */
+  onRequestChanges?: (note: string) => Promise<void>;
 }
 
 export default function BulkActionBar({
@@ -19,11 +23,31 @@ export default function BulkActionBar({
   onClear,
   currentUserId,
   currentUserName,
+  onRequestChanges,
 }: BulkActionBarProps) {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [requestNote, setRequestNote] = useState('');
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState('');
 
   if (selectedCount === 0) return null;
+
+  const handleRequestSubmit = async () => {
+    if (!onRequestChanges || !requestNote.trim()) return;
+    setRequestSubmitting(true);
+    setRequestError('');
+    try {
+      await onRequestChanges(requestNote.trim());
+      setShowRequestDialog(false);
+      setRequestNote('');
+    } catch (e: any) {
+      setRequestError(e?.message || 'Failed to send request');
+    } finally {
+      setRequestSubmitting(false);
+    }
+  };
 
   const handleAssignClick = () => {
     if (selectedCount >= 50) {
@@ -61,6 +85,15 @@ export default function BulkActionBar({
           </div>
 
           <div className="flex items-center gap-2">
+            {onRequestChanges && (
+              <button
+                type="button"
+                onClick={() => { setRequestError(''); setShowRequestDialog(true); }}
+                className="px-4 py-2 border border-[var(--border)] text-[var(--ink)] text-sm font-medium hover:bg-[var(--bg-section)] transition-colors"
+              >
+                Request changes...
+              </button>
+            )}
             <button
               type="button"
               onClick={handleAssignClick}
@@ -71,6 +104,50 @@ export default function BulkActionBar({
           </div>
         </div>
       </div>
+
+      {/* Request changes dialog */}
+      {showRequestDialog && onRequestChanges && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white border border-[var(--border)] w-full max-w-md p-5 shadow-xl">
+            <h3 className="text-base font-semibold text-[var(--primary)] mb-1">
+              Request changes
+            </h3>
+            <p className="text-sm text-[var(--muted)] mb-3">
+              The applicant will get an SMS asking them to redo <strong>{selectedCount}</strong> selected document{selectedCount !== 1 ? 's' : ''}. Your note explains what to fix.
+            </p>
+            <textarea
+              value={requestNote}
+              onChange={(e) => setRequestNote(e.target.value)}
+              placeholder="e.g. Your paystub is cut off — please re-upload all 4 pages clearly."
+              rows={4}
+              className="w-full p-3 text-sm border border-[var(--border)] rounded-none resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            />
+            {requestError && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 text-xs text-red-700">
+                {requestError}
+              </div>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                type="button"
+                onClick={() => { setShowRequestDialog(false); setRequestNote(''); setRequestError(''); }}
+                disabled={requestSubmitting}
+                className="px-4 py-2 text-sm text-[var(--muted)] hover:text-[var(--ink)] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestSubmit}
+                disabled={requestSubmitting || !requestNote.trim()}
+                className="px-4 py-2 bg-[var(--primary)] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {requestSubmitting ? 'Sending...' : 'Send request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Soft confirmation for large selections */}
       {showConfirm && (
