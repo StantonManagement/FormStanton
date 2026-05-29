@@ -291,6 +291,35 @@ export default function StantonReviewSurface({
     }
   }, [selectedDocIds, anchorType, anchorId, onDocumentAction, showToast]);
 
+  // Bulk "request changes": reject the selected docs with the staff note as the
+  // reason and send ONE consolidated SMS asking the applicant to redo them. The
+  // request is also logged into the staff<->applicant message thread server-side.
+  const handleBulkRequestChanges = useCallback(async (note: string) => {
+    const docIds = Array.from(selectedDocIds);
+    if (docIds.length === 0) return;
+
+    const res = await fetch(
+      `/api/admin/applications/${anchorType}/${anchorId}/documents/bulk-reject`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rejections: docIds.map((document_id) => ({ document_id, reason: note })),
+          send_notification: true,
+        }),
+      }
+    );
+
+    const json = await res.json();
+    if (!json.success) {
+      throw new Error(json.message || 'Failed to send request');
+    }
+
+    setSelectedDocIds(new Set());
+    showToast(`Requested changes on ${docIds.length} document${docIds.length !== 1 ? 's' : ''}`, 'success');
+    onDocumentAction('refresh', docIds[0]);
+  }, [selectedDocIds, anchorType, anchorId, onDocumentAction, showToast]);
+
   // Claim handler for C key shortcut
   const handleClaim = useCallback(async (docId: string) => {
     if (!currentUserId) return;
@@ -640,40 +669,4 @@ export default function StantonReviewSurface({
 
       {recategorizingDoc && (
         <RecategorizeDialog
-          categorizeUrl={`/api/admin/applications/${anchorType}/${anchorId}/documents/${recategorizingDoc.id}/categorize`}
-          doc={recategorizingDoc}
-          availableSlots={documents}
-          onClose={() => setRecategorizingDoc(null)}
-          onSuccess={() => {
-            setRecategorizingDoc(null);
-            showToast(`Moved — ${recategorizingDoc.label}`, 'success');
-            onDocumentAction('refresh', recategorizingDoc.id);
-          }}
-        />
-      )}
-
-      {/* Assign Dialog */}
-      {assigningDoc && (
-        <AssignDialog
-          isOpen={true}
-          onClose={() => setAssigningDoc(null)}
-          onAssign={handleAssignSubmit}
-          currentAssigneeId={assigningDoc.assigned_to_user_id ?? null}
-          currentUserId={currentUserId}
-          currentUserName={currentUserName}
-          documentLabel={assigningDoc.label}
-        />
-      )}
-
-      {/* Bulk Action Bar */}
-      <BulkActionBar
-        selectedCount={selectedDocIds.size}
-        totalCount={documents.length}
-        onAssign={handleBulkAssign}
-        onClear={handleClearSelection}
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-      />
-    </div>
-  );
-}
+          categorizeUrl={`/api/admi

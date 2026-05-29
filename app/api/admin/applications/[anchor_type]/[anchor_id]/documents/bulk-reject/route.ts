@@ -213,6 +213,34 @@ export async function POST(
         },
       });
 
+      // Log the request into the staff<->applicant thread so the conversation
+      // shows exactly which documents the applicant was asked to redo. Only for
+      // PBV applications (the messages table is PBV-scoped).
+      if (anchor_type === 'pbv_full_application') {
+        try {
+          await supabaseAdmin.from('pbv_application_messages').insert({
+            full_application_id: anchor_id,
+            direction: 'outbound',
+            channel: 'sms',
+            body: messageBody,
+            sender_role: 'system',
+            sender_user_id: sessionUser.userId,
+            sender_display_name: reviewer,
+            related_document_ids: successfulRejections.map(r => r.document_id),
+            delivery_status:
+              notificationResult.status === 'sent'
+                ? 'sent'
+                : notificationResult.status === 'email_fallback'
+                ? 'email_fallback'
+                : `${notificationResult.status}:${(notificationResult as { reason?: string }).reason ?? ''}`,
+            twilio_message_sid: notificationResult.status === 'sent' ? notificationResult.twilioSid : null,
+            created_by: reviewer,
+          });
+        } catch (threadErr) {
+          console.error('[document bulk-reject] failed to log thread message:', threadErr);
+        }
+      }
+
       // Log notification event
       if (notificationResult.status === 'sent') {
         await writePbvApplicationEvent({
@@ -224,52 +252,4 @@ export async function POST(
             notification_type: 'doc_rejected',
             notification_id: notificationResult.notificationId,
             twilio_message_sid: notificationResult.twilioSid,
-          },
-        });
-      } else if (notificationResult.status === 'email_fallback' || notificationResult.status === 'failed') {
-        await writePbvApplicationEvent({
-          applicationId: anchor_id,
-          eventType: ApplicationEventType.NOTIFICATION_FAILED,
-          actorUserId: sessionUser.userId,
-          actorDisplayName: reviewer,
-          payload: {
-            notification_type: 'doc_rejected',
-            notification_id: notificationResult.notificationId,
-            reason: notificationResult.reason,
-          },
-        });
-      }
-    }
-
-    // Log audit
-    await logAudit(
-      sessionUser,
-      'document.bulk_reject',
-      'application_documents',
-      anchor_id,
-      {
-        anchor_type,
-        anchor_id,
-        rejection_count: successfulRejections.length,
-        notification_sent: send_notification,
-        notification_result: notificationResult?.status,
-      },
-      getClientIp(request)
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        results: rejectionResults,
-        notification: notificationResult,
-      },
-    });
-
-  } catch (error: any) {
-    console.error('[document bulk-reject] error:', error);
-    return NextResponse.json(
-      { success: false, message: error.message },
-      { status: 500 }
-    );
-  }
-}
+ 
