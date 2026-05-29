@@ -3,15 +3,19 @@
 > **Front door for every new session.** Read this first. Update at session end.
 > Single source of truth for "where are we right now."
 
-_Last updated: 2026-05-15 (evening — Audit Round 2 + PRD-32 drafted)_
+_Last updated: 2026-05-29 (admin full-app detail committed to `claude/admin-detail-followups`)_
 
 ---
 
 ## Repo snapshot
 
-- **Branch:** `dev` (PBV form-execution work landing on `feature/pbv-form-execution`)
-- **Last commit:** `4790622` — _ci: pbv-form-execution e2e in CI + build report_
-- **Working tree:** dirty — PRD-31 hotfix code is **uncommitted** in the working tree (958 unstaged paths). All four critical fixes (C1–C4) and the high-sev fixes (H1–H4) are present on disk per grep, but not yet in git history. PRDs 22–30 are committed in `dev`.
+- **Branch:** `claude/admin-detail-followups` — forked from `main` at `8e85ac0` (intake responses inline). Six atomic commits on top, see below.
+- **Last commit before docs:** `65a13dc` — _feat(pbv): wire admin detail page — Generated Forms block + ApplicantMessagesPanel_. Docs commit goes on top of this.
+- **Working tree:** clean once docs commit lands. Branch needs `git push -u origin claude/admin-detail-followups` from a host with credentials (sandbox has none).
+- **`.git/config` was repaired** this session — file was truncated at line 17 (`[l`). Removed the partial section; no LFS evidence in repo so the drop should be harmless. Backup at `.git/config.bak.broken`.
+- **Mount quirk worth knowing:** the sandbox cannot `rm` files under `.git/`, only `mv` them. Every git write op leaves a `.git/index.lock` plus a handful of `.git/objects/*.lock` files that have to be moved aside before the next git command. A wrapper script + ~12s sleep handles it. Lock files accumulated in `.git/aside/`.
+- **Admin detail handoff (2026-05-28):** shipped on this branch. Messages table, Twilio inbound wiring, Request-changes flow, ApplicantMessagesPanel, Generated Forms preview all in. Build + smoke test pending on Windows.
+- **PBV form-execution workstream (PRD-22→32):** the 2026-05-15 snapshot claimed PRD-31 hotfix code was on disk and `dev` was checked out. Current `main` does not show that — no `feature/pbv-form-execution` branch exists, working tree was clean of PRD-31 changes. The earlier snapshot may have been from a different worktree or stale. Reconcile before resuming PRD-32.
 
 ## What just shipped (PBV Tenant Flow Correctness Sprint)
 
@@ -32,8 +36,21 @@ All 8 PRDs merged on `dev` as of 2026-05-14:
 
 _Update this section every session._
 
-- [ ] **Commit PRD-31 hotfix work** — the fixes are on disk but not in git. 958 unstaged paths. Stage in atomic commits per the original PRD-31 commit list before running PRD-32.
-- [ ] **Run PRD-32 in Windsurf** — closes the 6 ship-blocking defects that prevent a real EN tenant from completing the link flow. Prompt: `docs/fullApp-Plan/prompts/32-pbv-tenant-link-blockers_prompt_2026-05-15.md`. PRD: `docs/fullApp-Plan/32-pbv-tenant-link-blockers_prd_2026-05-15.md`. **Includes two structural defects the PRD-31 audit missed** — `'review'` in `ALWAYS_SECTIONS` and the missing `pbv_household_members` bridge.
+- [ ] **Push the branch** — `git push -u origin claude/admin-detail-followups` from Windows. The six commits below are local-only until pushed.
+- [ ] **Run `npm run build` on Windows** — verify the admin-detail stream compiles. Sandbox could not build (no `node_modules` in mount).
+- [ ] **Smoke test** per the build report: Request changes → system message in panel; staff composer → outbound SMS appears; tenant SMS reply → inbound appears within ~15s; Generated Forms preview opens the PDF.
+- [ ] **Open PR** from `claude/admin-detail-followups` → `main` after the smoke test passes.
+- [ ] **Reconcile the PRD-22→32 workstream** — the 2026-05-15 snapshot's claims (`dev` branch, 958 unstaged paths, PRD-31 hotfix on disk) don't match current `main`. Figure out where that work actually lives before resuming PRD-32.
+
+### Commits on `claude/admin-detail-followups`
+
+1. `3495471` — feat(pbv): add pbv_application_messages table + staff_message template
+2. `684e3a8` — feat(pbv): admin form preview endpoint + generated_forms in GET
+3. `71e41a5` — feat(pbv): two-way SMS messages API + Twilio inbound wiring
+4. `f969af8` — feat(pbv): Request changes flow logs system message to thread
+5. `f09a0a3` — feat(pbv): ApplicantMessagesPanel + useApplicationMessages hook
+6. `65a13dc` — feat(pbv): wire admin detail page — Generated Forms block + ApplicantMessagesPanel
+7. (this commit) — docs: admin full-app detail build report + CURRENT_STATE
 - [x] ~~Run PRD-22 in Windsurf~~ — done
 - [x] ~~PRDs 23-30 sequential~~ — done; audit surfaced defects, see PRD-31
 - [x] ~~Run PRD-31 hotfix~~ — code applied; commit + run E2E still pending
@@ -58,6 +75,8 @@ A tenant gets one link, completes everything HACH needs to review their PBV appl
 
 ## Open decisions / things to watch
 
+- **Admin-detail handoff (2026-05-28)** — full handoff at top of session. Two-way messaging table, Twilio inbound wiring, Request-changes flow, and `ApplicantMessagesPanel` all landed; panel is now wired into the page. No build report exists yet for this stream — write one after the smoke test passes.
+- **Workstream interleaving** — admin-detail work ran in parallel with the PBV form-execution sprint (PRD-22→32). Both streams have uncommitted code. Decide commit order before pushing.
 - **PRD-32 F2 architecture (open)** — re-sync vs one-shot member insert on `/intake/complete`. Default: re-sync (delete + re-insert on every call, supports edit-and-resubmit). Tradeoff: a tenant re-submit after staff-side adjustments could clobber those adjustments. Needs Dan ratification.
 - **PRD-32 F5 row-coordinate formula** — default `row_index = member.slot - 1`. Must be verified against `scripts/field-maps/citizenship-declaration-en.json` during build.
 - **Audit Round 2 findings (2026-05-15)** — see `docs/audit/tenant-link-form-fill-audit_2026-05-15.md`. D1–D4 + the two Claude-scan defects (F1, F2 in PRD-32) ship in PRD-32. D5 (SMS), D6, D7, D8, D9 deferred to a Phase-2 PRD.
@@ -80,38 +99,4 @@ A tenant gets one link, completes everything HACH needs to review their PBV appl
 ## How to update this file
 
 At session end, edit:
-1. **Repo snapshot** — new last commit hash + subject (`git log -1 --pretty=format:'%h %s'`).
-2. **What's next** — strike completed items, add new ones.
-3. **Open decisions** — log new items, remove resolved ones.
-4. **Last updated** date at the top.
-
-Keep it short. If a section grows past ~10 lines, the detail belongs in a PRD, handoff, or build report — link to it from here.
-
-## Pointers (read on demand, not by default)
-
-- Project plan & PRD index: `docs/` (numbered `01-` through `21-`)
-- Build reports: `docs/build-reports/`
-- Active task lists: `tasks/pbv-todo.md`, `tasks/todo.md`
-- Handoffs from past sessions: `docs/handoffs/`
-- Verification methodology: `docs/verification-methodology_2026-05-13.md`
-- Lessons learned (if/when): `tasks/lessons.md`
-- **North star:** `docs/NORTH_STAR.md` (goal = `hap_executed`; pipeline stages 1–7; design principles)
-- **Project-level knowledge base:** `docs/PROJECT_KNOWLEDGE.md` (Stanton Management context, last March 19 2026)
-- **Tenant form spec:** `docs/TENANT_FORM_SPECIFICATION.md` (pet/insurance/parking compliance spec)
-- **AppFolio insurance decision:** `docs/appfolio-insurance-decision-memo_2026-04-30.md`
-- **Document inventory:** `docs/document-inventory.md` (PBV full app — 33 templates, evidence vs fill-in form breakdown, source-PDF page map)
-- **Tenant requirements (plain language):** `docs/tenant-requirements.md` (same 33 items written for tenant/UX audience — forms vs documents split, freshness rules, common failure modes)
-
-## PBV form-execution build sweep (2026-05-15)
-
-PRD + prompt pairs written to `docs/fullApp-Plan/` — 22 through 32. Run sequentially in Windsurf per the order in `tasks/pbv-form-execution-prd-sweep_2026-05-15.md`. Each PRD has a matching prompt file with the same number.
-
-**PRD-32** (`32-pbv-tenant-link-blockers_prd_2026-05-15.md`) is the next live PRD. Closes 6 critical/high defects that block the real EN tenant link flow. Two of the six (F1, F2) are structural defects the PRD-31 audit missed because the E2E helper sidesteps them.
-
-Architecture documents (read with the PRDs):
-- `docs/fullApp-Plan/05-pbv-form-execution_prd_2026-05-14.md` — overarching spec
-- `docs/fullApp-Plan/form-execution-plan_2026-05-14.md` — strategic plan
-- `docs/fullApp-Plan/pdf-overlay-validated_2026-05-14.md` — architecture decision memo
-- `docs/fullApp-Plan/pdf-overlay-build-handoff_2026-05-14.md` — original handoff (now superseded by PRDs 22-30)
-- `docs/fullApp-Plan/dan-hach-decision-log_2026-05-14.md` — decisions log
-- `docs/fullApp-Plan/pbv-field-inventory.md` — source of truth for fields + conditional triggers
+1. **Repo snapshot** — new last commit hash + subject (`git log -1 --pretty=format:'%h %s'`
