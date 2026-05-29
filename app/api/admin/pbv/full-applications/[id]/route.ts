@@ -26,7 +26,8 @@ export async function GET(
          claiming_medical_deduction, has_childcare_expense, dv_status,
          homeless_at_admission, reasonable_accommodation_requested,
          packet_locked, submitted_to_hach_at, submitted_to_hach_by, hach_packet_revision,
-         sms_opted_out_at, stage, assigned_to, admin_users:assigned_to(display_name)`
+         sms_opted_out_at, stage, assigned_to, preferred_language, intake_snapshot, intake_snapshot_at,
+         phone, admin_users:assigned_to(display_name)`
       )
       .eq('id', id)
       .single();
