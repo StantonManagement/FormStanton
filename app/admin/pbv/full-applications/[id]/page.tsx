@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
 import NotificationTimeline from '@/components/admin/NotificationTimeline';
+import ApplicantMessagesPanel from '@/components/admin/ApplicantMessagesPanel';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
 import ReopenPacketDialog from '@/components/review/ReopenPacketDialog';
 import PacketLockBanner from '@/components/review/PacketLockBanner';
@@ -14,7 +15,8 @@ import type { PreferredLanguage } from '@/types/compliance';
 
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean;revision?:number;file_name?:string|null;storage_path?:string|null;uploaded_by_role?:string|null;uploaded_by_display_name?:string|null;staff_upload_note?:string|null;original_doc_type?:string|null; }
-interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[]; }
+interface GeneratedForm { id:string;form_id:string;display_name:string;language:string;status:string;generated_at:string|null;finalized_at:string|null;has_unsigned_pdf:boolean;has_signed_pdf:boolean;required_signer_member_ids:string[];collected_signer_member_ids:string[]; }
+interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[];generated_forms:GeneratedForm[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
 const STATUS_COLORS:Record<string,string> = {pending:'bg-gray-100 text-gray-700',under_review:'bg-yellow-100 text-yellow-800',needs_info:'bg-orange-100 text-orange-800',approved:'bg-green-100 text-green-800',denied:'bg-red-100 text-red-800'};
@@ -392,6 +394,48 @@ export default function PbvFullApplicationDetailPage() {
 
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
+          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Generated Forms</h2>
+          <p className="text-xs text-[var(--muted)] mt-0.5">Filled federal/HACH forms. Preview the unsigned copy to verify field mapping before signature; preview the signed copy after.</p>
+        </div>
+        <div className="divide-y divide-[var(--divider)]">
+          {detail.generated_forms.length === 0 ? (
+            <p className="text-sm text-[var(--muted)] p-5">No forms have been generated yet.</p>
+          ) : (
+            detail.generated_forms.map(f=>(
+              <div key={f.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-sm text-[var(--ink)] truncate">{f.display_name}</div>
+                  <div className="text-xs text-[var(--muted)] mt-0.5">
+                    {f.has_signed_pdf
+                      ? 'Signed '+fmtDate(f.finalized_at)
+                      : f.has_unsigned_pdf
+                        ? 'Generated '+fmtDate(f.generated_at)
+                        : 'Not generated'}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`px-2 py-0.5 text-xs ${f.has_signed_pdf?'bg-green-100 text-green-700':f.has_unsigned_pdf?'bg-yellow-100 text-yellow-800':'bg-gray-100 text-gray-600'}`}>
+                    {f.has_signed_pdf?'Signed':f.has_unsigned_pdf?'Awaiting signature':'Pending'}
+                  </span>
+                  {(f.has_unsigned_pdf||f.has_signed_pdf) && (
+                    <a
+                      href={`/api/admin/pbv/full-applications/${detail.id}/forms/${f.id}/preview`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
+                    >
+                      Preview {f.has_signed_pdf?'signed':'filled'}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="bg-white border border-[var(--border)]">
+        <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Qualification — Income Review</h2>
           <p className="text-xs text-[var(--muted)] mt-0.5">Enter documented income per member. Delta 10% flagged.</p>
         </div>
@@ -605,104 +649,4 @@ export default function PbvFullApplicationDetailPage() {
                 <div className="flex gap-2 text-xs">
                   {m.disability&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-600">Disability</span>}
                   {m.student&&<span className="px-1.5 py-0.5 bg-gray-100 text-gray-600">Student</span>}
-                  {m.signature_required&&(m.signed_forms.length>0?<span className="px-1.5 py-0.5 bg-green-100 text-green-700">Signed</span>:<span className="px-1.5 py-0.5 bg-amber-100 text-amber-700">Sig. Pending</span>)}
-                </div>
-              </div>
-              <div className="text-xs text-[var(--muted)] flex flex-wrap gap-4">
-                <span>Citizenship: {m.citizenship_status}</span>
-                {m.ssn_last_four&&<span>SSN: lastfour {m.ssn_last_four}</span>}
-                {m.income_sources?.length>0&&<span>Income: {m.income_sources.join(', ')}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-white border border-[var(--border)]">
-        <div className="px-5 py-3 border-b border-[var(--divider)]">
-          <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
-        </div>
-        <div className="px-5 py-4 space-y-4">
-          {/* Manual SMS Send Buttons */}
-          <div className="space-y-2">
-            <p className="text-sm text-[var(--muted)]">Send notifications manually (staff-controlled):</p>
-            
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleSendSms('magic_link_initial')}
-                disabled={!!sendingSms || !!detail.sms_opted_out_at}
-                className="px-3 py-2 text-xs bg-[var(--primary)] text-white rounded-none hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingSms === 'magic_link_initial' ? 'Sending...' : 'Send Magic Link'}
-              </button>
-              
-              <button
-                onClick={() => handleSendSms('docs_upload_reminder')}
-                disabled={!!sendingSms || !!detail.sms_opted_out_at}
-                className="px-3 py-2 text-xs border border-[var(--border)] text-[var(--ink)] rounded-none hover:bg-[var(--bg-section)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingSms === 'docs_upload_reminder' ? 'Sending...' : 'Send Doc Reminder'}
-              </button>
-              
-              {detail.hach_review_status === 'approved_by_hach' && (
-                <button
-                  onClick={() => handleSendSms('hach_approved_signing_ready')}
-                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
-                  className="px-3 py-2 text-xs border border-green-600 text-green-700 rounded-none hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {sendingSms === 'hach_approved_signing_ready' ? 'Sending...' : 'Send HACH Approval Notice'}
-                </button>
-              )}
-              
-              {detail.packet_locked && (
-                <button
-                  onClick={() => handleSendSms('hap_executed_move_in')}
-                  disabled={!!sendingSms || !!detail.sms_opted_out_at}
-                  className="px-3 py-2 text-xs bg-purple-600 text-white rounded-none hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {sendingSms === 'hap_executed_move_in' ? 'Sending...' : 'Send HAP Executed Notice'}
-                </button>
-              )}
-            </div>
-            
-            {!!detail.sms_opted_out_at && (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2">
-                Tenant has opted out of SMS notifications.
-              </p>
-            )}
-            
-            {smsResult && (
-              <div className={`text-xs p-2 rounded-none ${smsResult.success ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                {smsResult.message}
-              </div>
-            )}
-          </div>
-          
-          <div className="border-t border-[var(--divider)] pt-4">
-            <NotificationTimeline
-              applicationId={detail.id}
-              optedOut={!!detail.sms_opted_out_at}
-              onResendMagicLink={fetchDetail}
-            />
-          </div>
-        </div>
-      </section>
-
-      {showSendToHach && (
-        <SendToHachDialog
-          applicationId={detail.id}
-          onClose={()=>setShowSendToHach(false)}
-          onSuccess={()=>{ setShowSendToHach(false); fetchDetail(); }}
-        />
-      )}
-
-      {showReopen && (
-        <ReopenPacketDialog
-          applicationId={detail.id}
-          onClose={()=>setShowReopen(false)}
-          onSuccess={()=>{ setShowReopen(false); fetchDetail(); }}
-        />
-      )}
-    </div>
-  );
-}
+           
