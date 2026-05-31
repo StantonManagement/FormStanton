@@ -113,7 +113,10 @@ function resolveMainApplication(
       mi: parts.mi,
       dob: formatDob(m.date_of_birth),
       ssn: ssnDisplay(m.ssn_last_four),
-      relationship: m.slot === 1 ? (language === 'es' ? 'YO' : 'SELF') : m.relationship,
+      // Slot 1 (HOH) relationship is PRE-PRINTED on the source form ("SELF" en / "YO" es)
+      // in the first adults-table relationship cell. Emit blank so we don't stamp a
+      // duplicate over it. Non-HOH adults stamp their actual relationship.
+      relationship: m.slot === 1 ? '' : m.relationship,
       age: m.age != null ? String(m.age) : '',
     };
   });
