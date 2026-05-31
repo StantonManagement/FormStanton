@@ -1,15 +1,19 @@
 {
   "form_id": "criminal-background-release-es",
+  "field_map_version": "2",
   "source_pdf": "docs/templates/criminal-background-release-es.pdf",
   "page_size": "letter",
-  "page_dimensions": { "width": 612, "height": 792 },
+  "page_dimensions": {
+    "width": 612,
+    "height": 792
+  },
   "fields": [
     {
       "name": "first_name",
       "type": "text",
       "page": 1,
-      "x": 145,
-      "y": 472,
+      "x": 109.8774979560155,
+      "y": 471.35,
       "width": 90,
       "font_size": 9,
       "label": "Nombre"
@@ -18,8 +22,8 @@
       "name": "middle_initial",
       "type": "text",
       "page": 1,
-      "x": 295,
-      "y": 472,
+      "x": 282.3657041369402,
+      "y": 471.35,
       "width": 30,
       "font_size": 9,
       "label": "Inicial"
@@ -28,8 +32,8 @@
       "name": "last_name",
       "type": "text",
       "page": 1,
-      "x": 390,
-      "y": 472,
+      "x": 368.5172235392638,
+      "y": 471.35,
       "width": 170,
       "font_size": 9,
       "label": "Apellido"
@@ -38,8 +42,8 @@
       "name": "dob",
       "type": "text",
       "page": 1,
-      "x": 430,
-      "y": 450,
+      "x": 467.7176708442247,
+      "y": 445.55,
       "width": 100,
       "font_size": 9,
       "label": "Fecha de nacimiento"
@@ -48,8 +52,8 @@
       "name": "ssn",
       "type": "text",
       "page": 1,
-      "x": 200,
-      "y": 399,
+      "x": 202.5520790294329,
+      "y": 398.63,
       "width": 180,
       "font_size": 9,
       "label": "Número de seguro social"
@@ -68,8 +72,8 @@
       "name": "current_address_apt",
       "type": "text",
       "page": 1,
-      "x": 396,
-      "y": 374,
+      "x": 433.4700012207031,
+      "y": 372.8100128173828,
       "width": 80,
       "font_size": 9,
       "label": "Apt. #"
@@ -78,8 +82,8 @@
       "name": "current_address_city",
       "type": "text",
       "page": 1,
-      "x": 120,
-      "y": 348,
+      "x": 112.18000030517578,
+      "y": 346.99000549316406,
       "width": 150,
       "font_size": 9,
       "label": "Ciudad"
@@ -88,8 +92,8 @@
       "name": "current_address_state",
       "type": "text",
       "page": 1,
-      "x": 310,
-      "y": 348,
+      "x": 293.8900146484375,
+      "y": 346.99000549316406,
       "width": 60,
       "font_size": 9,
       "label": "Estado"
@@ -98,8 +102,8 @@
       "name": "current_address_zip",
       "type": "text",
       "page": 1,
-      "x": 450,
-      "y": 348,
+      "x": 472.0199890136719,
+      "y": 346.99000549316406,
       "width": 80,
       "font_size": 9,
       "label": "Código Postal"
@@ -118,8 +122,8 @@
       "name": "previous_address_apt",
       "type": "text",
       "page": 1,
-      "x": 396,
-      "y": 322,
+      "x": 433.4700012207031,
+      "y": 321.1900177001953,
       "width": 80,
       "font_size": 9,
       "label": "Apt. #"
@@ -128,8 +132,8 @@
       "name": "previous_address_city",
       "type": "text",
       "page": 1,
-      "x": 120,
-      "y": 296,
+      "x": 112.18000030517578,
+      "y": 295.5099792480469,
       "width": 150,
       "font_size": 9,
       "label": "Ciudad"
@@ -138,8 +142,8 @@
       "name": "previous_address_state",
       "type": "text",
       "page": 1,
-      "x": 310,
-      "y": 296,
+      "x": 293.8900146484375,
+      "y": 295.5099792480469,
       "width": 60,
       "font_size": 9,
       "label": "Estado"
@@ -148,8 +152,8 @@
       "name": "previous_address_zip",
       "type": "text",
       "page": 1,
-      "x": 450,
-      "y": 296,
+      "x": 472.0199890136719,
+      "y": 295.5099792480469,
       "width": 80,
       "font_size": 9,
       "label": "Código Postal"

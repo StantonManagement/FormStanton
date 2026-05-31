@@ -1,5 +1,6 @@
 {
   "form_id": "citizenship-declaration-es",
+  "field_map_version": "2",
   "source_pdf": "docs/templates/citizenship-declaration-es.pdf",
   "page_size": "letter",
   "page_dimensions": { "width": 612, "height": 792 },
@@ -9,7 +10,7 @@
       "page": 1,
       "data_key": "members",
       "max_rows": 9,
-      "row_start_y": 352,
+      "row_start_y": 337,
       "row_pitch": 18.2,
       "columns": [
         {

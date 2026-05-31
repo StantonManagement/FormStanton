@@ -1,0 +1,41 @@
+{
+  "applicant_full_name": "Mia Enid Lozada",
+  "applicant_email": "mia.lozada@example.com",
+  "phone_home": "860-555-0100",
+  "phone_cell": "860-555-1234",
+  "address_street": "123 Maple Street Apt 4",
+  "address_city_state_zip": "Hartford, CT 06105",
+  "address_city": "Hartford",
+  "address_state": "CT",
+  "address_zip": "06105",
+  "ssn": "XXX-XX-1234",
+  "date": "5/31/2026",
+  "hoh_printed_name": "Mia Enid Lozada",
+  "first_name": "Mia",
+  "last_name": "Lozada",
+  "middle_initial": "E",
+  "dob": "4/12/1990",
+  "adults": [
+    { "last": "Lozada", "first": "Mia", "mi": "E", "dob": "4/12/1990", "ssn": "XXX-XX-1234", "relationship": "", "age": "36" },
+    { "last": "Lozada", "first": "Carlos", "mi": "A", "dob": "8/3/1988", "ssn": "XXX-XX-5678", "relationship": "Spouse", "age": "37" }
+  ],
+  "minors": [
+    { "last": "Lozada", "first": "Sofia", "mi": "M", "dob": "6/15/2015", "relationship": "Daughter", "age": "10" }
+  ],
+  "members": [
+    { "name": "Mia Enid Lozada", "dob": "4/12/1990", "relationship": "Head", "citizenship": "US Citizen" },
+    { "name": "Carlos A Lozada", "dob": "8/3/1988", "relationship": "Spouse", "citizenship": "US Citizen" }
+  ],
+  "income_rows": [
+    { "member": "Mia Lozada", "source": "Employment", "amount": "$2,400.00" }
+  ],
+  "asset_rows": [
+    { "member": "Mia Lozada", "type": "Checking", "amount": "$1,250.00" }
+  ],
+  "medical_rows": [
+    { "member": "Carlos Lozada", "expense": "Prescriptions", "amount": "$85.00" }
+  ],
+  "signature_rows": [
+    { "name": "Mia Enid Lozada", "date": "5/31/2026" }
+  ]
+}

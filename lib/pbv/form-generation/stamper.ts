@@ -25,6 +25,8 @@ export interface FieldMapColumn {
   check_value?: string;
   width?: number;
   height?: number;
+  /** Authoring metadata (column header label); ignored by the stamper. */
+  label?: string;
 }
 
 export interface RowPattern {
@@ -46,6 +48,8 @@ export interface FlatField {
   width?: number;
   height?: number;
   font_size?: number;
+  /** Authoring metadata (field label); ignored by the stamper. */
+  label?: string;
 }
 
 export interface FieldMap {

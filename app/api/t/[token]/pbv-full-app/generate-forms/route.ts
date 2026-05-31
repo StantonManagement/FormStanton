@@ -211,7 +211,7 @@ export async function POST(
         //                               versioned path; collision is a real bug)
         const { data: existingDoc } = await supabaseAdmin
           .from('pbv_form_documents')
-          .select('generation_version, collected_signer_member_ids')
+          .select('generation_version, collected_signer_member_ids, field_map_version')
           .eq('full_application_id', fullApp.id)
           .eq('form_id', formId)
           .eq('language', language)
@@ -219,6 +219,16 @@ export async function POST(
 
         const existingVersion = (existingDoc?.generation_version as number | null) ?? null;
         const collectedSignerCount = (existingDoc?.collected_signer_member_ids?.length ?? 0) as number;
+        // PRD-86 Phase A: detect a corrected field map. When the map's
+        // field_map_version differs from what an existing (0-signer) doc was
+        // generated with, we must emit a NEW versioned artifact (-v2) instead of
+        // silently overwriting the cached -v1 in place — otherwise the CDN/URL is
+        // unchanged and operators/reviewers keep seeing the stale bytes.
+        const currentFieldMapVersion = String(fieldMap.field_map_version ?? '1');
+        const existingFieldMapVersion =
+          existingDoc?.field_map_version != null ? String(existingDoc.field_map_version) : null;
+        const fieldMapChanged =
+          existingFieldMapVersion !== null && existingFieldMapVersion !== currentFieldMapVersion;
 
         // PRD-76 #4: first-generation race hardening.
         //
@@ -246,8 +256,15 @@ export async function POST(
           generationVersion = 1;
           upsertOnUpload = false;
         } else if (collectedSignerCount === 0) {
-          generationVersion = existingVersion;
-          upsertOnUpload = true;
+          if (fieldMapChanged) {
+            // Corrected map, no signer has committed yet → emit a fresh -v(N+1)
+            // artifact (new path) rather than overwriting the cached one.
+            generationVersion = existingVersion + 1;
+            upsertOnUpload = false;
+          } else {
+            generationVersion = existingVersion;
+            upsertOnUpload = true;
+          }
         } else {
           generationVersion = existingVersion + 1;
           upsertOnUpload = false;
