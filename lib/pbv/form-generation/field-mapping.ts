@@ -570,6 +570,49 @@ function resolveEivGuideReceipt(
 
 // ─── Public resolver ──────────────────────────────────────────────────────────
 
+// ─── Generation guardrail (WS-E) ────────────────────────────────────────────────
+//
+// Per-form REQUIRED_FIELDS is the IDENTITY FLOOR: keys whose blankness means the
+// form resolved into essentially-empty — the exact silent failure that shipped whole
+// forms blank (the hach/hud_9886a/obligations key-mismatch bugs). Situational fields
+// (income, address, demographics — legitimately blank for some applicants) are
+// intentionally NOT listed, so the check never false-blocks a valid sparse form.
+// generate-forms calls findBlankRequiredFields() and skips (with a surfaced reason)
+// rather than stamping a form missing its non-negotiable fields.
+const REQUIRED_FIELDS: Record<string, string[]> = {
+  main_application: ['applicant_full_name'],
+  criminal_background_release: ['first_name', 'last_name'],
+  hach_release: ['applicant_name'],
+  hud_92006: ['applicant_name'],
+  obligations_of_family: ['hoh_name'],
+  citizenship_declaration: ['members'],
+  briefing_cert: ['hoh_printed_name'],
+  debts_owed_phas: ['printed_name'],
+  no_child_support_affidavit: ['affiant_name'],
+  child_support_affidavit: ['affiant_name'],
+  eiv_guide_receipt: ['printed_name'],
+};
+
+function isBlankValue(v: unknown): boolean {
+  if (v == null) return true;
+  if (typeof v === 'string') return v.trim() === '';
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+
+/**
+ * Returns the required field keys that resolved blank for this form (empty = OK).
+ * The generation route fails loud on a non-empty result instead of silently
+ * shipping a blank form. Forms with no entry have no floor (signature-only forms).
+ */
+export function findBlankRequiredFields(
+  formId: string,
+  data: Record<string, unknown>
+): string[] {
+  const req = REQUIRED_FIELDS[formId] ?? [];
+  return req.filter((k) => isBlankValue(data[k]));
+}
+
 /**
  * Resolve field data for a given form_id.
  * signerSlot: the household member slot (1-based) for per-adult forms.

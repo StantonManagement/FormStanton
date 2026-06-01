@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveFieldData } from '../form-generation/field-mapping';
+import { resolveFieldData, findBlankRequiredFields } from '../form-generation/field-mapping';
 import type { HouseholdMember, AppRow } from '../form-generation/field-mapping';
 import type { IntakeData } from '../intake-schema';
 
@@ -260,6 +260,35 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
       expect((r.members as any[]).length).toBe(2);
       expect((r.members as any[])[0].name).toBe('Santha Lee Degross');
     });
+  });
+
+  describe('WS-E guardrail — findBlankRequiredFields (fail-loud on blank identity floor)', () => {
+    it('flags an identity-floor field that resolved blank', () => {
+      expect(findBlankRequiredFields('hach_release', { applicant_name: '' })).toEqual(['applicant_name']);
+      expect(findBlankRequiredFields('main_application', { applicant_full_name: '   ' })).toEqual(['applicant_full_name']);
+      expect(findBlankRequiredFields('citizenship_declaration', { members: [] })).toEqual(['members']);
+    });
+    it('has no floor for signature-only forms not in the table', () => {
+      expect(findBlankRequiredFields('pet_addendum', {})).toEqual([]);
+    });
+    // The core regression guard: every real form must clear its identity floor for
+    // both applicant shapes — i.e. no form can ship with a blank name/identity again.
+    const FORMS = [
+      'main_application', 'criminal_background_release', 'hach_release', 'hud_92006',
+      'hud_9886a', 'obligations_of_family', 'citizenship_declaration', 'briefing_cert',
+      'debts_owed_phas', 'no_child_support_affidavit', 'eiv_guide_receipt',
+    ];
+    for (const [who, intake, members, app] of [
+      ['Mia', miaIntake, miaMembers, miaApp],
+      ['Santha', santhaIntake, santhaMembers, santhaApp],
+    ] as const) {
+      for (const formId of FORMS) {
+        it(`${formId} clears its identity floor for ${who}`, () => {
+          const data = resolveFieldData(formId, intake, members, 'en', 1, app);
+          expect(findBlankRequiredFields(formId, data)).toEqual([]);
+        });
+      }
+    }
   });
 
   describe('income table is placed by fixed income TYPE (not sequentially)', () => {

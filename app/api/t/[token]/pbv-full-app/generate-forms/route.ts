@@ -20,7 +20,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { withTenantContext } from '@/lib/pbv/tenantEndpoint';
 import { getEnabledFormTemplates } from '@/lib/pbv/form-templates';
 import { shouldGenerateForm, isKnownConditionalRule } from '@/lib/pbv/conditional-rules';
-import { resolveFieldData } from '@/lib/pbv/form-generation/field-mapping';
+import { resolveFieldData, findBlankRequiredFields } from '@/lib/pbv/form-generation/field-mapping';
 import { stampForm } from '@/lib/pbv/form-generation/stamper';
 import { getSourcePdf, sha256Hex } from '@/lib/pbv/form-generation/source-pdfs';
 import { generateSummaryPdf } from '@/lib/pbv/summary-doc/generate-summary';
@@ -100,6 +100,7 @@ export async function POST(
         | 'conditional_skipped'
         | 'unknown_conditional_rule'  // PRD-63: rule string not handled by shouldGenerateForm
         | 'resolver_missing'          // PRD-63: form_id has no field-data resolver
+        | 'required_field_blank'      // WS-E: an identity-floor field resolved blank
         | 'stamp_failed';             // PRD-67: stampForm threw an error
     }> = [];
 
@@ -160,6 +161,19 @@ export async function POST(
             continue;
           }
           throw e;
+        }
+
+        // WS-E guardrail: fail LOUD when an identity-floor field resolved blank,
+        // instead of silently stamping an essentially-empty form (the failure mode
+        // that shipped whole forms blank). Situational fields are not in the floor.
+        const blankRequired = findBlankRequiredFields(formId, fieldData);
+        if (blankRequired.length > 0) {
+          console.error(
+            `[generate-forms] Required field(s) [${blankRequired.join(', ')}] resolved BLANK for ${formId}/${language} — skipping (WS-E fail-loud)`
+          );
+          skipped.push({ form_id: formId, language, reason: 'required_field_blank' });
+          if (isPerPersonAllAdults) break;
+          continue;
         }
 
         // Load field map JSON
