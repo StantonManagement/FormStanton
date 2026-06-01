@@ -506,6 +506,7 @@ export default function PbvPreappsPage() {
                   onNotesChange={setReviewNotes}
                   onSubmitReview={submitReview}
                   onDelete={deleteApplication}
+                  onSent={loadList}
                 />
               )}
             </div>
@@ -710,6 +711,7 @@ function DetailContent({
   onNotesChange,
   onSubmitReview,
   onDelete,
+  onSent,
 }: {
   detail: PbvPreapplication;
   reviewAction: 'approved' | 'denied' | 'needs_info' | '';
@@ -720,6 +722,8 @@ function DetailContent({
   onNotesChange: (n: string) => void;
   onSubmitReview: () => void;
   onDelete: () => void;
+  /** Called after an invitation is successfully sent so the parent list reflects the new full-app status. */
+  onSent: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const incomeOk = detail.income_limit === null || detail.total_household_income <= detail.income_limit;
@@ -867,6 +871,8 @@ function DetailContent({
     setEmailFallback(isEmailFallback);
     setSmsSent(true);
     setChainStep('done');
+    // Refresh the parent list so the "Full App" column reflects the just-sent status without a manual reload.
+    onSent();
   };
 
   const savePhonePatch = async (rawPhone: string): Promise<{ ok: boolean; message?: string; e164?: string }> => {
@@ -1185,7 +1191,10 @@ function DetailContent({
           Household Members ({detail.household_size})
         </h3>
         <div className="border border-[var(--border)] divide-y divide-[var(--divider)]">
-          {(detail.household_members as HouseholdMember[]).map((m, i) => (
+          {((detail.household_members as HouseholdMember[] | null) ?? []).length === 0 && (
+            <div className="px-3 py-3 text-sm text-[var(--muted)] italic">No household members on file.</div>
+          )}
+          {((detail.household_members as HouseholdMember[] | null) ?? []).map((m, i) => (
             <div key={i} className="px-3 py-3 text-sm">
               <div className="flex justify-between items-start">
                 <div>
