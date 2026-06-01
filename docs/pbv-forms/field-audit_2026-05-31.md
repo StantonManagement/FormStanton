@@ -206,6 +206,23 @@ end-to-end local stamp of Mia's real data through the actual stamper + maps + so
 
 **Still REQUIRES (D) — Alex's ruling** (the 6 NOT-COLLECTED gaps listed above).
 
+## STATUS UPDATE — Phase 1 (C placements, EN) DONE & verified (2026-05-31)
+main_application EN now fills every field recoverable from data we already hold.
+Landed (commits `6ab3f2d`, `23602c7`, `47d474e`, `a481c91`):
+- **Stamper** now supports flat `checkbox` fields (were silently ignored).
+- **Income table** stamps by fixed income TYPE (per-type row_patterns) — member +
+  monthly amount + Yes checkbox. Verified Mia (employment $2,700 → Employed row) and
+  Santha (other $2,000 → Other row). `Source`/employer column blank pending WS-D.
+- **Adults & minors** Disabled / Student / U.S. Citizen Yes/No columns added.
+- **Race / Ethnicity / Marital** checkboxes (resolver normalizes to one box value).
+- **DV (Q8) + sold-assets (Q3)** Yes/No stamped from intake (blank when unrecorded).
+- **hud_9886a**: confirmed NO name field exists; (B) SSN fix already completes it.
+All verified end-to-end through the real stamper with Mia + Santha DB data; 0 geometric
+findings; field-mapping tests 21/21. **Still NOT collected / not stamped:** income
+`Source`, criminal Q7 crime-type table, per-asset/medical tables, itemized expenses,
+child-support amounts, hud_92006 emergency contact — these are **WS-D (Phase 2)**.
+Spanish maps (WS-C) still pending (Phase 4). **Nothing regenerated or sent.**
+
 ## Verification of this audit
 - Every 🟠 cites the value present in members/snapshot/row but absent in the rendered text layer.
 - Mechanism confirmed by reading all 11 resolvers (`field-mapping.ts`), all 12 EN maps
