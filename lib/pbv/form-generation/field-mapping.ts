@@ -63,6 +63,12 @@ export interface AppRow {
 
 function formatDob(dob: string | undefined): string {
   if (!dob) return '';
+  // Parse a plain YYYY-MM-DD as a CALENDAR date — `new Date('1994-05-28')` parses as
+  // UTC midnight and then getDate() shifts a day backward in any TZ behind UTC
+  // (stamped DOBs were rendering one day early off-UTC). Handle the common case
+  // directly; fall back to Date for other formats.
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(dob);
+  if (ymd) return `${Number(ymd[2])}/${Number(ymd[3])}/${ymd[1]}`;
   try {
     const d = new Date(dob);
     if (isNaN(d.getTime())) return dob;

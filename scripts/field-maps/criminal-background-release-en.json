@@ -1,9 +1,12 @@
 {
   "form_id": "criminal-background-release-en",
-  "field_map_version": "2",
+  "field_map_version": "3",
   "source_pdf": "docs/templates/criminal-background-release-en.pdf",
   "page_size": "letter",
-  "page_dimensions": { "width": 612, "height": 792 },
+  "page_dimensions": {
+    "width": 612,
+    "height": 792
+  },
   "fields": [
     {
       "name": "first_name",
@@ -59,9 +62,9 @@
       "name": "current_address_street",
       "type": "text",
       "page": 1,
-      "x": 72,
+      "x": 166,
       "y": 361,
-      "width": 290,
+      "width": 228,
       "font_size": 9,
       "label": "Current Address"
     },
@@ -69,9 +72,9 @@
       "name": "current_address_apt",
       "type": "text",
       "page": 1,
-      "x": 396,
+      "x": 430,
       "y": 361,
-      "width": 80,
+      "width": 60,
       "font_size": 9,
       "label": "Apt. #"
     },
@@ -99,9 +102,9 @@
       "name": "current_address_zip",
       "type": "text",
       "page": 1,
-      "x": 396,
+      "x": 430,
       "y": 341,
-      "width": 80,
+      "width": 60,
       "font_size": 9,
       "label": "Zip"
     },
@@ -109,9 +112,9 @@
       "name": "previous_address_street",
       "type": "text",
       "page": 1,
-      "x": 72,
+      "x": 168,
       "y": 297,
-      "width": 290,
+      "width": 226,
       "font_size": 9,
       "label": "Previous Address"
     },
@@ -119,9 +122,9 @@
       "name": "previous_address_apt",
       "type": "text",
       "page": 1,
-      "x": 396,
+      "x": 430,
       "y": 297,
-      "width": 80,
+      "width": 60,
       "font_size": 9,
       "label": "Apt. #"
     },
@@ -149,9 +152,9 @@
       "name": "previous_address_zip",
       "type": "text",
       "page": 1,
-      "x": 396,
+      "x": 430,
       "y": 277,
-      "width": 80,
+      "width": 60,
       "font_size": 9,
       "label": "Zip"
     },

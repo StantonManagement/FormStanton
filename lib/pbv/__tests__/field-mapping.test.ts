@@ -127,6 +127,8 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
       expect(r.first_name).toBe('Mia');
       expect(r.last_name).toBe('Lozada');
       expect(r.current_address_street).toBe('31-33 Park St');
+      // DOB must be the calendar date, not shifted a day by UTC parsing (TZ bug).
+      expect(r.dob).toBe('5/28/1994');
     });
   });
 
