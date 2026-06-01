@@ -195,7 +195,13 @@ end-to-end local stamp of Mia's real data through the actual stamper + maps + so
 2. **Adults table** Disabled / Student / U.S. Citizen columns (map has only 7 of 10 cols).
 3. **Race / Ethnicity / Marital status** checkboxes (no placements; data in snapshot.household).
 4. **Yes/No checkboxes** throughout (assets, criminal, DV, school full-time).
-5. **hud_9886a name** placement (resolver emits `hoh_name`; map has no name field).
+5. ~~**hud_9886a name** placement~~ — **CORRECTED (Phase 1):** the HUD-9886A form has
+   **no printed-name field**. The filled HUD reference (`hud-9886a-en-filled.pdf`) is
+   completed with HOH SSN + dates + signatures only; each signature line has a printed
+   caption ("Head of Household", "Spouse", …) and the signer signs on the line. The
+   "(C) name placement" was an audit assumption ground truth contradicts. The (B) SSN
+   fix already makes this form complete (verified: Mia `XXX-XX-7407` on the SSN line).
+   The resolver still emits `hoh_name` (harmless/unused).
 6. **Address City/State/Zip** — needs a data source (not stored separately) AND the value.
 
 **Still REQUIRES (D) — Alex's ruling** (the 6 NOT-COLLECTED gaps listed above).
