@@ -32,7 +32,16 @@ type ListRow = Pick<
   | 'language'
   | 'unit_not_in_canonical_list'
   | 'submission_source'
->;
+> & {
+  /** Linked full application (via preapp_id), null when none has been sent. */
+  full_application?: { id: string; intake_status: string } | null;
+};
+
+function fullAppLabel(intakeStatus: string): { label: string; variant: 'green' | 'amber' | 'blue' } {
+  if (intakeStatus === 'complete') return { label: 'Completed', variant: 'blue' };
+  if (intakeStatus === 'in_progress') return { label: 'In Progress', variant: 'amber' };
+  return { label: 'Sent', variant: 'green' };
+}
 
 const QUAL_LABELS: Record<QualificationResult, string> = {
   likely_qualifies: 'Likely Qualifies',
@@ -324,6 +333,21 @@ export default function PbvPreappsPage() {
             label={REVIEW_LABELS[row.stanton_review_status]}
           />
         ),
+      },
+      {
+        id: 'full_application',
+        accessorKey: 'full_application',
+        header: 'Full App',
+        meta: {
+          csvValue: (row) =>
+            row.full_application ? fullAppLabel(row.full_application.intake_status).label : 'Not sent',
+        },
+        cell: ({ row }) => {
+          const fa = row.full_application;
+          if (!fa) return <span className="text-sm text-[var(--muted)]">—</span>;
+          const { label, variant } = fullAppLabel(fa.intake_status);
+          return <BadgeCell value="full_app" variant={variant} label={label} />;
+        },
       },
       {
         id: 'created_at',

@@ -31,7 +31,35 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data: data ?? [] });
+    const preapps = data ?? [];
+
+    // Attach full-application send status. A linked pbv_full_applications row
+    // (via preapp_id) is created as part of the approve→send invitation flow,
+    // so its existence means the applicant has been sent a full application.
+    const preappIds = preapps.map((p) => p.id);
+    const fullAppByPreapp = new Map<string, { id: string; intake_status: string }>();
+    if (preappIds.length > 0) {
+      const { data: fullApps, error: faError } = await supabaseAdmin
+        .from('pbv_full_applications')
+        .select('id, preapp_id, intake_status, created_at')
+        .in('preapp_id', preappIds)
+        .order('created_at', { ascending: false });
+      if (faError) throw faError;
+      for (const fa of fullApps ?? []) {
+        if (!fa.preapp_id) continue;
+        // Rows are ordered newest-first, so the first one we see per preapp wins.
+        if (!fullAppByPreapp.has(fa.preapp_id)) {
+          fullAppByPreapp.set(fa.preapp_id, { id: fa.id, intake_status: fa.intake_status });
+        }
+      }
+    }
+
+    const enriched = preapps.map((p) => ({
+      ...p,
+      full_application: fullAppByPreapp.get(p.id) ?? null,
+    }));
+
+    return NextResponse.json({ success: true, data: enriched });
   } catch (error: any) {
     console.error('PBV preapps list error:', error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
