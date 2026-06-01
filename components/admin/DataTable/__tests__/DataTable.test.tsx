@@ -2,15 +2,19 @@
 import React from 'react';
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DataTable } from '../DataTable';
 import type { ColumnDef, BulkAction } from '../types';
 
 // ── Next.js navigation mocks ──────────────────────────────────────────────────
+// Mutable holder so individual tests can simulate a URL that already carries
+// DataTable state (e.g. a saved column layout) on first render.
+const { mockSearchParams } = vi.hoisted(() => ({ mockSearchParams: { current: '' } }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mockSearchParams.current),
 }));
+afterEach(() => { mockSearchParams.current = ''; });
 
 // ── @dnd-kit mock (avoid pointer-events issues in jsdom) ──────────────────────
 vi.mock('@dnd-kit/core', () => ({
@@ -425,5 +429,34 @@ describe('DataTable — CSV export', () => {
     expect(createObjectURL).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
     clickSpy.mockRestore();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Regression: a URL carrying column state (`.cols`) but no sort (`.sort`) must
+// not clobber state.sorting to `undefined`. Previously patchState force-set
+// every omitted field to undefined, so the next render hit
+// `state.sorting.map(...)` → "Cannot read properties of undefined (reading
+// 'map')" and the whole page crashed on every refresh.
+describe('DataTable — URL state hydration', () => {
+  it('does not crash when the URL has column state but no sort', () => {
+    mockSearchParams.current = 'test.cols=name,status';
+    expect(() =>
+      act(() => {
+        renderTable({ enableUrlState: true });
+      })
+    ).not.toThrow();
+    // Table still renders its rows after hydrating column state from the URL.
+    expect(screen.getByText('Alpha')).toBeTruthy();
+  });
+
+  it('hydrates column + filter state from the URL without dropping sorting', () => {
+    mockSearchParams.current = 'test.cols=name,status&test.filter.status=active';
+    act(() => {
+      renderTable({ enableUrlState: true, enableColumnFilters: true });
+    });
+    // Filtered to active rows only; no crash from undefined sorting.
+    expect(screen.getByText('Alpha')).toBeTruthy();
+    expect(screen.queryByText('Beta')).toBeNull();
   });
 });

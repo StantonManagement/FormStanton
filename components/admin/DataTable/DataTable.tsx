@@ -239,19 +239,22 @@ export function DataTable<TRow extends object>(props: DataTableProps<TRow>) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const patchState = useCallback((partial: Partial<DataTableState>) => {
-    dispatch({
-      type: 'PATCH',
-      payload: {
-        ...partial,
-        sorting: partial.sorting ?? undefined,
-        pagination: partial.pagination,
-        columnVisibility: partial.columnVisibility,
-        columnOrder: partial.columnOrder,
-        columnFilters: partial.columnFilters,
-        globalSearch: partial.globalSearch,
-        rowSelection: partial.rowSelection,
-      } as Partial<TableState>,
-    });
+    // Only patch keys that were actually provided. The previous version spread
+    // every field as `partial.x ?? undefined`, which clobbered existing state
+    // with `undefined` for any key the caller omitted. When a URL carried
+    // column state (`.cols`) but no sort (`.sort`), useUrlState's update had no
+    // `sorting`, so this set `state.sorting = undefined` — and the next render's
+    // `state.sorting.map(...)` threw "Cannot read properties of undefined
+    // (reading 'map')", crashing the whole page on every refresh.
+    const payload: Partial<TableState> = {};
+    if (partial.globalSearch !== undefined) payload.globalSearch = partial.globalSearch;
+    if (partial.sorting !== undefined) payload.sorting = partial.sorting;
+    if (partial.columnFilters !== undefined) payload.columnFilters = partial.columnFilters;
+    if (partial.pagination !== undefined) payload.pagination = partial.pagination;
+    if (partial.columnVisibility !== undefined) payload.columnVisibility = partial.columnVisibility;
+    if (partial.columnOrder !== undefined) payload.columnOrder = partial.columnOrder;
+    if (partial.rowSelection !== undefined) payload.rowSelection = partial.rowSelection;
+    dispatch({ type: 'PATCH', payload });
   }, []);
 
   const urlHasCols = useMemo(() => {
