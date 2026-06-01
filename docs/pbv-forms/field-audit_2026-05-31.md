@@ -223,6 +223,31 @@ findings; field-mapping tests 21/21. **Still NOT collected / not stamped:** inco
 child-support amounts, hud_92006 emergency contact — these are **WS-D (Phase 2)**.
 Spanish maps (WS-C) still pending (Phase 4). **Nothing regenerated or sent.**
 
+## STATUS UPDATE — Phase 2 (WS-D intake expansion) 4/6 DONE (2026-05-31)
+Collected in intake + wired to forms (commits `52938fd`, `1bf0849`, `c223f3f`); all new
+fields are **optional** (never gate section completion) and resolve **blank for existing
+snapshots** until re-collection (WS-F):
+- **#1 Income Source/employer** → `IntakeIncomeSource.source`; income table Source column.
+- **#2 Current city/state/zip + Previous address** → `intake.contact.{city,state,zip,prev_*}`;
+  main_application CSZ + criminal_background_release current CSZ & full previous address.
+- **#3 Per-asset detail** → `IntakeAssets.asset_details[]` (owner/institution/value); asset table.
+- **#6 Emergency-contact extras** → `intake.contact.alt_contact_{address,email,relationship}`;
+  hud_92006 additional-contact block.
+Each verified by resolver tests (25/25) + synthetic end-to-end stamps; no map changes were
+needed (placements already existed).
+
+**DEFERRED (documented, not silently dropped):**
+- **#4 Itemized household expenses** — the page-4 expense table is a 2-column layout with a
+  **"Who Pays" column intake does not collect**, applies **only to zero-income households**
+  (so unverifiable against Mia/Santha, who have income), and the map has **no placements yet**
+  (WS-B not done for this table). To finish: author the 2-column expense-row placements +
+  expand `IntakeHouseholdExpenses` to line items + who-pays + resolver. Lowest value/highest
+  effort gap; left for a focused follow-up.
+- **#5 Child-support PAID amounts** — `child_support_affidavit` is conditional (only when the
+  applicant *pays* support; neither Mia nor Santha). This is distinct from the income
+  `child_support` type (support *received*) and has no intake home today. Resolver still emits
+  `amount_weekly`/`amount_monthly` as blank. Niche; left for a focused follow-up.
+
 ## Verification of this audit
 - Every 🟠 cites the value present in members/snapshot/row but absent in the rendered text layer.
 - Mechanism confirmed by reading all 11 resolvers (`field-mapping.ts`), all 12 EN maps
