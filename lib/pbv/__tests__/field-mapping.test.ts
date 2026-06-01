@@ -229,6 +229,31 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 
+  describe('WS-D #3 — per-asset detail → asset table rows', () => {
+    it('builds one asset row per detail (owner/source/value); skips empty', () => {
+      const intake: IntakeData = {
+        ...miaIntake,
+        assets: {
+          has_real_estate: false, has_savings: true, has_checking: true, has_stocks: false,
+          has_cd: false, has_trust: false, has_bonds: false, has_life_insurance: false,
+          has_insurance_settlement: false, disposed_asset_last_2yr: false,
+          asset_details: [
+            { type: 'has_savings', owner: 'Mia Enid Lozada', institution: 'Liberty Bank', value: 4200 },
+            { type: 'has_checking' }, // no detail → skipped
+          ],
+        },
+      };
+      const r = resolveFieldData('main_application', intake, miaMembers, 'en', 1, miaApp);
+      expect(r.asset_rows).toEqual([
+        { member: 'Mia Enid Lozada', source: 'Liberty Bank', value: '4200.00' },
+      ]);
+    });
+    it('leaves asset_rows empty when nothing collected', () => {
+      const r = resolveFieldData('main_application', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.asset_rows).toEqual([]);
+    });
+  });
+
   describe('citizenship_declaration (already correct)', () => {
     it('includes all members with name + dob + status', () => {
       const r = resolveFieldData('citizenship_declaration', santhaIntake, santhaMembers, 'en', 1, santhaApp);

@@ -230,6 +230,19 @@ function buildIncomeRows(intake: IntakeData): Record<string, IncomeRow[]> {
   return out;
 }
 
+// Per-asset detail → the main_application asset table (free rows: member / source /
+// value). Only assets with any detail are emitted. (WS-D #3)
+function buildAssetRows(intake: IntakeData): Array<{ member: string; source: string; value: string }> {
+  const details = intake?.assets?.asset_details ?? [];
+  return details
+    .filter((d) => (d.institution ?? '').trim() || d.value != null || (d.owner ?? '').trim())
+    .map((d) => ({
+      member: (d.owner ?? '').trim(),
+      source: (d.institution ?? '').trim(),
+      value: formatMonthly(d.value),
+    }));
+}
+
 // ─── Per-form resolvers ───────────────────────────────────────────────────────
 
 function resolveMainApplication(
@@ -317,9 +330,9 @@ function resolveMainApplication(
     // group (income_employment / income_ssi / …) via per-type row_patterns in the
     // map — never sequentially (that mislabeled income type). See buildIncomeRows.
     ...buildIncomeRows(intakeData),
-    // Asset / medical tables need per-asset detail (member, institution, value)
-    // that intake does not yet collect (WS-D). Left empty until then.
-    asset_rows: [],
+    // Asset table now fills from per-asset detail collected in intake (WS-D #3).
+    asset_rows: buildAssetRows(intakeData),
+    // Medical-expense table still needs per-line detail intake doesn't collect.
     medical_rows: [],
   };
 }

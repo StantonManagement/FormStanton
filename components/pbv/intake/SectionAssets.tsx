@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import FormField from '@/components/form/FormField';
 import FormSection from '@/components/form/FormSection';
 import type { PreferredLanguage } from '@/types/compliance';
-import type { IntakeData, IntakeAssets, SectionSlug, IntakePets, IntakeVehicle } from '@/lib/pbv/intake-schema';
+import type { IntakeData, IntakeAssets, IntakeAssetDetail, SectionSlug, IntakePets, IntakeVehicle } from '@/lib/pbv/intake-schema';
 
 function YesNo({ name, value, onChange, yesLabel, noLabel }: {
   name: string; value: boolean | null; onChange: (v: boolean) => void;
@@ -61,6 +61,9 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     total_value: 'Estimated total value of all checked assets ($)',
     total_value_context: 'Applies to:',
     none: 'None of the above',
+    asset_institution: 'Bank / institution (optional)',
+    asset_value: 'Current value ($)',
+    asset_owner: 'Owner (household member)',
     pets_label: 'Does the household have any pets?',
     vehicle_label: 'Does the household have a vehicle?',
     yes: 'Yes',
@@ -71,6 +74,9 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     total_value: 'Valor total estimado de todos los activos marcados ($)',
     total_value_context: 'Aplica a:',
     none: 'Ninguno de los anteriores',
+    asset_institution: 'Banco / institución (opcional)',
+    asset_value: 'Valor actual ($)',
+    asset_owner: 'Propietario (miembro del hogar)',
     pets_label: '¿El hogar tiene mascotas?',
     vehicle_label: '¿El hogar tiene un vehículo?',
     yes: 'Sí',
@@ -82,6 +88,9 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     total_value: 'Valor total estimado de todos os bens marcados ($)',
     total_value_context: 'Aplica-se a:', // PT: tentative — review
     none: 'Nenhum dos acima',
+    asset_institution: 'Banco / instituição (opcional)', // PT: tentative — review
+    asset_value: 'Valor atual ($)', // PT: tentative — review
+    asset_owner: 'Proprietário (membro da família)', // PT: tentative — review
     pets_label: 'A família tem animais de estimação?', // PT: tentative — review
     vehicle_label: 'A família tem um veículo?', // PT: tentative — review
     yes: 'Sim',
@@ -132,22 +141,60 @@ export default function SectionAssets({ language, intakeData, onChange }: Props)
     emitAssets(updated);
   };
 
+  // WS-D #3: per-asset detail (institution / value / owner) → asset table rows.
+  const detailFor = (type: string): IntakeAssetDetail | undefined =>
+    (assets.asset_details ?? []).find((d) => d.type === type);
+  const setDetail = (type: string, patch: Partial<IntakeAssetDetail>) => {
+    const list = assets.asset_details ?? [];
+    const next = list.some((d) => d.type === type)
+      ? list.map((d) => (d.type === type ? { ...d, ...patch } : d))
+      : [...list, { type, ...patch }];
+    const updated = { ...assets, asset_details: next };
+    setAssets(updated);
+    emitAssets(updated);
+  };
+
   const hasAnyAsset = ASSET_FIELDS.some((f) => assets[f.key]);
 
   return (
     <div className="space-y-4">
       <FormSection background>
-        {ASSET_FIELDS.map((field) => (
-          <label key={field.key} className="flex items-center gap-3 min-h-[44px] py-1">
-            <input
-              type="checkbox"
-              checked={assets[field.key]}
-              onChange={(e) => toggle(field.key, e.target.checked)}
-              className="w-4 h-4 flex-shrink-0"
-            />
-            <span className="text-sm">{field[language] ?? field.en}</span>
-          </label>
-        ))}
+        {ASSET_FIELDS.map((field) => {
+          const showDetail = assets[field.key] && field.key !== 'disposed_asset_last_2yr';
+          const d = detailFor(field.key);
+          return (
+            <div key={field.key} className="space-y-2">
+              <label className="flex items-center gap-3 min-h-[44px] py-1">
+                <input
+                  type="checkbox"
+                  checked={assets[field.key]}
+                  onChange={(e) => toggle(field.key, e.target.checked)}
+                  className="w-4 h-4 flex-shrink-0"
+                />
+                <span className="text-sm">{field[language] ?? field.en}</span>
+              </label>
+              {showDetail && (
+                <div className="pl-7 space-y-2">
+                  <FormField label={c.asset_owner} htmlFor={`owner_${field.key}`}>
+                    <input id={`owner_${field.key}`} type="text" value={d?.owner ?? ''}
+                      onChange={(e) => setDetail(field.key, { owner: e.target.value })}
+                      className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none" />
+                  </FormField>
+                  <FormField label={c.asset_institution} htmlFor={`inst_${field.key}`}>
+                    <input id={`inst_${field.key}`} type="text" value={d?.institution ?? ''}
+                      onChange={(e) => setDetail(field.key, { institution: e.target.value })}
+                      className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none" />
+                  </FormField>
+                  <FormField label={c.asset_value} htmlFor={`val_${field.key}`}>
+                    <input id={`val_${field.key}`} type="number" inputMode="decimal" min={0} value={d?.value ?? ''}
+                      onChange={(e) => setDetail(field.key, { value: parseFloat(e.target.value) || 0 })}
+                      className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none" />
+                  </FormField>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {assets.disposed_asset_last_2yr && (
           <FormField label={c.disposed_value} htmlFor="disposed_value">

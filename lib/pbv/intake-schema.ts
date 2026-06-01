@@ -135,6 +135,13 @@ export interface IntakeZeroIncomeDecl {
 
 // ── Section 5 — assets ─────────────────────────────────────────────────────────
 
+export interface IntakeAssetDetail {
+  type: string; // matches a has_* asset key (e.g. 'has_savings')
+  institution?: string; // bank / brokerage / source — asset table "Source" column
+  value?: number; // current / market value — asset table "Amount or Market Value"
+  owner?: string; // household member who holds it — asset table "Family Member"
+}
+
 export interface IntakeAssets {
   has_real_estate: boolean;
   has_savings: boolean;
@@ -148,6 +155,8 @@ export interface IntakeAssets {
   disposed_asset_last_2yr: boolean;
   disposed_asset_value?: number;
   total_asset_value?: number;
+  // Per-asset detail for the main_application asset table (WS-D #3). Optional.
+  asset_details?: IntakeAssetDetail[];
 }
 
 // ── Section 6 — childcare_disability ──────────────────────────────────────────
