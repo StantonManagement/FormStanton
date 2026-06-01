@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { copyToClipboard } from '@/lib/copyToClipboard';
+import TabNavigation from '@/components/TabNavigation';
+import PipelineStepper, { type PipelineStage } from '@/components/pbv/PipelineStepper';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
 import NotificationTimeline from '@/components/admin/NotificationTimeline';
 import ApplicantMessagesPanel from '@/components/admin/ApplicantMessagesPanel';
@@ -26,9 +28,56 @@ const DOC_COLORS:Record<string,string> = {approved:'bg-green-100 text-green-800'
 function fmtDate(s:string|null|undefined){if(!s)return'—';return new Date(s).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}
 function fmtMoney(n:number|null|undefined){if(n==null)return'—';return '$'+n.toLocaleString('en-US',{minimumFractionDigits:0});}
 
+const TABS = [
+  {key:'overview',label:'Overview'},
+  {key:'responses',label:'Responses & Forms'},
+  {key:'documents',label:'Documents'},
+  {key:'review',label:'Review & Income'},
+  {key:'comms',label:'Communications'},
+  {key:'admin',label:'Admin'},
+] as const;
+type TabKey = typeof TABS[number]['key'];
+
+// Which tab a pipeline-stepper stage jumps to when clicked.
+const STAGE_TO_TAB:Record<string,TabKey> = {invited:'overview',intake:'responses',review:'review',hach:'admin',signing:'admin',movein:'overview'};
+
+// Derive the lifecycle stages shown in the pipeline stepper from the application record.
+function buildStages(d:AppDetail):PipelineStage[]{
+  const intakeDone = d.intake_status==='complete';
+  const reviewDone = d.stanton_review_status==='approved';
+  const hachDone = d.hach_review_status==='approved_by_hach';
+  const signingDone = d.signing_status==='complete';
+  const moveInDone = !!d.packet_locked || !!d.submitted_at;
+  const raw = [
+    {key:'invited',label:'Invited',done:true,date:d.created_at},
+    {key:'intake',label:'Intake',done:intakeDone,date:d.intake_completed_at??d.intake_snapshot_at},
+    {key:'review',label:'Review',done:reviewDone,date:d.stanton_review_date},
+    {key:'hach',label:'HACH',done:hachDone,date:d.submitted_to_hach_at},
+    {key:'signing',label:'Signing',done:signingDone,date:null},
+    {key:'movein',label:'Move-in',done:moveInDone,date:d.submitted_to_hach_at},
+  ];
+  const firstPending = raw.findIndex(s=>!s.done);
+  return raw.map((s,i)=>({
+    key:s.key,
+    label:s.label,
+    date:s.date,
+    state: s.done ? 'done' : i===firstPending ? 'current' : 'upcoming',
+  }));
+}
+
+// Smart landing tab based on where the application sits in its pipeline.
+function defaultTabForStage(d:AppDetail):TabKey{
+  if(d.intake_status!=='complete') return 'overview';
+  if(d.hach_review_status==='approved_by_hach') return 'admin'; // Signing Packet link lives here
+  if(d.packet_locked||d.submitted_at) return 'overview';
+  return 'documents'; // intake done, mid review / sent-pending
+}
+
 export default function PbvFullApplicationDetailPage() {
   const { id } = useParams<{id:string}>();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -292,6 +341,13 @@ export default function PbvFullApplicationDetailPage() {
   const docCounts:Record<string,number>={approved:0,submitted:0,rejected:0,missing:0,waived:0};
   for(const d of detail.documents) docCounts[d.status]=(docCounts[d.status]??0)+1;
 
+  // Tabs + pipeline stepper
+  const tabParam = searchParams.get('tab');
+  const activeTab:TabKey = (TABS.some(t=>t.key===tabParam) ? tabParam : defaultTabForStage(detail)) as TabKey;
+  const activeIndex = TABS.findIndex(t=>t.key===activeTab);
+  const selectTab = (key:TabKey)=>{ router.replace(`${pathname}?tab=${key}`,{scroll:false}); };
+  const stages = buildStages(detail);
+
   const handleDelete = async () => {
     setDeleteError('');
     setDeleting(true);
@@ -309,50 +365,64 @@ export default function PbvFullApplicationDetailPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="text-sm">
-        <Link href="/admin/pbv/full-applications" className="text-[var(--muted)] hover:text-[var(--ink)] underline">Back to Full Applications</Link>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="sticky top-0 z-10 bg-[var(--bg-section)] -mx-6 px-6 pt-2 border-b border-[var(--border)]">
+        <div className="space-y-4 pb-3">
+          <div className="text-sm">
+            <Link href="/admin/pbv/full-applications" className="text-[var(--muted)] hover:text-[var(--ink)] underline">Back to Full Applications</Link>
+          </div>
+
+          {detail.packet_locked && (
+            <PacketLockBanner
+              submittedAt={detail.submitted_to_hach_at}
+              revision={detail.hach_packet_revision}
+              canReopen={sendToHachPermission}
+              onReopen={()=>setShowReopen(true)}
+            />
+          )}
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold font-serif text-[var(--primary)]">{detail.head_of_household_name}</h1>
+              <p className="text-sm text-[var(--muted)] mt-0.5">
+                {detail.building_address} Unit {detail.unit_number}
+                {detail.bedroom_count ? ' · '+detail.bedroom_count+' BR' : ''}
+                {' · '}{detail.household_size} person{detail.household_size!==1?'s':''}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/admin/pbv/pipeline/${detail.id}/review`}
+                className="px-3 py-1.5 text-xs font-semibold bg-[var(--primary)] text-white hover:opacity-90 transition-opacity"
+              >
+                Review documents
+              </Link>
+              <a
+                href={`/pbv-full-app/${detail.tenant_access_token}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
+              >
+                View tenant copy
+              </a>
+              <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
+                {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
+              </span>
+            </div>
+          </div>
+
+          <PipelineStepper stages={stages} onStageClick={(k)=>selectTab(STAGE_TO_TAB[k]??'overview')} />
+        </div>
+        <div className="-mx-6">
+          <TabNavigation
+            tabs={TABS.map((t,i)=>({id:i,label:t.label}))}
+            activeTab={activeIndex}
+            onTabClick={(i)=>selectTab(TABS[i].key)}
+          />
+        </div>
       </div>
 
-      {detail.packet_locked && (
-        <PacketLockBanner
-          submittedAt={detail.submitted_to_hach_at}
-          revision={detail.hach_packet_revision}
-          canReopen={sendToHachPermission}
-          onReopen={()=>setShowReopen(true)}
-        />
-      )}
-
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold font-serif text-[var(--primary)]">{detail.head_of_household_name}</h1>
-          <p className="text-sm text-[var(--muted)] mt-0.5">
-            {detail.building_address} Unit {detail.unit_number}
-            {detail.bedroom_count ? ' · '+detail.bedroom_count+' BR' : ''}
-            {' · '}{detail.household_size} person{detail.household_size!==1?'s':''}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/admin/pbv/pipeline/${detail.id}/review`}
-            className="px-3 py-1.5 text-xs font-semibold bg-[var(--primary)] text-white hover:opacity-90 transition-opacity"
-          >
-            Review documents
-          </Link>
-          <a
-            href={`/pbv-full-app/${detail.tenant_access_token}/print`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 text-xs font-medium border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--bg-section)] transition-colors"
-          >
-            View tenant copy
-          </a>
-          <span className={'px-3 py-1 text-xs font-semibold '+(STATUS_COLORS[detail.stanton_review_status]??'bg-gray-100 text-gray-700')}>
-            {STATUS_LABELS[detail.stanton_review_status]??detail.stanton_review_status}
-          </span>
-        </div>
-      </div>
-
+      {activeTab==='overview' && (<div className="space-y-6 pt-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         {[
           {label:'Invited',value:fmtDate(detail.created_at)},
@@ -381,7 +451,9 @@ export default function PbvFullApplicationDetailPage() {
           </ul>
         </div>
       )}
+      </div>)}
 
+      {activeTab==='responses' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)] flex items-center justify-between">
           <div>
@@ -461,7 +533,9 @@ export default function PbvFullApplicationDetailPage() {
           )}
         </div>
       </section>
+      </div>)}
 
+      {activeTab==='review' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Qualification — Income Review</h2>
@@ -523,7 +597,9 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         )}
       </section>
+      </div>)}
 
+      {activeTab==='documents' && (<div className="pt-6">
       {/* Unified Review Surface - Documents */}
       <StantonReviewSurface
         application={detail}
@@ -534,7 +610,9 @@ export default function PbvFullApplicationDetailPage() {
         onDocumentAction={handleDocumentAction}
         showIntakeButton={true}
       />
+      </div>)}
 
+      {activeTab==='review' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Stanton Review</h2>
@@ -570,7 +648,9 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         </div>
       </section>
+      </div>)}
 
+      {activeTab==='admin' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Actions</h2>
@@ -667,7 +747,9 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         </div>
       </section>
+      </div>)}
 
+      {activeTab==='overview' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">Household Members</h2>
@@ -695,7 +777,9 @@ export default function PbvFullApplicationDetailPage() {
           ))}
         </div>
       </section>
+      </div>)}
 
+      {activeTab==='comms' && (<div className="space-y-6 pt-6">
       <section className="bg-white border border-[var(--border)]">
         <div className="px-5 py-3 border-b border-[var(--divider)]">
           <h2 className="text-sm font-semibold text-[var(--primary)] uppercase tracking-wide">SMS Notifications</h2>
@@ -770,6 +854,7 @@ export default function PbvFullApplicationDetailPage() {
         applicationId={detail.id}
         optedOut={!!detail.sms_opted_out_at}
       />
+      </div>)}
 
       {showSendToHach && (
         <SendToHachDialog
@@ -795,6 +880,7 @@ export default function PbvFullApplicationDetailPage() {
         />
       )}
 
+      {activeTab==='admin' && (<div className="pt-6">
       {/* Danger zone — permanently delete the full application */}
       <section className="border border-red-200 bg-red-50/40 p-5">
         <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone</h2>
@@ -844,6 +930,7 @@ export default function PbvFullApplicationDetailPage() {
           </div>
         )}
       </section>
+      </div>)}
     </div>
   );
 }
