@@ -249,6 +249,12 @@ export interface IntakeData {
   household_expenses?: IntakeHouseholdExpenses;
   pets?: IntakePets; // PRD-55 cross-dependency
   vehicle?: IntakeVehicle; // PRD-55 cross-dependency
+  /** Encrypted full-SSN vault, keyed by member slot as a string (1-based, HOH=1).
+   *  Holds ciphertext + last4 only — NEVER a plaintext SSN. Written by the
+   *  POST intake/ssn endpoint (kept separate from `household` so the generic
+   *  section autosave never clobbers it); consumed by the completion bridge to
+   *  seed pbv_household_members.ssn_encrypted. */
+  ssn_vault?: Record<string, { enc: string; last4: string }>;
   _last_saved_at?: string;
 }
 

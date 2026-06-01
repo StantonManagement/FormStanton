@@ -201,9 +201,18 @@ async function bridgeIntakeToDatabase(
     const memberCriminal = criminalByMember.find((c) => c.member_slot === slot);
     const criminalHistory = memberCriminal?.has_criminal_history ?? null;
 
+    // Full SSN comes from the encrypted vault (intake_data.ssn_vault[slot]),
+    // never from the household payload (which only ever carries last-4). Fall
+    // back to the last-4 the applicant typed if no vault entry exists.
     let ssnEncrypted: string | null = null;
     let ssnLast4: string | null = null;
-    if (m.ssn_last_four && m.ssn_last_four.length >= 4) {
+    const vaultEntry = intakeData.ssn_vault?.[String(slot)];
+    if (vaultEntry?.enc) {
+      ssnEncrypted = vaultEntry.enc;
+      ssnLast4 = vaultEntry.last4 ? vaultEntry.last4.replace(/\D/g, '').slice(-4) : null;
+    } else if (vaultEntry?.last4) {
+      ssnLast4 = vaultEntry.last4.replace(/\D/g, '').slice(-4);
+    } else if (m.ssn_last_four && m.ssn_last_four.length >= 4) {
       ssnLast4 = m.ssn_last_four.replace(/\D/g, '').slice(-4);
     }
 

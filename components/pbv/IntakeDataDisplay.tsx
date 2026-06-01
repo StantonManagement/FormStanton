@@ -201,12 +201,12 @@ function buildBlocks(
       titleKey: 'section_3',
       content: inc ? (
         <div className={mode === 'print' ? 'space-y-4' : 'space-y-2'}>
-          {inc.by_member.map((m) => (
+          {(inc.by_member ?? []).map((m) => (
             <div key={m.member_slot} className={mode === 'print' ? 'space-y-2' : 'space-y-1'}>
               <p className={mode === 'print' ? 'text-sm font-medium text-gray-900' : 'text-xs font-medium text-[var(--body)]'}>{m.member_name}</p>
               {m.has_any_income ? (
                 <>
-                  {m.income_sources.filter((s) => s.has_income).map((s) => (
+                  {(m.income_sources ?? []).filter((s) => s.has_income).map((s) => (
                     <Row
                       key={s.type}
                       label={formatEnumLabel(s.type, INCOME_TYPE_LABELS)}
@@ -216,7 +216,7 @@ function buildBlocks(
                   ))}
                   {/* Compute annual from monthly amounts (intake stores monthly, display shows annual) */}
                   {(() => {
-                    const annualTotal = m.income_sources
+                    const annualTotal = (m.income_sources ?? [])
                       .filter((s) => s.has_income && typeof s.amount_monthly === 'number')
                       .reduce((sum, s) => sum + ((s.amount_monthly as number) * 12), 0);
                     return <Row label="Annual total" value={fmtMoney(annualTotal) + c.per_year} mode={mode} />;
@@ -239,7 +239,7 @@ function buildBlocks(
       titleKey: 'section_4',
       content: (
         <div className={mode === 'print' ? 'space-y-4' : 'space-y-2'}>
-          {zid.adults.map((a) => (
+          {(zid.adults ?? []).map((a) => (
             <div key={a.member_slot} className={mode === 'print' ? 'space-y-2' : 'space-y-1'}>
               <p className={mode === 'print' ? 'text-sm font-medium text-gray-900' : 'text-xs font-medium text-[var(--body)]'}>{a.member_name}</p>
               {a.support_explanation && <Row label="Support explanation" value={a.support_explanation} mode={mode} />}
@@ -337,7 +337,7 @@ function buildBlocks(
       titleKey: 'section_8',
       content: ch ? (
         <div className={mode === 'print' ? 'space-y-4' : 'space-y-2'}>
-          {ch.by_member.map((m) => (
+          {(ch.by_member ?? []).map((m) => (
             <div key={m.member_slot} className={mode === 'print' ? 'space-y-2' : 'space-y-1'}>
               <p className={mode === 'print' ? 'text-sm font-medium text-gray-900' : 'text-xs font-medium text-[var(--body)]'}>{m.member_name}</p>
               <Row label="Has criminal history" value={yesNo(m.has_criminal_history, c)} mode={mode} />

@@ -376,3 +376,39 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full SSN — stamped only on the two forms that legally require it
+// (main_application, criminal_background_release). The generate-forms caller
+// attaches the decrypted `ssn_full` to the member object ONLY for those forms;
+// every other form keeps the masked last-4. These tests pin both halves.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('full SSN on required forms vs masked elsewhere', () => {
+  const miaWithFull: HouseholdMember[] = [{ ...miaMembers[0], ssn_full: '123456789' }];
+
+  it('main_application stamps the full formatted SSN when ssn_full is present', () => {
+    const r = resolveFieldData('main_application', miaIntake, miaWithFull, 'en', 1, miaApp);
+    expect((r.adults as any[])[0].ssn).toBe('123-45-6789');
+  });
+
+  it('criminal_background_release stamps the full formatted SSN', () => {
+    const r = resolveFieldData('criminal_background_release', miaIntake, miaWithFull, 'en', 1, miaApp);
+    expect(r.ssn).toBe('123-45-6789');
+  });
+
+  it('main_application falls back to masked last-4 when ssn_full is absent', () => {
+    const r = resolveFieldData('main_application', miaIntake, miaMembers, 'en', 1, miaApp);
+    expect((r.adults as any[])[0].ssn).toBe('XXX-XX-7407');
+  });
+
+  it('hud_9886a stays masked even if a full SSN is on the member (never leaks)', () => {
+    const r = resolveFieldData('hud_9886a', miaIntake, miaWithFull, 'en', 1, miaApp);
+    expect(r.hoh_ssn).toBe('XXX-XX-7407');
+    expect(r.ssn).toBe('XXX-XX-7407');
+  });
+
+  it('hach_release does not expose the full SSN', () => {
+    const r = resolveFieldData('hach_release', miaIntake, miaWithFull, 'en', 1, miaApp);
+    expect(JSON.stringify(r)).not.toContain('123-45-6789');
+  });
+});

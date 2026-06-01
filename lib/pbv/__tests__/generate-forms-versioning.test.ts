@@ -23,7 +23,7 @@ const source = readFileSync(routePath, 'utf8');
 
 describe('PRD-66 generate-forms versioning (audit #5)', () => {
   it('reads existing generation_version + collected_signer_member_ids before deciding the version', () => {
-    expect(source).toMatch(/\.select\(\s*['"]generation_version,\s*collected_signer_member_ids['"]\s*\)/);
+    expect(source).toMatch(/\.select\(\s*['"]generation_version,\s*collected_signer_member_ids[^'"]*['"]\s*\)/);
     expect(source).toMatch(/existingVersion/);
     expect(source).toMatch(/collectedSignerCount/);
   });

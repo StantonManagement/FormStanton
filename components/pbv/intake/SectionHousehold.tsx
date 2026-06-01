@@ -11,9 +11,11 @@
  *   - Per-member: name, DOB, SSN, relationship, disability, student, citizenship
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import FormField from '@/components/form/FormField';
 import FormSection from '@/components/form/FormSection';
+import { tenantFetch } from '@/lib/tenantFetch';
+import { formatSsn, normalizeSsn, isValidSsn } from '@/lib/pbv/ssnValidation';
 import type { PreferredLanguage } from '@/types/compliance';
 import type {
   IntakeData,
@@ -26,6 +28,9 @@ interface Props {
   language: PreferredLanguage;
   intakeData: IntakeData;
   onChange: (slug: SectionSlug, data: Record<string, unknown>) => void;
+  /** Tenant magic-link token — required to persist the full SSN to the encrypted
+   *  vault (POST /api/t/[token]/pbv-full-app/intake/ssn). */
+  token: string;
 }
 
 const RACE_OPTIONS = [
@@ -90,7 +95,11 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     hoh_title: 'Head of Household',
     hoh_name: 'Full legal name',
     hoh_dob: 'Date of birth',
-    ssn: 'Social Security Number (last 4 digits)',
+    ssn: 'Social Security Number',
+    ssn_hint: 'Enter all 9 digits. Stored securely and encrypted.',
+    ssn_on_file: 'On file ending in',
+    ssn_invalid: 'Enter a valid 9-digit Social Security Number.',
+    ssn_saved: 'Saved securely',
     race: 'Race',
     ethnicity: 'Ethnicity',
     marital: 'Marital status',
@@ -99,7 +108,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     add_minor: '+ Add child/minor',
     member_name: 'Full name',
     member_dob: 'Date of birth',
-    member_ssn: 'SSN (last 4 digits)',
+    member_ssn: 'Social Security Number',
     member_rel: 'Relationship to HOH',
     member_citizenship: 'Citizenship status',
     member_disability: 'Has a disability',
@@ -111,7 +120,11 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     hoh_title: 'Jefe de familia',
     hoh_name: 'Nombre legal completo',
     hoh_dob: 'Fecha de nacimiento',
-    ssn: 'Número de Seguro Social (últimos 4 dígitos)',
+    ssn: 'Número de Seguro Social',
+    ssn_hint: 'Ingrese los 9 dígitos. Se guarda de forma segura y cifrada.',
+    ssn_on_file: 'Registrado terminando en',
+    ssn_invalid: 'Ingrese un número de Seguro Social válido de 9 dígitos.',
+    ssn_saved: 'Guardado de forma segura',
     race: 'Raza',
     ethnicity: 'Etnicidad',
     marital: 'Estado civil',
@@ -133,7 +146,11 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     hoh_title: 'Chefe de família',
     hoh_name: 'Nome legal completo',
     hoh_dob: 'Data de nascimento',
-    ssn: 'Número de Seguridade Social (últimos 4 dígitos)',
+    ssn: 'Número de Seguro Social',
+    ssn_hint: 'Insira todos os 9 dígitos. Armazenado com segurança e criptografado.',
+    ssn_on_file: 'Registrado terminando em',
+    ssn_invalid: 'Insira um número de Seguro Social válido de 9 dígitos.',
+    ssn_saved: 'Salvo com segurança',
     race: 'Raça',
     ethnicity: 'Etnia',
     marital: 'Estado civil',
@@ -142,7 +159,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     add_minor: '+ Adicionar criança/menor',
     member_name: 'Nome completo',
     member_dob: 'Data de nascimento',
-    member_ssn: 'SSN (últimos 4 dígitos)',
+    member_ssn: 'Número de Seguro Social',
     member_rel: 'Relação com o chefe de família',
     member_citizenship: 'Status de cidadania',
     member_disability: 'Tem uma deficiência',
@@ -152,7 +169,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
   },
 };
 
-export default function SectionHousehold({ language, intakeData, onChange }: Props) {
+export default function SectionHousehold({ language, intakeData, onChange, token }: Props) {
   const existing = intakeData.household;
   const c = copy[language] ?? copy.en;
 
@@ -165,6 +182,43 @@ export default function SectionHousehold({ language, intakeData, onChange }: Pro
   const [members, setMembers] = useState<IntakeMember[]>(
     existing?.members?.filter((m) => m.slot > 1) ?? []
   );
+
+  // Full-SSN entry. The plaintext full SSN is held in component state only while
+  // typing and is POSTed (encrypted server-side) to the vault — it is never put
+  // into the section payload. On (re)load the field starts empty (the snapshot
+  // only ever carries last-4); we surface the last-4 on file as a reassurance.
+  // Keyed by member slot (HOH = 1, additional members = their assigned slot).
+  const [ssnInput, setSsnInput] = useState<Record<number, string>>({});
+  const [ssnInvalid, setSsnInvalid] = useState<Record<number, boolean>>({});
+  const [ssnSaved, setSsnSaved] = useState<Record<number, boolean>>({});
+  const ssnTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  // Debounced persist of one slot's full SSN to the encrypted vault. Empty input
+  // clears the slot. Only a valid 9-digit SSN (or an empty clear) is sent; a
+  // partial/invalid 9-digit entry flags inline and is not persisted.
+  const persistSsn = (slot: number, digits: string, onLast4: (last4: string | null) => void) => {
+    if (ssnTimers.current[slot]) clearTimeout(ssnTimers.current[slot]);
+    setSsnSaved((p) => ({ ...p, [slot]: false }));
+    const isClear = digits.length === 0;
+    const isComplete = digits.length === 9;
+    setSsnInvalid((p) => ({ ...p, [slot]: isComplete && !isValidSsn(digits) }));
+    if (!isClear && !(isComplete && isValidSsn(digits))) return; // wait for a complete, valid SSN
+    ssnTimers.current[slot] = setTimeout(async () => {
+      try {
+        const res = await tenantFetch(`/api/t/${token}/pbv-full-app/intake/ssn`, {
+          method: 'POST',
+          body: { slot, ssn: digits },
+        });
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const last4 = json?.data?.last4 ?? (digits.length === 9 ? digits.slice(-4) : null);
+        onLast4(last4);
+        setSsnSaved((p) => ({ ...p, [slot]: !isClear }));
+      } catch {
+        // Non-fatal — the applicant can re-enter; section autosave still has last-4.
+      }
+    }, 600);
+  };
 
   const emit = (
     overrides: Partial<{
@@ -255,13 +309,27 @@ export default function SectionHousehold({ language, intakeData, onChange }: Pro
             id="hoh_ssn"
             type="text"
             inputMode="numeric"
-            maxLength={4}
-            pattern="\d{4}"
-            value={hohSsn}
-            onChange={(e) => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); setHohSsn(v); emit({ hohSsn: v }); }}
+            autoComplete="off"
+            maxLength={11}
+            value={formatSsn(ssnInput[1] ?? '')}
+            onChange={(e) => {
+              const digits = normalizeSsn(e.target.value).slice(0, 9);
+              setSsnInput((p) => ({ ...p, 1: digits }));
+              persistSsn(1, digits, (last4) => { setHohSsn(last4 ?? ''); emit({ hohSsn: last4 ?? '' }); });
+            }}
             className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
-            placeholder="XXXX"
+            placeholder="XXX-XX-XXXX"
+            aria-describedby="hoh_ssn_hint"
           />
+          <span id="hoh_ssn_hint" className="mt-1 block text-xs text-[var(--muted)]">
+            {ssnInvalid[1]
+              ? <span className="text-[var(--error)]">{c.ssn_invalid}</span>
+              : ssnSaved[1]
+                ? c.ssn_saved
+                : hohSsn && !(ssnInput[1] ?? '')
+                  ? `${c.ssn_on_file} ${hohSsn}`
+                  : c.ssn_hint}
+          </span>
         </FormField>
 
         <FormField label={c.race} htmlFor="hoh_race">
@@ -361,12 +429,27 @@ export default function SectionHousehold({ language, intakeData, onChange }: Pro
                 id={`m${i}_ssn`}
                 type="text"
                 inputMode="numeric"
-                maxLength={4}
-                value={m.ssn_last_four ?? ''}
-                onChange={(e) => updateMember(i, { ssn_last_four: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                autoComplete="off"
+                maxLength={11}
+                value={formatSsn(ssnInput[m.slot] ?? '')}
+                onChange={(e) => {
+                  const digits = normalizeSsn(e.target.value).slice(0, 9);
+                  setSsnInput((p) => ({ ...p, [m.slot]: digits }));
+                  persistSsn(m.slot, digits, (last4) => updateMember(i, { ssn_last_four: last4 ?? '' }));
+                }}
                 className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
-                placeholder="XXXX"
+                placeholder="XXX-XX-XXXX"
+                aria-describedby={`m${i}_ssn_hint`}
               />
+              <span id={`m${i}_ssn_hint`} className="mt-1 block text-xs text-[var(--muted)]">
+                {ssnInvalid[m.slot]
+                  ? <span className="text-[var(--error)]">{c.ssn_invalid}</span>
+                  : ssnSaved[m.slot]
+                    ? c.ssn_saved
+                    : m.ssn_last_four && !(ssnInput[m.slot] ?? '')
+                      ? `${c.ssn_on_file} ${m.ssn_last_four}`
+                      : c.ssn_hint}
+              </span>
             </FormField>
 
             <FormField label={c.member_rel} required htmlFor={`m${i}_rel`}>

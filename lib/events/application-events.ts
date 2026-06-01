@@ -41,6 +41,9 @@ export const ApplicationEventType = {
   HANDOFF_SENT:               'handoff.sent',
   HANDOFF_REOPENED:           'handoff.reopened',
 
+  // Intake reopen - operator pulls a completed intake back to editable
+  INTAKE_REOPENED:            'intake.reopened',
+
   // Review workflow - Assignment and tier-2 confirmation
   DOC_ASSIGNED:               'doc_assigned',
   APP_LEAD_ASSIGNED:          'app_lead_assigned',
@@ -158,6 +161,11 @@ export interface EventPayloadMap {
   'handoff.reopened': {
     reopen_reason: string;
     previous_hach_review_status: string;
+  };
+  'intake.reopened': {
+    reopen_reason: string;
+    previous_signing_status: string | null;
+    notification_status?: string | null;
   };
 
   // Review workflow payloads

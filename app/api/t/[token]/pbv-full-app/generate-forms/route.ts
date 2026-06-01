@@ -22,6 +22,7 @@ import { getEnabledFormTemplates } from '@/lib/pbv/form-templates';
 import { shouldGenerateForm, isKnownConditionalRule } from '@/lib/pbv/conditional-rules';
 import { resolveFieldData, findBlankRequiredFields } from '@/lib/pbv/form-generation/field-mapping';
 import { stampForm } from '@/lib/pbv/form-generation/stamper';
+import { decryptSsn } from '@/lib/ssnEncryption';
 import { getSourcePdf, sha256Hex } from '@/lib/pbv/form-generation/source-pdfs';
 import { generateSummaryPdf } from '@/lib/pbv/summary-doc/generate-summary';
 import { SUMMARY_TEMPLATE_VERSION } from '@/lib/pbv/summary-doc/content';
@@ -73,12 +74,43 @@ export async function POST(
     // ── 2. Load household members ────────────────────────────────────────────
     const { data: memberRows, error: membersError } = await supabaseAdmin
       .from('pbv_household_members')
-      .select('id, slot, name, date_of_birth, age, relationship, ssn_last_four, annual_income, income_sources, employed, has_ssi, has_ss, has_pension, has_tanf, has_child_support, has_unemployment, has_self_employment, has_other_income, disability, student, citizenship_status, documented_income')
+      .select('id, slot, name, date_of_birth, age, relationship, ssn_last_four, ssn_encrypted, annual_income, income_sources, employed, has_ssi, has_ss, has_pension, has_tanf, has_child_support, has_unemployment, has_self_employment, has_other_income, disability, student, citizenship_status, documented_income')
       .eq('full_application_id', fullApp.id)
       .order('slot', { ascending: true });
 
     if (membersError) throw membersError;
     const members = (memberRows ?? []) as HouseholdMember[];
+
+    // Decrypt full SSNs for the two forms that legally require them
+    // (main_application, criminal_background_release). Every decrypt is written to
+    // pbv_access_log. The full value is attached transiently to a separate member
+    // list — never persisted, never used for any other (masked) form.
+    const SSN_FULL_FORMS = new Set(['main_application', 'criminal_background_release']);
+    const ssnAuditIp =
+      request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? null;
+    const fullSsnBySlot: Record<number, string> = {};
+    for (const row of (memberRows ?? []) as Array<{ id: string; slot: number; ssn_encrypted?: string | null }>) {
+      if (!row.ssn_encrypted) continue;
+      try {
+        fullSsnBySlot[row.slot] = decryptSsn(row.ssn_encrypted);
+        await supabaseAdmin.from('pbv_access_log').insert({
+          user_id: 'system:tenant-form-gen',
+          action: 'read_ssn',
+          resource_type: 'pbv_household_member',
+          resource_id: row.id,
+          ip_address: ssnAuditIp,
+          notes: `Full SSN decrypted for form generation on application ${fullApp.id}`,
+          created_by: 'system:tenant-form-gen',
+        });
+      } catch (decryptErr) {
+        // Non-fatal: fall back to masked last-4 on the form rather than blocking generation.
+        console.error(`[generate-forms] SSN decrypt failed for member ${row.id}:`, decryptErr);
+      }
+    }
+    const membersWithFullSsn: HouseholdMember[] = members.map((m) => ({
+      ...m,
+      ssn_full: fullSsnBySlot[m.slot] ?? null,
+    }));
 
     // ── 3. Load enabled form templates ──────────────────────────────────────
     const templates = await getEnabledFormTemplates();
@@ -153,7 +185,8 @@ export async function POST(
         // form rather than stamping a generic name+date PDF.
         let fieldData;
         try {
-          fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot, appRow);
+          const membersForForm = SSN_FULL_FORMS.has(formId) ? membersWithFullSsn : members;
+          fieldData = resolveFieldData(formId, intakeData, membersForForm, language, iter.slot, appRow);
         } catch (e: any) {
           if (typeof e?.message === 'string' && e.message.startsWith('resolver_missing:')) {
             console.error(`[generate-forms] No field-data resolver for ${formId}/${language} — skipping (PRD-63 fail-closed)`);

@@ -17,6 +17,7 @@
  */
 
 import type { IntakeData as IntakeSnapshot } from '@/lib/pbv/intake-schema';
+import { formatSsn } from '@/lib/pbv/ssnValidation';
 
 export interface HouseholdMember {
   id?: string;
@@ -26,6 +27,10 @@ export interface HouseholdMember {
   age?: number | null;
   relationship: string;
   ssn_last_four?: string | null;
+  /** Decrypted full SSN — transient, set by the form-generation caller ONLY for
+   *  the forms that legally require it (main_application, criminal_background_release).
+   *  Never persisted; never present for masked forms. */
+  ssn_full?: string | null;
   annual_income?: number;
   income_sources?: string[];
   employed?: boolean;
@@ -88,6 +93,18 @@ function nameParts(fullName: string): { last: string; first: string; mi: string 
 function ssnDisplay(lastFour: string | null | undefined): string {
   if (!lastFour) return '';
   return `XXX-XX-${lastFour}`;
+}
+
+// Full SSN for the two forms that legally require it (main_application,
+// criminal_background_release). Falls back to the masked last-4 when the full
+// SSN was not decrypted/available. The full value is only ever populated on the
+// member object by the generate-forms caller for those forms.
+function ssnFullOrMasked(m: { ssn_full?: string | null; ssn_last_four?: string | null }): string {
+  if (m.ssn_full) {
+    const digits = m.ssn_full.replace(/\D/g, '');
+    if (digits.length === 9) return formatSsn(digits);
+  }
+  return ssnDisplay(m.ssn_last_four);
 }
 
 // Contact block lives at intake_snapshot.contact (NOT the old fictional `applicant`).
@@ -279,7 +296,7 @@ function resolveMainApplication(
       first: parts.first,
       mi: parts.mi,
       dob: formatDob(m.date_of_birth),
-      ssn: ssnDisplay(m.ssn_last_four),
+      ssn: ssnFullOrMasked(m),
       // Slot 1 (HOH) relationship is PRE-PRINTED on the source form ("SELF" en / "YO" es)
       // in the first adults-table relationship cell. Emit blank so we don't stamp a
       // duplicate over it. Non-HOH adults stamp their actual relationship.
@@ -298,7 +315,7 @@ function resolveMainApplication(
       first: parts.first,
       mi: parts.mi,
       dob: formatDob(m.date_of_birth),
-      ssn: ssnDisplay(m.ssn_last_four),
+      ssn: ssnFullOrMasked(m),
       relationship: m.relationship,
       age: m.age != null ? String(m.age) : '',
       disabled: yesNoBlank(m.disability),
@@ -572,7 +589,7 @@ function resolveCriminalBackgroundRelease(
     middle_initial: parts.mi,
     last_name: parts.last,
     dob: formatDob(member?.date_of_birth),
-    ssn: ssnDisplay(member?.ssn_last_four),
+    ssn: ssnFullOrMasked(member ?? {}),
     current_address_street: (appRow?.building_address ?? '').trim(),
     current_address_apt: (appRow?.unit_number ?? '').trim(),
     current_address_city: (contact.city ?? '').trim(),

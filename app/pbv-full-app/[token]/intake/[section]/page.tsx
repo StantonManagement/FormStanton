@@ -290,7 +290,7 @@ function SectionRenderer({
 
   switch (slug) {
     case 'household':
-      return <SectionHousehold {...commonProps} />;
+      return <SectionHousehold {...commonProps} token={token} />;
     case 'contact':
       return <SectionContact {...commonProps} />;
     case 'income':

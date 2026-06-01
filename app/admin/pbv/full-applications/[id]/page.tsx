@@ -8,6 +8,7 @@ import NotificationTimeline from '@/components/admin/NotificationTimeline';
 import ApplicantMessagesPanel from '@/components/admin/ApplicantMessagesPanel';
 import SendToHachDialog from '@/components/review/SendToHachDialog';
 import ReopenPacketDialog from '@/components/review/ReopenPacketDialog';
+import ReopenIntakeDialog from '@/components/pbv/ReopenIntakeDialog';
 import PacketLockBanner from '@/components/review/PacketLockBanner';
 import IntakeDataDisplay from '@/components/pbv/IntakeDataDisplay';
 import type { IntakeData } from '@/lib/pbv/intake-schema';
@@ -16,7 +17,7 @@ import type { PreferredLanguage } from '@/types/compliance';
 interface Member { id:string;slot:number;name:string;age:number|null;relationship:string;ssn_last_four:string|null;annual_income:number;documented_income:number|null;income_sources:string[];disability:boolean;student:boolean;citizenship_status:string;criminal_history:boolean|null;signature_required:boolean;signature_date:string|null;signed_forms:string[]; }
 interface Doc { id:string;doc_type:string;label:string;person_slot:number;status:string;required:boolean;display_order:number;requires_signature:boolean;revision?:number;file_name?:string|null;storage_path?:string|null;uploaded_by_role?:string|null;uploaded_by_display_name?:string|null;staff_upload_note?:string|null;original_doc_type?:string|null; }
 interface GeneratedForm { id:string;form_id:string;display_name:string;language:string;status:string;generated_at:string|null;finalized_at:string|null;has_unsigned_pdf:boolean;has_signed_pdf:boolean;required_signer_member_ids:string[];collected_signer_member_ids:string[]; }
-interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[];generated_forms:GeneratedForm[]; }
+interface AppDetail { id:string;created_at:string;head_of_household_name:string;building_address:string;unit_number:string;bedroom_count:number|null;household_size:number;intake_status:string;intake_completed_at:string|null;stanton_review_status:string;stanton_reviewer:string|null;stanton_review_date:string|null;stanton_review_notes:string|null;hha_application_file:string|null;tenant_access_token:string;form_submission_id:string;magic_link:string;claiming_medical_deduction:boolean;has_childcare_expense:boolean;dv_status:boolean;homeless_at_admission:boolean;reasonable_accommodation_requested:boolean;packet_locked:boolean;submitted_to_hach_at:string|null;hach_packet_revision:number;hach_review_status:string|null;submitted_at:string|null;signing_status:string|null;sms_opted_out_at:string|null;preferred_language:PreferredLanguage|null;intake_snapshot:IntakeData|null;intake_snapshot_at:string|null;phone:string|null;members:Member[];documents:Doc[];generated_forms:GeneratedForm[]; }
 
 const STATUS_LABELS:Record<string,string> = {pending:'Pending',under_review:'Under Review',needs_info:'Needs Info',approved:'Approved',denied:'Denied'};
 const STATUS_COLORS:Record<string,string> = {pending:'bg-gray-100 text-gray-700',under_review:'bg-yellow-100 text-yellow-800',needs_info:'bg-orange-100 text-orange-800',approved:'bg-green-100 text-green-800',denied:'bg-red-100 text-red-800'};
@@ -48,6 +49,7 @@ export default function PbvFullApplicationDetailPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showSendToHach, setShowSendToHach] = useState(false);
   const [showReopen, setShowReopen] = useState(false);
+  const [showReopenIntake, setShowReopenIntake] = useState(false);
   const [sendToHachPermission, setSendToHachPermission] = useState(false);
 
   // SMS notification state
@@ -601,6 +603,12 @@ export default function PbvFullApplicationDetailPage() {
                 Reopen Packet
               </button>
             )}
+            {sendToHachPermission && detail.intake_status === 'complete' && !detail.submitted_at && (
+              <button type="button" onClick={()=>setShowReopenIntake(true)}
+                className="px-5 py-2 border border-indigo-300 text-indigo-700 text-sm font-medium hover:bg-indigo-50 transition-colors">
+                Resend to Complete Application
+              </button>
+            )}
             
             {/* Signing Packet Link - only show after HACH approval */}
             {detail.hach_review_status === 'approved_by_hach' && (
@@ -776,6 +784,14 @@ export default function PbvFullApplicationDetailPage() {
           applicationId={detail.id}
           onClose={()=>setShowReopen(false)}
           onSuccess={()=>{ setShowReopen(false); fetchDetail(); }}
+        />
+      )}
+
+      {showReopenIntake && (
+        <ReopenIntakeDialog
+          applicationId={detail.id}
+          onClose={()=>setShowReopenIntake(false)}
+          onSuccess={()=>{ setShowReopenIntake(false); fetchDetail(); }}
         />
       )}
 
