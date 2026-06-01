@@ -168,6 +168,39 @@ function formatMonthly(amount: number | null | undefined): string {
   return amount.toFixed(2);
 }
 
+// A member's per-column Yes/No answer for the Disabled / Student / U.S. Citizen
+// columns. Blank (not "No") when the underlying value was never recorded, so we
+// never assert a negative we don't have.
+function yesNoBlank(v: boolean | null | undefined): string {
+  return v === true ? 'Yes' : v === false ? 'No' : '';
+}
+
+// Intake `household.race` → the main_application form's race checkbox value. The
+// form has 6 race boxes; intake's `multi` has no box → folded into Other, and
+// `not_reported` → blank. ethnicity/marital normalize the same way (the form has
+// no Widowed box, so widowed stamps nothing). The map's per-option checkbox fields
+// read these single values and stamp the one whose check_value matches.
+const RACE_BOX: Record<string, string> = {
+  white: 'white',
+  black: 'black',
+  asian: 'asian',
+  pacific_islander: 'pacific_islander',
+  native: 'native',
+  multi: 'other',
+  other: 'other',
+};
+function raceBox(h: IntakeData['household']): string {
+  return RACE_BOX[h?.race ?? ''] ?? '';
+}
+function ethnicityBox(h: IntakeData['household']): string {
+  const e = h?.ethnicity;
+  return e === 'hispanic' ? 'yes' : e === 'not_hispanic' ? 'no' : '';
+}
+function maritalBox(h: IntakeData['household']): string {
+  const m = h?.marital_status ?? '';
+  return ['single', 'married', 'separated', 'divorced', 'widowed'].includes(m) ? m : '';
+}
+
 // Group every affirmative income source under its form-row data_key. Each entry is
 // a {member, source, amount, yes} row the map's per-type row_pattern stamps. The
 // `source` (employer / institution name) is uncollected today (WS-D) → blank.
@@ -218,6 +251,9 @@ function resolveMainApplication(
       // duplicate over it. Non-HOH adults stamp their actual relationship.
       relationship: m.slot === 1 ? '' : m.relationship,
       age: m.age != null ? String(m.age) : '',
+      disabled: yesNoBlank(m.disability),
+      student: yesNoBlank(m.student),
+      citizen: m.citizenship_status ? (m.citizenship_status === 'citizen' ? 'Yes' : 'No') : '',
     };
   });
 
@@ -231,6 +267,9 @@ function resolveMainApplication(
       ssn: ssnDisplay(m.ssn_last_four),
       relationship: m.relationship,
       age: m.age != null ? String(m.age) : '',
+      disabled: yesNoBlank(m.disability),
+      student: yesNoBlank(m.student),
+      citizen: m.citizenship_status ? (m.citizenship_status === 'citizen' ? 'Yes' : 'No') : '',
     };
   });
 
@@ -250,6 +289,11 @@ function resolveMainApplication(
     hoh_last: hohParts.last,
     hoh_first: hohParts.first,
     date: dateStr,
+    // Race / ethnicity / marital — normalized to a single form-box value each; the
+    // map's per-option checkbox fields stamp the box whose check_value matches.
+    race_box: raceBox(intakeData?.household),
+    ethnicity_box: ethnicityBox(intakeData?.household),
+    marital_box: maritalBox(intakeData?.household),
     adults: adultRows,
     minors: minorRows,
     // Income table: each intake income type stamps onto its own FIXED labeled row

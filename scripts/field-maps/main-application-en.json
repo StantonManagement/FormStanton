@@ -66,7 +66,7 @@
           "type": "text",
           "x": 365.16,
           "y_offset": 5,
-          "width": 157,
+          "width": 65,
           "font_size": 7,
           "label": "Relationship"
         },
@@ -75,9 +75,36 @@
           "type": "text",
           "x": 524.39,
           "y_offset": 5,
-          "width": 72,
+          "width": 25,
           "font_size": 7,
           "label": "Age"
+        },
+        {
+          "field_prefix": "disabled",
+          "type": "text",
+          "x": 438,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "Disabled Yes/No"
+        },
+        {
+          "field_prefix": "student",
+          "type": "text",
+          "x": 485,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "Student Yes/No"
+        },
+        {
+          "field_prefix": "citizen",
+          "type": "text",
+          "x": 560,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "U.S. Citizen Yes/No"
         }
       ]
     },
@@ -139,7 +166,7 @@
           "type": "text",
           "x": 365.16,
           "y_offset": 5,
-          "width": 157,
+          "width": 65,
           "font_size": 7,
           "label": "Relationship"
         },
@@ -148,9 +175,36 @@
           "type": "text",
           "x": 524.39,
           "y_offset": 5,
-          "width": 72,
+          "width": 25,
           "font_size": 7,
           "label": "Age"
+        },
+        {
+          "field_prefix": "disabled",
+          "type": "text",
+          "x": 438,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "Disabled Yes/No"
+        },
+        {
+          "field_prefix": "student",
+          "type": "text",
+          "x": 485,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "Student Yes/No"
+        },
+        {
+          "field_prefix": "citizen",
+          "type": "text",
+          "x": 560,
+          "y_offset": 5,
+          "width": 24,
+          "font_size": 7,
+          "label": "U.S. Citizen Yes/No"
         }
       ]
     },
@@ -1141,6 +1195,138 @@
       "width": 120,
       "font_size": 9,
       "label": "Date 5"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 87.1,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "white",
+      "font_size": 9,
+      "label": "race_box white"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 133.5,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "black",
+      "font_size": 9,
+      "label": "race_box black"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 231.5,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "native",
+      "font_size": 9,
+      "label": "race_box native"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 325.5,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "asian",
+      "font_size": 9,
+      "label": "race_box asian"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 370.6,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "pacific_islander",
+      "font_size": 9,
+      "label": "race_box pacific_islander"
+    },
+    {
+      "name": "race_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 457.7,
+      "y": 675.5,
+      "width": 9,
+      "check_value": "other",
+      "font_size": 9,
+      "label": "race_box other"
+    },
+    {
+      "name": "ethnicity_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 195.1,
+      "y": 653.6,
+      "width": 9,
+      "check_value": "yes",
+      "font_size": 9,
+      "label": "ethnicity_box yes"
+    },
+    {
+      "name": "ethnicity_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 231.1,
+      "y": 653.6,
+      "width": 9,
+      "check_value": "no",
+      "font_size": 9,
+      "label": "ethnicity_box no"
+    },
+    {
+      "name": "marital_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 195.1,
+      "y": 631.7,
+      "width": 9,
+      "check_value": "single",
+      "font_size": 9,
+      "label": "marital_box single"
+    },
+    {
+      "name": "marital_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 242.6,
+      "y": 631.7,
+      "width": 9,
+      "check_value": "married",
+      "font_size": 9,
+      "label": "marital_box married"
+    },
+    {
+      "name": "marital_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 297.3,
+      "y": 631.7,
+      "width": 9,
+      "check_value": "separated",
+      "font_size": 9,
+      "label": "marital_box separated"
+    },
+    {
+      "name": "marital_box",
+      "type": "checkbox",
+      "page": 1,
+      "x": 359.7,
+      "y": 631.7,
+      "width": 9,
+      "check_value": "divorced",
+      "font_size": 9,
+      "label": "marital_box divorced"
     }
   ]
 }

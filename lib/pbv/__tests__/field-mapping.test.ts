@@ -86,6 +86,33 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
       expect((r.adults as any[])[0].last).toBe('Lozada');
       expect(Array.isArray(r.minors)).toBe(true);
     });
+    it('fills Disabled/Student/Citizen Yes/No columns (was no map column — bug C)', () => {
+      const a = (r.adults as any[])[0];
+      expect(a.disabled).toBe('No');
+      expect(a.student).toBe('No');
+      expect(a.citizen).toBe('Yes'); // citizenship_status === 'citizen'
+    });
+    it('normalizes race/ethnicity/marital to a single form-box value (was unhandled — bug A/C)', () => {
+      expect(r.race_box).toBe('other'); // intake 'other'
+      expect(r.ethnicity_box).toBe('yes'); // hispanic → Yes box
+      expect(r.marital_box).toBe('single');
+    });
+  });
+
+  describe('demographics + status normalization edge cases', () => {
+    it('folds multi-racial into the Other box and blanks not_reported', () => {
+      const mk = (race: string): IntakeData => ({ ...miaIntake, household: { ...miaIntake.household!, race } });
+      expect(resolveFieldData('main_application', mk('multi'), miaMembers, 'en', 1, miaApp).race_box).toBe('other');
+      expect(resolveFieldData('main_application', mk('not_reported'), miaMembers, 'en', 1, miaApp).race_box).toBe('');
+    });
+    it('marks a minor student Yes and leaves an unrecorded boolean blank', () => {
+      const r = resolveFieldData('main_application', santhaIntake, santhaMembers, 'en', 1, santhaApp);
+      const minor = (r.minors as any[])[0];
+      expect(minor.student).toBe('Yes');
+      expect(minor.citizen).toBe('Yes');
+      // Santha (slot 1) has no `disability` recorded in the roster → blank, not "No".
+      expect((r.adults as any[])[0].disabled).toBe('');
+    });
   });
 
   describe('hach_release (was 100% blank — bug B key mismatch)', () => {
