@@ -272,6 +272,34 @@ export async function requireStantonStaff(): Promise<NextResponse | null> {
   return null;
 }
 
+// PRD-87: the SINGLE authorization seam for approving a pre-send document review.
+// Resolved decision (2026-05-31): any authenticated Stanton staff may approve for
+// now. Both the approve/hold API route guard AND the UI button's enabled state go
+// through this one predicate, so tightening later to a named permission (e.g.
+// `requirePermission('pbv_pre_send_review','approve')`, or reusing the
+// `send_to_hach` permission held by Tess/Kristine) is a one-line change here with
+// no call-site churn. Do not inline the role test at call sites.
+export function canApprovePreSendReview(user: SessionUser): boolean {
+  // Any non-HACH (Stanton) staff. Super admins always pass.
+  if (user.isSuperAdmin) return true;
+  return user.user_type !== 'hach_admin' && user.user_type !== 'hach_reviewer';
+}
+
+// Route guard mirror of canApprovePreSendReview.
+export async function requirePreSendReviewApproval(): Promise<NextResponse | null> {
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
+  if (!canApprovePreSendReview(user)) {
+    return NextResponse.json(
+      { success: false, message: 'You do not have permission to approve a pre-send review' },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
 // Legacy compat: kept for requireRole('admin') calls on user-management routes
 // Maps to requirePermission('user-management', 'admin')
 export async function requireRole(role: 'admin' | 'staff'): Promise<NextResponse | null> {
