@@ -57,7 +57,7 @@ function deriveDisplayStatus(row: FullAppRow): string {
   if (row.stanton_review_status === 'denied') return 'Denied';
   if (row.stanton_review_status === 'under_review') return 'Under Review';
   if (row.stanton_review_status === 'needs_info') return 'Needs Info';
-  return 'Intake Submitted';
+  return 'Ready for Review';
 }
 
 export default function PbvFullApplicationsPage() {
@@ -311,7 +311,7 @@ export default function PbvFullApplicationsPage() {
       {
         id: 'intake_completed_at',
         accessorKey: 'intake_completed_at',
-        header: 'Intake Submitted',
+        header: 'Intake Completed',
         enableSorting: true,
         meta: {
           csvValue: (row) => row.intake_completed_at ?? '',

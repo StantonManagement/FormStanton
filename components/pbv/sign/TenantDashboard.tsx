@@ -55,7 +55,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
   en: {
     title: 'Application Dashboard',
     subtitle: 'Complete all required tasks to submit your application.',
-    hub_progress: (completed, total) => `Step ${completed} of ${total} complete`,
+    hub_progress: (completed, total) => `Step ${completed} of ${total} done`,
     card1_title: 'Review and sign your summary',
     card1_sub_pending: 'Read and sign the plain-language summary of your application.',
     card1_sub_done: 'Summary signed.',
@@ -84,7 +84,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
   es: {
     title: 'Panel de Solicitud',
     subtitle: 'Complete todas las tareas requeridas para enviar su solicitud.',
-    hub_progress: (completed, total) => `Paso ${completed} de ${total} completado`,
+    hub_progress: (completed, total) => `Paso ${completed} de ${total} hecho`,
     card1_title: 'Revisar y firmar su resumen',
     card1_sub_pending: 'Lea y firme el resumen en lenguaje sencillo de su solicitud.',
     card1_sub_done: 'Resumen firmado.',
@@ -113,7 +113,7 @@ const copy: Record<PreferredLanguage, CopyMap> = {
     // PT: tentative — review
     title: 'Painel de Solicita\u00e7\u00e3o',
     subtitle: 'Conclua todas as tarefas obrigat\u00f3rias para enviar sua solicita\u00e7\u00e3o.',
-    hub_progress: (completed, total) => `Etapa ${completed} de ${total} conclu\u00edda`,
+    hub_progress: (completed, total) => `Etapa ${completed} de ${total} feita`,
     card1_title: 'Revisar e assinar seu resumo',
     card1_sub_pending: 'Leia e assine o resumo em linguagem simples da sua solicita\u00e7\u00e3o.',
     card1_sub_done: 'Resumo assinado.',

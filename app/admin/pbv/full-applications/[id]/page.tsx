@@ -328,7 +328,7 @@ export default function PbvFullApplicationDetailPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         {[
           {label:'Invited',value:fmtDate(detail.created_at)},
-          {label:'Intake Submitted',value:fmtDate(detail.intake_completed_at)},
+          {label:'Intake Completed',value:fmtDate(detail.intake_completed_at)},
           {label:'Signatures',value:signedCount+' / '+sigRequired},
           {label:'Docs Approved',value:(docCounts.approved+docCounts.waived)+' / '+requiredDocs.length+' req'},
         ].map(item=>(
