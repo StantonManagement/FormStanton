@@ -275,6 +275,31 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 
+  describe('WS-D #5 — child-support affidavit amounts (received support)', () => {
+    it('derives weekly+monthly from collected child_support income', () => {
+      const intake: IntakeData = {
+        ...santhaIntake,
+        contact: { ...santhaIntake.contact, zip: '06051' },
+        income: {
+          by_member: [
+            { member_slot: 1, member_name: 'Santha Lee Degross', has_any_income: true, annual_income: 6240, income_sources: [{ type: 'child_support', has_income: true, amount_monthly: 520 }] },
+          ],
+          has_zero_income_adult: false,
+        },
+      };
+      const r = resolveFieldData('child_support_affidavit', intake, santhaMembers, 'en', 1, santhaApp);
+      expect(r.amount_monthly).toBe('520.00');
+      expect(r.amount_weekly).toBe('120.00'); // 520*12/52
+      expect(r.affiant_zip).toBe('06051');
+      expect(r.children_names).toBe('Angelisse Milagros Carrillo');
+    });
+    it('blanks amounts when no child-support income (no_child_support path)', () => {
+      const r = resolveFieldData('no_child_support_affidavit', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.amount_monthly).toBe('');
+      expect(r.amount_weekly).toBe('');
+    });
+  });
+
   describe('citizenship_declaration (already correct)', () => {
     it('includes all members with name + dob + status', () => {
       const r = resolveFieldData('citizenship_declaration', santhaIntake, santhaMembers, 'en', 1, santhaApp);

@@ -506,6 +506,7 @@ function resolveSimpleAffidavit(
 // signature resolver emits (→ blank). The affiant is the HOH; children_names are the
 // household minors. Support amounts are uncollected → blank.
 function resolveChildSupportAffidavit(
+  intakeData: IntakeData,
   members: HouseholdMember[],
   appRow: AppRow,
   signerSlot: number
@@ -514,13 +515,27 @@ function resolveChildSupportAffidavit(
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   const affiant = members.find((m) => m.slot === signerSlot) ?? members.find((m) => m.slot === 1) ?? members[0];
   const minors = members.filter((m) => (m.age ?? 99) < 18);
+
+  // The child-support affidavit is generated when a member RECEIVES child support
+  // (conditional household_has_child_support). The form's weekly/monthly amount is
+  // that support — derive it from the collected child_support income (WS-D #5). The
+  // no-child-support variant has monthly = 0 → blank (and its map has no amount fields).
+  let monthly = 0;
+  for (const m of intakeData?.income?.by_member ?? []) {
+    for (const src of m.income_sources ?? []) {
+      if (src.type === 'child_support' && src.has_income) monthly += src.amount_monthly ?? 0;
+    }
+  }
+  const amount_monthly = monthly > 0 ? monthly.toFixed(2) : '';
+  const amount_weekly = monthly > 0 ? ((monthly * 12) / 52).toFixed(2) : '';
+
   return {
     affiant_name: affiant?.name ?? '',
     affiant_address: (appRow?.building_address ?? '').trim(),
-    affiant_zip: '',
+    affiant_zip: (intakeData?.contact?.zip ?? '').trim(),
     children_names: minors.map((m) => m.name).join(', '),
-    amount_weekly: '',
-    amount_monthly: '',
+    amount_weekly,
+    amount_monthly,
     ...resolveSingleSignature(members, signerSlot, dateStr),
   };
 }
@@ -656,7 +671,7 @@ export function resolveFieldData(
       return resolveObligationsOfFamily(intakeData, members, appRow);
     case 'child_support_affidavit':
     case 'no_child_support_affidavit':
-      return resolveChildSupportAffidavit(members, appRow, signerSlot);
+      return resolveChildSupportAffidavit(intakeData, members, appRow, signerSlot);
     case 'pet_addendum':
     case 'vehicle_addendum':
     case 'self_employment_worksheet':
