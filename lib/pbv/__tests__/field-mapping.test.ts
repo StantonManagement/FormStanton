@@ -193,6 +193,42 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 
+  describe('WS-D #2/#6 — address + emergency-contact collection', () => {
+    const richContact: IntakeData = {
+      ...miaIntake,
+      contact: {
+        ...miaIntake.contact,
+        city: 'Hartford', state: 'CT', zip: '06106',
+        prev_street: '5 Old Rd', prev_apt: '2', prev_city: 'New Britain', prev_state: 'CT', prev_zip: '06051',
+        alt_contact_name: 'Jane Doe', alt_contact_phone: '8601112222',
+        alt_contact_address: '7 Helper St', alt_contact_email: 'jane@example.com', alt_contact_relationship: 'Sister',
+      },
+    };
+    it('main_application city/state/zip assembles from intake contact', () => {
+      const r = resolveFieldData('main_application', richContact, miaMembers, 'en', 1, miaApp);
+      expect(r.address_city_state_zip).toBe('Hartford, CT 06106');
+    });
+    it('criminal release fills current city/state/zip and previous address', () => {
+      const r = resolveFieldData('criminal_background_release', richContact, miaMembers, 'en', 1, miaApp);
+      expect(r.current_address_city).toBe('Hartford');
+      expect(r.current_address_zip).toBe('06106');
+      expect(r.previous_address_street).toBe('5 Old Rd');
+      expect(r.previous_address_city).toBe('New Britain');
+    });
+    it('hud_92006 fills emergency-contact address/email/relationship', () => {
+      const r = resolveFieldData('hud_92006', richContact, miaMembers, 'en', 1, miaApp);
+      expect(r.additional_contact_address).toBe('7 Helper St');
+      expect(r.additional_contact_email).toBe('jane@example.com');
+      expect(r.additional_contact_relationship).toBe('Sister');
+      expect(r.mailing_address).toBe('31-33 Park St, Retail 1, Hartford, CT 06106');
+    });
+    it('blanks gracefully when the new fields are absent (existing snapshots)', () => {
+      const r = resolveFieldData('criminal_background_release', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.current_address_city).toBe('');
+      expect(r.previous_address_street).toBe('');
+    });
+  });
+
   describe('citizenship_declaration (already correct)', () => {
     it('includes all members with name + dob + status', () => {
       const r = resolveFieldData('citizenship_declaration', santhaIntake, santhaMembers, 'en', 1, santhaApp);

@@ -133,6 +133,14 @@ function applicantPhone(intake: IntakeData, app: AppRow | undefined): string {
   return contactOf(intake).phone_any || (app?.phone ?? '') || '';
 }
 
+// "City, ST Zip" assembled from the intake contact block (street is on the app row).
+// Blank components are dropped so we never stamp stray commas. (WS-D #2)
+function cityStateZip(intake: IntakeData): string {
+  const c = intake?.contact ?? {};
+  const cityState = [c.city, c.state].map((s) => (s ?? '').trim()).filter(Boolean).join(', ');
+  return [cityState, (c.zip ?? '').trim()].filter(Boolean).join(' ').trim();
+}
+
 // Intake income `type` → the main_application income table's per-row-group data_key.
 // The paper form has FIXED income-type rows (Employed / SSI / Social Security / …),
 // so each intake type stamps onto its own labeled row(s) — NOT sequentially (that
@@ -283,7 +291,7 @@ function resolveMainApplication(
     phone_work: contact.phone_work,
     phone_cell: contact.phone_cell,
     address_street: addr.street,
-    address_city_state_zip: addr.city_state_zip,
+    address_city_state_zip: cityStateZip(intakeData),
     alternate_contact_name: contact.alt_contact_name,
     alternate_contact_phone: contact.alt_contact_phone,
     hoh_last: hohParts.last,
@@ -397,12 +405,18 @@ function resolveHud92006(
   const hoh = members.find((m) => m.slot === 1);
   // Map fields: applicant_name (matched), mailing_address (was `address`),
   // telephone, additional_contact_* (the optional emergency contact).
+  const csz = cityStateZip(intakeData);
+  const cc = intakeData?.contact ?? {};
   return {
     applicant_name: hoh?.name ?? '',
-    mailing_address: addr.street,
+    mailing_address: csz ? `${addr.street}, ${csz}` : addr.street,
     telephone: applicantPhone(intakeData, appRow),
     additional_contact_name: contact.alt_contact_name,
     additional_contact_phone: contact.alt_contact_phone,
+    // Emergency-contact extras — collected in intake (WS-D #6).
+    additional_contact_address: (cc.alt_contact_address ?? '').trim(),
+    additional_contact_email: (cc.alt_contact_email ?? '').trim(),
+    additional_contact_relationship: (cc.alt_contact_relationship ?? '').trim(),
     address: addr.street,
     date: dateStr,
     signature_date: dateStr,
@@ -507,9 +521,9 @@ function resolveCriminalBackgroundRelease(
   const member = members.find((m) => m.slot === signerSlot) ?? members[0];
   const parts = member ? nameParts(member.name) : { last: '', first: '', mi: '' };
 
-  // Current address comes from the application row (building_address + unit). City/
-  // State/Zip are not stored separately yet (gap — field audit). Previous address is
-  // genuinely uncollected → blank for in-person fill.
+  // Current address street comes from the application row (building_address + unit);
+  // city/state/zip and the previous address are collected in intake.contact (WS-D #2).
+  const contact = intakeData?.contact ?? {};
   return {
     first_name: parts.first,
     middle_initial: parts.mi,
@@ -518,14 +532,14 @@ function resolveCriminalBackgroundRelease(
     ssn: ssnDisplay(member?.ssn_last_four),
     current_address_street: (appRow?.building_address ?? '').trim(),
     current_address_apt: (appRow?.unit_number ?? '').trim(),
-    current_address_city: '',
-    current_address_state: '',
-    current_address_zip: '',
-    previous_address_street: '',
-    previous_address_apt: '',
-    previous_address_city: '',
-    previous_address_state: '',
-    previous_address_zip: '',
+    current_address_city: (contact.city ?? '').trim(),
+    current_address_state: (contact.state ?? '').trim(),
+    current_address_zip: (contact.zip ?? '').trim(),
+    previous_address_street: (contact.prev_street ?? '').trim(),
+    previous_address_apt: (contact.prev_apt ?? '').trim(),
+    previous_address_city: (contact.prev_city ?? '').trim(),
+    previous_address_state: (contact.prev_state ?? '').trim(),
+    previous_address_zip: (contact.prev_zip ?? '').trim(),
     signature_date: dateStr,
     witness_signature_date: dateStr,
     date: dateStr,

@@ -78,6 +78,21 @@ export interface IntakeContact {
   email?: string;
   alt_contact_name?: string;
   alt_contact_phone?: string;
+  // Current address city/state/zip (the street lives on the application row). Fills
+  // main_application + criminal_background_release current-address fields. (WS-D #2)
+  city?: string;
+  state?: string;
+  zip?: string;
+  // Previous address — criminal_background_release. (WS-D #2)
+  prev_street?: string;
+  prev_apt?: string;
+  prev_city?: string;
+  prev_state?: string;
+  prev_zip?: string;
+  // Emergency / additional contact extras — hud_92006 (name/phone already above). (WS-D #6)
+  alt_contact_address?: string;
+  alt_contact_email?: string;
+  alt_contact_relationship?: string;
 }
 
 // ── Section 3 — income ─────────────────────────────────────────────────────────
