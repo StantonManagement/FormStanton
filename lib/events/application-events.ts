@@ -72,6 +72,9 @@ export const ApplicationEventType = {
   // Application lifecycle - PRD-04
   APPLICATION_CREATED:        'pbv_full_application.created',
 
+  // Household member correction - staff / paper intake
+  PBV_MEMBER_CORRECTED:       'pbv_full_application.member_corrected',
+
   // Notification events - PRD-04
   NOTIFICATION_SCHEDULED:     'notification.scheduled',
   NOTIFICATION_SENT:          'notification.sent',
@@ -310,6 +313,11 @@ export interface EventPayloadMap {
     source: 'portal_intake' | 'admin_created';
     has_phone: boolean;
     has_language: boolean;
+  };
+
+  'pbv_full_application.member_corrected': {
+    member_id: string;
+    fields: string[];
   };
 
   'notification.scheduled': {
