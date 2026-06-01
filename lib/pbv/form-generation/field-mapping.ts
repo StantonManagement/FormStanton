@@ -294,6 +294,15 @@ function resolveMainApplication(
     race_box: raceBox(intakeData?.household),
     ethnicity_box: ethnicityBox(intakeData?.household),
     marital_box: maritalBox(intakeData?.household),
+    // Single Yes/No questions answerable from intake. q_dv = "victim of domestic
+    // violence?" (Q8); q_sold_assets = "sold/given away assets in last 2 years?"
+    // (Q3). 'yes'/'no'/'' — blank when never recorded. (The criminal-history Q7 is
+    // a per-crime-type table, not a single Yes/No, and intake holds only a per-member
+    // boolean, so it is intentionally not stamped here.)
+    q_dv: intakeData?.dv_homeless_ra?.dv_status === true ? 'yes'
+      : intakeData?.dv_homeless_ra?.dv_status === false ? 'no' : '',
+    q_sold_assets: intakeData?.assets?.disposed_asset_last_2yr === true ? 'yes'
+      : intakeData?.assets?.disposed_asset_last_2yr === false ? 'no' : '',
     adults: adultRows,
     minors: minorRows,
     // Income table: each intake income type stamps onto its own FIXED labeled row

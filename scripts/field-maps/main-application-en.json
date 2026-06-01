@@ -1327,6 +1327,50 @@
       "check_value": "divorced",
       "font_size": 9,
       "label": "marital_box divorced"
+    },
+    {
+      "name": "q_sold_assets",
+      "type": "checkbox",
+      "page": 3,
+      "x": 391,
+      "y": 615.4,
+      "width": 9,
+      "check_value": "yes",
+      "font_size": 9,
+      "label": "q_sold_assets yes"
+    },
+    {
+      "name": "q_sold_assets",
+      "type": "checkbox",
+      "page": 3,
+      "x": 428,
+      "y": 615.4,
+      "width": 9,
+      "check_value": "no",
+      "font_size": 9,
+      "label": "q_sold_assets no"
+    },
+    {
+      "name": "q_dv",
+      "type": "checkbox",
+      "page": 4,
+      "x": 251,
+      "y": 961.8,
+      "width": 9,
+      "check_value": "yes",
+      "font_size": 9,
+      "label": "q_dv yes"
+    },
+    {
+      "name": "q_dv",
+      "type": "checkbox",
+      "page": 4,
+      "x": 288,
+      "y": 961.8,
+      "width": 9,
+      "check_value": "no",
+      "font_size": 9,
+      "label": "q_dv no"
     }
   ]
 }

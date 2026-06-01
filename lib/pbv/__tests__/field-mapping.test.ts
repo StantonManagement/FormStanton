@@ -105,6 +105,27 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
       expect(resolveFieldData('main_application', mk('multi'), miaMembers, 'en', 1, miaApp).race_box).toBe('other');
       expect(resolveFieldData('main_application', mk('not_reported'), miaMembers, 'en', 1, miaApp).race_box).toBe('');
     });
+    it('answers the DV and sold-assets Yes/No questions, blank when unrecorded', () => {
+      // Mia's real shape: dv recorded false, assets has no disposed flag.
+      const recorded: IntakeData = {
+        ...miaIntake,
+        dv_homeless_ra: { dv_status: false, homeless_at_admission: false, reasonable_accommodation_requested: false },
+        assets: { vehicle: { has_vehicle: false } } as any,
+      };
+      const r = resolveFieldData('main_application', recorded, miaMembers, 'en', 1, miaApp);
+      expect(r.q_dv).toBe('no');
+      expect(r.q_sold_assets).toBe(''); // disposed flag absent → blank, not "no"
+
+      const affirmative: IntakeData = {
+        ...miaIntake,
+        dv_homeless_ra: { dv_status: true, homeless_at_admission: false, reasonable_accommodation_requested: false },
+        assets: { has_real_estate: false, has_savings: false, has_checking: false, has_stocks: false, has_cd: false, has_trust: false, has_bonds: false, has_life_insurance: false, has_insurance_settlement: false, disposed_asset_last_2yr: true },
+      };
+      const r2 = resolveFieldData('main_application', affirmative, miaMembers, 'en', 1, miaApp);
+      expect(r2.q_dv).toBe('yes');
+      expect(r2.q_sold_assets).toBe('yes');
+    });
+
     it('marks a minor student Yes and leaves an unrecorded boolean blank', () => {
       const r = resolveFieldData('main_application', santhaIntake, santhaMembers, 'en', 1, santhaApp);
       const minor = (r.minors as any[])[0];
