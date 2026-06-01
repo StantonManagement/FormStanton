@@ -16,6 +16,8 @@
  * included as arrays under their data_key.
  */
 
+import type { IntakeData as IntakeSnapshot } from '@/lib/pbv/intake-schema';
+
 export interface HouseholdMember {
   id?: string;
   slot: number;
@@ -41,29 +43,20 @@ export interface HouseholdMember {
   documented_income?: number | null;
 }
 
-export interface IntakeApplicant {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  address_street?: string;
-  address_city_state_zip?: string;
-  race?: string;
-  ethnicity?: string;
-  marital_status?: string;
-}
+// The canonical intake snapshot shape lives in intake-schema.ts. Resolvers read it
+// directly. The OLD local IntakeData here (applicant.*, income.rows, assets.rows)
+// NEVER matched what intake actually stores (contact, income.by_member, assets.has_*)
+// — that mismatch is exactly why every intake-sourced field shipped BLANK. See
+// docs/pbv-forms/field-audit_2026-05-31.md. We re-export the real type under the
+// historical name so the generate-forms route's cast stays correct.
+export type IntakeData = IntakeSnapshot;
 
-export interface IntakeData {
-  applicant?: IntakeApplicant;
-  household?: {
-    member_list?: HouseholdMember[];
-  };
-  income?: Record<string, unknown>;
-  assets?: Record<string, unknown>;
-  criminal?: Record<string, unknown>;
-  medical?: Record<string, unknown>;
-  childcare?: Record<string, unknown>;
-  pets?: { has_pets?: boolean };
-  vehicle?: { has_vehicle?: boolean };
+// Address + phone live on the pbv_full_applications ROW, not in the intake snapshot.
+// The route passes them through so resolvers can stamp the applicant's address.
+export interface AppRow {
+  building_address?: string | null;
+  unit_number?: string | null;
+  phone?: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,16 +84,61 @@ function ssnDisplay(lastFour: string | null | undefined): string {
   return `XXX-XX-${lastFour}`;
 }
 
+// Contact block lives at intake_snapshot.contact (NOT the old fictional `applicant`).
+function contactOf(intake: IntakeData): {
+  email: string;
+  phone_home: string;
+  phone_work: string;
+  phone_cell: string;
+  phone_any: string;
+  alt_contact_name: string;
+  alt_contact_phone: string;
+} {
+  const c = intake?.contact ?? {};
+  const phone_cell = c.phone_cell ?? '';
+  const phone_home = c.phone_home ?? '';
+  const phone_work = c.phone_work ?? '';
+  return {
+    email: c.email ?? '',
+    phone_home,
+    phone_work,
+    phone_cell,
+    phone_any: phone_cell || phone_home || phone_work || '',
+    alt_contact_name: c.alt_contact_name ?? '',
+    alt_contact_phone: c.alt_contact_phone ?? '',
+  };
+}
+
+// The applicant's street address lives on the pbv_full_applications row
+// (building_address + unit_number) — never in the intake snapshot. City/State/Zip
+// are not stored separately yet (gap — see field audit), so csz is returned blank.
+function addressOf(app: AppRow | undefined): { street: string; city_state_zip: string } {
+  const street = (app?.building_address ?? '').trim();
+  const unit = (app?.unit_number ?? '').trim();
+  return {
+    street: street ? (unit ? `${street}, ${unit}` : street) : '',
+    city_state_zip: '',
+  };
+}
+
+// A single phone for the applicant: prefer the intake contact cell, fall back to
+// the application-row phone.
+function applicantPhone(intake: IntakeData, app: AppRow | undefined): string {
+  return contactOf(intake).phone_any || (app?.phone ?? '') || '';
+}
+
 // ─── Per-form resolvers ───────────────────────────────────────────────────────
 
 function resolveMainApplication(
   intakeData: IntakeData,
   members: HouseholdMember[],
-  language: 'en' | 'es'
+  _language: 'en' | 'es',
+  appRow: AppRow
 ): Record<string, unknown> {
-  const app = intakeData.applicant ?? {};
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  const contact = contactOf(intakeData);
+  const addr = addressOf(appRow);
 
   const adults = members.filter((m) => (m.age ?? 0) >= 18);
   const minors = members.filter((m) => (m.age ?? 99) < 18);
@@ -134,28 +172,33 @@ function resolveMainApplication(
     };
   });
 
-  const incomeRows = (intakeData.income as any)?.rows ?? [];
-  const assetRows = (intakeData.assets as any)?.rows ?? [];
-  const medicalRows = (intakeData.medical as any)?.rows ?? [];
-
   const hohMember = members.find((m) => m.slot === 1);
   const hohParts = hohMember ? nameParts(hohMember.name) : { last: '', first: '', mi: '' };
 
   return {
-    applicant_full_name: app.full_name ?? hohMember?.name ?? '',
-    applicant_email: app.email ?? '',
-    phone_home: app.phone ?? '',
-    phone_cell: app.phone ?? '',
-    address_street: app.address_street ?? '',
-    address_city_state_zip: app.address_city_state_zip ?? '',
+    applicant_full_name: hohMember?.name ?? '',
+    applicant_email: contact.email,
+    phone_home: contact.phone_home,
+    phone_work: contact.phone_work,
+    phone_cell: contact.phone_cell,
+    address_street: addr.street,
+    address_city_state_zip: addr.city_state_zip,
+    alternate_contact_name: contact.alt_contact_name,
+    alternate_contact_phone: contact.alt_contact_phone,
     hoh_last: hohParts.last,
     hoh_first: hohParts.first,
     date: dateStr,
     adults: adultRows,
     minors: minorRows,
-    income_rows: incomeRows,
-    asset_rows: assetRows,
-    medical_rows: medicalRows,
+    // Income/asset/medical TABLES are intentionally left empty here. The map's
+    // row_patterns stamp top-down into sequential rows, but the paper form has
+    // FIXED income-type labels (Employed / SSI / Social Security / …). Filling
+    // sequentially would put e.g. "other" income onto the "Employed" row. Correct
+    // placement needs per-income-type row coordinates — tracked as a (C) map task
+    // in docs/pbv-forms/field-audit_2026-05-31.md. Better blank than mislabeled.
+    income_rows: [],
+    asset_rows: [],
+    medical_rows: [],
   };
 }
 
@@ -179,15 +222,18 @@ function resolveSingleSignature(
 function resolveHud9886a(
   intakeData: IntakeData,
   members: HouseholdMember[],
-  signerSlot: number
+  signerSlot: number,
+  appRow: AppRow
 ): Record<string, unknown> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   const member = members.find((m) => m.slot === signerSlot) ?? members[0];
-  const app = intakeData.applicant ?? {};
+  const addr = addressOf(appRow);
   return {
-    hoh_name: member?.name ?? app.full_name ?? '',
-    address: `${app.address_street ?? ''} ${app.address_city_state_zip ?? ''}`.trim(),
+    hoh_name: member?.name ?? '',
+    address: addr.street,
+    // Map field is `hoh_ssn` (was emitted as `ssn` → never matched → blank).
+    hoh_ssn: ssnDisplay(member?.ssn_last_four),
     ssn: ssnDisplay(member?.ssn_last_four),
     dob: formatDob(member?.date_of_birth),
     date: dateStr,
@@ -206,15 +252,20 @@ function resolveHud9886a(
 function resolveHachRelease(
   intakeData: IntakeData,
   members: HouseholdMember[],
-  signerSlot: number
+  signerSlot: number,
+  appRow: AppRow
 ): Record<string, unknown> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   const member = members.find((m) => m.slot === signerSlot) ?? members[0];
-  const app = intakeData.applicant ?? {};
+  const addr = addressOf(appRow);
+  // Map fields are `applicant_name` / `applicant_address` (were emitted as
+  // `printed_name` / `address` → never matched → entire form blank).
   return {
+    applicant_name: member?.name ?? '',
+    applicant_address: addr.street,
     printed_name: member?.name ?? '',
-    address: `${app.address_street ?? ''} ${app.address_city_state_zip ?? ''}`.trim(),
+    address: addr.street,
     date: dateStr,
     signature_date: dateStr,
   };
@@ -222,15 +273,23 @@ function resolveHachRelease(
 
 function resolveHud92006(
   intakeData: IntakeData,
-  members: HouseholdMember[]
+  members: HouseholdMember[],
+  appRow: AppRow
 ): Record<string, unknown> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-  const app = intakeData.applicant ?? {};
+  const contact = contactOf(intakeData);
+  const addr = addressOf(appRow);
   const hoh = members.find((m) => m.slot === 1);
+  // Map fields: applicant_name (matched), mailing_address (was `address`),
+  // telephone, additional_contact_* (the optional emergency contact).
   return {
-    applicant_name: hoh?.name ?? app.full_name ?? '',
-    address: `${app.address_street ?? ''} ${app.address_city_state_zip ?? ''}`.trim(),
+    applicant_name: hoh?.name ?? '',
+    mailing_address: addr.street,
+    telephone: applicantPhone(intakeData, appRow),
+    additional_contact_name: contact.alt_contact_name,
+    additional_contact_phone: contact.alt_contact_phone,
+    address: addr.street,
     date: dateStr,
     signature_date: dateStr,
   };
@@ -257,17 +316,22 @@ function resolveCitizenshipDeclaration(
 
 function resolveObligationsOfFamily(
   intakeData: IntakeData,
-  members: HouseholdMember[]
+  members: HouseholdMember[],
+  appRow: AppRow
 ): Record<string, unknown> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-  const app = intakeData.applicant ?? {};
+  const addr = addressOf(appRow);
   const hoh = members.find((m) => m.slot === 1);
+  // Map fields are `hoh_name` / `hoh_address` / `hoh_phone` (were emitted as
+  // `hoh_printed_name` / `address` / `phone` → never matched → blank).
   return {
+    hoh_name: hoh?.name ?? '',
+    hoh_address: addr.street,
+    hoh_phone: applicantPhone(intakeData, appRow),
     hoh_printed_name: hoh?.name ?? '',
-    address: `${app.address_street ?? ''} ${app.address_city_state_zip ?? ''}`.trim(),
-    phone: app.phone ?? '',
     date: dateStr,
+    hoh_signature_date: dateStr,
     signature_date: dateStr,
   };
 }
@@ -279,6 +343,30 @@ function resolveSimpleAffidavit(
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   return resolveSingleSignature(members, signerSlot, dateStr);
+}
+
+// Child-support / no-child-support affidavits. Maps expect `affiant_name`,
+// `affiant_address`, `affiant_zip`, `children_names` — none of which the generic
+// signature resolver emits (→ blank). The affiant is the HOH; children_names are the
+// household minors. Support amounts are uncollected → blank.
+function resolveChildSupportAffidavit(
+  members: HouseholdMember[],
+  appRow: AppRow,
+  signerSlot: number
+): Record<string, unknown> {
+  const today = new Date();
+  const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  const affiant = members.find((m) => m.slot === signerSlot) ?? members.find((m) => m.slot === 1) ?? members[0];
+  const minors = members.filter((m) => (m.age ?? 99) < 18);
+  return {
+    affiant_name: affiant?.name ?? '',
+    affiant_address: (appRow?.building_address ?? '').trim(),
+    affiant_zip: '',
+    children_names: minors.map((m) => m.name).join(', '),
+    amount_weekly: '',
+    amount_monthly: '',
+    ...resolveSingleSignature(members, signerSlot, dateStr),
+  };
 }
 
 function resolveBriefingCert(
@@ -297,33 +385,28 @@ function resolveBriefingCert(
 function resolveCriminalBackgroundRelease(
   intakeData: IntakeData,
   members: HouseholdMember[],
-  signerSlot: number
+  signerSlot: number,
+  appRow: AppRow
 ): Record<string, unknown> {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   const member = members.find((m) => m.slot === signerSlot) ?? members[0];
   const parts = member ? nameParts(member.name) : { last: '', first: '', mi: '' };
-  const app = intakeData.applicant ?? {};
 
-  // address_city_state_zip is a single string ("City, ST 12345") in intake; best-effort split.
-  const csz = app.address_city_state_zip ?? '';
-  const cszMatch = csz.match(/^\s*(.+?),\s*([A-Z]{2})\s+([0-9]{5}(?:-[0-9]{4})?)\s*$/i);
-  const city = cszMatch?.[1] ?? '';
-  const state = cszMatch?.[2] ?? '';
-  const zip = cszMatch?.[3] ?? '';
-
+  // Current address comes from the application row (building_address + unit). City/
+  // State/Zip are not stored separately yet (gap — field audit). Previous address is
+  // genuinely uncollected → blank for in-person fill.
   return {
     first_name: parts.first,
     middle_initial: parts.mi,
     last_name: parts.last,
     dob: formatDob(member?.date_of_birth),
     ssn: ssnDisplay(member?.ssn_last_four),
-    current_address_street: app.address_street ?? '',
-    current_address_apt: '',
-    current_address_city: city,
-    current_address_state: state,
-    current_address_zip: zip,
-    // Previous address not captured in intake — leave blank for in-person fill.
+    current_address_street: (appRow?.building_address ?? '').trim(),
+    current_address_apt: (appRow?.unit_number ?? '').trim(),
+    current_address_city: '',
+    current_address_state: '',
+    current_address_zip: '',
     previous_address_street: '',
     previous_address_apt: '',
     previous_address_city: '',
@@ -356,23 +439,25 @@ export function resolveFieldData(
   intakeData: IntakeData,
   members: HouseholdMember[],
   language: 'en' | 'es',
-  signerSlot = 1
+  signerSlot = 1,
+  appRow: AppRow = {}
 ): Record<string, unknown> {
   switch (formId) {
     case 'main_application':
-      return resolveMainApplication(intakeData, members, language);
+      return resolveMainApplication(intakeData, members, language, appRow);
     case 'hud_9886a':
-      return resolveHud9886a(intakeData, members, signerSlot);
+      return resolveHud9886a(intakeData, members, signerSlot, appRow);
     case 'hach_release':
-      return resolveHachRelease(intakeData, members, signerSlot);
+      return resolveHachRelease(intakeData, members, signerSlot, appRow);
     case 'hud_92006':
-      return resolveHud92006(intakeData, members);
+      return resolveHud92006(intakeData, members, appRow);
     case 'citizenship_declaration':
       return resolveCitizenshipDeclaration(members);
     case 'obligations_of_family':
-      return resolveObligationsOfFamily(intakeData, members);
+      return resolveObligationsOfFamily(intakeData, members, appRow);
     case 'child_support_affidavit':
     case 'no_child_support_affidavit':
+      return resolveChildSupportAffidavit(members, appRow, signerSlot);
     case 'pet_addendum':
     case 'vehicle_addendum':
     case 'self_employment_worksheet':
@@ -381,7 +466,7 @@ export function resolveFieldData(
     case 'briefing_cert':
       return resolveBriefingCert(members);
     case 'criminal_background_release':
-      return resolveCriminalBackgroundRelease(intakeData, members, signerSlot);
+      return resolveCriminalBackgroundRelease(intakeData, members, signerSlot, appRow);
     case 'eiv_guide_receipt':
       return resolveEivGuideReceipt(members, signerSlot);
     default:

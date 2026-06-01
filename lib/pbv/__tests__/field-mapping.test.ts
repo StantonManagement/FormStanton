@@ -1,121 +1,160 @@
 import { describe, it, expect } from 'vitest';
 import { resolveFieldData } from '../form-generation/field-mapping';
-import type { IntakeData, HouseholdMember } from '../form-generation/field-mapping';
+import type { HouseholdMember, AppRow } from '../form-generation/field-mapping';
+import type { IntakeData } from '../intake-schema';
 
-const members: HouseholdMember[] = [
+// ─────────────────────────────────────────────────────────────────────────────
+// These fixtures mirror the REAL stored shapes (pbv_household_members rows +
+// pbv_full_applications.intake_snapshot + app row), captured from production
+// applicants Mia Lozada and Santha Degross on 2026-05-31.
+//
+// The previous version of this test fed a FICTIONAL `{ applicant: {...} }` shape
+// that intake never produces — which is why it stayed green while every
+// intake-sourced field shipped blank. See docs/pbv-forms/field-audit_2026-05-31.md.
+// Do NOT reintroduce an `applicant` key here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Mia — single adult, employed.
+const miaMembers: HouseholdMember[] = [
   {
     slot: 1,
-    name: 'Maria Santos',
+    name: 'Mia Enid Lozada',
     relationship: 'head',
-    age: 42,
-    date_of_birth: '1982-03-15',
-    ssn_last_four: '4321',
-    annual_income: 24000,
-    has_child_support: false,
+    age: 31,
+    date_of_birth: '1994-05-28',
+    ssn_last_four: '7407',
+    annual_income: 32400,
+    employed: true,
     disability: false,
-  },
-  {
-    slot: 2,
-    name: 'Carlos Santos',
-    relationship: 'spouse',
-    age: 44,
-    date_of_birth: '1980-07-20',
-    ssn_last_four: '8765',
-    annual_income: 18000,
-  },
-  {
-    slot: 3,
-    name: 'Sofia Santos',
-    relationship: 'child',
-    age: 10,
-    date_of_birth: '2014-11-05',
-    ssn_last_four: '1234',
-    annual_income: 0,
+    student: false,
+    citizenship_status: 'citizen',
   },
 ];
-
-const intake: IntakeData = {
-  applicant: {
-    full_name: 'Maria Santos',
-    email: 'maria@example.com',
-    phone: '(860) 555-1234',
-    address_street: '43 Frank St',
-    address_city_state_zip: 'New Haven, CT 06511',
+const miaIntake: IntakeData = {
+  contact: {
+    email: 'mialozada94@gmail.com',
+    phone_cell: '8608347644',
+    phone_home: '',
+    phone_work: '',
+    alt_contact_name: '',
+    alt_contact_phone: '',
+  },
+  household: {
+    hoh_name: 'Mia Enid Lozada',
+    hoh_dob: '1994-05-28',
+    race: 'other',
+    ethnicity: 'hispanic',
+    marital_status: 'single',
+    members: [],
+  },
+  income: {
+    by_member: [
+      {
+        member_slot: 1,
+        member_name: 'Mia Enid Lozada',
+        has_any_income: true,
+        annual_income: 32400,
+        income_sources: [{ type: 'employment', has_income: true, amount_monthly: 2700 }],
+      },
+    ],
+    has_zero_income_adult: false,
   },
 };
+const miaApp: AppRow = { building_address: '31-33 Park St', unit_number: 'Retail 1', phone: '8608347644' };
 
-describe('resolveFieldData', () => {
+// Santha — 2 members incl. a 16-yo minor.
+const santhaMembers: HouseholdMember[] = [
+  { slot: 1, name: 'Santha Lee Degross', relationship: 'head', age: 31, date_of_birth: '1994-11-25', ssn_last_four: '6444', citizenship_status: 'citizen' },
+  { slot: 2, name: 'Angelisse Milagros Carrillo', relationship: 'child', age: 16, date_of_birth: '2009-12-25', ssn_last_four: '4454', student: true, citizenship_status: 'citizen' },
+];
+const santhaApp: AppRow = { building_address: '10 Example Ave', unit_number: '2B', phone: '8605551212' };
+const santhaIntake: IntakeData = { contact: { email: 's@example.com', phone_cell: '8605551212' }, household: { hoh_name: 'Santha Lee Degross', hoh_dob: '1994-11-25', members: [] } };
+
+describe('resolveFieldData — real intake shape (regression guard for blank forms)', () => {
   describe('main_application', () => {
-    it('includes applicant_full_name and adults/minors arrays', () => {
-      const result = resolveFieldData('main_application', intake, members, 'en');
-      expect(result.applicant_full_name).toBe('Maria Santos');
-      expect(Array.isArray(result.adults)).toBe(true);
-      expect(Array.isArray(result.minors)).toBe(true);
-      const adults = result.adults as any[];
-      expect(adults).toHaveLength(2);
-      expect(adults[0].first).toBe('Maria');
-      expect(adults[0].relationship).toBe('SELF');
+    const r = resolveFieldData('main_application', miaIntake, miaMembers, 'en', 1, miaApp);
+    it('fills contact block from intake_snapshot.contact (was blank — bug A)', () => {
+      expect(r.applicant_full_name).toBe('Mia Enid Lozada');
+      expect(r.applicant_email).toBe('mialozada94@gmail.com');
+      expect(r.phone_cell).toBe('8608347644');
     });
-
-    it('uses SELF for HOH in English, YO in Spanish', () => {
-      const en = resolveFieldData('main_application', intake, members, 'en');
-      const es = resolveFieldData('main_application', intake, members, 'es');
-      expect((en.adults as any[])[0].relationship).toBe('SELF');
-      expect((es.adults as any[])[0].relationship).toBe('YO');
+    it('fills address from the application row (was blank — bug A)', () => {
+      expect(r.address_street).toBe('31-33 Park St, Retail 1');
     });
-
-    it('minors contains only members under 18', () => {
-      const result = resolveFieldData('main_application', intake, members, 'en');
-      const minors = result.minors as any[];
-      expect(minors).toHaveLength(1);
-      expect(minors[0].first).toBe('Sofia');
+    it('still builds the adults/minors composition rows', () => {
+      expect((r.adults as any[])[0].first).toBe('Mia');
+      expect((r.adults as any[])[0].last).toBe('Lozada');
+      expect(Array.isArray(r.minors)).toBe(true);
     });
   });
 
-  describe('obligations_of_family', () => {
-    it('includes hoh_printed_name and address', () => {
-      const result = resolveFieldData('obligations_of_family', intake, members, 'en');
-      expect(result.hoh_printed_name).toBe('Maria Santos');
-      expect(result.address).toContain('43 Frank St');
+  describe('hach_release (was 100% blank — bug B key mismatch)', () => {
+    const r = resolveFieldData('hach_release', miaIntake, miaMembers, 'en', 1, miaApp);
+    it('emits applicant_name + applicant_address matching the map field names', () => {
+      expect(r.applicant_name).toBe('Mia Enid Lozada');
+      expect(r.applicant_address).toBe('31-33 Park St, Retail 1');
     });
   });
 
-  describe('citizenship_declaration', () => {
-    it('includes members array with name and dob', () => {
-      const result = resolveFieldData('citizenship_declaration', intake, members, 'en');
-      expect(Array.isArray(result.members)).toBe(true);
-      expect((result.members as any[]).length).toBe(members.length);
+  describe('obligations_of_family (was blank — bug B)', () => {
+    const r = resolveFieldData('obligations_of_family', miaIntake, miaMembers, 'en', 1, miaApp);
+    it('emits hoh_name/hoh_phone/hoh_address matching map field names', () => {
+      expect(r.hoh_name).toBe('Mia Enid Lozada');
+      expect(r.hoh_phone).toBe('8608347644');
+      expect(r.hoh_address).toBe('31-33 Park St, Retail 1');
     });
   });
 
-  describe('hud_9886a', () => {
-    it('includes hoh_name and ssn with masked format', () => {
-      const result = resolveFieldData('hud_9886a', intake, members, 'en', 1);
-      expect(result.hoh_name).toBe('Maria Santos');
-      expect(result.ssn).toBe('XXX-XX-4321');
+  describe('hud_9886a (was blank — bug B ssn key)', () => {
+    it('emits hoh_ssn (the map field name), masked', () => {
+      const r = resolveFieldData('hud_9886a', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.hoh_ssn).toBe('XXX-XX-7407');
     });
   });
 
-  // TODO(stress-test #7): PRD-55 renamed `briefing_docs_certification` →
-  // `briefing_cert` (migration 20260520000000_prd55_form_generation_alignment.sql).
-  // The resolver registry follows the new id, so the old slug now throws
-  // `resolver_missing:`. The test should be migrated to `briefing_cert`;
-  // logged in OPEN-DECISIONS pre-PRD-79 as a baseline failure.
-  describe.skip('briefing_docs_certification', () => {
-    it('includes hoh_printed_name (last name) and date', () => {
-      const result = resolveFieldData('briefing_docs_certification', intake, members, 'en');
-      expect(result.hoh_printed_name).toBe('Maria Santos');
-      expect(typeof result.date).toBe('string');
+  describe('hud_92006', () => {
+    it('emits mailing_address + telephone (were blank — bug A/B)', () => {
+      const r = resolveFieldData('hud_92006', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.applicant_name).toBe('Mia Enid Lozada');
+      expect(r.mailing_address).toBe('31-33 Park St, Retail 1');
+      expect(r.telephone).toBe('8608347644');
     });
   });
 
-  // TODO(stress-test #7): PRD-63 made unknown form_ids throw
-  // `resolver_missing:` instead of returning a generic object — a deliberate
-  // fail-closed change. Test asserts the old generic-object contract.
-  describe.skip('unknown form_id', () => {
-    it('returns an object with a date field without throwing', () => {
-      const result = resolveFieldData('some_future_form', intake, members, 'en');
-      expect(typeof result).toBe('object');
+  describe('criminal_background_release', () => {
+    it('fills current address from the app row; name from members', () => {
+      const r = resolveFieldData('criminal_background_release', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.first_name).toBe('Mia');
+      expect(r.last_name).toBe('Lozada');
+      expect(r.current_address_street).toBe('31-33 Park St');
+    });
+  });
+
+  describe('no_child_support_affidavit (was blank — bug B/E)', () => {
+    it('emits affiant_name; children_names empty when no minors (Mia)', () => {
+      const r = resolveFieldData('no_child_support_affidavit', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.affiant_name).toBe('Mia Enid Lozada');
+      expect(r.children_names).toBe('');
+    });
+    it('lists household minors for a family with children (Santha)', () => {
+      const r = resolveFieldData('no_child_support_affidavit', santhaIntake, santhaMembers, 'en', 1, santhaApp);
+      expect(r.affiant_name).toBe('Santha Lee Degross');
+      expect(r.children_names).toBe('Angelisse Milagros Carrillo');
+    });
+  });
+
+  describe('citizenship_declaration (already correct)', () => {
+    it('includes all members with name + dob + status', () => {
+      const r = resolveFieldData('citizenship_declaration', santhaIntake, santhaMembers, 'en', 1, santhaApp);
+      expect((r.members as any[]).length).toBe(2);
+      expect((r.members as any[])[0].name).toBe('Santha Lee Degross');
+    });
+  });
+
+  describe('income table is intentionally NOT sequentially filled (avoids mislabeling)', () => {
+    it('leaves income_rows empty pending per-income-type row placement (task C)', () => {
+      const r = resolveFieldData('main_application', miaIntake, miaMembers, 'en', 1, miaApp);
+      expect(r.income_rows).toEqual([]);
     });
   });
 });

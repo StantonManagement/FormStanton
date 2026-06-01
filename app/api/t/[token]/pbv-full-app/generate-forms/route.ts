@@ -37,7 +37,7 @@ export async function POST(
     // ── 1. Load application state ───────────────────────────────────────────
     const { data: fullApp, error: appError } = await supabaseAdmin
       .from('pbv_full_applications')
-      .select('id, intake_data, intake_snapshot, intake_status, submission_language, preferred_language')
+      .select('id, intake_data, intake_snapshot, intake_status, submission_language, preferred_language, building_address, unit_number, phone')
       .eq('id', app.id)
       .maybeSingle();
 
@@ -57,6 +57,14 @@ export async function POST(
 
     // F4: Read from snapshot; fall back to intake_data only for legacy rows pre-backfill
     const intakeData = ((fullApp.intake_snapshot ?? fullApp.intake_data) ?? {}) as IntakeData;
+
+    // Address + phone live on the application ROW (not in the intake snapshot); the
+    // resolvers need them to stamp the applicant's address/phone.
+    const appRow = {
+      building_address: fullApp.building_address,
+      unit_number: fullApp.unit_number,
+      phone: fullApp.phone,
+    };
 
     // Derive submission language: preferred es→es, pt→es, en→en, default en
     const rawLang = fullApp.submission_language ?? fullApp.preferred_language ?? 'en';
@@ -144,7 +152,7 @@ export async function POST(
         // form rather than stamping a generic name+date PDF.
         let fieldData;
         try {
-          fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot);
+          fieldData = resolveFieldData(formId, intakeData, members, language, iter.slot, appRow);
         } catch (e: any) {
           if (typeof e?.message === 'string' && e.message.startsWith('resolver_missing:')) {
             console.error(`[generate-forms] No field-data resolver for ${formId}/${language} — skipping (PRD-63 fail-closed)`);
