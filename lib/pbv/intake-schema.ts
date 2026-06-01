@@ -87,6 +87,9 @@ export interface IntakeIncomeSource {
   has_income: boolean;
   member_name?: string;
   amount_monthly?: number;
+  /** Employer / payer / institution name — the main_application income table's
+   *  "Source" column. Optional; never gates section completion. (WS-D) */
+  source?: string;
 }
 
 export interface IntakeMemberIncome {

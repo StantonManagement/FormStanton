@@ -48,6 +48,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
   en: {
     none_label: 'No income of any kind',
     amount_label: 'Monthly amount ($)',
+    source_label: 'Source / employer (optional)',
     annual_label: 'Estimated annual income',
     annual_caption: 'Calculated from monthly amounts',
     zero_note: 'This person will need to complete a zero-income declaration.',
@@ -55,6 +56,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
   es: {
     none_label: 'Sin ingresos de ningún tipo',
     amount_label: 'Monto mensual ($)',
+    source_label: 'Fuente / empleador (opcional)',
     annual_label: 'Ingreso anual estimado',
     annual_caption: 'Calculado desde los montos mensuales',
     zero_note: 'Esta persona deberá completar una declaración de cero ingresos.',
@@ -63,6 +65,7 @@ const copy: Record<PreferredLanguage, Record<string, string>> = {
     // PT: tentative — review
     none_label: 'Nenhuma renda de nenhum tipo',
     amount_label: 'Valor mensal ($)',
+    source_label: 'Fonte / empregador (opcional)', // PT: tentative — review
     annual_label: 'Renda anual estimada',
     annual_caption: 'Calculado a partir dos valores mensais', // PT: tentative — review
     zero_note: 'Esta pessoa precisará preencher uma declaração de renda zero.',
@@ -152,6 +155,16 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
     updateMemberIncome(slot, { income_sources: sources });
   };
 
+  // WS-D: employer / payer name → the main_application income table "Source" column.
+  const setSourceName = (slot: number, type: string, source: string) => {
+    const member = byMember.find((m) => m.member_slot === slot);
+    if (!member) return;
+    const sources = member.income_sources.map((s) =>
+      s.type === type ? { ...s, source } : s
+    );
+    updateMemberIncome(slot, { income_sources: sources });
+  };
+
   // Phase 4: Always derive annual from monthly amounts (no manual override)
   const recomputeAnnual = (slot: number) => {
     setByMember((prev) => {
@@ -215,7 +228,7 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
                 </label>
 
                 {isChecked && (
-                  <div className="pl-7">
+                  <div className="pl-7 space-y-2">
                     <FormField label={c.amount_label} htmlFor={`amt_${src.type}`}>
                       <input
                         id={`amt_${src.type}`}
@@ -231,6 +244,17 @@ export default function SectionIncome({ language, intakeData, onChange }: Props)
                           )
                         }
                         onBlur={() => recomputeAnnual(currentMember.member_slot)}
+                        className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
+                      />
+                    </FormField>
+                    <FormField label={c.source_label} htmlFor={`src_${src.type}`}>
+                      <input
+                        id={`src_${src.type}`}
+                        type="text"
+                        value={activeSource?.source ?? ''}
+                        onChange={(e) =>
+                          setSourceName(currentMember.member_slot, src.type, e.target.value)
+                        }
                         className="mt-1 block w-full border border-[var(--border)] px-3 py-2 text-sm bg-white focus:outline-none focus:border-[var(--primary)] rounded-none"
                       />
                     </FormField>

@@ -211,6 +211,19 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
       // The old sequential-fill key is gone (that was the mislabeling hazard).
       expect(r.income_rows).toBeUndefined();
     });
+    it('carries the collected employer/source into the income row Source column (WS-D)', () => {
+      const intake: IntakeData = {
+        ...miaIntake,
+        income: {
+          by_member: [
+            { member_slot: 1, member_name: 'Mia Enid Lozada', has_any_income: true, annual_income: 32400, income_sources: [{ type: 'employment', has_income: true, amount_monthly: 2700, source: 'Hartford Public Schools' }] },
+          ],
+          has_zero_income_adult: false,
+        },
+      };
+      const r = resolveFieldData('main_application', intake, miaMembers, 'en', 1, miaApp);
+      expect((r.income_employment as any[])[0].source).toBe('Hartford Public Schools');
+    });
     it('routes other-typed income to the Other row, not Employed', () => {
       const intake: IntakeData = {
         ...santhaIntake,

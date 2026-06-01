@@ -213,7 +213,7 @@ function buildIncomeRows(intake: IntakeData): Record<string, IncomeRow[]> {
       if (!key) continue;
       (out[key] ??= []).push({
         member: m.member_name || src.member_name || '',
-        source: '',
+        source: src.source ?? '', // employer/payer — WS-D collected; blank if not given
         amount: formatMonthly(src.amount_monthly),
         yes: 'X',
       });
