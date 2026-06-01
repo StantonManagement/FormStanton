@@ -21,6 +21,9 @@ const unitCopy: Record<PreferredLanguage, {
   your_unit: string;
   building_label: string;
   unit_label: string;
+  unit_not_listed_option: string;
+  unit_enter_placeholder: string;
+  unit_required: string;
   building_wrong: string;
   saving: string;
   save_failed: string;
@@ -29,6 +32,9 @@ const unitCopy: Record<PreferredLanguage, {
     your_unit: 'Your Unit',
     building_label: 'Building',
     unit_label: 'Unit',
+    unit_not_listed_option: "My unit isn't listed →",
+    unit_enter_placeholder: 'Enter your unit number',
+    unit_required: 'Please enter your unit number.',
     building_wrong: 'Building doesn\u2019t look right? Call our office at (860) 527-3813.',
     saving: 'Saving…',
     save_failed: 'We couldn’t save your unit — please try again.',
@@ -37,6 +43,9 @@ const unitCopy: Record<PreferredLanguage, {
     your_unit: 'Su unidad',
     building_label: 'Edificio',
     unit_label: 'Unidad',
+    unit_not_listed_option: 'Mi unidad no aparece →',
+    unit_enter_placeholder: 'Ingrese el número de su unidad',
+    unit_required: 'Por favor ingrese su número de unidad.',
     building_wrong: '¿El edificio no es correcto? Llame a nuestra oficina al (860) 527-3813.',
     saving: 'Guardando…',
     save_failed: 'No pudimos guardar su unidad — inténtelo de nuevo.',
@@ -45,6 +54,9 @@ const unitCopy: Record<PreferredLanguage, {
     your_unit: 'Sua unidade',
     building_label: 'Edifício',
     unit_label: 'Unidade',
+    unit_not_listed_option: 'Minha unidade não está na lista →',
+    unit_enter_placeholder: 'Digite o número da sua unidade',
+    unit_required: 'Por favor, digite o número da sua unidade.',
     building_wrong: 'Edifício não parece correto? Ligue para nosso escritório: (860) 527-3813.',
     saving: 'Salvando…',
     save_failed: 'Não conseguimos salvar sua unidade — tente novamente.',
@@ -129,6 +141,8 @@ export default function IntakeLandingPage() {
   const buildingAddress = state.status === 'ready' ? state.data.building_address : '';
   const initialUnit = state.status === 'ready' ? state.data.unit_number : '';
   const [selectedUnit, setSelectedUnit] = useState('');
+  // When true, the tenant types a unit not in the canonical dropdown list.
+  const [unitOther, setUnitOther] = useState(false);
   const [unitSaving, setUnitSaving] = useState(false);
   const [unitError, setUnitError] = useState<string | null>(null);
 
@@ -140,6 +154,10 @@ export default function IntakeLandingPage() {
 
   const handleStart = async () => {
     setUnitError(null);
+    if (!selectedUnit.trim()) {
+      setUnitError(uc.unit_required);
+      return;
+    }
     setUnitSaving(true);
 
     const outcome = await attemptUnitSaveAndDecide({
@@ -214,20 +232,43 @@ export default function IntakeLandingPage() {
               <span className="text-[var(--muted)]">{uc.unit_label}</span>
               <div>
                 {knownUnits ? (
-                  <select
+                  <>
+                    <select
+                      value={unitOther ? '__other__' : selectedUnit}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__other__') { setUnitOther(true); setSelectedUnit(''); }
+                        else { setUnitOther(false); setSelectedUnit(v); }
+                      }}
+                      className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
+                    >
+                      {!unitOther && !knownUnits.includes(selectedUnit) && selectedUnit && (
+                        <option value={selectedUnit}>{selectedUnit}</option>
+                      )}
+                      {knownUnits.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                      <option value="__other__">{uc.unit_not_listed_option}</option>
+                    </select>
+                    {unitOther && (
+                      <input
+                        type="text"
+                        value={selectedUnit}
+                        onChange={(e) => setSelectedUnit(e.target.value)}
+                        placeholder={uc.unit_enter_placeholder}
+                        autoFocus
+                        className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white focus:outline-none focus:border-[var(--primary)] mt-2"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <input
+                    type="text"
                     value={selectedUnit}
                     onChange={(e) => setSelectedUnit(e.target.value)}
+                    placeholder={uc.unit_enter_placeholder}
                     className="w-full border border-[var(--border)] rounded-none px-2 py-1 text-sm bg-white focus:outline-none focus:border-[var(--primary)]"
-                  >
-                    {!knownUnits.includes(selectedUnit) && selectedUnit && (
-                      <option value={selectedUnit}>{selectedUnit}</option>
-                    )}
-                    {knownUnits.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="font-medium text-[var(--body)]">{selectedUnit}</span>
+                  />
                 )}
               </div>
             </div>
