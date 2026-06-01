@@ -13,7 +13,7 @@ interface AppGroup {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  missing: 'Missing',
+  missing: 'Not uploaded',
   submitted: 'Awaiting review',
   approved: 'Approved',
   rejected: 'Rejected',

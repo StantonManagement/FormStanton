@@ -51,8 +51,8 @@ const sectionCopy: Record<PreferredLanguage, Record<string, string>> = {
     signature_date: 'Signed',
     snapshot_missing_title: 'Application Copy Not Available',
     snapshot_missing_message: 'We could not locate your application record. Please contact the office for assistance.',
-    status_not_complete_title: 'Application Not Complete',
-    status_not_complete_message: 'This page is available after your application has been fully submitted and processed.',
+    status_not_complete_title: 'Application Not Submitted Yet',
+    status_not_complete_message: 'This page is available after you finish and submit your household information.',
     office_contact: 'Office Contact',
   },
   es: {
@@ -71,8 +71,8 @@ const sectionCopy: Record<PreferredLanguage, Record<string, string>> = {
     signature_date: 'Firmado',
     snapshot_missing_title: 'Copia No Disponible',
     snapshot_missing_message: 'No pudimos ubicar su registro de solicitud. Por favor contacte la oficina para asistencia.',
-    status_not_complete_title: 'Solicitud Incompleta',
-    status_not_complete_message: 'Esta pagina esta disponible despues de que su solicitud haya sido enviada y procesada.',
+    status_not_complete_title: 'Solicitud No Enviada Aún',
+    status_not_complete_message: 'Esta pagina esta disponible despues de que termine y envie la informacion de su hogar.',
     office_contact: 'Contacto de Oficina',
   },
   pt: {
@@ -92,8 +92,8 @@ const sectionCopy: Record<PreferredLanguage, Record<string, string>> = {
     signature_date: 'Assinado',
     snapshot_missing_title: 'Copia Nao Disponivel',
     snapshot_missing_message: 'Nao conseguimos localizar seu registro. Por favor contate o escritorio para assistencia.',
-    status_not_complete_title: 'Solicitacao Incompleta',
-    status_not_complete_message: 'Esta pagina esta disponivel apos sua solicitacao ser enviada e processada.',
+    status_not_complete_title: 'Solicitacao Nao Enviada Ainda',
+    status_not_complete_message: 'Esta pagina esta disponivel apos voce terminar e enviar as informacoes do seu domicilio.',
     office_contact: 'Contato do Escritorio',
   },
 };

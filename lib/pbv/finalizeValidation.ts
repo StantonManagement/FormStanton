@@ -55,7 +55,7 @@ export async function validateReadyToFinalize(
 
   const intakeSubmitted = (memberCount ?? 0) > 0;
   if (!intakeSubmitted) {
-    result.missing.signatures.push({ signer_name: 'Applicant', doc_label: 'Application intake not completed', doc_id: '' });
+    result.missing.signatures.push({ signer_name: 'Applicant', doc_label: 'No household members added', doc_id: '' });
     return result;
   }
 
