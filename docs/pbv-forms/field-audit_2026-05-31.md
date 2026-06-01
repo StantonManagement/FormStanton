@@ -248,6 +248,24 @@ needed (placements already existed).
   `child_support` type (support *received*) and has no intake home today. Resolver still emits
   `amount_weekly`/`amount_monthly` as blank. Niche; left for a focused follow-up.
 
+## STATUS UPDATE — Phase 4 (WS-C Spanish maps) DONE (2026-05-31)
+Resolvers are language-agnostic (one resolver per form, emits the same keys for EN/ES),
+so the (A)/(B) fixes + all WS-D wiring already reach the Spanish forms. The ES **maps**
+were brought to parity (commit `221026e`):
+- **main-application-es**: mirrored every EN Phase-1 placement with ES-specific coordinates
+  (Spanish labels wrap → different row baselines): 14 per-income-type rows, adults/minors
+  Disabled/Student/Citizen columns, race/ethnicity/marital checkboxes, DV + sold-assets
+  Yes/No. Verified via synthetic ES stamp (income + Otro/Hispano-Sí/Soltero + status cols);
+  0 geometric findings.
+- **criminal-background-release-es**, **hud-92006-es**, and the other ES maps already share
+  the EN field names, so the now-language-agnostic resolver output (incl. current/previous
+  address and emergency-contact extras) lands without map changes — verified by synthetic ES
+  stamps of criminal (Hartford/06106/5 Old Rd/06051) and hud_92006 (emergency contact).
+
+**Known minor pre-existing gap (out of blank-forms scope):** `hud-92006-es` has no
+`signature`/`signature_date` placement (the ES form is 1 page vs EN's 2; signatures are
+captured by the signing ceremony, not the field-fill remediation). Tracked for a follow-up.
+
 ## Verification of this audit
 - Every 🟠 cites the value present in members/snapshot/row but absent in the rendered text layer.
 - Mechanism confirmed by reading all 11 resolvers (`field-mapping.ts`), all 12 EN maps
