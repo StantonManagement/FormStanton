@@ -69,6 +69,28 @@ describe('stampForm', () => {
     expect(result.subarray(0, 4).toString('ascii')).toBe('%PDF');
   });
 
+  it('stamps flat checkbox fields only when affirmative / check_value matches', async () => {
+    if (!existsSync(SOURCE_PDF_PATH)) return;
+    const sourcePdfBytes = readFileSync(SOURCE_PDF_PATH);
+
+    const mapWith = (extra: Record<string, unknown>): FieldMap => ({
+      form_id: 'test',
+      source_pdf: '',
+      fields: [{ name: 'box', type: 'checkbox', page: 1, x: 100, y: 100, ...extra }],
+    });
+
+    // Bare checkbox: affirmative value draws an X, falsy does not.
+    const checked = await stampForm({ fieldMap: mapWith({}), data: { box: true }, sourcePdfBytes });
+    const unchecked = await stampForm({ fieldMap: mapWith({}), data: { box: false }, sourcePdfBytes });
+    expect(checked.subarray(0, 4).toString('ascii')).toBe('%PDF');
+    expect(checked.length).toBeGreaterThan(unchecked.length);
+
+    // With check_value: stamps only when the resolved value equals it (radio-style).
+    const match = await stampForm({ fieldMap: mapWith({ check_value: 'white' }), data: { box: 'white' }, sourcePdfBytes });
+    const noMatch = await stampForm({ fieldMap: mapWith({ check_value: 'white' }), data: { box: 'black' }, sourcePdfBytes });
+    expect(match.length).toBeGreaterThan(noMatch.length);
+  });
+
   it('handles row_patterns data without throwing', async () => {
     const fieldMap: FieldMap = {
       form_id: 'test',

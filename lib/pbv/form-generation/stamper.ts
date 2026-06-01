@@ -41,13 +41,19 @@ export interface RowPattern {
 
 export interface FlatField {
   name: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'checkbox';
   page?: number;
   x: number;
   y: number;
   width?: number;
   height?: number;
   font_size?: number;
+  /**
+   * Checkbox only: stamp "X" when `data[name] === check_value`. When omitted, the
+   * box is stamped for any truthy/affirmative value (true, "X", "yes", 1). Lets a
+   * single resolved value (e.g. race) drive one of several option boxes.
+   */
+  check_value?: string;
   /** Authoring metadata (field label); ignored by the stamper. */
   label?: string;
 }
@@ -240,6 +246,25 @@ export async function stampForm(input: StamperInput): Promise<Buffer> {
         font,
         color: rgb(0, 0, 0),
       });
+    } else if (field.type === 'checkbox') {
+      // Flat checkboxes (race/ethnicity/marital, section Yes/No) — previously
+      // unhandled, so any flat `checkbox` field (e.g. notices_read_yes) silently
+      // did nothing. Stamp "X" on match. With check_value, the box is for one
+      // option of a group and stamps only when the resolved value equals it;
+      // without, any affirmative value checks it.
+      const checked =
+        field.check_value !== undefined
+          ? String(value) === String(field.check_value)
+          : value === true || value === 1 || value === 'X' || value === 'x' || value === 'yes' || value === 'Yes';
+      if (checked) {
+        page.drawText('X', {
+          x: field.x,
+          y: field.y,
+          size: field.font_size ?? 11,
+          font,
+          color: rgb(0, 0, 0),
+        });
+      }
     } else if (field.type === 'image') {
       if (!imageResolver) continue;
       const imageBytes = await imageResolver(String(value));
