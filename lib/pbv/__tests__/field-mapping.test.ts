@@ -153,10 +153,29 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 
-  describe('income table is intentionally NOT sequentially filled (avoids mislabeling)', () => {
-    it('leaves income_rows empty pending per-income-type row placement (task C)', () => {
+  describe('income table is placed by fixed income TYPE (not sequentially)', () => {
+    it('groups each source under its form-row data_key with member + monthly amount + Yes', () => {
       const r = resolveFieldData('main_application', miaIntake, miaMembers, 'en', 1, miaApp);
-      expect(r.income_rows).toEqual([]);
+      // Mia: employment $2,700/mo → the Employed row group, not a generic list.
+      expect(r.income_employment).toEqual([
+        { member: 'Mia Enid Lozada', source: '', amount: '2700.00', yes: 'X' },
+      ]);
+      // The old sequential-fill key is gone (that was the mislabeling hazard).
+      expect(r.income_rows).toBeUndefined();
+    });
+    it('routes other-typed income to the Other row, not Employed', () => {
+      const intake: IntakeData = {
+        ...santhaIntake,
+        income: {
+          by_member: [
+            { member_slot: 1, member_name: 'Santha Lee Degross', has_any_income: true, annual_income: 6000, income_sources: [{ type: 'other', has_income: true, amount_monthly: 500 }] },
+          ],
+          has_zero_income_adult: false,
+        },
+      };
+      const r = resolveFieldData('main_application', intake, santhaMembers, 'en', 1, santhaApp);
+      expect(r.income_other).toEqual([{ member: 'Santha Lee Degross', source: '', amount: '500.00', yes: 'X' }]);
+      expect(r.income_employment).toBeUndefined();
     });
   });
 });

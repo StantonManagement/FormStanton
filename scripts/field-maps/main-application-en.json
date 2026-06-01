@@ -1,6 +1,6 @@
 {
   "form_id": "main-application-en",
-  "field_map_version": "2",
+  "field_map_version": "3",
   "source_pdf": "docs/templates/main-application-en.pdf",
   "page_size": "legal",
   "page_dimensions": {
@@ -155,19 +155,28 @@
       ]
     },
     {
-      "id": "income",
+      "id": "income_employment",
       "page": 2,
-      "data_key": "income_rows",
-      "max_rows": 17,
-      "row_start_y": 872,
-      "row_pitch": 22.5,
+      "data_key": "income_employment",
+      "max_rows": 3,
+      "row_start_y": 872.8,
+      "row_pitch": 23.4,
       "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
         {
           "field_prefix": "member",
           "type": "text",
-          "x": 191.8699,
+          "x": 191.87,
           "y_offset": 5,
-          "width": 127,
+          "width": 120,
           "font_size": 7,
           "label": "Family Member"
         },
@@ -176,16 +185,614 @@
           "type": "text",
           "x": 320.39,
           "y_offset": 5,
-          "width": 75,
+          "width": 70,
           "font_size": 7,
           "label": "Source"
         },
         {
           "field_prefix": "amount",
           "type": "text",
-          "x": 397.7998,
+          "x": 397.8,
           "y_offset": 5,
-          "width": 199,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_pension",
+      "page": 2,
+      "data_key": "income_pension",
+      "max_rows": 1,
+      "row_start_y": 802.3,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_ssi",
+      "page": 2,
+      "data_key": "income_ssi",
+      "max_rows": 2,
+      "row_start_y": 776.5,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_ss",
+      "page": 2,
+      "data_key": "income_ss",
+      "max_rows": 2,
+      "row_start_y": 731.5,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_child_support",
+      "page": 2,
+      "data_key": "income_child_support",
+      "max_rows": 1,
+      "row_start_y": 663.1,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_tanf",
+      "page": 2,
+      "data_key": "income_tanf",
+      "max_rows": 1,
+      "row_start_y": 628.1,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_snap",
+      "page": 2,
+      "data_key": "income_snap",
+      "max_rows": 1,
+      "row_start_y": 608.8,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_self_employment",
+      "page": 2,
+      "data_key": "income_self_employment",
+      "max_rows": 1,
+      "row_start_y": 587.6,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_unemployment",
+      "page": 2,
+      "data_key": "income_unemployment",
+      "max_rows": 2,
+      "row_start_y": 564.1,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_workers_comp",
+      "page": 2,
+      "data_key": "income_workers_comp",
+      "max_rows": 1,
+      "row_start_y": 518.3,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_rental",
+      "page": 2,
+      "data_key": "income_rental",
+      "max_rows": 1,
+      "row_start_y": 495.7,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_gifts",
+      "page": 2,
+      "data_key": "income_gifts",
+      "max_rows": 1,
+      "row_start_y": 469.9,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_digital_wallet",
+      "page": 2,
+      "data_key": "income_digital_wallet",
+      "max_rows": 1,
+      "row_start_y": 373.1,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
+          "font_size": 7,
+          "label": "Amount per Month"
+        }
+      ]
+    },
+    {
+      "id": "income_other",
+      "page": 2,
+      "data_key": "income_other",
+      "max_rows": 1,
+      "row_start_y": 347.3,
+      "row_pitch": 23.4,
+      "columns": [
+        {
+          "field_prefix": "yes",
+          "type": "checkbox",
+          "x": 131,
+          "y_offset": 2,
+          "check_value": "X",
+          "font_size": 9,
+          "label": "Yes"
+        },
+        {
+          "field_prefix": "member",
+          "type": "text",
+          "x": 191.87,
+          "y_offset": 5,
+          "width": 120,
+          "font_size": 7,
+          "label": "Family Member"
+        },
+        {
+          "field_prefix": "source",
+          "type": "text",
+          "x": 320.39,
+          "y_offset": 5,
+          "width": 70,
+          "font_size": 7,
+          "label": "Source"
+        },
+        {
+          "field_prefix": "amount",
+          "type": "text",
+          "x": 397.8,
+          "y_offset": 5,
+          "width": 65,
           "font_size": 7,
           "label": "Amount per Month"
         }

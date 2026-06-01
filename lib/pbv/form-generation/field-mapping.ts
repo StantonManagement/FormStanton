@@ -133,6 +133,62 @@ function applicantPhone(intake: IntakeData, app: AppRow | undefined): string {
   return contactOf(intake).phone_any || (app?.phone ?? '') || '';
 }
 
+// Intake income `type` → the main_application income table's per-row-group data_key.
+// The paper form has FIXED income-type rows (Employed / SSI / Social Security / …),
+// so each intake type stamps onto its own labeled row(s) — NOT sequentially (that
+// mislabeled income type). Types with no labeled row on the form (none today) are
+// dropped. Form rows with no intake type (Railroad Retirement, Paid Training,
+// Grants/Scholarships) stay blank. See docs/pbv-forms/field-audit_2026-05-31.md.
+const INCOME_TYPE_TO_KEY: Record<string, string> = {
+  employment: 'income_employment',
+  pension: 'income_pension',
+  ssi: 'income_ssi',
+  ss: 'income_ss',
+  child_support: 'income_child_support',
+  tanf: 'income_tanf',
+  snap: 'income_snap',
+  self_employment: 'income_self_employment',
+  unemployment: 'income_unemployment',
+  workers_comp: 'income_workers_comp',
+  rental: 'income_rental',
+  gifts: 'income_gifts',
+  digital_wallet: 'income_digital_wallet',
+  other: 'income_other',
+};
+
+interface IncomeRow {
+  member: string;
+  source: string;
+  amount: string;
+  yes: string;
+}
+
+function formatMonthly(amount: number | null | undefined): string {
+  if (amount == null || isNaN(amount)) return '';
+  return amount.toFixed(2);
+}
+
+// Group every affirmative income source under its form-row data_key. Each entry is
+// a {member, source, amount, yes} row the map's per-type row_pattern stamps. The
+// `source` (employer / institution name) is uncollected today (WS-D) → blank.
+function buildIncomeRows(intake: IntakeData): Record<string, IncomeRow[]> {
+  const out: Record<string, IncomeRow[]> = {};
+  for (const m of intake?.income?.by_member ?? []) {
+    for (const src of m.income_sources ?? []) {
+      if (!src.has_income) continue;
+      const key = INCOME_TYPE_TO_KEY[src.type];
+      if (!key) continue;
+      (out[key] ??= []).push({
+        member: m.member_name || src.member_name || '',
+        source: '',
+        amount: formatMonthly(src.amount_monthly),
+        yes: 'X',
+      });
+    }
+  }
+  return out;
+}
+
 // ─── Per-form resolvers ───────────────────────────────────────────────────────
 
 function resolveMainApplication(
@@ -196,13 +252,12 @@ function resolveMainApplication(
     date: dateStr,
     adults: adultRows,
     minors: minorRows,
-    // Income/asset/medical TABLES are intentionally left empty here. The map's
-    // row_patterns stamp top-down into sequential rows, but the paper form has
-    // FIXED income-type labels (Employed / SSI / Social Security / …). Filling
-    // sequentially would put e.g. "other" income onto the "Employed" row. Correct
-    // placement needs per-income-type row coordinates — tracked as a (C) map task
-    // in docs/pbv-forms/field-audit_2026-05-31.md. Better blank than mislabeled.
-    income_rows: [],
+    // Income table: each intake income type stamps onto its own FIXED labeled row
+    // group (income_employment / income_ssi / …) via per-type row_patterns in the
+    // map — never sequentially (that mislabeled income type). See buildIncomeRows.
+    ...buildIncomeRows(intakeData),
+    // Asset / medical tables need per-asset detail (member, institution, value)
+    // that intake does not yet collect (WS-D). Left empty until then.
     asset_rows: [],
     medical_rows: [],
   };
