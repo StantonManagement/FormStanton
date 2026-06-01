@@ -84,6 +84,8 @@ function PbvPreappContent() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // When true, the applicant types a unit not in the canonical dropdown list.
+  const [unitOther, setUnitOther] = useState(false);
   const sigRef = useRef<SignatureCanvas>(null);
 
   const t = pbvFormTranslations[language];
@@ -254,7 +256,7 @@ function PbvPreappContent() {
                   <FormField label={t.building_label} required error={errors['building']}>
                     <select
                       value={form.building}
-                      onChange={e => { setField('building', e.target.value); setField('unit', ''); }}
+                      onChange={e => { setField('building', e.target.value); setField('unit', ''); setUnitOther(false); }}
                       className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-1"
                     >
                       <option value="">— Select building —</option>
@@ -264,21 +266,38 @@ function PbvPreappContent() {
 
                   <FormField label={t.unit_label} required error={errors['unit']}>
                     {knownUnits ? (
-                      <select
-                        value={form.unit}
-                        onChange={e => setField('unit', e.target.value)}
-                        disabled={!form.building}
-                        className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white disabled:bg-[var(--bg-section)] disabled:text-[var(--muted)] mt-1"
-                      >
-                        <option value="">— Select unit —</option>
-                        {knownUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
+                      <>
+                        <select
+                          value={unitOther ? '__other__' : form.unit}
+                          onChange={e => {
+                            const v = e.target.value;
+                            if (v === '__other__') { setUnitOther(true); setField('unit', ''); }
+                            else { setUnitOther(false); setField('unit', v); }
+                          }}
+                          disabled={!form.building}
+                          className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white disabled:bg-[var(--bg-section)] disabled:text-[var(--muted)] mt-1"
+                        >
+                          <option value="">— Select unit —</option>
+                          {knownUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                          <option value="__other__">{t.unit_not_listed_option}</option>
+                        </select>
+                        {unitOther && (
+                          <input
+                            type="text"
+                            value={form.unit}
+                            onChange={e => setField('unit', e.target.value)}
+                            placeholder={t.unit_enter_placeholder}
+                            autoFocus
+                            className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white mt-2"
+                          />
+                        )}
+                      </>
                     ) : (
                       <input
                         type="text"
                         value={form.unit}
                         onChange={e => setField('unit', e.target.value)}
-                        placeholder="Enter unit number"
+                        placeholder={t.unit_enter_placeholder}
                         disabled={!form.building}
                         className="w-full px-3 py-3 border border-[var(--border)] rounded-none text-sm focus:outline-none focus:border-[var(--primary)] bg-white disabled:bg-[var(--bg-section)] mt-1"
                       />

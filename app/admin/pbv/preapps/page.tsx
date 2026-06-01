@@ -86,6 +86,7 @@ export default function PbvPreappsPage() {
   const [filterQual, setFilterQual] = useState('');
   const [filterReview, setFilterReview] = useState('');
   const [filterBuilding, setFilterBuilding] = useState('');
+  const [dupesOnly, setDupesOnly] = useState(false);
 
   // Admin tab
   const [adminTab, setAdminTab] = useState<'submissions' | 'thresholds'>('submissions');
@@ -189,6 +190,17 @@ export default function PbvPreappsPage() {
     acc[k] = (acc[k] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>), [rows]);
+
+  // Rows that share a building + unit with at least one other submission.
+  const isDuplicateRow = useCallback(
+    (r: ListRow) => duplicateKeys[`${r.building_address}||${r.unit_number}`] > 1,
+    [duplicateKeys]
+  );
+  const dupeRowCount = useMemo(() => rows.filter(isDuplicateRow).length, [rows, isDuplicateRow]);
+  const displayRows = useMemo(
+    () => (dupesOnly ? rows.filter(isDuplicateRow) : rows),
+    [rows, dupesOnly, isDuplicateRow]
+  );
 
   const buildingOptions = useMemo(
     () => buildings.map((b) => ({ value: b, label: b })),
@@ -382,10 +394,24 @@ export default function PbvPreappsPage() {
             ))}
           </select>
 
-          {(filterQual || filterReview) && (
+          <button
+            type="button"
+            onClick={() => setDupesOnly((v) => !v)}
+            disabled={dupeRowCount === 0 && !dupesOnly}
+            className={`px-3 py-2 text-sm rounded-none border transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              dupesOnly
+                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)]'
+            }`}
+            title="Show only submissions that share a building + unit with another submission"
+          >
+            {dupesOnly ? '✓ ' : ''}Duplicates only ({dupeRowCount})
+          </button>
+
+          {(filterQual || filterReview || dupesOnly) && (
             <button
               type="button"
-              onClick={() => { setFilterQual(''); setFilterReview(''); setFilterBuilding(''); }}
+              onClick={() => { setFilterQual(''); setFilterReview(''); setFilterBuilding(''); setDupesOnly(false); }}
               className="px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--ink)] border border-[var(--border)] rounded-none transition-colors duration-200"
             >
               Clear filters
@@ -393,7 +419,8 @@ export default function PbvPreappsPage() {
           )}
 
           <span className="ml-auto text-sm text-[var(--muted)] self-center">
-            {rows.length} submission{rows.length !== 1 ? 's' : ''}
+            {displayRows.length} submission{displayRows.length !== 1 ? 's' : ''}
+            {dupesOnly && rows.length !== displayRows.length ? ` of ${rows.length}` : ''}
           </span>
         </div>
       </div>
@@ -403,7 +430,7 @@ export default function PbvPreappsPage() {
         {/* Table */}
         <div className={`flex-1 overflow-auto p-6 ${selectedId ? 'hidden lg:block' : ''}`}>
           <DataTable<ListRow>
-            data={rows}
+            data={displayRows}
             columns={columns}
             urlNamespace="preapps"
             getRowId={(row) => row.id}

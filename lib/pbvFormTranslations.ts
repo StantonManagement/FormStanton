@@ -16,6 +16,8 @@ export interface PbvFormStrings {
   hoh_dob_label: string;
   building_label: string;
   unit_label: string;
+  unit_not_listed_option: string;
+  unit_enter_placeholder: string;
   hoh_phone_label: string;
   hoh_email_label: string;
 
@@ -112,6 +114,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Date of Birth',
     building_label: 'Building',
     unit_label: 'Unit',
+    unit_not_listed_option: "My unit isn't listed →",
+    unit_enter_placeholder: 'Enter your unit number',
     hoh_phone_label: 'Phone Number',
     hoh_email_label: 'Email Address (optional)',
 
@@ -197,6 +201,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Fecha de Nacimiento',
     building_label: 'Edificio',
     unit_label: 'Unidad',
+    unit_not_listed_option: 'Mi unidad no aparece →',
+    unit_enter_placeholder: 'Ingrese el número de su unidad',
     hoh_phone_label: 'Número de Teléfono',
     hoh_email_label: 'Correo Electrónico (opcional)',
 
@@ -282,6 +288,8 @@ export const pbvFormTranslations: Record<PreferredLanguage, PbvFormStrings> = {
     hoh_dob_label: 'Data de Nascimento',
     building_label: 'Edifício',
     unit_label: 'Unidade',
+    unit_not_listed_option: 'Minha unidade não está na lista →',
+    unit_enter_placeholder: 'Digite o número da sua unidade',
     hoh_phone_label: 'Número de Telefone',
     hoh_email_label: 'Email (opcional)',
 
