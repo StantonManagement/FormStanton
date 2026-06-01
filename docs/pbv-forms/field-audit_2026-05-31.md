@@ -236,17 +236,19 @@ snapshots** until re-collection (WS-F):
 Each verified by resolver tests (25/25) + synthetic end-to-end stamps; no map changes were
 needed (placements already existed).
 
-**DEFERRED (documented, not silently dropped):**
-- **#4 Itemized household expenses** — the page-4 expense table is a 2-column layout with a
-  **"Who Pays" column intake does not collect**, applies **only to zero-income households**
-  (so unverifiable against Mia/Santha, who have income), and the map has **no placements yet**
-  (WS-B not done for this table). To finish: author the 2-column expense-row placements +
-  expand `IntakeHouseholdExpenses` to line items + who-pays + resolver. Lowest value/highest
-  effort gap; left for a focused follow-up.
-- **#5 Child-support PAID amounts** — `child_support_affidavit` is conditional (only when the
-  applicant *pays* support; neither Mia nor Santha). This is distinct from the income
-  `child_support` type (support *received*) and has no intake home today. Resolver still emits
-  `amount_weekly`/`amount_monthly` as blank. Niche; left for a focused follow-up.
+**Initially deferred, now ALSO DONE (commits `1846bbc`, `949b7a6`):**
+- **#4 Itemized household expenses** — added the full 22-category page-4 expense table
+  (left+right columns, each {amount, who-pays} = 44 flat placements per language, EN+ES).
+  `IntakeExpenseLineItem[]` + a rebuilt `SectionHouseholdExpenses` listing every category;
+  resolver emits `exp_<key>_amount`/`exp_<key>_who`. Verified via synthetic stamp (both
+  columns land in correct cells). Only shown for zero-income households.
+- **#5 Child-support amounts** — discovered the `child_support_affidavit` is triggered by
+  RECEIVING child support (`household_has_child_support`), so the form's weekly/monthly amount
+  IS the collected child_support income (no new collection needed). Resolver now derives
+  monthly (sum) + weekly (×12/52) + fills `affiant_zip` from the WS-D zip. Verified via
+  synthetic stamp.
+
+**All 6 WS-D gaps are now collected/wired. Still nothing regenerated in prod or sent.**
 
 ## STATUS UPDATE — Phase 4 (WS-C Spanish maps) DONE (2026-05-31)
 Resolvers are language-agnostic (one resolver per form, emits the same keys for EN/ES),
