@@ -203,6 +203,15 @@ export interface IntakeDvHomelessRa {
 
 // ── Section 10 — household_expenses ───────────────────────────────────────────
 
+// One itemized expense line for the page-4 household-expenses table (zero-income
+// households). `key` matches a fixed form category (see SectionHouseholdExpenses /
+// the map's exp_<key>_amount / exp_<key>_who placements). (WS-D #4)
+export interface IntakeExpenseLineItem {
+  key: string;
+  amount?: number;
+  who_pays?: string;
+}
+
 export interface IntakeHouseholdExpenses {
   monthly_rent?: number;
   monthly_utilities?: number;
@@ -210,6 +219,7 @@ export interface IntakeHouseholdExpenses {
   monthly_transportation?: number;
   monthly_other?: number;
   expense_explanation?: string;
+  line_items?: IntakeExpenseLineItem[]; // itemized expense table (WS-D #4)
 }
 
 // ── Section 11 — pets (PRD-55 cross-dependency) ──────────────────────────────────

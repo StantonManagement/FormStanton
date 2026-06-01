@@ -254,6 +254,27 @@ describe('resolveFieldData — real intake shape (regression guard for blank for
     });
   });
 
+  describe('WS-D #4 — itemized household expenses → flat exp_<key> fields', () => {
+    it('emits exp_<key>_amount / _who per line item; skips blanks', () => {
+      const intake: IntakeData = {
+        ...miaIntake,
+        household_expenses: {
+          line_items: [
+            { key: 'rent', amount: 1200, who_pays: 'My sister' },
+            { key: 'light', amount: 80 }, // no who_pays
+            { key: 'water' }, // nothing → no keys
+          ],
+        },
+      };
+      const r = resolveFieldData('main_application', intake, miaMembers, 'en', 1, miaApp);
+      expect(r.exp_rent_amount).toBe('1200.00');
+      expect(r.exp_rent_who).toBe('My sister');
+      expect(r.exp_light_amount).toBe('80.00');
+      expect(r.exp_light_who).toBeUndefined();
+      expect(r.exp_water_amount).toBeUndefined();
+    });
+  });
+
   describe('citizenship_declaration (already correct)', () => {
     it('includes all members with name + dob + status', () => {
       const r = resolveFieldData('citizenship_declaration', santhaIntake, santhaMembers, 'en', 1, santhaApp);

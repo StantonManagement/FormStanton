@@ -1371,6 +1371,446 @@
       "check_value": "no",
       "font_size": 9,
       "label": "q_dv no"
+    },
+    {
+      "name": "exp_rent_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 814.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "rent amount"
+    },
+    {
+      "name": "exp_rent_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 814.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "rent who pays"
+    },
+    {
+      "name": "exp_light_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 795.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "light amount"
+    },
+    {
+      "name": "exp_light_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 795.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "light who pays"
+    },
+    {
+      "name": "exp_gas_oil_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 776.6,
+      "width": 45,
+      "font_size": 7,
+      "label": "gas_oil amount"
+    },
+    {
+      "name": "exp_gas_oil_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 776.6,
+      "width": 50,
+      "font_size": 7,
+      "label": "gas_oil who pays"
+    },
+    {
+      "name": "exp_water_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 755.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "water amount"
+    },
+    {
+      "name": "exp_water_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 755.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "water who pays"
+    },
+    {
+      "name": "exp_vehicle_payment_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 734.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "vehicle_payment amount"
+    },
+    {
+      "name": "exp_vehicle_payment_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 734.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "vehicle_payment who pays"
+    },
+    {
+      "name": "exp_vehicle_insurance_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 714.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "vehicle_insurance amount"
+    },
+    {
+      "name": "exp_vehicle_insurance_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 714.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "vehicle_insurance who pays"
+    },
+    {
+      "name": "exp_cable_internet_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 693.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "cable_internet amount"
+    },
+    {
+      "name": "exp_cable_internet_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 693.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "cable_internet who pays"
+    },
+    {
+      "name": "exp_phone_home_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 669.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "phone_home amount"
+    },
+    {
+      "name": "exp_phone_home_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 669.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "phone_home who pays"
+    },
+    {
+      "name": "exp_phone_cell_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 648.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "phone_cell amount"
+    },
+    {
+      "name": "exp_phone_cell_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 648.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "phone_cell who pays"
+    },
+    {
+      "name": "exp_child_care_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 624.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "child_care amount"
+    },
+    {
+      "name": "exp_child_care_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 624.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "child_care who pays"
+    },
+    {
+      "name": "exp_furniture_rental_amount",
+      "type": "text",
+      "page": 4,
+      "x": 207,
+      "y": 601.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "furniture_rental amount"
+    },
+    {
+      "name": "exp_furniture_rental_who",
+      "type": "text",
+      "page": 4,
+      "x": 261,
+      "y": 601.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "furniture_rental who pays"
+    },
+    {
+      "name": "exp_groceries_cash_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 814.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "groceries_cash amount"
+    },
+    {
+      "name": "exp_groceries_cash_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 814.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "groceries_cash who pays"
+    },
+    {
+      "name": "exp_takeout_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 795.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "takeout amount"
+    },
+    {
+      "name": "exp_takeout_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 795.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "takeout who pays"
+    },
+    {
+      "name": "exp_paper_products_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 776.6,
+      "width": 45,
+      "font_size": 7,
+      "label": "paper_products amount"
+    },
+    {
+      "name": "exp_paper_products_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 776.6,
+      "width": 50,
+      "font_size": 7,
+      "label": "paper_products who pays"
+    },
+    {
+      "name": "exp_grooming_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 755.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "grooming amount"
+    },
+    {
+      "name": "exp_grooming_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 755.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "grooming who pays"
+    },
+    {
+      "name": "exp_cleaning_laundry_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 734.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "cleaning_laundry amount"
+    },
+    {
+      "name": "exp_cleaning_laundry_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 734.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "cleaning_laundry who pays"
+    },
+    {
+      "name": "exp_gas_vehicle_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 714.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "gas_vehicle amount"
+    },
+    {
+      "name": "exp_gas_vehicle_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 714.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "gas_vehicle who pays"
+    },
+    {
+      "name": "exp_clothing_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 693.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "clothing amount"
+    },
+    {
+      "name": "exp_clothing_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 693.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "clothing who pays"
+    },
+    {
+      "name": "exp_entertainment_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 669.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "entertainment amount"
+    },
+    {
+      "name": "exp_entertainment_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 669.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "entertainment who pays"
+    },
+    {
+      "name": "exp_public_transit_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 648.2,
+      "width": 45,
+      "font_size": 7,
+      "label": "public_transit amount"
+    },
+    {
+      "name": "exp_public_transit_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 648.2,
+      "width": 50,
+      "font_size": 7,
+      "label": "public_transit who pays"
+    },
+    {
+      "name": "exp_jewelry_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 624.8,
+      "width": 45,
+      "font_size": 7,
+      "label": "jewelry amount"
+    },
+    {
+      "name": "exp_jewelry_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 624.8,
+      "width": 50,
+      "font_size": 7,
+      "label": "jewelry who pays"
+    },
+    {
+      "name": "exp_household_items_amount",
+      "type": "text",
+      "page": 4,
+      "x": 470,
+      "y": 601.4,
+      "width": 45,
+      "font_size": 7,
+      "label": "household_items amount"
+    },
+    {
+      "name": "exp_household_items_who",
+      "type": "text",
+      "page": 4,
+      "x": 524,
+      "y": 601.4,
+      "width": 50,
+      "font_size": 7,
+      "label": "household_items who pays"
     }
   ]
 }

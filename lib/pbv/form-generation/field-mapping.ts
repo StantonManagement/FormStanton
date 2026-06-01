@@ -243,6 +243,19 @@ function buildAssetRows(intake: IntakeData): Array<{ member: string; source: str
     }));
 }
 
+// Itemized household-expense lines → flat exp_<key>_amount / exp_<key>_who fields
+// on the main_application page-4 expense table (zero-income households). (WS-D #4)
+function buildExpenseFields(intake: IntakeData): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const li of intake?.household_expenses?.line_items ?? []) {
+    if (!li?.key) continue;
+    if (li.amount != null && !isNaN(li.amount)) out[`exp_${li.key}_amount`] = formatMonthly(li.amount);
+    const who = (li.who_pays ?? '').trim();
+    if (who) out[`exp_${li.key}_who`] = who;
+  }
+  return out;
+}
+
 // ─── Per-form resolvers ───────────────────────────────────────────────────────
 
 function resolveMainApplication(
@@ -330,6 +343,8 @@ function resolveMainApplication(
     // group (income_employment / income_ssi / …) via per-type row_patterns in the
     // map — never sequentially (that mislabeled income type). See buildIncomeRows.
     ...buildIncomeRows(intakeData),
+    // Itemized household-expense table (zero-income households) (WS-D #4).
+    ...buildExpenseFields(intakeData),
     // Asset table now fills from per-asset detail collected in intake (WS-D #3).
     asset_rows: buildAssetRows(intakeData),
     // Medical-expense table still needs per-line detail intake doesn't collect.
