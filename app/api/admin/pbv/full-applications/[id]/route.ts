@@ -140,6 +140,38 @@ export async function GET(
   }
 }
 
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+
+    // Hard delete. Every child of pbv_full_applications cascades at the DB level
+    // (members, income, documents, signatures, signing packets, notifications,
+    // audit logs — see migration 20260601000000_pbv_preapp_cascade_delete.sql),
+    // so removing this row tears down the whole application. The parent
+    // pre-application is NOT touched (preapp_id points the other way).
+    // NOTE: generated PDF objects in Supabase Storage are not removed by the
+    // DB cascade and will orphan.
+    const { error } = await supabaseAdmin
+      .from('pbv_full_applications')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('DELETE /api/admin/pbv/full-applications/[id] error:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

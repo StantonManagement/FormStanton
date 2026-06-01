@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 import StantonReviewSurface from '@/components/review/StantonReviewSurface';
@@ -27,6 +27,10 @@ function fmtMoney(n:number|null|undefined){if(n==null)return'—';return '$'+n.t
 
 export default function PbvFullApplicationDetailPage() {
   const { id } = useParams<{id:string}>();
+  const router = useRouter();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [detail, setDetail] = useState<AppDetail|null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -285,6 +289,22 @@ export default function PbvFullApplicationDetailPage() {
   const orphanedSigDocs = detail.documents.filter(d=>d.requires_signature && d.person_slot>0 && !adultSlots.has(d.person_slot));
   const docCounts:Record<string,number>={approved:0,submitted:0,rejected:0,missing:0,waived:0};
   for(const d of detail.documents) docCounts[d.status]=(docCounts[d.status]??0)+1;
+
+  const handleDelete = async () => {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      const res = await fetch('/api/admin/pbv/full-applications/'+id, { method:'DELETE' });
+      if (!res.ok) {
+        const d = await res.json().catch(()=>({}));
+        throw new Error(d.message || 'Delete failed');
+      }
+      router.push('/admin/pbv/full-applications');
+    } catch (err:any) {
+      setDeleteError(err.message || 'Failed to delete application');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -758,6 +778,56 @@ export default function PbvFullApplicationDetailPage() {
           onSuccess={()=>{ setShowReopen(false); fetchDetail(); }}
         />
       )}
+
+      {/* Danger zone — permanently delete the full application */}
+      <section className="border border-red-200 bg-red-50/40 p-5">
+        <h2 className="text-sm font-semibold text-red-700 uppercase tracking-wide">Danger Zone</h2>
+        {!confirmDelete ? (
+          <div className="mt-3 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-xs text-[var(--muted)] max-w-md">
+              Permanently delete this full application and all of its data —
+              household members, documents, generated forms, signatures, signing
+              packets, notifications, and audit logs. The pre-application is not
+              affected. This cannot be undone.
+            </p>
+            <button
+              type="button"
+              onClick={()=>{ setDeleteError(''); setConfirmDelete(true); }}
+              className="px-4 py-2 text-sm text-red-700 border border-red-300 hover:bg-red-100 rounded-none transition-colors duration-200 flex-shrink-0"
+            >
+              Delete Application
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <p className="text-sm text-red-700 font-medium">
+              Permanently delete the full application for {detail.head_of_household_name}?
+            </p>
+            <p className="text-xs text-[var(--muted)]">
+              This erases all members, documents, forms, signatures and history. This cannot be undone.
+            </p>
+            {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={()=>setConfirmDelete(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm border border-[var(--border)] text-[var(--muted)] hover:text-[var(--ink)] hover:bg-white rounded-none transition-colors duration-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm bg-red-600 text-white hover:bg-red-700 rounded-none transition-colors duration-200 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : 'Yes, Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
