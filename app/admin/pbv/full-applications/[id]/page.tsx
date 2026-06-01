@@ -311,6 +311,12 @@ export default function PbvFullApplicationDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/admin/pbv/pipeline/${detail.id}/review`}
+            className="px-3 py-1.5 text-xs font-semibold bg-[var(--primary)] text-white hover:opacity-90 transition-opacity"
+          >
+            Review documents
+          </Link>
           <a
             href={`/pbv-full-app/${detail.tenant_access_token}/print`}
             target="_blank"
